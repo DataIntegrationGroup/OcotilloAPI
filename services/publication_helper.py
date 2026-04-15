@@ -18,10 +18,12 @@ from schemas.publication import CreatePublication
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+from services.payload_helper import normalize_for_db
+
 
 def add_publication(session: Session, publication_data: CreatePublication):
 
-    publication_data = publication_data.model_dump()
+    publication_data = normalize_for_db(publication_data.model_dump())
     authors = publication_data.pop("authors", [])
 
     associations = []

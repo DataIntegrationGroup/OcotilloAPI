@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, DeclarativeBase
 from starlette.status import HTTP_204_NO_CONTENT
 
 from db.notes import NotesMixin
+from services.payload_helper import normalize_for_db
 from services.query_helper import simple_get_by_id
 
 
@@ -27,7 +28,7 @@ def model_adder(session, table, model, user=None, **kwargs):
     Helper function to add a new record to the database.
     """
 
-    md = model.model_dump()
+    md = normalize_for_db(model.model_dump())
     if kwargs:
         md.update(kwargs)
 
@@ -73,7 +74,7 @@ def model_patcher(
     update record fields to None
     """
 
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    for key, value in normalize_for_db(payload.model_dump(exclude_unset=True)).items():
         if isinstance(item, NotesMixin) and key == "notes":
             # delete all notes and re-add
             for note in item.notes:

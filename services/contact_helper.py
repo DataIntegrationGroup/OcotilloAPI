@@ -16,11 +16,14 @@
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session, joinedload
 
+from db import Thing
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
 from schemas.contact import (
     CreateContact,
 )
 from services.audit_helper import audit_add
+from services.exceptions_helper import PydanticStyleException
+from services.payload_helper import normalize_for_db
 from services.query_helper import order_sort_filter
 
 
@@ -58,7 +61,9 @@ def add_contact(
     """
 
     if isinstance(data, CreateContact):
-        data = data.model_dump(exclude_unset=True)
+        data = normalize_for_db(data.model_dump(exclude_unset=True))
+    else:
+        data = normalize_for_db(data)
 
     email_data = data.pop("emails", [])
     phone_data = data.pop("phones", [])
@@ -100,8 +105,21 @@ def add_contact(
         session.flush()
         session.refresh(contact)
         if thing_id is not None:
+            thing = session.get(Thing, thing_id)
+            if thing is None:
+                raise PydanticStyleException(
+                    status_code=409,
+                    detail=[
+                        {
+                            "loc": ["body", "thing_id"],
+                            "msg": f"Thing with ID {thing_id} not found.",
+                            "type": "value_error",
+                            "input": {"thing_id": thing_id},
+                        }
+                    ],
+                )
             thing_contact_association = ThingContactAssociation()
-            thing_contact_association.thing_id = thing_id
+            thing_contact_association.thing_id = thing.id
             thing_contact_association.contact_id = contact.id
 
             audit_add(user, thing_contact_association)

@@ -50,7 +50,8 @@ from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
 from services.env import get_bool_env
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter, simple_get_by_id
+from services.payload_helper import normalize_for_db
+from services.query_helper import order_sort_filter, simple_get_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +259,9 @@ def add_thing(
     # Extract data for related tables
     # Normalize Pydantic models to dictionaries so we can safely mutate with .pop()
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        data = normalize_for_db(data.model_dump())
+    else:
+        data = normalize_for_db(data)
 
     # ---------
     # BEGIN UNIVERSAL THING RELATED TABLES

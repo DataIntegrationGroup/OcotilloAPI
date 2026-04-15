@@ -14,10 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter, Query
-from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, IntegrityError
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -56,6 +55,15 @@ router = APIRouter(prefix="/contact", tags=["contact"])
 # ====== DB ERROR HANDLERS =====================================================
 
 
+def missing_contact_detail(contact_id: int) -> dict:
+    return {
+        "loc": ["body", "contact_id"],
+        "msg": f"Contact with ID {contact_id} not found.",
+        "type": "value_error",
+        "input": {"contact_id": contact_id},
+    }
+
+
 def database_error_handler(
     payload: CreateEmail | CreateContact | CreatePhone, error: ProgrammingError
 ) -> None:
@@ -63,7 +71,11 @@ def database_error_handler(
     Handle errors raised by the database when adding or updating a sample.
     """
 
-    error_message = error.orig.args[0]["M"]
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
 
     if (
         error_message
@@ -134,7 +146,7 @@ def create_contact(
 ) -> ContactResponse:
     try:
         return add_contact(session, contact_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(contact_data, e)
 
 
@@ -155,9 +167,14 @@ def create_address(
     :param session: Database session
     :return: Response containing the added address
     """
+    if session.get(Contact, address_data.contact_id) is None:
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[missing_contact_detail(address_data.contact_id)],
+        )
     try:
         return model_adder(session, Address, address_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(address_data, e)
 
 
@@ -171,9 +188,14 @@ def create_email(
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> EmailResponse:
+    if session.get(Contact, email_data.contact_id) is None:
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[missing_contact_detail(email_data.contact_id)],
+        )
     try:
         return model_adder(session, Email, email_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(email_data, e)
 
 
@@ -187,9 +209,14 @@ def create_phone(
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> PhoneResponse:
+    if session.get(Contact, phone_data.contact_id) is None:
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[missing_contact_detail(phone_data.contact_id)],
+        )
     try:
         return model_adder(session, Phone, phone_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(phone_data, e)
 
 

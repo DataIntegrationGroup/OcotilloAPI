@@ -20,7 +20,7 @@ import time
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, IntegrityError
 from starlette.concurrency import run_in_threadpool
 from starlette.status import (
     HTTP_201_CREATED,
@@ -42,6 +42,7 @@ from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
 from services.env import get_bool_env
 from services.exceptions_helper import PydanticStyleException
+from services.payload_helper import normalize_for_db
 from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/asset", tags=["asset"])
@@ -79,7 +80,11 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
     Handle errors raised by the database when adding or updating a asset.
     """
 
-    error_message = error.orig.args[0]["M"]
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
 
     if (
         error_message == 'null value in column "thing_id" of relation '
@@ -147,7 +152,7 @@ def add_asset(
 ) -> AssetResponse:
 
     try:
-        data = asset_data.model_dump()
+        data = normalize_for_db(asset_data.model_dump())
         thing_id = data.pop("thing_id", None)
 
         storage_path = data["storage_path"]
@@ -173,6 +178,18 @@ def add_asset(
             assoc = AssetThingAssociation()
             audit_add(user, assoc)
             thing = session.get(Thing, thing_id)
+            if thing is None:
+                raise PydanticStyleException(
+                    status_code=HTTP_409_CONFLICT,
+                    detail=[
+                        {
+                            "loc": ["body", "thing_id"],
+                            "msg": f"Thing with ID {thing_id} not found.",
+                            "type": "value_error",
+                            "input": {"thing_id": thing_id},
+                        }
+                    ],
+                )
             assoc.thing = thing
             assoc.asset = asset
             session.add(assoc)
@@ -182,7 +199,7 @@ def add_asset(
         session.refresh(asset)
 
         return asset
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(asset_data, e)
 
 

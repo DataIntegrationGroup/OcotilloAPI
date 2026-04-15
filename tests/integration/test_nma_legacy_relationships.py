@@ -212,7 +212,7 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             record = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id="ORPHAN-CHEM",
+                nma_sample_point_id="ORPHANCHM",
                 # No thing_id - should fail on commit
             )
             session.add(record)

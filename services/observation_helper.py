@@ -27,6 +27,7 @@ from schemas.observation import (
 )
 from services.exceptions_helper import PydanticStyleException
 from services.env import get_bool_env
+from services.payload_helper import normalize_for_db
 from services.query_helper import simple_get_by_id, order_sort_filter
 
 logger = logging.getLogger(__name__)
@@ -323,7 +324,7 @@ def observation_model_patcher(
 
     verify_observed_property_corresponds_with_activity_type(observation, request)
 
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    for key, value in normalize_for_db(payload.model_dump(exclude_unset=True)).items():
         setattr(observation, key, value)
 
     if user:
