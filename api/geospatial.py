@@ -32,7 +32,7 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 
 @router.get("")
-async def get_geospatial(
+def get_geospatial(
     user: viewer_dependency,
     session: session_dependency,
     thing_type: Annotated[List[str], Query(title="thing_type")] = None,
@@ -61,7 +61,7 @@ async def get_geospatial(
 
 
 @router.get("/project-area/{group_id}", summary="Get project area for group")
-async def get_project_area(
+def get_project_area(
     user: viewer_dependency, session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:
 

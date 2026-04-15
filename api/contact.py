@@ -14,10 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter, Query
-from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -57,58 +56,48 @@ router = APIRouter(prefix="/contact", tags=["contact"])
 
 
 def database_error_handler(
-    payload: CreateEmail | CreateContact | CreatePhone, error: ProgrammingError
+    payload: CreateAddress | CreateEmail | CreateContact | CreatePhone,
+    error: IntegrityError | ProgrammingError,
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a sample.
     """
 
-    error_message = error.orig.args[0]["M"]
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
 
-    if (
-        error_message
-        == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_thing_id_fkey"'
-    ):
+    if 'constraint "thing_contact_association_thing_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "email" violates foreign key constraint "email_contact_id_fkey"'
-    ):
+    elif 'constraint "email_contact_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "contact_id"],
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "phone" violates foreign key constraint "phone_contact_id_fkey"'
-    ):
+    elif 'constraint "phone_contact_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "contact_id"],
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "address" violates foreign key constraint "address_contact_id_fkey"'
-    ):
+    elif 'constraint "address_contact_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "contact_id"],
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "contact" violates foreign key constraint "contact_contact_type_fkey"'
-    ):
+    elif 'constraint "contact_contact_type_fkey"' in error_message:
         valid_terms = get_terms_by_category("contact_type")
         valid_contact_types_for_msg = " | ".join(valid_terms)
         detail = {
@@ -116,6 +105,13 @@ def database_error_handler(
             "msg": f"Invalid contact_type. Valid terms are: {valid_contact_types_for_msg}",
             "type": "value_error",
             "input": {"contact_type": payload.contact_type},
+        }
+    else:
+        detail = {
+            "loc": ["body"],
+            "msg": error_message,
+            "type": "value_error",
+            "input": {},
         }
 
     raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
@@ -129,12 +125,12 @@ def database_error_handler(
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_contact(
+def create_contact(
     contact_data: CreateContact, session: session_dependency, user: amp_admin_dependency
 ) -> ContactResponse:
     try:
         return add_contact(session, contact_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(contact_data, e)
 
 
@@ -143,7 +139,7 @@ async def create_contact(
     summary="Add an address to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_address(
+def create_address(
     address_data: CreateAddress,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -157,7 +153,7 @@ async def create_address(
     """
     try:
         return model_adder(session, Address, address_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(address_data, e)
 
 
@@ -166,14 +162,14 @@ async def create_address(
     summary="Add an email to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_email(
+def create_email(
     email_data: CreateEmail,
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> EmailResponse:
     try:
         return model_adder(session, Email, email_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(email_data, e)
 
 
@@ -182,14 +178,14 @@ async def create_email(
     summary="Add a phone number to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_phone(
+def create_phone(
     phone_data: CreatePhone,
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> PhoneResponse:
     try:
         return model_adder(session, Phone, phone_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(phone_data, e)
 
 
@@ -221,7 +217,7 @@ async def create_phone(
 @router.patch(
     "/email/{email_id}",
 )
-async def update_contact_email(
+def update_contact_email(
     email_id: int,
     email_data: UpdateEmail,
     session: session_dependency,
@@ -236,7 +232,7 @@ async def update_contact_email(
 @router.patch(
     "/phone/{phone_id}",
 )
-async def update_contact_phone(
+def update_contact_phone(
     phone_id: int,
     phone_data: UpdatePhone,
     session: session_dependency,
@@ -256,7 +252,7 @@ async def update_contact_phone(
 @router.patch(
     "/address/{address_id}",
 )
-async def update_contact_address(
+def update_contact_address(
     address_id: int,
     address_data: UpdateAddress,
     session: session_dependency,
@@ -304,7 +300,7 @@ async def update_contact_address(
 
 
 @router.patch("/{contact_id}", summary="Update contact")
-async def update_contact(
+def update_contact(
     contact_id: int,
     contact_data: UpdateContact,
     session: session_dependency,
@@ -365,7 +361,7 @@ async def update_contact(
 
     try:
         return model_patcher(session, Contact, contact_id, contact_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(contact_data, e)
 
 
@@ -373,7 +369,7 @@ async def update_contact(
 
 
 @router.get("/email", summary="Get all emails")
-async def get_emails(
+def get_emails(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
     """
@@ -385,7 +381,7 @@ async def get_emails(
 
 
 @router.get("/email/{email_id}", summary="Get email by ID")
-async def get_email_by_id(
+def get_email_by_id(
     email_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> EmailResponse:
     """
@@ -395,7 +391,7 @@ async def get_email_by_id(
 
 
 @router.get("/phone", summary="Get all phones")
-async def get_phones(
+def get_phones(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
     """
@@ -407,7 +403,7 @@ async def get_phones(
 
 
 @router.get("/phone/{phone_id}", summary="Get phone by ID")
-async def get_phone_by_id(
+def get_phone_by_id(
     phone_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> PhoneResponse:
     """
@@ -417,7 +413,7 @@ async def get_phone_by_id(
 
 
 @router.get("/address", summary="Get all addresses")
-async def get_addresses(
+def get_addresses(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
     """
@@ -429,7 +425,7 @@ async def get_addresses(
 
 
 @router.get("/address/{address_id}", summary="Get address by ID")
-async def get_address_by_id(
+def get_address_by_id(
     address_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> AddressResponse:
     """
@@ -468,7 +464,7 @@ async def get_address_by_id(
 
 
 @router.get("", summary="Get contacts")
-async def get_contacts(
+def get_contacts(
     session: session_dependency,
     user: amp_viewer_dependency,
     sort: str = None,
@@ -485,7 +481,7 @@ async def get_contacts(
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")
-async def get_contact_by_id(
+def get_contact_by_id(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> ContactResponse:
     """
@@ -495,7 +491,7 @@ async def get_contact_by_id(
 
 
 @router.get("/{contact_id}/email", summary="Get contact emails")
-async def get_contact_emails(
+def get_contact_emails(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
     """
@@ -507,7 +503,7 @@ async def get_contact_emails(
 
 
 @router.get("/{contact_id}/phone", summary="Get contact phones")
-async def get_contact_phones(
+def get_contact_phones(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
     """
@@ -519,7 +515,7 @@ async def get_contact_phones(
 
 
 @router.get("/{contact_id}/address", summary="Get contact addresses")
-async def get_contact_addresses(
+def get_contact_addresses(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
     """
@@ -548,7 +544,7 @@ async def get_contact_addresses(
 
 
 @router.delete("/email/{email_id}", summary="Delete contact email")
-async def delete_contact_email(
+def delete_contact_email(
     email_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -558,7 +554,7 @@ async def delete_contact_email(
 
 
 @router.delete("/phone/{phone_id}", summary="Delete contact phone")
-async def delete_contact_phone(
+def delete_contact_phone(
     phone_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -568,7 +564,7 @@ async def delete_contact_phone(
 
 
 @router.delete("/address/{address_id}", summary="Delete contact address")
-async def delete_contact_address(
+def delete_contact_address(
     address_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -593,7 +589,7 @@ async def delete_contact_address(
 
 
 @router.delete("/{contact_id}", summary="Delete contact")
-async def delete_contact(
+def delete_contact(
     contact_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """

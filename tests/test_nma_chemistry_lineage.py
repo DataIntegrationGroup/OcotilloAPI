@@ -348,7 +348,7 @@ def test_sample_info_requires_thing(shared_thing):
             # No thing_id - should fail
         )
         session.add(sample_info)
-        # pg8000 raises ProgrammingError for NOT NULL violations (error code 23502)
+        # Driver may surface NOT NULL violations as ProgrammingError (code 23502)
         with pytest.raises((IntegrityError, ProgrammingError, ValueError)):
             session.commit()
         session.rollback()
@@ -461,7 +461,7 @@ def test_mtc_requires_chemistry_sample_info():
             # No chemistry_sample_info_id - should fail
         )
         session.add(mtc)
-        # pg8000 raises ProgrammingError for NOT NULL violations (error code 23502)
+        # Driver may surface NOT NULL violations as ProgrammingError (code 23502)
         with pytest.raises((IntegrityError, ProgrammingError)):
             session.commit()
         session.rollback()

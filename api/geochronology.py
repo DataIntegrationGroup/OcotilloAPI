@@ -24,7 +24,7 @@ router = APIRouter(prefix="/geochronology", tags=["geochronology"])
 
 
 @router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED)
-async def create_age(
+def create_age(
     user: viewer_dependency, age: CreateGeochronologyAge, session: session_dependency
 ):
     """
@@ -36,7 +36,7 @@ async def create_age(
 
 
 @router.get("/age", tags=["geochronology"])
-async def get_geochronology_age(
+def get_geochronology_age(
     user: viewer_dependency, session: session_dependency, method: str = "arar"
 ):
     """

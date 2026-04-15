@@ -64,7 +64,7 @@ TODO
 
 # ============= Post =============================================
 @router.post("/groundwater-level", status_code=HTTP_201_CREATED)
-async def add_groundwater_level_observation(
+def add_groundwater_level_observation(
     obs_data: CreateGroundwaterLevelObservation,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -76,7 +76,7 @@ async def add_groundwater_level_observation(
 
 
 @router.post("/water-chemistry", status_code=HTTP_201_CREATED)
-async def add_water_chemistry_observation(
+def add_water_chemistry_observation(
     obs_data: CreateWaterChemistryObservation,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -116,7 +116,7 @@ async def bulk_upload_groundwater_levels(
 
 
 @router.patch("/groundwater-level/{observation_id}", status_code=HTTP_200_OK)
-async def update_groundwater_level_observation(
+def update_groundwater_level_observation(
     observation_id: int,
     obs_data: UpdateGroundwaterLevelObservation,
     session: session_dependency,
@@ -130,7 +130,7 @@ async def update_groundwater_level_observation(
 
 
 @router.patch("/water-chemistry/{observation_id}", status_code=HTTP_200_OK)
-async def update_water_chemistry_observation(
+def update_water_chemistry_observation(
     observation_id: int,
     obs_data: UpdateWaterChemistryObservation,
     session: session_dependency,
@@ -148,7 +148,7 @@ async def update_water_chemistry_observation(
     "/transducer-groundwater-level",
     summary="Get transducer groundwater level observations",
 )
-async def get_transducer_groundwater_level_observations(
+def get_transducer_groundwater_level_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -170,7 +170,7 @@ async def get_transducer_groundwater_level_observations(
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")
-async def get_groundwater_level_observations(
+def get_groundwater_level_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -204,7 +204,7 @@ async def get_groundwater_level_observations(
     "/groundwater-level/{observation_id}",
     summary="Get groundwater level observation by ID",
 )
-async def get_groundwater_level_observation_by_id(
+def get_groundwater_level_observation_by_id(
     session: session_dependency,
     request: Request,
     user: amp_viewer_dependency,
@@ -218,7 +218,7 @@ async def get_groundwater_level_observation_by_id(
 
 
 @router.get("/water-chemistry", summary="Get water chemistry observations")
-async def get_water_chemistry_observations(
+def get_water_chemistry_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -251,7 +251,7 @@ async def get_water_chemistry_observations(
 @router.get(
     "/water-chemistry/{observation_id}", summary="Get water chemistry observation by ID"
 )
-async def get_water_chemistry_observation_by_id(
+def get_water_chemistry_observation_by_id(
     session: session_dependency,
     request: Request,
     user: amp_viewer_dependency,
@@ -265,7 +265,7 @@ async def get_water_chemistry_observation_by_id(
 
 
 @router.get("", summary="Get all observations")
-async def get_all_observations(
+def get_all_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -293,7 +293,7 @@ async def get_all_observations(
 
 
 @router.get("/{observation_id}", summary="Get an observation by its ID")
-async def get_observation_by_id(
+def get_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> ObservationResponse:
     return simple_get_by_id(session, Observation, observation_id)
@@ -307,7 +307,7 @@ async def get_observation_by_id(
     summary="Delete an observation",
     status_code=HTTP_204_NO_CONTENT,
 )
-async def delete_observation(
+def delete_observation(
     session: session_dependency, user: amp_admin_dependency, observation_id: int
 ) -> None:
     return model_deleter(session, Observation, observation_id)

@@ -1,14 +1,14 @@
-name: CD (Staging)
+name: CD (Testing)
 
 on:
   push:
-    branches: [staging]
+    branches: [jir*]
 
 permissions:
   contents: write
 
 jobs:
-    staging-deploy:
+    testing-deploy:
 
         runs-on: ubuntu-latest
         environment: staging
@@ -87,7 +87,7 @@ jobs:
             APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
           run: |
             export MAX_INSTANCES="10"
-            export SERVICE_NAME="ocotillo-api-staging"
+            export SERVICE_NAME="ocotillo-api-testing"
             export ENTRYPOINT="gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app"
             export MIN_INSTANCES="0"
             envsubst < .github/app.template.yaml > app.yaml
@@ -101,7 +101,7 @@ jobs:
 
         - name: Clean up oldest versions
           run: |
-            SERVICE="ocotillo-api-staging"
+            SERVICE="ocotillo-api-testing"
             VERSIONS_JSON="$(gcloud app versions list --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --format=json --sort-by="version.createTime" 2>/dev/null || printf '[]')"
             export VERSIONS_JSON
             DELETE_VERSION="$(python - <<'PY'
@@ -151,5 +151,7 @@ jobs:
         # ":" are not alloed in git tags, so replace with "-"
         - name: Tag commit
           run: |
-            git tag -a "staging-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "staging gcloud deployment: $(date -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
+            git tag -a "testing-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "testing gcloud deployment: $
+            (date 
+            -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
             git push origin --tags
