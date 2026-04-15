@@ -55,11 +55,12 @@ def database_error_handler(
     """
     Handle errors raised by the database when adding or updating a sample.
     """
-    error_message = error.orig.args[0]["M"]
-    if (
-        error_message == "duplicate key value violates unique "
-        'constraint "sample_sample_name_key"'
-    ):
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
+    if 'constraint "sample_sample_name_key"' in error_message:
         detail = {
             "loc": ["body", "sample_name"],
             "msg": (
@@ -68,11 +69,7 @@ def database_error_handler(
             "type": "value_error",
             "input": {"sample_name": payload.sample_name},
         }
-    elif (
-        error_message
-        == 'insert or update on table "sample" violates foreign key constraint '
-        '"sample_field_activity_id_fkey"'
-    ):
+    elif 'constraint "sample_field_activity_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "field_activity_id"],
             "msg": (
@@ -80,6 +77,13 @@ def database_error_handler(
             ),
             "type": "value_error",
             "input": {"field_activity_id": payload.field_activity_id},
+        }
+    else:
+        detail = {
+            "loc": ["body"],
+            "msg": error_message,
+            "type": "value_error",
+            "input": {},
         }
 
     raise PydanticStyleException(

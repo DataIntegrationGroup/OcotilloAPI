@@ -17,7 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, IntegrityError
 from sqlalchemy.orm import selectinload
 from starlette.status import (
     HTTP_200_OK,
@@ -80,18 +80,20 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 
 
 def database_error_handler(
-    payload: CreateWell | CreateSpring, error: ProgrammingError
+    payload: CreateWell | CreateSpring | CreateWellScreen | CreateThingIdLink,
+    error: ProgrammingError | IntegrityError,
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a thing.
     """
 
-    error_message = error.orig.args[0]["M"]
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
 
-    if (
-        error_message
-        == 'insert or update on table "group_thing_association" violates foreign key constraint "group_thing_association_group_id_fkey"'
-    ):
+    if 'constraint "group_thing_association_group_id_fkey"' in error_message:
 
         detail = {
             "loc": ["body", "group_id"],
@@ -99,10 +101,7 @@ def database_error_handler(
             "type": "value_error",
             "input": {"group_id": payload.group_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "location_thing_association" violates foreign key constraint "location_thing_association_location_id_fkey"'
-    ):
+    elif 'constraint "location_thing_association_location_id_fkey"' in error_message:
 
         detail = {
             "loc": ["body", "location_id"],
@@ -110,20 +109,14 @@ def database_error_handler(
             "type": "value_error",
             "input": {"location_id": payload.location_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_thing_id_fkey"'
-    ):
+    elif 'constraint "well_screen_thing_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_screen_type_fkey"'
-    ):
+    elif 'constraint "well_screen_screen_type_fkey"' in error_message:
         valid_screen_types = get_terms_by_category("casing_material")
         valid_screen_types_for_msg = " | ".join(valid_screen_types)
         detail = {
@@ -132,15 +125,19 @@ def database_error_handler(
             "type": "value_error",
             "input": {"screen_type": payload.screen_type},
         }
-    elif (
-        error_message
-        == 'insert or update on table "thing_id_link" violates foreign key constraint "thing_id_link_thing_id_fkey"'
-    ):
+    elif 'constraint "thing_id_link_thing_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
+        }
+    else:
+        detail = {
+            "loc": ["body"],
+            "msg": error_message,
+            "type": "value_error",
+            "input": {},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -441,7 +438,7 @@ def create_thing_id_link(
     """
     try:
         return model_adder(session, ThingIdLink, link_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(link_data, e)
 
 
@@ -463,7 +460,7 @@ def create_well(
         thing = add_thing(session=session, data=thing_data, request=request, user=user)
         modify_well_descriptor_tables(session, thing, thing_data, user)
         return thing
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(thing_data, e)
 
 
@@ -483,7 +480,7 @@ def create_spring(
     """
     try:
         return add_thing(session=session, data=thing_data, request=request, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(thing_data, e)
 
 
@@ -502,7 +499,7 @@ def create_wellscreen(
     """
     try:
         return add_well_screen(session, well_screen_data, user=user)
-    except ProgrammingError as e:
+    except (ProgrammingError, IntegrityError) as e:
         database_error_handler(well_screen_data, e)
     except PydanticStyleException as e:
         raise e

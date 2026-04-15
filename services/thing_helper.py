@@ -515,14 +515,21 @@ def add_thing(
 
 def add_well_screen(session, well_screen_data: BaseModel, user: dict = None):
     try:
-        well_screen_data_dump = well_screen_data.model_dump()
-        well_screen = WellScreen(**well_screen_data_dump)
-        audit_add(user, well_screen)
-
-        session.add(well_screen)
-        session.flush()
-
         thing = session.get(Thing, well_screen_data.thing_id)
+        if thing is None:
+            raise PydanticStyleException(
+                status_code=HTTP_409_CONFLICT,
+                detail=[
+                    {
+                        "loc": ["body", "thing_id"],
+                        "type": "value_error",
+                        "input": {"thing_id": well_screen_data.thing_id},
+                        "msg": (
+                            f"Thing with ID {well_screen_data.thing_id} not found."
+                        ),
+                    }
+                ],
+            )
         if thing.thing_type != "water well":
             raise PydanticStyleException(
                 status_code=HTTP_409_CONFLICT,
@@ -535,6 +542,13 @@ def add_well_screen(session, well_screen_data: BaseModel, user: dict = None):
                     }
                 ],
             )
+
+        well_screen_data_dump = normalize_for_db(well_screen_data.model_dump())
+        well_screen = WellScreen(**well_screen_data_dump)
+        audit_add(user, well_screen)
+
+        session.add(well_screen)
+        session.flush()
 
         session.commit()
     except Exception as e:
