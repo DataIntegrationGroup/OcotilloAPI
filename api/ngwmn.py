@@ -30,7 +30,7 @@ router = APIRouter(prefix="/ngwmn", tags=["NGWMN"])
     "/waterlevels/{pointid}",
     summary="Get waterlevels for a given pointid in the NGWMN format",
 )
-async def read_ngwmn_waterlevels(pointid: str, db: session_dependency):
+def read_ngwmn_waterlevels(pointid: str, db: session_dependency):
     data = make_waterlevels_response(pointid, db)
     return Response(content=data, media_type="application/xml")
 
@@ -39,7 +39,7 @@ async def read_ngwmn_waterlevels(pointid: str, db: session_dependency):
     "/wellconstruction/{pointid}",
     summary="Get wellconstruction for a given pointid in the NGWMN format",
 )
-async def read_ngwmn_wellconstruction(pointid: str, db: session_dependency):
+def read_ngwmn_wellconstruction(pointid: str, db: session_dependency):
     data = make_well_construction_response(pointid, db)
     return Response(content=data, media_type="application/xml")
 
@@ -48,7 +48,7 @@ async def read_ngwmn_wellconstruction(pointid: str, db: session_dependency):
     "/lithology/{pointid}",
     summary="Get lithology for a given pointid in the NGWMN format",
 )
-async def read_ngwmn_lithology(pointid: str, db: session_dependency):
+def read_ngwmn_lithology(pointid: str, db: session_dependency):
     data = make_lithology_response(pointid, db)
     return Response(content=data, media_type="application/xml")
 

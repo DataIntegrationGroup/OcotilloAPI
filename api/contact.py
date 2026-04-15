@@ -129,7 +129,7 @@ def database_error_handler(
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_contact(
+def create_contact(
     contact_data: CreateContact, session: session_dependency, user: amp_admin_dependency
 ) -> ContactResponse:
     try:
@@ -143,7 +143,7 @@ async def create_contact(
     summary="Add an address to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_address(
+def create_address(
     address_data: CreateAddress,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -166,7 +166,7 @@ async def create_address(
     summary="Add an email to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_email(
+def create_email(
     email_data: CreateEmail,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -182,7 +182,7 @@ async def create_email(
     summary="Add a phone number to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_phone(
+def create_phone(
     phone_data: CreatePhone,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -221,7 +221,7 @@ async def create_phone(
 @router.patch(
     "/email/{email_id}",
 )
-async def update_contact_email(
+def update_contact_email(
     email_id: int,
     email_data: UpdateEmail,
     session: session_dependency,
@@ -236,7 +236,7 @@ async def update_contact_email(
 @router.patch(
     "/phone/{phone_id}",
 )
-async def update_contact_phone(
+def update_contact_phone(
     phone_id: int,
     phone_data: UpdatePhone,
     session: session_dependency,
@@ -256,7 +256,7 @@ async def update_contact_phone(
 @router.patch(
     "/address/{address_id}",
 )
-async def update_contact_address(
+def update_contact_address(
     address_id: int,
     address_data: UpdateAddress,
     session: session_dependency,
@@ -304,7 +304,7 @@ async def update_contact_address(
 
 
 @router.patch("/{contact_id}", summary="Update contact")
-async def update_contact(
+def update_contact(
     contact_id: int,
     contact_data: UpdateContact,
     session: session_dependency,
@@ -373,7 +373,7 @@ async def update_contact(
 
 
 @router.get("/email", summary="Get all emails")
-async def get_emails(
+def get_emails(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
     """
@@ -385,7 +385,7 @@ async def get_emails(
 
 
 @router.get("/email/{email_id}", summary="Get email by ID")
-async def get_email_by_id(
+def get_email_by_id(
     email_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> EmailResponse:
     """
@@ -395,7 +395,7 @@ async def get_email_by_id(
 
 
 @router.get("/phone", summary="Get all phones")
-async def get_phones(
+def get_phones(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
     """
@@ -407,7 +407,7 @@ async def get_phones(
 
 
 @router.get("/phone/{phone_id}", summary="Get phone by ID")
-async def get_phone_by_id(
+def get_phone_by_id(
     phone_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> PhoneResponse:
     """
@@ -417,7 +417,7 @@ async def get_phone_by_id(
 
 
 @router.get("/address", summary="Get all addresses")
-async def get_addresses(
+def get_addresses(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
     """
@@ -429,7 +429,7 @@ async def get_addresses(
 
 
 @router.get("/address/{address_id}", summary="Get address by ID")
-async def get_address_by_id(
+def get_address_by_id(
     address_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> AddressResponse:
     """
@@ -468,7 +468,7 @@ async def get_address_by_id(
 
 
 @router.get("", summary="Get contacts")
-async def get_contacts(
+def get_contacts(
     session: session_dependency,
     user: amp_viewer_dependency,
     sort: str = None,
@@ -485,7 +485,7 @@ async def get_contacts(
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")
-async def get_contact_by_id(
+def get_contact_by_id(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> ContactResponse:
     """
@@ -495,7 +495,7 @@ async def get_contact_by_id(
 
 
 @router.get("/{contact_id}/email", summary="Get contact emails")
-async def get_contact_emails(
+def get_contact_emails(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
     """
@@ -507,7 +507,7 @@ async def get_contact_emails(
 
 
 @router.get("/{contact_id}/phone", summary="Get contact phones")
-async def get_contact_phones(
+def get_contact_phones(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
     """
@@ -519,7 +519,7 @@ async def get_contact_phones(
 
 
 @router.get("/{contact_id}/address", summary="Get contact addresses")
-async def get_contact_addresses(
+def get_contact_addresses(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
     """
@@ -548,7 +548,7 @@ async def get_contact_addresses(
 
 
 @router.delete("/email/{email_id}", summary="Delete contact email")
-async def delete_contact_email(
+def delete_contact_email(
     email_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -558,7 +558,7 @@ async def delete_contact_email(
 
 
 @router.delete("/phone/{phone_id}", summary="Delete contact phone")
-async def delete_contact_phone(
+def delete_contact_phone(
     phone_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -568,7 +568,7 @@ async def delete_contact_phone(
 
 
 @router.delete("/address/{address_id}", summary="Delete contact address")
-async def delete_contact_address(
+def delete_contact_address(
     address_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -593,7 +593,7 @@ async def delete_contact_address(
 
 
 @router.delete("/{contact_id}", summary="Delete contact")
-async def delete_contact(
+def delete_contact(
     contact_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """

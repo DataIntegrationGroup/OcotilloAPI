@@ -140,7 +140,7 @@ async def upload_asset(
 
 
 @router.post("", status_code=HTTP_201_CREATED)
-async def add_asset(
+def add_asset(
     user: admin_dependency,
     session: session_dependency,
     asset_data: CreateAsset,
@@ -200,7 +200,7 @@ signed url is always generated when retrieving assets individually
 
 
 @router.get("")
-async def list_assets(
+def list_assets(
     user: viewer_dependency,
     session: session_dependency,
     thing_id: int = None,
@@ -245,7 +245,7 @@ async def get_asset(
 
 # PATCH ======================================================================
 @router.patch("/{asset_id}")
-async def update_asset(
+def update_asset(
     asset_id: int,
     session: session_dependency,
     asset_data: UpdateAsset,
@@ -261,9 +261,7 @@ async def update_asset(
 
 
 @router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT)
-async def delete_asset(
-    asset_id: int, session: session_dependency, user: admin_dependency
-):
+def delete_asset(asset_id: int, session: session_dependency, user: admin_dependency):
 
     # TODO: Interesting issue here. We don't have a way of tracking
     # who deleted a record.
@@ -274,7 +272,7 @@ async def delete_asset(
     "/{asset_id}/remove",
     status_code=HTTP_204_NO_CONTENT,
 )
-async def remove_asset(
+def remove_asset(
     user: admin_dependency,
     asset_id: int,
     session: session_dependency,

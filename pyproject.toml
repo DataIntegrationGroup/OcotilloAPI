@@ -103,6 +103,7 @@ dependencies = [
   "utm==0.8.1",
   "uvicorn==0.42.0",
   "yarl==1.23.0",
+  "psycopg2>=2.9.11",
 ]
 
 [tool.uv]

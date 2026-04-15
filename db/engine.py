@@ -23,11 +23,9 @@ from contextlib import contextmanager
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import (
     sessionmaker,
 )
-from sqlalchemy.util import await_only
 
 from services.env import get_bool_env
 
@@ -81,7 +79,9 @@ def _install_pool_logging(engine):
             extra={
                 "event": "db_pool_invalidate",
                 "pool_status": engine.pool.status(),
-                "exception_type": (type(exception).__name__ if exception else None),
+                "exception_type": (
+                    type(exception).__name__ if exception else None
+                ),  # noqa: E501
             },
         )
 
@@ -106,56 +106,16 @@ def get_iam_login_token() -> str:
     return creds.token
 
 
-async def get_async_engine():
-    """
-    Asynchronous database session generator.
-    """
-    connector = await create_async_connector()
-
-    def asyncify_connection():
-        from sqlalchemy.dialects.postgresql.asyncpg import (
-            AsyncAdapt_asyncpg_connection,
-        )
-
-        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
-        user = os.environ.get("CLOUD_SQL_USER")
-        password = os.environ.get("CLOUD_SQL_PASSWORD")
-        database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
-        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
-
-        connect_kwargs = {
-            "db": database,
-            "user": user,
-            "enable_iam_auth": use_iam_auth,
-            "ip_type": ip_type,
-        }
-        if use_iam_auth:
-            connect_kwargs["password"] = get_iam_login_token()
-        else:
-            connect_kwargs["password"] = password
-
-        connection = connector.connect_async(
-            instance_name,
-            "asyncpg",
-            **connect_kwargs,
-        )
-
-        return AsyncAdapt_asyncpg_connection(
-            engine.dialect.dbapi,
-            await_only(connection),
-            prepared_statement_cache_size=100,
-        )
-
-    return create_async_engine(
-        "postgresql+asyncpg://",
-        echo=True,
-        creator=asyncify_connection,
-    )
+# Configure connection pool for parallel transfers
+# pool_size: number of persistent connections
+# max_overflow: additional connections during peak usage
+pool_size = int(os.environ.get("DB_POOL_SIZE", "5"))
+max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
+pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
 
 
 if driver == "cloudsql":
-    from google.cloud.sql.connector import Connector, create_async_connector
+    from google.cloud.sql.connector import Connector
 
     def init_connection_pool(connector):
         instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
@@ -179,18 +139,13 @@ if driver == "cloudsql":
 
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
-                "pg8000",
+                "psycopg2",
                 **connect_kwargs,
             )
             return conn
 
-        # Configure connection pool for parallel transfers
-        pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
-        max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
-        pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
-
         engine = create_engine(
-            "postgresql+pg8000://",
+            "postgresql+psycopg2://",
             creator=getconn,
             echo=False,
             pool_size=pool_size,
@@ -204,13 +159,7 @@ if driver == "cloudsql":
     connector = Connector()
     engine = init_connection_pool(connector)
 
-    # async_engine = asyncio.run(get_async_engine())
-
 else:
-    # if driver == "sqlite":
-    #     name = os.environ.get("DB_NAME", "development.db")
-    #     url = f"sqlite:///{name}"
-    # elif driver == "postgres":
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
@@ -220,16 +169,7 @@ else:
 
     auth = f"{user}:{password}@" if user and password else ""
     port_part = f":{port}" if port else ""
-    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
-    # else:
-    #     url = "sqlite:///./development.db"
-
-    # Configure connection pool for parallel transfers
-    # pool_size: number of persistent connections
-    # max_overflow: additional connections during peak usage
-    pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
-    max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
-    pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
+    url = f"postgresql+psycopg2://{auth}{host}{port_part}/{name}"
 
     engine = create_engine(
         url,
@@ -242,26 +182,7 @@ else:
     )
     _install_pool_logging(engine)
 
-    async_engine = create_async_engine(
-        url.replace("postgresql+pg8000", "postgresql+asyncpg"),
-        plugins=["geoalchemy2"],
-    )
-    # if "postgresql" not in url:
-    #
-    #     def on_connect(dbapi_connection, connection_record):
-    #         """
-    #         Event listener to load SpatiaLite on connection.
-    #         """
-    #         load_spatialite(dbapi_connection)
-    #
-    #         cursor = dbapi_connection.cursor()
-    #         cursor.execute("PRAGMA foreign_keys=ON")
-    #         cursor.close()
-    #
-    #     listen(engine, "connect", on_connect)
 
-
-# async_database_sessionmaker = async_sessionmaker(async_engine)
 database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
 
 

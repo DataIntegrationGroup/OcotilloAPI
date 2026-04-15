@@ -90,7 +90,7 @@ def database_error_handler(
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
-async def add_sample(
+def add_sample(
     sample_data: CreateSample,
     session: session_dependency,
     user: admin_dependency,
@@ -108,7 +108,7 @@ async def add_sample(
 
 # ============= Update =============================================
 @router.patch("/{sample_id}", summary="Update Sample")
-async def update_sample(
+def update_sample(
     sample_id: int,
     sample_data: UpdateSample,
     session: session_dependency,
@@ -133,7 +133,7 @@ async def update_sample(
 
 # ============= Get =============================================
 @router.get("", summary="Get Samples")
-async def get_samples(
+def get_samples(
     session: session_dependency,
     user: viewer_dependency,
     thing_id: int | None = None,
@@ -154,7 +154,7 @@ async def get_samples(
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
-async def get_sample_by_id(
+def get_sample_by_id(
     sample_id: int,
     session: session_dependency,
     user: viewer_dependency,
@@ -172,7 +172,7 @@ async def get_sample_by_id(
     "/{sample_id}",
     summary="Delete Sample by ID",
 )
-async def delete_sample_by_id(
+def delete_sample_by_id(
     sample_id: int,
     session: session_dependency,
     user: admin_dependency,
