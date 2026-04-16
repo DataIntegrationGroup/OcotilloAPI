@@ -537,11 +537,13 @@ def _get_or_create_field_staff_contact(session: Session, staff_name: str) -> Con
     """Resolve or create the contact record used by field event participants."""
     contact_type = "Field Event Participant"
     organization = "NMBGMR"
+    # Contact uniqueness is enforced on (name, organization), so the lookup
+    # must use the same key to avoid missing an existing row with a different
+    # contact_type and attempting a duplicate insert.
     contact = session.scalars(
         select(Contact)
         .where(Contact.name == staff_name)
         .where(Contact.organization == organization)
-        .where(Contact.contact_type == contact_type)
     ).first()
 
     if contact is None:

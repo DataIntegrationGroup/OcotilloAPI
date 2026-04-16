@@ -485,6 +485,75 @@ def test_bulk_upload_water_levels_fails_when_measuring_person_is_ambiguous(
         assert participants == []
 
 
+def test_bulk_upload_water_levels_reuses_contact_with_same_name_and_organization(
+    water_well_thing,
+):
+    staff_name = "Z Vega"
+
+    with session_ctx() as session:
+        existing_contact = Contact(
+            name=staff_name,
+            organization="NMBGMR",
+            role="Technician",
+            contact_type="Primary",
+        )
+        session.add(existing_contact)
+        session.commit()
+        existing_contact_id = existing_contact.id
+
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    staff_name,
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    staff_name,
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+
+    with session_ctx() as session:
+        contacts = session.scalars(
+            select(Contact)
+            .where(Contact.name == staff_name)
+            .where(Contact.organization == "NMBGMR")
+        ).all()
+        participants = session.scalars(select(FieldEventParticipant)).all()
+
+        assert len(contacts) == 1
+        assert contacts[0].id == existing_contact_id
+        assert len(participants) == 1
+        assert participants[0].contact_id == existing_contact_id
+
+
 def test_bulk_upload_water_levels_warns_when_mp_height_differs_from_history(
     water_well_thing,
 ):
