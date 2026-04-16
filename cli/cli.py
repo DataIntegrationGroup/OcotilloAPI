@@ -34,6 +34,11 @@ data_migrations = typer.Typer(help="Data migration utilities")
 cli.add_typer(water_levels, name="water-levels")
 cli.add_typer(data_migrations, name="data-migrations")
 
+# AEM ingest CLI — registered as a sub-command group
+from aem_ingest.cli import app as aem_ingest_app
+
+cli.add_typer(aem_ingest_app, name="aem-ingest")
+
 
 class OutputFormat(str, Enum):
     json = "json"

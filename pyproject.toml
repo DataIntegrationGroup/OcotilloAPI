@@ -34,6 +34,7 @@ dependencies = [
   "fastapi-pagination==0.15.12",
   "frozenlist==1.8.0",
   "geoalchemy2==0.18.4",
+  "geopandas>=0.14",
   "google-api-core==2.30.0",
   "google-auth==2.49.1",
   "google-cloud-core==2.5.0",
@@ -62,6 +63,7 @@ dependencies = [
   "pillow==12.2.0",
   "pluggy==1.6.0",
   "pre-commit==4.5.1",
+  "pyarrow>=14.0",
   "propcache==0.4.1",
   "proto-plus==1.27.2",
   "protobuf==6.33.5",
@@ -109,7 +111,7 @@ dependencies = [
 package = true
 
 [tool.setuptools]
-packages = ["alembic", "cli", "core", "db", "schemas", "services", "transfers"]
+packages = ["aem_ingest", "aem_ingest.parsers", "alembic", "cli", "core", "db", "schemas", "services", "transfers"]
 
 [project.scripts]
 oco = "cli.cli:cli"
