@@ -1,0 +1,137 @@
+"""
+aem_ingest.parsers.seogi — Parser for Seogi Python rho CSV files.
+
+Key conventions:
+  - Wide format: 40 layers per sounding, columns like
+    top_1_layer_m, bottom_1_layer_m, rho_1_layer_m (through 40).
+  - The 'record' column resets to 1 in each flight subfolder.
+    Without prefixing, a cross-flight query returns duplicate record
+    numbers from different flights — the dataset becomes non-relational.
+    We prefix with flight_id (e.g. F02_1, F02_3) to make record_id
+    globally unique within a survey.
+  - Source CRS: EPSG:32613 (WGS84 UTM Zone 13N).
+    This is ~1 m different from NAD83 (26913).  Reproject at ingest.
+  - No uncertainty, DOI, or conductivity columns — Seogi's Python
+    inversion pipeline does not produce these.  They are NULL in PostGIS.
+    This is meaningful: it means the pipeline didn't estimate uncertainty,
+    not that the value is unknown.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+import pandas as pd
+
+from aem_ingest.parsers.common import ensure_canonical_columns, reproject_and_add_latlon
+from aem_ingest.parsers.detect import extract_flight_id
+from aem_ingest.schemas import validate_dataframe
+
+logger = logging.getLogger(__name__)
+
+
+def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFrame:
+    """Parse a Seogi Python rho CSV to canonical long-format schema.
+
+    Args:
+        filepath: Path to the rho CSV file.
+        flight_id: Flight identifier (e.g. 'F02').  If None, extracted
+                   from the filename.
+
+    Returns:
+        DataFrame with canonical column names, ready for PostGIS load.
+    """
+    logger.info("Parsing Format B (Seogi rho): %s", filepath)
+
+    if flight_id is None:
+        flight_id = extract_flight_id(filepath)
+    logger.info("Flight ID: %s", flight_id)
+
+    df = pd.read_csv(filepath)
+    logger.info("Seogi raw rows (soundings): %d", len(df))
+
+    # Validate expected wide-format columns
+    expected_cols = {"record", "line_no", "utmx", "utmy", "elevation"}
+    missing = expected_cols - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"Seogi rho CSV missing required columns: {missing}. "
+            f"Found: {list(df.columns)[:20]}..."
+        )
+
+    # Check that we have layer columns
+    layer_cols = [c for c in df.columns if c.startswith("rho_") and "layer_m" in c]
+    n_layers = len(layer_cols)
+    if n_layers == 0:
+        raise ValueError(
+            f"No rho_*_layer_m columns found in {filepath}. "
+            f"Expected Seogi wide-format rho CSV."
+        )
+    logger.info("Seogi layers detected: %d", n_layers)
+
+    # Prefix record with flight ID to create globally unique record_id.
+    # record=1 in F02 becomes "F02_1".  This is why record_id is TEXT.
+    df["record_id"] = flight_id + "_" + df["record"].astype(str)
+
+    # ---- Pivot wide → long ----
+    rows = []
+    for layer_idx in range(1, n_layers + 1):
+        top_col = f"top_{layer_idx}_layer_m"
+        bot_col = f"bottom_{layer_idx}_layer_m"
+        rho_col = f"rho_{layer_idx}_layer_m"
+
+        for col in [top_col, bot_col, rho_col]:
+            if col not in df.columns:
+                raise ValueError(
+                    f"Expected column '{col}' not found. "
+                    f"Layer {layer_idx} is incomplete."
+                )
+
+        layer_df = df[["record_id", "line_no", "utmx", "utmy", "elevation"]].copy()
+
+        # Include plm if present (some Seogi outputs include it)
+        if "plm" in df.columns:
+            layer_df["plm"] = df["plm"]
+
+        layer_df["layer_no"] = layer_idx
+        layer_df["depth_top_m"] = df[top_col]
+        layer_df["depth_bot_m"] = df[bot_col]
+        layer_df["resistivity_ohmm"] = df[rho_col]
+        rows.append(layer_df)
+
+    long_df = pd.concat(rows, ignore_index=True)
+    logger.info("Seogi pivoted to long: %d rows", len(long_df))
+
+    # Rename to canonical schema
+    long_df = long_df.rename(
+        columns={
+            "line_no": "line_id",
+            "utmx": "easting_m",
+            "utmy": "northing_m",
+            "elevation": "elevation_m",
+            "plm": "plni",
+        }
+    )
+
+    long_df["line_id"] = long_df["line_id"].astype(str)
+    long_df["layer_no"] = long_df["layer_no"].astype("Int16")
+    long_df["source_epsg"] = 32613
+
+    # Reproject WGS84 UTM 13N → NAD83 UTM 13N and add lat/lon
+    long_df = reproject_and_add_latlon(long_df, source_epsg=32613)
+
+    # Ensure all canonical columns exist (Seogi has many NULLs)
+    long_df = ensure_canonical_columns(long_df)
+
+    # Store flight_id for metadata table
+    long_df["_flight_id"] = flight_id
+
+    validate_dataframe(long_df, filepath)
+
+    logger.info(
+        "Seogi parsed: %d rows, %d unique soundings",
+        len(long_df),
+        long_df["record_id"].nunique(),
+    )
+    return long_df
