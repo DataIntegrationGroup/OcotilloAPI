@@ -50,3 +50,18 @@ cli/logs
 # deployment files
 app.yaml
 docs/
+
+#terraform files
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfplan

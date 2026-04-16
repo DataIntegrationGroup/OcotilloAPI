@@ -1,0 +1,9 @@
+project_id        = "waterdatainitiative-271000"
+region            = "us-west4"
+zone              = "us-west4-a"
+domain_name       = "geoserver.newmexicowaterdata.org"
+network_name      = "default"
+machine_type      = "e2-standard-4"
+boot_disk_size_gb = 30
+data_disk_size_gb = 100
+admin_ssh_cidr    = "129.138.163.237/32"
