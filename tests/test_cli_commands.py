@@ -27,7 +27,14 @@ from typer.testing import CliRunner
 
 from cli.cli import cli
 from cli.service_adapter import WellInventoryResult
-from db import FieldActivity, FieldEvent, Observation, Sample
+from db import (
+    Contact,
+    FieldActivity,
+    FieldEvent,
+    FieldEventParticipant,
+    Observation,
+    Sample,
+)
 from db.engine import session_ctx
 
 
@@ -696,10 +703,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             {header}
             {row}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
@@ -755,6 +764,14 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     if created_ids:
         # Clean up committed rows so other tests see a pristine database.
         with session_ctx() as session:
+            # Collect participant contacts before deleting the field event so
+            # importer-created staff contacts do not leak into later tests.
+            participant_contact_ids = session.scalars(
+                select(FieldEventParticipant.contact_id).where(
+                    FieldEventParticipant.field_event_id
+                    == created_ids["field_event_id"]
+                )
+            ).all()
             observation = session.get(Observation, created_ids["observation_id"])
             sample = session.get(Sample, created_ids["sample_id"])
             field_activity = session.get(
@@ -774,6 +791,11 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             if field_event:
                 session.delete(field_event)
                 session.flush()
+            for contact_id in participant_contact_ids:
+                contact = session.get(Contact, contact_id)
+                if contact:
+                    session.delete(contact)
+                    session.flush()
 
             session.commit()
 
