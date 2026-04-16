@@ -38,7 +38,12 @@ from shapely.geometry import MultiPoint, mapping
 
 from aem_ingest.db import get_raw_connection, get_engine
 from aem_ingest.models import AemSounding, AemSoundingMetadata
-from aem_ingest.parsers import detect_format, parse_agf_lci, parse_bylayer, parse_seogi_rho
+from aem_ingest.parsers import (
+    detect_format,
+    parse_agf_lci,
+    parse_bylayer,
+    parse_seogi_rho,
+)
 from aem_ingest.parsers.common import CANONICAL_COLUMNS, TARGET_EPSG
 from aem_ingest.schemas import IngestConfig, SourceFormat, SURVEY_METADATA
 
@@ -50,19 +55,44 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 INSERT_COLUMNS = [
-    "survey_id", "processing_stage", "inversion_code", "contractor",
-    "source_file", "source_epsg", "line_id", "record_id", "layer_no",
-    "easting_m", "northing_m", "longitude_dd", "latitude_dd",
-    "elevation_m", "sensor_alt_m", "terrain_clear_m",
-    "depth_top_m", "depth_bot_m", "thickness_m",
-    "resistivity_ohmm", "resistivity_std", "conductivity_sm",
-    "doi_conservative_m", "doi_standard_m",
-    "resdata", "restotal", "plni", "date_acquired",
+    "survey_id",
+    "processing_stage",
+    "inversion_code",
+    "contractor",
+    "source_file",
+    "source_epsg",
+    "line_id",
+    "record_id",
+    "layer_no",
+    "easting_m",
+    "northing_m",
+    "longitude_dd",
+    "latitude_dd",
+    "elevation_m",
+    "sensor_alt_m",
+    "terrain_clear_m",
+    "depth_top_m",
+    "depth_bot_m",
+    "thickness_m",
+    "resistivity_ohmm",
+    "resistivity_std",
+    "conductivity_sm",
+    "doi_conservative_m",
+    "doi_standard_m",
+    "resdata",
+    "restotal",
+    "plni",
+    "date_acquired",
 ]
 
 REQUIRED_COLUMNS = [
-    "line_id", "layer_no", "easting_m", "northing_m",
-    "depth_top_m", "depth_bot_m", "resistivity_ohmm",
+    "line_id",
+    "layer_no",
+    "easting_m",
+    "northing_m",
+    "depth_top_m",
+    "depth_bot_m",
+    "resistivity_ohmm",
 ]
 
 
@@ -85,7 +115,9 @@ def load_to_postgis(
     """
     logger.info(
         "Loading to PostGIS: survey=%s, stage=%s, %d rows",
-        config.survey_id, config.processing_stage.value, len(df),
+        config.survey_id,
+        config.processing_stage.value,
+        len(df),
     )
 
     df = df.copy()
@@ -96,9 +128,13 @@ def load_to_postgis(
     df["source_file"] = config.source_gcs_path
 
     df["geom_wkt"] = (
-        "SRID=" + df["source_epsg"].astype(int).astype(str)
-        + ";POINT(" + df["easting_m"].astype(str)
-        + " " + df["northing_m"].astype(str) + ")"
+        "SRID="
+        + df["source_epsg"].astype(int).astype(str)
+        + ";POINT("
+        + df["easting_m"].astype(str)
+        + " "
+        + df["northing_m"].astype(str)
+        + ")"
     )
 
     pre_count = len(df)
@@ -157,8 +193,11 @@ def load_to_postgis(
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
         _insert_metadata(
-            cur, config.survey_id, config.processing_stage.value,
-            config.inversion_code.value, df,
+            cur,
+            config.survey_id,
+            config.processing_stage.value,
+            config.inversion_code.value,
+            df,
         )
 
         raw_conn.commit()
@@ -175,7 +214,10 @@ def load_to_postgis(
 
 
 def _insert_metadata(
-    cur, survey_id: str, processing_stage: str, inversion_code: str,
+    cur,
+    survey_id: str,
+    processing_stage: str,
+    inversion_code: str,
     df: pd.DataFrame,
 ) -> None:
     """Aggregate sounding-level summaries and upsert into aem_sounding_metadata."""
@@ -225,15 +267,22 @@ def _insert_metadata(
                 has_doi = EXCLUDED.has_doi
             """,
             (
-                row["survey_id"], row["line_id"], row["record_id"],
+                row["survey_id"],
+                row["line_id"],
+                row["record_id"],
                 row["processing_stage"],
-                row["easting_m"], row["northing_m"],
-                int(row["source_epsg"]), TARGET_EPSG,
-                row["easting_m"], row["northing_m"],
-                row.get("flight_id"), row.get("date_acquired"),
+                row["easting_m"],
+                row["northing_m"],
+                int(row["source_epsg"]),
+                TARGET_EPSG,
+                row["easting_m"],
+                row["northing_m"],
+                row.get("flight_id"),
+                row.get("date_acquired"),
                 int(row["num_layers"]) if pd.notna(row["num_layers"]) else None,
                 float(row["max_depth_m"]) if pd.notna(row["max_depth_m"]) else None,
-                bool(row["has_uncertainty"]), bool(row["has_doi"]),
+                bool(row["has_uncertainty"]),
+                bool(row["has_doi"]),
                 row["inversion_code"],
                 int(row["source_epsg"]),
             ),
@@ -410,8 +459,12 @@ def _query_postgis_stac_fields(
 
         # Parse geometry JSON
         geometry = json.loads(geo_row[0])
-        bbox = [float(geo_row[1]), float(geo_row[2]),
-                float(geo_row[3]), float(geo_row[4])]
+        bbox = [
+            float(geo_row[1]),
+            float(geo_row[2]),
+            float(geo_row[3]),
+            float(geo_row[4]),
+        ]
 
         # Parse temporal
         start_dt = None
@@ -429,7 +482,9 @@ def _query_postgis_stac_fields(
             "num_layers": int(stats_row[1]) if stats_row[1] else 0,
             "depth_min_m": float(stats_row[2]) if stats_row[2] is not None else None,
             "depth_max_m": float(stats_row[3]) if stats_row[3] is not None else None,
-            "has_uncertainty": bool(stats_row[4]) if stats_row[4] is not None else False,
+            "has_uncertainty": (
+                bool(stats_row[4]) if stats_row[4] is not None else False
+            ),
             "has_doi": bool(stats_row[5]) if stats_row[5] is not None else False,
         }
 
@@ -470,8 +525,12 @@ def _derive_stac_fields_from_df(df: pd.DataFrame) -> dict:
         "end_datetime": end_dt,
         "num_soundings": df["record_id"].nunique(),
         "num_layers": int(df["layer_no"].max()) if df["layer_no"].notna().any() else 0,
-        "depth_min_m": float(df["depth_top_m"].min()) if df["depth_top_m"].notna().any() else None,
-        "depth_max_m": float(df["depth_bot_m"].max()) if df["depth_bot_m"].notna().any() else None,
+        "depth_min_m": (
+            float(df["depth_top_m"].min()) if df["depth_top_m"].notna().any() else None
+        ),
+        "depth_max_m": (
+            float(df["depth_bot_m"].max()) if df["depth_bot_m"].notna().any() else None
+        ),
         "has_uncertainty": bool(df["resistivity_std"].notna().any()),
         "has_doi": bool(df["doi_conservative_m"].notna().any()),
     }
@@ -540,7 +599,9 @@ def build_stac_stub(
     if derived is None:
         derived = _derive_stac_fields_from_df(df)
 
-    source_epsg = int(df["source_epsg"].iloc[0]) if "source_epsg" in df.columns else None
+    source_epsg = (
+        int(df["source_epsg"].iloc[0]) if "source_epsg" in df.columns else None
+    )
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Item ID: {survey_id}_{processing_stage} — no inversion_code
@@ -560,7 +621,6 @@ def build_stac_stub(
             "end_datetime": derived["end_datetime"],
             "created": now_iso,
             "updated": now_iso,
-
             # Custom nmbgmr: namespace — survey identity
             "nmbgmr:survey_id": survey_id,
             "nmbgmr:survey_region": survey_metadata["survey_region"],
@@ -571,17 +631,14 @@ def build_stac_stub(
             "nmbgmr:line_spacing_m": survey_metadata["line_spacing_m"],
             "nmbgmr:line_km": survey_metadata["line_km"],
             "nmbgmr:source_epsg": source_epsg,
-
             # Statistics — derived from PostGIS after ingest
             "nmbgmr:num_soundings": derived["num_soundings"],
             "nmbgmr:num_layers": derived["num_layers"],
             "nmbgmr:depth_min_m": derived["depth_min_m"],
             "nmbgmr:depth_max_m": derived["depth_max_m"],
-
             # Quality flags
             "nmbgmr:has_uncertainty": derived["has_uncertainty"],
             "nmbgmr:has_doi": derived["has_doi"],
-
             # DOI — null until Phase 3 DataCite minting
             "nmbgmr:doi_url": None,
         },
@@ -663,8 +720,7 @@ def build_stac_stub(
         }
 
     logger.info(
-        "STAC item built: %s — %d soundings, %d layers, "
-        "uncertainty=%s, doi=%s",
+        "STAC item built: %s — %d soundings, %d layers, " "uncertainty=%s, doi=%s",
         item_id,
         derived["num_soundings"],
         derived["num_layers"],
@@ -752,7 +808,10 @@ def run_ingest(
 
     # Step 6: Build STAC item (queries PostGIS for derived fields)
     stac_item = build_stac_stub(
-        df, config, parquet_gcs_path, raw_manifest_gcs_path,
+        df,
+        config,
+        parquet_gcs_path,
+        raw_manifest_gcs_path,
     )
     logger.info("Step 6 — STAC item built: %s", stac_item["id"])
 

@@ -76,6 +76,7 @@ def extract_flight_id(filepath: str) -> str:
     flight_id = parts[-1] if len(parts) >= 3 else "F00"
     logger.warning(
         "Could not parse flight ID from '%s', using fallback: %s",
-        name, flight_id,
+        name,
+        flight_id,
     )
     return flight_id

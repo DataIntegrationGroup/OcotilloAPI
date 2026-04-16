@@ -31,9 +31,7 @@ from aem_ingest.schemas import validate_dataframe
 logger = logging.getLogger(__name__)
 
 
-def parse_seogi_rho(
-    filepath: str, flight_id: Optional[str] = None
-) -> pd.DataFrame:
+def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFrame:
     """Parse a Seogi Python rho CSV to canonical long-format schema.
 
     Args:
@@ -106,13 +104,15 @@ def parse_seogi_rho(
     logger.info("Seogi pivoted to long: %d rows", len(long_df))
 
     # Rename to canonical schema
-    long_df = long_df.rename(columns={
-        "line_no": "line_id",
-        "utmx": "easting_m",
-        "utmy": "northing_m",
-        "elevation": "elevation_m",
-        "plm": "plni",
-    })
+    long_df = long_df.rename(
+        columns={
+            "line_no": "line_id",
+            "utmx": "easting_m",
+            "utmy": "northing_m",
+            "elevation": "elevation_m",
+            "plm": "plni",
+        }
+    )
 
     long_df["line_id"] = long_df["line_id"].astype(str)
     long_df["layer_no"] = long_df["layer_no"].astype("Int16")
@@ -131,6 +131,7 @@ def parse_seogi_rho(
 
     logger.info(
         "Seogi parsed: %d rows, %d unique soundings",
-        len(long_df), long_df["record_id"].nunique(),
+        len(long_df),
+        long_df["record_id"].nunique(),
     )
     return long_df

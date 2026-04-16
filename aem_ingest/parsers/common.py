@@ -69,9 +69,7 @@ def add_latlon(df: pd.DataFrame, source_epsg: int) -> pd.DataFrame:
     transformer = Transformer.from_crs(
         f"EPSG:{source_epsg}", "EPSG:4326", always_xy=True
     )
-    lon, lat = transformer.transform(
-        df["easting_m"].values, df["northing_m"].values
-    )
+    lon, lat = transformer.transform(df["easting_m"].values, df["northing_m"].values)
     df["longitude_dd"] = lon
     df["latitude_dd"] = lat
     return df
@@ -88,16 +86,12 @@ def reproject_and_add_latlon(df: pd.DataFrame, source_epsg: int) -> pd.DataFrame
     to_target = Transformer.from_crs(
         f"EPSG:{source_epsg}", f"EPSG:{TARGET_EPSG}", always_xy=True
     )
-    new_e, new_n = to_target.transform(
-        df["easting_m"].values, df["northing_m"].values
-    )
+    new_e, new_n = to_target.transform(df["easting_m"].values, df["northing_m"].values)
     df["easting_m"] = new_e
     df["northing_m"] = new_n
 
     # Step 2: Compute WGS84 lat/lon from the reprojected coords
-    to_wgs84 = Transformer.from_crs(
-        f"EPSG:{TARGET_EPSG}", "EPSG:4326", always_xy=True
-    )
+    to_wgs84 = Transformer.from_crs(f"EPSG:{TARGET_EPSG}", "EPSG:4326", always_xy=True)
     lon, lat = to_wgs84.transform(new_e, new_n)
     df["longitude_dd"] = lon
     df["latitude_dd"] = lat

@@ -100,9 +100,11 @@ def _get_sidecar_parent_stem(filename: str, ext: str) -> str | None:
 # Result tracking
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FileResult:
     """Result of processing a single file."""
+
     source_path: str
     gcs_path: str
     status: str  # uploaded | skipped_exists | skipped_action | failed | dry_run
@@ -191,7 +193,7 @@ class MigrationRunner:
             normalized_source = source_path.replace("\\", "/")
             normalized_detected = self._detected_root.replace("\\", "/")
             if normalized_source.startswith(normalized_detected):
-                relative = normalized_source[len(normalized_detected):].lstrip("/")
+                relative = normalized_source[len(normalized_detected) :].lstrip("/")
                 new_path = os.path.join(self.root_override, relative)
                 return new_path
 
@@ -213,7 +215,9 @@ class MigrationRunner:
             return True
         logger.warning(
             "GCS object exists but size differs: %s (GCS=%d, local=%d)",
-            gcs_path, blob.size, expected_size,
+            gcs_path,
+            blob.size,
+            expected_size,
         )
         return False
 
@@ -277,7 +281,9 @@ class MigrationRunner:
             if remote_md5 and local_md5 != remote_md5:
                 logger.warning(
                     "CHECKSUM MISMATCH: %s (local=%s, remote=%s) — adding to retry list",
-                    gcs_path, local_md5, remote_md5,
+                    gcs_path,
+                    local_md5,
+                    remote_md5,
                 )
                 self.retry_list.append(gcs_path)
         except Exception as e:
@@ -285,7 +291,9 @@ class MigrationRunner:
 
         logger.info(
             "Uploaded: %s (%.1f MB, %.1fs)",
-            gcs_path, file_size / 1e6, duration,
+            gcs_path,
+            file_size / 1e6,
+            duration,
         )
 
         return FileResult(
@@ -311,7 +319,8 @@ class MigrationRunner:
                 logger.warning(
                     "Sidecar %s has no parent '%s' in MOVE list "
                     "— uploading anyway but verify manually",
-                    row["file_name"], parent_name,
+                    row["file_name"],
+                    parent_name,
                 )
 
     # ----- Main run loop -----
@@ -352,7 +361,8 @@ class MigrationRunner:
                 if action == "FLAG_REVIEW":
                     logger.info(
                         "Skipped — requires human decision before migration: %s — %s",
-                        row["file_name"], row.get("action_notes", ""),
+                        row["file_name"],
+                        row.get("action_notes", ""),
                     )
                 elif action == "FLAG_UNKNOWN":
                     logger.info(
@@ -362,7 +372,8 @@ class MigrationRunner:
                 elif action == "HOLD":
                     logger.info(
                         "Skipped — blocked on external dependency: %s — %s",
-                        row["file_name"], row.get("action_notes", ""),
+                        row["file_name"],
+                        row.get("action_notes", ""),
                     )
                 elif action == "SKIP":
                     logger.info(
@@ -370,17 +381,22 @@ class MigrationRunner:
                         row["file_name"],
                     )
 
-                self.results.append(FileResult(
-                    source_path=row["source_path"],
-                    gcs_path=row.get("proposed_gcs_path", ""),
-                    status="skipped_action",
-                    file_size_bytes=int(row.get("size_bytes", 0)),
-                ))
+                self.results.append(
+                    FileResult(
+                        source_path=row["source_path"],
+                        gcs_path=row.get("proposed_gcs_path", ""),
+                        status="skipped_action",
+                        file_size_bytes=int(row.get("size_bytes", 0)),
+                    )
+                )
 
         # Filter to MOVE only
         move_df = df[df["action"] == "MOVE"].copy()
-        logger.info("Files to upload: %d (%.1f GB)", len(move_df),
-                     move_df["size_bytes"].sum() / 1e9)
+        logger.info(
+            "Files to upload: %d (%.1f GB)",
+            len(move_df),
+            move_df["size_bytes"].sum() / 1e9,
+        )
 
         if len(move_df) == 0:
             logger.info("No MOVE files to process")
@@ -394,7 +410,8 @@ class MigrationRunner:
         for _, row in move_df[norm_mask].iterrows():
             logger.warning(
                 "Uploaded with normalization pending: %s — %s",
-                row["file_name"], row.get("normalization_notes", ""),
+                row["file_name"],
+                row.get("normalization_notes", ""),
             )
 
         if dry_run:
@@ -404,6 +421,7 @@ class MigrationRunner:
         # Upload with thread pool
         try:
             from tqdm import tqdm
+
             progress = tqdm(total=len(move_df), desc="Uploading", unit="file")
         except ImportError:
             progress = None
@@ -447,7 +465,9 @@ class MigrationRunner:
         for survey_id, group in move_df.groupby("survey_id"):
             logger.info(
                 "  %s: %d files (%.1f GB)",
-                survey_id, len(group), group["size_bytes"].sum() / 1e9,
+                survey_id,
+                len(group),
+                group["size_bytes"].sum() / 1e9,
             )
 
         # Breakdown by processing stage
@@ -455,17 +475,21 @@ class MigrationRunner:
         for stage, group in move_df.groupby("processing_stage"):
             logger.info(
                 "  %s: %d files (%.1f GB)",
-                stage, len(group), group["size_bytes"].sum() / 1e9,
+                stage,
+                len(group),
+                group["size_bytes"].sum() / 1e9,
             )
 
         # Record dry-run results
         for _, row in move_df.iterrows():
-            self.results.append(FileResult(
-                source_path=row["source_path"],
-                gcs_path=row["proposed_gcs_path"],
-                status="dry_run",
-                file_size_bytes=int(row.get("size_bytes", 0)),
-            ))
+            self.results.append(
+                FileResult(
+                    source_path=row["source_path"],
+                    gcs_path=row["proposed_gcs_path"],
+                    status="dry_run",
+                    file_size_bytes=int(row.get("size_bytes", 0)),
+                )
+            )
 
     # ----- Output files -----
 
@@ -479,20 +503,29 @@ class MigrationRunner:
         """One row per file processed — uploaded, skipped, or failed."""
         path = "migration_log.csv"
         with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=[
-                "source_path", "gcs_path", "status",
-                "file_size_bytes", "upload_duration_seconds", "error_message",
-            ])
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "source_path",
+                    "gcs_path",
+                    "status",
+                    "file_size_bytes",
+                    "upload_duration_seconds",
+                    "error_message",
+                ],
+            )
             writer.writeheader()
             for r in self.results:
-                writer.writerow({
-                    "source_path": r.source_path,
-                    "gcs_path": r.gcs_path,
-                    "status": r.status,
-                    "file_size_bytes": r.file_size_bytes,
-                    "upload_duration_seconds": f"{r.upload_duration_seconds:.2f}",
-                    "error_message": r.error_message,
-                })
+                writer.writerow(
+                    {
+                        "source_path": r.source_path,
+                        "gcs_path": r.gcs_path,
+                        "status": r.status,
+                        "file_size_bytes": r.file_size_bytes,
+                        "upload_duration_seconds": f"{r.upload_duration_seconds:.2f}",
+                        "error_message": r.error_message,
+                    }
+                )
         logger.info("Wrote %s (%d rows)", path, len(self.results))
 
     def _write_failures_csv(self) -> None:
@@ -536,40 +569,67 @@ class MigrationRunner:
             # Find survey_id from the original CSV by matching source_path
             pass  # We'll use the DataFrame instead
 
-        by_survey = self.df.groupby(["survey_id", "action"]).size().unstack(fill_value=0)
+        by_survey = (
+            self.df.groupby(["survey_id", "action"]).size().unstack(fill_value=0)
+        )
         lines.append(by_survey.to_string())
         lines.append("")
 
         # ----- FLAG_REVIEW breakdown by detected_type -----
         lines.append("-" * 70)
-        lines.append("FLAG_REVIEW breakdown (requires human decision before migration):")
+        lines.append(
+            "FLAG_REVIEW breakdown (requires human decision before migration):"
+        )
         lines.append("-" * 70)
 
         fr = self.df[self.df["action"] == "FLAG_REVIEW"]
 
         # Separate Final GDBs from other GDBs
         is_gdb = fr["detected_type"] == "geosoft_gdb"
-        is_final_gdb = is_gdb & fr["action_notes"].str.contains("Final", case=False, na=False)
+        is_final_gdb = is_gdb & fr["action_notes"].str.contains(
+            "Final", case=False, na=False
+        )
 
         final_gdbs = fr[is_final_gdb]
         other_gdbs = fr[is_gdb & ~is_final_gdb]
 
         # Build type breakdown
         type_groups = [
-            ("geosoft_gdb (FINAL)", final_gdbs,
-             "HIGH PRIORITY — open and inspect before moving"),
-            ("geosoft_gdb (other)", other_gdbs,
-             "Confirm file vs folder structure before move"),
-            ("pik_inversion", fr[fr["detected_type"] == "pik_inversion"],
-             "Confirm processing stage with Ahsan/DBS&A"),
-            ("ahsan_inversion_csv", fr[fr["detected_type"] == "ahsan_inversion_csv"],
-             "Confirm processing stage with Ahsan (per-line inversion CSVs)"),
-            ("geosoft_native_grd", fr[fr["detected_type"] == "geosoft_native_grd"],
-             "Need GDAL conversion to GeoTIFF before ingest"),
-            ("grd_unknown_format", fr[fr["detected_type"] == "grd_unknown_format"],
-             "Unknown GRD variant — investigate format"),
-            ("lfview", fr[fr["detected_type"] == "lfview"],
-             "Request open re-export from DBS&A before archiving"),
+            (
+                "geosoft_gdb (FINAL)",
+                final_gdbs,
+                "HIGH PRIORITY — open and inspect before moving",
+            ),
+            (
+                "geosoft_gdb (other)",
+                other_gdbs,
+                "Confirm file vs folder structure before move",
+            ),
+            (
+                "pik_inversion",
+                fr[fr["detected_type"] == "pik_inversion"],
+                "Confirm processing stage with Ahsan/DBS&A",
+            ),
+            (
+                "ahsan_inversion_csv",
+                fr[fr["detected_type"] == "ahsan_inversion_csv"],
+                "Confirm processing stage with Ahsan (per-line inversion CSVs)",
+            ),
+            (
+                "geosoft_native_grd",
+                fr[fr["detected_type"] == "geosoft_native_grd"],
+                "Need GDAL conversion to GeoTIFF before ingest",
+            ),
+            (
+                "grd_unknown_format",
+                fr[fr["detected_type"] == "grd_unknown_format"],
+                "Unknown GRD variant — investigate format",
+            ),
+            (
+                "lfview",
+                fr[fr["detected_type"] == "lfview"],
+                "Request open re-export from DBS&A before archiving",
+            ),
         ]
 
         for label, group_df, note in type_groups:
@@ -578,12 +638,20 @@ class MigrationRunner:
             lines.append(f"  {label:30s} {len(group_df):>3d} files — {note}")
 
         # Catch any types not in our explicit list
-        known_types = {"geosoft_gdb", "pik_inversion", "ahsan_inversion_csv",
-                       "geosoft_native_grd", "grd_unknown_format", "lfview"}
+        known_types = {
+            "geosoft_gdb",
+            "pik_inversion",
+            "ahsan_inversion_csv",
+            "geosoft_native_grd",
+            "grd_unknown_format",
+            "lfview",
+        }
         unknown_fr = fr[~fr["detected_type"].isin(known_types)]
         if len(unknown_fr) > 0:
             for dt, group_df in unknown_fr.groupby("detected_type"):
-                lines.append(f"  {dt:30s} {len(group_df):>3d} files — unlisted type, review manually")
+                lines.append(
+                    f"  {dt:30s} {len(group_df):>3d} files — unlisted type, review manually"
+                )
 
         lines.append("")
 
@@ -609,14 +677,18 @@ class MigrationRunner:
                 lines.append(f"  {row['file_name']}")
             lines.append(f"  ({len(ahsan_csvs)} files total)")
             lines.append(f"  Survey: {ahsan_csvs['survey_id'].iloc[0]}")
-            lines.append(f"  Question: Are these preliminary, refined, or final inversions?")
+            lines.append(
+                f"  Question: Are these preliminary, refined, or final inversions?"
+            )
             lines.append("")
 
         # ----- FLAG_UNKNOWN -----
         fu = self.df[self.df["action"] == "FLAG_UNKNOWN"]
         if len(fu) > 0:
             lines.append("-" * 70)
-            lines.append(f"FLAG_UNKNOWN ({len(fu)} files — must be opened and re-mapped):")
+            lines.append(
+                f"FLAG_UNKNOWN ({len(fu)} files — must be opened and re-mapped):"
+            )
             lines.append("-" * 70)
             for _, row in fu.iterrows():
                 lines.append(f"  {row['file_name']} — {row.get('action_notes', '')}")
@@ -636,7 +708,9 @@ class MigrationRunner:
         # ----- Checksum mismatches -----
         if self.retry_list:
             lines.append("-" * 70)
-            lines.append(f"CHECKSUM MISMATCHES ({len(self.retry_list)} files — re-upload recommended):")
+            lines.append(
+                f"CHECKSUM MISMATCHES ({len(self.retry_list)} files — re-upload recommended):"
+            )
             lines.append("-" * 70)
             for gcs_path in self.retry_list:
                 lines.append(f"  {gcs_path}")
@@ -645,20 +719,30 @@ class MigrationRunner:
         # ----- Failed uploads -----
         if self.failed_rows:
             lines.append("-" * 70)
-            lines.append(f"FAILED UPLOADS ({len(self.failed_rows)} files — see migration_failures.csv):")
+            lines.append(
+                f"FAILED UPLOADS ({len(self.failed_rows)} files — see migration_failures.csv):"
+            )
             lines.append("-" * 70)
             for row in self.failed_rows:
-                lines.append(f"  {row['file_name']} — {row.get('proposed_gcs_path', '')}")
+                lines.append(
+                    f"  {row['file_name']} — {row.get('proposed_gcs_path', '')}"
+                )
             lines.append("")
 
         # ----- Normalization pending -----
-        norm = self.df[(self.df["action"] == "MOVE") & (self.df["normalization_needed"] == "Y")]
+        norm = self.df[
+            (self.df["action"] == "MOVE") & (self.df["normalization_needed"] == "Y")
+        ]
         if len(norm) > 0:
             lines.append("-" * 70)
-            lines.append(f"NORMALIZATION PENDING ({len(norm)} files uploaded but need cleanup before ingest):")
+            lines.append(
+                f"NORMALIZATION PENDING ({len(norm)} files uploaded but need cleanup before ingest):"
+            )
             lines.append("-" * 70)
             for _, row in norm.iterrows():
-                lines.append(f"  {row['file_name']} — {row.get('normalization_notes', '')[:80]}")
+                lines.append(
+                    f"  {row['file_name']} — {row.get('normalization_notes', '')[:80]}"
+                )
             lines.append("")
 
         summary_text = "\n".join(lines)
@@ -680,15 +764,18 @@ def main():
         description="NMBGMR AEM migration — copy files from shared drive to GCS"
     )
     parser.add_argument(
-        "--mapping", required=True,
+        "--mapping",
+        required=True,
         help="Path to gcs_path_mapping.csv",
     )
     parser.add_argument(
-        "--bucket", required=True,
+        "--bucket",
+        required=True,
         help="GCS bucket name (e.g. nmbgmr-aem-data)",
     )
     parser.add_argument(
-        "--root", default=None,
+        "--root",
+        default=None,
         help=(
             "Local root path override. If the mapping CSV was generated "
             "against a Shared Drive but you're running against a personal "
@@ -697,23 +784,30 @@ def main():
         ),
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Log all actions without uploading anything",
     )
     parser.add_argument(
-        "--survey", default=None,
+        "--survey",
+        default=None,
         help="Only migrate this survey_id (e.g. estancia_2025)",
     )
     parser.add_argument(
-        "--stage", default=None,
+        "--stage",
+        default=None,
         help="Only migrate this processing_stage (e.g. preliminary_inversion)",
     )
     parser.add_argument(
-        "--workers", type=int, default=4,
+        "--workers",
+        type=int,
+        default=4,
         help="Number of parallel upload threads (default: 4)",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Debug-level logging",
     )
 
@@ -743,7 +837,9 @@ def main():
 
     # Exit with error code if there were failures
     if runner.failed_rows:
-        logger.error("%d files failed — see migration_failures.csv", len(runner.failed_rows))
+        logger.error(
+            "%d files failed — see migration_failures.csv", len(runner.failed_rows)
+        )
         sys.exit(1)
 
 

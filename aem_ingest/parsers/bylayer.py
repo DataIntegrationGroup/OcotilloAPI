@@ -119,6 +119,7 @@ def parse_bylayer(filepath: str) -> pd.DataFrame:
 
     logger.info(
         "byLayer parsed: %d rows, %d unique soundings",
-        len(df), df["record_id"].nunique(),
+        len(df),
+        df["record_id"].nunique(),
     )
     return df

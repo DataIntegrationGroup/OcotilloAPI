@@ -118,12 +118,14 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
     logger.info("AGF pivoted to long: %d rows", len(long_df))
 
     # Rename to canonical schema
-    long_df = long_df.rename(columns={
-        "Line": "line_id",
-        "E_UTM13Nm": "easting_m",
-        "N_UTM13Nm": "northing_m",
-        "DEM_m": "elevation_m",
-    })
+    long_df = long_df.rename(
+        columns={
+            "Line": "line_id",
+            "E_UTM13Nm": "easting_m",
+            "N_UTM13Nm": "northing_m",
+            "DEM_m": "elevation_m",
+        }
+    )
 
     long_df["line_id"] = long_df["line_id"].astype(str)
     long_df["layer_no"] = long_df["layer_no"].astype("Int16")
@@ -142,6 +144,7 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
 
     logger.info(
         "AGF parsed: %d rows, %d unique soundings",
-        len(long_df), long_df["record_id"].nunique(),
+        len(long_df),
+        long_df["record_id"].nunique(),
     )
     return long_df

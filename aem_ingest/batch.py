@@ -113,6 +113,7 @@ def resolve_system(detected_type: str, filename: str) -> str | None:
 # Raw file list builder
 # ---------------------------------------------------------------------------
 
+
 def build_raw_file_list(df: pd.DataFrame, survey_id: str) -> list[dict]:
     """Build the raw_file_paths list for write_raw_manifest().
 
@@ -133,17 +134,20 @@ def build_raw_file_list(df: pd.DataFrame, survey_id: str) -> list[dict]:
         fname = row["file_name"]
         flight_id = None
         import re
+
         m = re.search(r"_F(\d+)", fname)
         if m:
             flight_id = f"F{m.group(1)}"
 
-        raw_files.append({
-            "file": fname,
-            "gcs_path": row["proposed_gcs_path"],
-            "flight_id": flight_id,
-            "size_bytes": int(row.get("size_bytes", 0)),
-            "normalization_needed": row.get("normalization_needed", "N") == "Y",
-        })
+        raw_files.append(
+            {
+                "file": fname,
+                "gcs_path": row["proposed_gcs_path"],
+                "flight_id": flight_id,
+                "size_bytes": int(row.get("size_bytes", 0)),
+                "normalization_needed": row.get("normalization_needed", "N") == "Y",
+            }
+        )
 
     return raw_files
 
@@ -182,10 +186,7 @@ def run_batch(
     logger.info("Loaded mapping CSV: %d total rows", len(df))
 
     # Filter to ingestible types with MOVE action
-    mask = (
-        df["detected_type"].isin(INGESTIBLE_TYPES)
-        & (df["action"] == "MOVE")
-    )
+    mask = df["detected_type"].isin(INGESTIBLE_TYPES) & (df["action"] == "MOVE")
     ingest_df = df[mask].copy()
     logger.info("Ingestible files: %d", len(ingest_df))
 
@@ -236,7 +237,11 @@ def run_batch(
 
         logger.info(
             "=" * 60 + "\n[%d/%d] %s — %s / %s",
-            file_num, total, filename, survey_id, detected_type,
+            file_num,
+            total,
+            filename,
+            survey_id,
+            detected_type,
         )
 
         try:
@@ -251,9 +256,11 @@ def run_batch(
                 common = os.path.commonpath(
                     [p.replace("\\", "/") for p in df["source_path"].head(20)]
                 )
-                relative = source_path.replace("\\", "/").replace(
-                    common.replace("\\", "/"), ""
-                ).lstrip("/")
+                relative = (
+                    source_path.replace("\\", "/")
+                    .replace(common.replace("\\", "/"), "")
+                    .lstrip("/")
+                )
                 source_path = os.path.join(root_override, relative)
 
             # Build raw file list for this survey (for manifest)
@@ -289,22 +296,34 @@ def run_batch(
             succeeded += 1
             logger.info(
                 "[%d/%d] SUCCESS: %s → %s (%.1fs)",
-                file_num, total, filename, stac_item["id"], duration,
+                file_num,
+                total,
+                filename,
+                stac_item["id"],
+                duration,
             )
 
         except Exception as e:
             failed += 1
             errors.append({"file": filename, "survey": survey_id, "error": str(e)})
             logger.exception(
-                "[%d/%d] FAILED: %s — %s", file_num, total, filename, e,
+                "[%d/%d] FAILED: %s — %s",
+                file_num,
+                total,
+                filename,
+                e,
             )
             # Continue to next file — don't abort the batch
             continue
 
     # ----- Summary -----
     logger.info("=" * 60)
-    logger.info("BATCH COMPLETE: %d succeeded, %d failed, %d total",
-                succeeded, failed, len(ingest_df))
+    logger.info(
+        "BATCH COMPLETE: %d succeeded, %d failed, %d total",
+        succeeded,
+        failed,
+        len(ingest_df),
+    )
 
     if errors:
         logger.error("Failed files:")
@@ -349,7 +368,9 @@ def _dry_run(
                 & (full_df["action"] == "MOVE")
             ]
         )
-        print(f"  {survey_id}: {len(group)} inversion files, {raw_count} raw files for manifest")
+        print(
+            f"  {survey_id}: {len(group)} inversion files, {raw_count} raw files for manifest"
+        )
     print()
 
     # File-by-file preview
@@ -408,39 +429,50 @@ def main():
         ),
     )
     parser.add_argument(
-        "--mapping", required=True,
+        "--mapping",
+        required=True,
         help="Path to gcs_path_mapping.csv",
     )
     parser.add_argument(
-        "--db-conn", required=True,
+        "--db-conn",
+        required=True,
         help="PostgreSQL connection string",
     )
     parser.add_argument(
-        "--bucket", required=True,
+        "--bucket",
+        required=True,
         help="GCS bucket name (e.g. nmbgmr-aem-data)",
     )
     parser.add_argument(
-        "--root", default=None,
+        "--root",
+        default=None,
         help="Override source path root for local Drive copies",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Show what would be ingested without running anything",
     )
     parser.add_argument(
-        "--limit", type=int, default=None,
+        "--limit",
+        type=int,
+        default=None,
         help="Only ingest the first N files (for testing — try --limit 2)",
     )
     parser.add_argument(
-        "--survey", default=None,
+        "--survey",
+        default=None,
         help="Only ingest files from this survey_id",
     )
     parser.add_argument(
-        "--stage", default=None,
+        "--stage",
+        default=None,
         help="Only ingest files from this processing_stage",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Debug-level logging",
     )
 

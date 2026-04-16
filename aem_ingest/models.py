@@ -41,7 +41,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
 # ---------------------------------------------------------------------------
 # aem_soundings — one row per layer per sounding
 # ---------------------------------------------------------------------------
@@ -69,7 +68,8 @@ class AemSounding(Base):
     # ---- Provenance ----
     survey_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     processing_stage: Mapped[str] = mapped_column(
-        Text, nullable=False,
+        Text,
+        nullable=False,
         comment="'preliminary_inversion' or 'final_inversion'",
     )
     inversion_code: Mapped[str | None] = mapped_column(

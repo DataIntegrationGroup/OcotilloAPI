@@ -80,9 +80,7 @@ def run(
     db_conn: Annotated[
         str, typer.Option("--db-conn", help="PostgreSQL connection string")
     ],
-    gcs_bucket: Annotated[
-        str, typer.Option("--gcs-bucket", help="GCS bucket name")
-    ],
+    gcs_bucket: Annotated[str, typer.Option("--gcs-bucket", help="GCS bucket name")],
     source_gcs_path: Annotated[
         str,
         typer.Option(
@@ -205,7 +203,12 @@ def parse(
     """
     _setup_logging(verbose)
 
-    from aem_ingest.parsers import detect_format, parse_agf_lci, parse_bylayer, parse_seogi_rho
+    from aem_ingest.parsers import (
+        detect_format,
+        parse_agf_lci,
+        parse_bylayer,
+        parse_seogi_rho,
+    )
     from aem_ingest.schemas import SourceFormat
 
     fmt = detect_format(str(filepath))
@@ -216,7 +219,9 @@ def parse(
         df = parse_seogi_rho(str(filepath), flight_id=flight_id)
     elif fmt == SourceFormat.AGF_LCI:
         if system is None:
-            typer.echo("Error: AGF LCI format requires --system (306hp or 312hp)", err=True)
+            typer.echo(
+                "Error: AGF LCI format requires --system (306hp or 312hp)", err=True
+            )
             raise typer.Exit(code=1)
         df = parse_agf_lci(str(filepath), system=system)
 
