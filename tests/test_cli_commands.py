@@ -696,12 +696,10 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(
-            f"""\
+        csv_text = textwrap.dedent(f"""\
             {header}
             {row}
-            """
-        )
+            """)
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
