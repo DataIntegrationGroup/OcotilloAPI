@@ -65,9 +65,7 @@ class _ValidatedRow:
     row_index: int
     raw: dict[str, str]
     well: Thing
-    field_staff: str
-    field_staff_2: str | None
-    field_staff_3: str | None
+    field_staff_entries: tuple[tuple[str, str], ...]
     sampler: str
     sample_method_term: str
     field_event_dt: datetime
@@ -302,9 +300,7 @@ def _validate_rows(
                 row_index=idx,
                 raw={**normalized},
                 well=well,
-                field_staff=model.field_staff,
-                field_staff_2=model.field_staff_2,
-                field_staff_3=model.field_staff_3,
+                field_staff_entries=_normalize_field_staff_entries(model),
                 sampler=model.measuring_person,
                 sample_method_term=model.sample_method,
                 field_event_dt=model.field_event_date_time,
@@ -321,6 +317,20 @@ def _validate_rows(
         )
 
     return valid_rows, errors
+
+
+def _normalize_field_staff_entries(
+    model: WaterLevelCsvRow,
+) -> tuple[tuple[str, str], ...]:
+    """Normalize fixed staff columns into an iterable participant list."""
+    participant_specs = (
+        (model.field_staff, "Lead"),
+        (model.field_staff_2, "Participant"),
+        (model.field_staff_3, "Participant"),
+    )
+    return tuple(
+        (staff_name, role) for staff_name, role in participant_specs if staff_name
+    )
 
 
 def _resolve_measuring_point_height(
@@ -492,11 +502,6 @@ def _ensure_field_event_participants(
     session: Session, field_event: FieldEvent, row: _ValidatedRow
 ) -> list[FieldEventParticipant]:
     """Return event participants for imported staff names, creating any missing ones."""
-    participant_specs = (
-        (row.field_staff, "Lead"),
-        (row.field_staff_2, "Participant"),
-        (row.field_staff_3, "Participant"),
-    )
     existing_participants = session.scalars(
         select(FieldEventParticipant)
         .options(selectinload(FieldEventParticipant.participant))
@@ -504,10 +509,7 @@ def _ensure_field_event_participants(
         .order_by(FieldEventParticipant.id.asc())
     ).all()
 
-    for staff_name, role in participant_specs:
-        if not staff_name:
-            continue
-
+    for staff_name, role in row.field_staff_entries:
         contact = _get_or_create_field_staff_contact(session, staff_name)
         participant = next(
             (
