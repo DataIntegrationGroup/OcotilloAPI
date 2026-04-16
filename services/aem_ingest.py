@@ -191,8 +191,7 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -210,8 +209,7 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """
-        )
+        """)
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -225,8 +223,7 @@ def load_to_postgis(
         cur.copy_expert(copy_sql, buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(
-            f"""
+        cur.execute(f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -234,8 +231,7 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), {TARGET_EPSG})
             FROM _ingest_staging;
-        """
-        )
+        """)
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
