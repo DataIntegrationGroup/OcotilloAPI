@@ -166,7 +166,7 @@ class WaterLevelCsvRow(BaseModel):
     @field_validator(
         "field_event_date_time",
         "water_level_date_time",
-        mode="before",
+        mode="after",
     )
     @classmethod
     def normalize_datetime_field(cls, value: datetime | str) -> datetime:

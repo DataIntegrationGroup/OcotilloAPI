@@ -361,12 +361,12 @@ class WellInventoryRow(BaseModel):
 
         return data
 
-    @field_validator("date_time", mode="before")
+    @field_validator("date_time", mode="after")
     @classmethod
     def make_date_time_tz_aware(cls, v):
         normalize_datetime_to_utc(v)
 
-    @field_validator("measurement_date_time", mode="before")
+    @field_validator("measurement_date_time", mode="after")
     @classmethod
     def normalize_measurement_date_time(cls, v):
         if v is None or (isinstance(v, str) and v.strip() == ""):
