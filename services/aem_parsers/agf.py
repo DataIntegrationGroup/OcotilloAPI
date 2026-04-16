@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.parsers.agf — Parser for AGF LCI CSV files.
+services.aem_parsers.agf — Parser for AGF LCI CSV files.
 
 Key conventions:
   - Wide format: 39 layers per sounding.  Columns use bracket indexing:
@@ -22,8 +23,8 @@ import re
 
 import pandas as pd
 
-from aem_ingest.parsers.common import add_latlon, ensure_canonical_columns
-from aem_ingest.schemas import validate_dataframe
+from schemas.aem import validate_dataframe
+from services.aem_parsers.common import add_latlon, ensure_canonical_columns
 
 logger = logging.getLogger(__name__)
 

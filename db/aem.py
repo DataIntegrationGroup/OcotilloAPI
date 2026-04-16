@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.models — SQLAlchemy ORM models for the AEM PostGIS schema.
+db.aem — SQLAlchemy ORM models for the AEM PostGIS schema.
 
 These models define the aem_soundings and aem_sounding_metadata tables.
 Alembic uses these models as the source of truth for migrations:
@@ -32,7 +33,6 @@ from sqlalchemy import (
     Index,
     Integer,
     SmallInteger,
-    String,
     Text,
     func,
     text,

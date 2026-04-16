@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.parsers.detect — Format detection and flight ID extraction.
+services.aem_parsers.detect — Format detection and flight ID extraction.
 
 Detection logic:
   1. Filename contains '_byLayer' or ends with '.xyz' → bylayer
@@ -13,7 +14,7 @@ import logging
 import re
 from pathlib import Path
 
-from aem_ingest.schemas import SourceFormat
+from schemas.aem import SourceFormat
 
 logger = logging.getLogger(__name__)
 

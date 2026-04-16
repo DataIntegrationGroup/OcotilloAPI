@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.parsers.seogi — Parser for Seogi Python rho CSV files.
+services.aem_parsers.seogi — Parser for Seogi Python rho CSV files.
 
 Key conventions:
   - Wide format: 40 layers per sounding, columns like
@@ -24,9 +25,12 @@ from typing import Optional
 
 import pandas as pd
 
-from aem_ingest.parsers.common import ensure_canonical_columns, reproject_and_add_latlon
-from aem_ingest.parsers.detect import extract_flight_id
-from aem_ingest.schemas import validate_dataframe
+from schemas.aem import validate_dataframe
+from services.aem_parsers.common import (
+    ensure_canonical_columns,
+    reproject_and_add_latlon,
+)
+from services.aem_parsers.detect import extract_flight_id
 
 logger = logging.getLogger(__name__)
 

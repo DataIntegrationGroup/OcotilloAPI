@@ -42,9 +42,8 @@ import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from google.cloud import storage
@@ -564,7 +563,6 @@ class MigrationRunner:
 
         # Breakdown by survey
         lines.append("By survey:")
-        survey_results: dict[str, dict] = {}
         for r in self.results:
             # Find survey_id from the original CSV by matching source_path
             pass  # We'll use the DataFrame instead
@@ -678,7 +676,7 @@ class MigrationRunner:
             lines.append(f"  ({len(ahsan_csvs)} files total)")
             lines.append(f"  Survey: {ahsan_csvs['survey_id'].iloc[0]}")
             lines.append(
-                f"  Question: Are these preliminary, refined, or final inversions?"
+                "  Question: Are these preliminary, refined, or final inversions?"
             )
             lines.append("")
 

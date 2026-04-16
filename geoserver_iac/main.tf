@@ -1,20 +1,17 @@
 locals {
-  prefix         = "geoserver"
-  vm_name        = "geoserver-proto-01"
-  disk_name      = "geoserver-data-disk-01"
-  instance_group = "geoserver-ig"
-  tags           = ["geoserver", "allow-health-check"]
+  prefix          = "geoserver"
+  vm_name         = "geoserver-proto-01"
+  instance_group  = "geoserver-ig"
+  service_account = "geoserver-vm"
+  tags            = ["geoserver", "allow-health-check"]
 }
 
 resource "google_project_service" "compute" {
   service = "compute.googleapis.com"
 }
 
-resource "google_compute_disk" "geoserver_data" {
-  name = local.disk_name
-  type = "pd-ssd"
-  zone = var.zone
-  size = var.data_disk_size_gb
+resource "google_project_service" "storage" {
+  service = "storage.googleapis.com"
 }
 
 resource "google_compute_firewall" "ssh_admin" {
@@ -38,14 +35,9 @@ resource "google_compute_instance" "geoserver" {
 
   boot_disk {
     initialize_params {
-      image = "projects/cos-cloud/global/images/family/cos-stable"
+      image = var.instance_image
       size  = var.boot_disk_size_gb
     }
-  }
-
-  attached_disk {
-    source      = google_compute_disk.geoserver_data.id
-    device_name = google_compute_disk.geoserver_data.name
   }
 
   network_interface {
@@ -53,10 +45,25 @@ resource "google_compute_instance" "geoserver" {
     access_config {}
   }
 
+  service_account {
+    email  = google_service_account.geoserver_vm.email
+    scopes = ["cloud-platform"]
+  }
+
   metadata_startup_script = templatefile("${path.module}/startup-geoserver.sh.tpl", {
-    disk_name       = google_compute_disk.geoserver_data.name
-    geoserver_image = var.geoserver_image
+    domain_name                = var.domain_name
+    geoserver_data_bucket      = var.geoserver_data_bucket
+    geoserver_data_mount_point = var.geoserver_data_mount_point
+    geoserver_data_only_dir    = var.geoserver_data_only_dir
+    geoserver_data_read_only   = var.geoserver_data_read_only
+    geoserver_image            = var.geoserver_image
   })
+
+  depends_on = [
+    google_project_service.compute,
+    google_project_service.storage,
+    google_storage_bucket_iam_member.geoserver_data_viewer,
+  ]
 }
 
 resource "google_compute_instance_group" "geoserver" {
@@ -68,6 +75,33 @@ resource "google_compute_instance_group" "geoserver" {
     name = "http"
     port = 8080
   }
+}
+
+resource "google_project_service" "servicenetworking" {
+  service            = "servicenetworking.googleapis.com"
+  disable_on_destroy = false
+}
+
+data "google_compute_network" "default" {
+  name = var.network_name
+}
+
+resource "google_service_account" "geoserver_vm" {
+  account_id   = local.service_account
+  display_name = "GeoServer VM service account"
+}
+
+resource "google_storage_bucket_iam_member" "geoserver_data_viewer" {
+  bucket     = var.geoserver_data_bucket
+  role       = "roles/storage.objectViewer"
+  member     = "serviceAccount:${google_service_account.geoserver_vm.email}"
+  depends_on = [google_project_service.storage]
+}
+
+resource "google_project_iam_member" "geoserver_vm_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.geoserver_vm.email}"
 }
 
 module "https_lb" {

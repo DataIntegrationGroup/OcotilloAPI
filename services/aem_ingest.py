@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.pipeline — Orchestrates the full ingest pipeline.
+services.aem_ingest — Orchestrates the full ingest pipeline.
 
 Architecture note: the GCS mapper (aem_gcs_mapper.py) is the single source
 of truth for where every file lives in GCS.  This pipeline does NOT decide
@@ -22,30 +23,25 @@ import io
 import json
 import logging
 import os
-import re
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from google.cloud import storage
 from shapely.geometry import MultiPoint, mapping
 
-from aem_ingest.db import get_raw_connection, get_engine
-from aem_ingest.models import AemSounding, AemSoundingMetadata
-from aem_ingest.parsers import (
+from schemas.aem import IngestConfig, SourceFormat, SURVEY_METADATA
+from services.aem_db import get_raw_connection
+from services.aem_parsers import (
     detect_format,
     parse_agf_lci,
     parse_bylayer,
     parse_seogi_rho,
 )
-from aem_ingest.parsers.common import CANONICAL_COLUMNS, TARGET_EPSG
-from aem_ingest.schemas import IngestConfig, SourceFormat, SURVEY_METADATA
+from services.aem_parsers.common import CANONICAL_COLUMNS, TARGET_EPSG
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +90,53 @@ REQUIRED_COLUMNS = [
     "depth_bot_m",
     "resistivity_ohmm",
 ]
+
+
+def _directory_readme_contents(directory_path: str) -> str:
+    """Build a short README body for a GCS directory prefix."""
+    return (
+        f"# {directory_path}\n\n"
+        "This prefix is managed by the Ocotillo AEM ingest pipeline.\n\n"
+        "Contents may include canonical Parquet exports, ingest manifests, and\n"
+        "other pipeline-generated artifacts used for downstream discovery and\n"
+        "publication.\n"
+    )
+
+
+def ensure_prefix_readmes(
+    gcs_bucket: str,
+    gcs_client: storage.Client,
+    gcs_paths: list[str],
+) -> list[str]:
+    """Ensure every written GCS directory prefix has a top-level README.md."""
+    bucket = gcs_client.bucket(gcs_bucket)
+    uploaded_paths: list[str] = []
+    seen: set[str] = set()
+
+    for gcs_path in gcs_paths:
+        parts = gcs_path.split("/")[:-1]
+        for depth in range(1, len(parts) + 1):
+            directory_path = "/".join(parts[:depth])
+            readme_path = f"{directory_path}/README.md"
+            if readme_path in seen:
+                continue
+            seen.add(readme_path)
+
+            blob = bucket.blob(readme_path)
+            exists = False
+            if hasattr(blob, "exists"):
+                exists = blob.exists()
+            if exists:
+                continue
+
+            blob.upload_from_string(
+                _directory_readme_contents(directory_path),
+                content_type="text/markdown",
+            )
+            uploaded_paths.append(readme_path)
+            logger.info("Created prefix README: gs://%s/%s", gcs_bucket, readme_path)
+
+    return uploaded_paths
 
 
 def load_to_postgis(
@@ -148,7 +191,8 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -166,7 +210,8 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -180,7 +225,8 @@ def load_to_postgis(
         cur.copy_expert(copy_sql, buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -188,7 +234,8 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), {TARGET_EPSG})
             FROM _ingest_staging;
-        """)
+        """
+        )
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
@@ -327,6 +374,7 @@ def write_parquet(
         file_size_mb = os.path.getsize(tmp_path) / (1024 * 1024)
         logger.info("Parquet written: %.1f MB, %d rows", file_size_mb, len(out_df))
 
+        ensure_prefix_readmes(config.gcs_bucket, gcs_client, [gcs_path])
         bucket = gcs_client.bucket(config.gcs_bucket)
         blob = bucket.blob(gcs_path)
         blob.upload_from_filename(tmp_path, content_type="application/x-parquet")
@@ -382,6 +430,7 @@ def write_raw_manifest(
 
     manifest_json = json.dumps(manifest, indent=2)
 
+    ensure_prefix_readmes(gcs_bucket, gcs_client, [gcs_path])
     bucket = gcs_client.bucket(gcs_bucket)
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(manifest_json, content_type="application/json")

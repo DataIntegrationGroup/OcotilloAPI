@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_batch.py — Batch runner for the NMBGMR AEM ingest pipeline
+services.aem_batch — Batch runner for the NMBGMR AEM ingest pipeline
 
 Connects the migration script (aem_migrate.py) to the ingest pipeline
 (aem_ingest).  Reads gcs_path_mapping.csv, filters to ingestible file
@@ -32,7 +33,6 @@ import logging
 import os
 import sys
 import time
-from pathlib import Path
 
 import pandas as pd
 
@@ -159,7 +159,7 @@ def build_raw_file_list(df: pd.DataFrame, survey_id: str) -> list[dict]:
 
 def run_batch(
     mapping_path: str,
-    db_conn_string: str,
+    db_conn_string: str | None,
     gcs_bucket: str,
     root_override: str | None = None,
     dry_run: bool = False,
@@ -215,13 +215,8 @@ def run_batch(
         return _dry_run(ingest_df, df, db_conn_string, gcs_bucket)
 
     # ----- Live run -----
-    from aem_ingest.pipeline import run_ingest
-    from aem_ingest.schemas import (
-        IngestConfig,
-        InversionCode,
-        ProcessingStage,
-        SkytemSystem,
-    )
+    from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SkytemSystem
+    from services.aem_ingest import run_ingest
 
     stac_items = []
     succeeded = 0
@@ -343,7 +338,7 @@ def run_batch(
 def _dry_run(
     ingest_df: pd.DataFrame,
     full_df: pd.DataFrame,
-    db_conn_string: str,
+    db_conn_string: str | None,
     gcs_bucket: str,
 ) -> list[dict]:
     """Show what would be ingested without running anything."""
@@ -354,7 +349,10 @@ def _dry_run(
 
     print(f"Files to ingest: {len(ingest_df)}")
     print(f"Total size: {ingest_df['size_bytes'].sum() / 1e6:.1f} MB")
-    print(f"Database: {db_conn_string[:40]}...")
+    if db_conn_string:
+        print(f"Database: {db_conn_string[:40]}...")
+    else:
+        print("Database: shared app engine (.env-driven)")
     print(f"GCS bucket: {gcs_bucket}")
     print()
 
@@ -382,7 +380,7 @@ def _dry_run(
         try:
             prov = resolve_provenance(detected_type, survey_id)
             system = resolve_system(detected_type, row["file_name"])
-        except ValueError as e:
+        except ValueError:
             prov = {"inversion_code": "UNKNOWN", "contractor": "UNKNOWN"}
             system = None
 

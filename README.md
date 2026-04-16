@@ -235,9 +235,16 @@ app/
 ├── api/                    # Route declarations
 ├── core/                   # Settings, application config, and dependencies
 ├── db/                     # Database models, sessions, and engine
+│   └── aem.py              # AEM sounding and metadata models
 ├── docker/                 # Custom Docker files
 ├── schemas/                # Pydantic schemas and validations
+│   └── aem.py              # AEM ingest schemas and enums
 ├── services/               # Reusable business logic, helpers, and database interactions
+│   ├── aem_ingest.py       # Single-file AEM ingest orchestration
+│   ├── aem_batch.py        # Batch AEM ingest
+│   └── aem_parsers/        # AEM source-format parsers
+├── cli/                    # CLI command groups
+│   └── aem.py              # `oco aem-ingest` commands
 ├── tests/                  # Code tests
 └── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
 ```
@@ -310,3 +317,45 @@ To drop the existing schema and rebuild from migrations before transferring data
 ```bash
 export DROP_AND_REBUILD_DB=true
 ```
+
+## ✈️ AEM Ingest
+
+Ocotillo includes an AEM ingest workflow for contractor-delivered inversion
+files. AEM now lives in the main app structure instead of a standalone ingest
+package.
+
+- `db/aem.py`: AEM PostGIS models
+- `schemas/aem.py`: ingest configuration and validation models
+- `services/aem_ingest.py`: single-file ingest orchestration
+- `services/aem_batch.py`: batch ingest from the mapping CSV
+- `services/aem_parsers/`: format detection and parser implementations
+- `cli/aem.py`: `oco aem-ingest` commands
+
+This is currently ingest-only. It does not yet add API routes, admin screens,
+or OGC surfaces for AEM.
+
+### AEM CLI
+
+```bash
+# Detect source format
+oco aem-ingest detect path/to/file
+
+# Parse a file without loading to DB
+oco aem-ingest parse path/to/file --out parsed.parquet
+
+# Run a single ingest
+oco aem-ingest run path/to/file \
+  --survey-id gila_animas_2025 \
+  --stage preliminary_inversion \
+  --inversion-code seogi_python \
+  --contractor "GeoTech/Seogi" \
+  --source-gcs-path surveys/gila_animas_2025/aem/inversion/preliminary/rho_GL250193_F02.csv
+
+# Run batch ingest from the mapper CSV
+oco aem-ingest batch --mapping aem/gcs_path_mapping.csv --dry-run
+```
+
+AEM uses the same `.env`-driven database configuration as the rest of the app
+by default. You can still override the database connection with `--db-conn`.
+For GCS output, set `AEM_GCS_BUCKET` or `GCS_BUCKET_NAME`, or pass the bucket
+explicitly on the CLI.

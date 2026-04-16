@@ -38,7 +38,7 @@ from db.initialization import grant_app_read_members
 # Import AEM models so Alembic autogenerate discovers them.
 # These models share the same Base (db.base.Base), so their tables are
 # included in target_metadata automatically.
-import aem_ingest.models  # noqa: F401
+import db.aem  # noqa: F401
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata

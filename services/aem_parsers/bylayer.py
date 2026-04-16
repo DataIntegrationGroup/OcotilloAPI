@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.parsers.bylayer — Parser for Aarhus Workbench *_byLayer.xyz files.
+services.aem_parsers.bylayer — Parser for Aarhus Workbench *_byLayer.xyz files.
 
 Key conventions:
   - Space-delimited, header/comment lines start with '/'
@@ -17,8 +18,8 @@ import logging
 
 import pandas as pd
 
-from aem_ingest.parsers.common import add_latlon, ensure_canonical_columns
-from aem_ingest.schemas import validate_dataframe
+from schemas.aem import validate_dataframe
+from services.aem_parsers.common import add_latlon, ensure_canonical_columns
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.schemas — Pydantic models and enums for the AEM ingest pipeline.
+schemas.aem — Pydantic models and enums for the AEM ingest pipeline.
 
 These models serve two audiences:
   - Marissa (data curator): IngestConfig validates that survey provenance
@@ -14,7 +15,7 @@ import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -85,7 +86,10 @@ class IngestConfig(BaseModel):
     processing_stage: ProcessingStage
     inversion_code: InversionCode
     contractor: str = Field(description="e.g. 'GeoTech/Seogi', 'GIP/Aarhus'")
-    db_conn_string: str = Field(description="PostgreSQL connection string")
+    db_conn_string: Optional[str] = Field(
+        default=None,
+        description="Optional PostgreSQL connection string override",
+    )
     gcs_bucket: str = Field(description="GCS bucket name")
 
     # GCS path for the source file — provided by the mapper (aem_gcs_mapper.py),
@@ -300,7 +304,6 @@ def validate_dataframe(df, source_label: str = "unknown") -> list[str]:
     Does NOT raise — the caller decides whether warnings are fatal.
     """
     import logging
-    import pandas as pd
 
     logger = logging.getLogger(__name__)
     warnings: list[str] = []

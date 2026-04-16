@@ -1,32 +1,33 @@
-"""
-aem_ingest.cli — Typer CLI for the AEM ingest pipeline.
-
-Usage:
-  aem-ingest run rho_GL250193_F02.csv \\
-    --survey-id gila_animas_2025 \\
-    --stage preliminary_inversion \\
-    --inversion-code seogi_python \\
-    --contractor "GeoTech/Seogi" \\
-    --db-conn "postgresql://user:pass@host/db" \\
-    --gcs-bucket nmbgmr-aem
-
-  aem-ingest detect rho_GL250193_F02.csv
-
-  aem-ingest parse rho_GL250193_F02.csv --flight-id F02 --out parsed.parquet
-"""
-
+# flake8: noqa: E501
 from __future__ import annotations
 
 import datetime
 import json
 import logging
+import os
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
 import click
 import typer
+
+from schemas.aem import (
+    IngestConfig,
+    InversionCode,
+    ProcessingStage,
+    SkytemSystem,
+    SourceFormat,
+)
+from services.aem_batch import run_batch
+from services.aem_ingest import run_ingest
+from services.aem_parsers import (
+    detect_format,
+    parse_agf_lci,
+    parse_bylayer,
+    parse_seogi_rho,
+)
+from services.aem_parsers.common import CANONICAL_COLUMNS
 
 app = typer.Typer(
     name="aem-ingest",
@@ -36,7 +37,6 @@ app = typer.Typer(
 
 
 def _setup_logging(verbose: bool = False) -> None:
-    """Configure logging for CLI use."""
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
@@ -45,9 +45,17 @@ def _setup_logging(verbose: bool = False) -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# aem-ingest run — full pipeline
-# ---------------------------------------------------------------------------
+def _resolve_bucket(explicit_bucket: str | None) -> str:
+    bucket = (
+        explicit_bucket
+        or os.environ.get("AEM_GCS_BUCKET")
+        or os.environ.get("GCS_BUCKET_NAME")
+    )
+    if not bucket:
+        raise typer.BadParameter(
+            "GCS bucket is required. Pass --gcs-bucket or set AEM_GCS_BUCKET/GCS_BUCKET_NAME."
+        )
+    return bucket
 
 
 @app.command()
@@ -78,9 +86,14 @@ def run(
         str, typer.Option("--contractor", help="e.g. 'GeoTech/Seogi'")
     ],
     db_conn: Annotated[
-        str, typer.Option("--db-conn", help="PostgreSQL connection string")
-    ],
-    gcs_bucket: Annotated[str, typer.Option("--gcs-bucket", help="GCS bucket name")],
+        Optional[str],
+        typer.Option(
+            "--db-conn", help="Optional PostgreSQL connection string override"
+        ),
+    ] = None,
+    gcs_bucket: Annotated[
+        Optional[str], typer.Option("--gcs-bucket", help="GCS bucket name override")
+    ] = None,
     source_gcs_path: Annotated[
         str,
         typer.Option(
@@ -90,7 +103,7 @@ def run(
                 "e.g. 'surveys/estancia_2025/aem/inversion/preliminary/rho_GL250194_F01.csv'"
             ),
         ),
-    ],
+    ] = ...,
     flight_id: Annotated[
         Optional[str],
         typer.Option("--flight-id", help="Flight ID for Seogi (e.g. F02)"),
@@ -114,15 +127,6 @@ def run(
     """Run the full ingest pipeline for a single AEM inversion file."""
     _setup_logging(verbose)
 
-    from aem_ingest.schemas import (
-        IngestConfig,
-        InversionCode,
-        ProcessingStage,
-        SkytemSystem,
-    )
-    from aem_ingest.pipeline import run_ingest
-
-    # Build validated config from CLI args
     config = IngestConfig(
         filepath=str(filepath),
         survey_id=survey_id,
@@ -130,7 +134,7 @@ def run(
         inversion_code=InversionCode(inversion_code),
         contractor=contractor,
         db_conn_string=db_conn,
-        gcs_bucket=gcs_bucket,
+        gcs_bucket=_resolve_bucket(gcs_bucket),
         source_gcs_path=source_gcs_path,
         flight_id=flight_id,
         system=SkytemSystem(system) if system else None,
@@ -141,11 +145,6 @@ def run(
 
     stac_stub = run_ingest(config)
     typer.echo(json.dumps(stac_stub, indent=2))
-
-
-# ---------------------------------------------------------------------------
-# aem-ingest detect — format detection only
-# ---------------------------------------------------------------------------
 
 
 @app.command()
@@ -159,16 +158,8 @@ def detect(
 ):
     """Detect the format of an AEM inversion file (no DB or GCS needed)."""
     _setup_logging(verbose)
-
-    from aem_ingest.parsers import detect_format
-
     fmt = detect_format(str(filepath))
     typer.echo(f"Format: {fmt.value}")
-
-
-# ---------------------------------------------------------------------------
-# aem-ingest parse — parse only, no DB/GCS
-# ---------------------------------------------------------------------------
 
 
 @app.command()
@@ -196,28 +187,15 @@ def parse(
         bool, typer.Option("--verbose", "-v", help="Debug logging")
     ] = False,
 ):
-    """Parse an AEM file to canonical schema without loading to DB.
-
-    Useful for local inspection, notebook use, and testing.
-    Outputs to stdout (CSV) or to a file (.parquet or .csv).
-    """
+    """Parse an AEM file to canonical schema without loading to DB."""
     _setup_logging(verbose)
-
-    from aem_ingest.parsers import (
-        detect_format,
-        parse_agf_lci,
-        parse_bylayer,
-        parse_seogi_rho,
-    )
-    from aem_ingest.schemas import SourceFormat
-
     fmt = detect_format(str(filepath))
 
     if fmt == SourceFormat.BYLAYER:
         df = parse_bylayer(str(filepath))
     elif fmt == SourceFormat.SEOGI_RHO:
         df = parse_seogi_rho(str(filepath), flight_id=flight_id)
-    elif fmt == SourceFormat.AGF_LCI:
+    else:
         if system is None:
             typer.echo(
                 "Error: AGF LCI format requires --system (306hp or 312hp)", err=True
@@ -231,12 +209,10 @@ def parse(
     )
 
     if out is None:
-        # Print summary to stdout
         typer.echo(df.describe().to_string())
     elif str(out).endswith(".parquet"):
         import pyarrow as pa
         import pyarrow.parquet as pq
-        from aem_ingest.parsers.common import CANONICAL_COLUMNS
 
         cols = [c for c in CANONICAL_COLUMNS if c in df.columns]
         table = pa.Table.from_pandas(df[cols], preserve_index=False)
@@ -247,9 +223,52 @@ def parse(
         typer.echo(f"Written to {out}", err=True)
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    app()
+@app.command()
+def batch(
+    mapping: Annotated[
+        Path, typer.Option("--mapping", help="Path to gcs_path_mapping.csv")
+    ],
+    db_conn: Annotated[
+        Optional[str],
+        typer.Option(
+            "--db-conn", help="Optional PostgreSQL connection string override"
+        ),
+    ] = None,
+    bucket: Annotated[
+        Optional[str], typer.Option("--bucket", help="GCS bucket name override")
+    ] = None,
+    root: Annotated[
+        Optional[str],
+        typer.Option("--root", help="Override source path root for local Drive copies"),
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Show what would be ingested")
+    ] = False,
+    limit: Annotated[
+        Optional[int], typer.Option("--limit", help="Only ingest the first N files")
+    ] = None,
+    survey: Annotated[
+        Optional[str], typer.Option("--survey", help="Only ingest this survey_id")
+    ] = None,
+    stage: Annotated[
+        Optional[str],
+        typer.Option("--stage", help="Only ingest this processing_stage"),
+    ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Debug logging")
+    ] = False,
+):
+    """Run batch ingest for every ingestible file listed in the mapping CSV."""
+    _setup_logging(verbose)
+    stac_items = run_batch(
+        mapping_path=str(mapping),
+        db_conn_string=db_conn,
+        gcs_bucket=_resolve_bucket(bucket),
+        root_override=root,
+        dry_run=dry_run,
+        limit=limit,
+        survey_filter=survey,
+        stage_filter=stage,
+    )
+    if not dry_run:
+        typer.echo(json.dumps(stac_items, indent=2, default=str))

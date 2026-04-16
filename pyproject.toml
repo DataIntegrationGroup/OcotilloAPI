@@ -111,7 +111,7 @@ dependencies = [
 package = true
 
 [tool.setuptools]
-packages = ["aem_ingest", "aem_ingest.parsers", "alembic", "cli", "core", "db", "schemas", "services", "transfers"]
+packages = ["aem", "alembic", "cli", "core", "db", "schemas", "services", "services.aem_parsers", "transfers"]
 
 [project.scripts]
 oco = "cli.cli:cli"

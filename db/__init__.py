@@ -28,6 +28,7 @@ from sqlalchemy_searchable import (
 )
 
 from db.analysis_method import *
+from db.aem import *
 from db.aquifer_system import *
 from db.aquifer_type import *
 from db.asset import *

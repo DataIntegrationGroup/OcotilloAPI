@@ -247,6 +247,14 @@ def test_initialize_lexicon_invokes_initializer(monkeypatch):
     assert called["count"] == 1
 
 
+def test_cli_help_lists_aem_ingest():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    assert "aem-ingest" in result.output
+
+
 def test_associate_assets_command_calls_service(monkeypatch):
     captured = {}
 
@@ -696,10 +704,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             {header}
             {row}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"

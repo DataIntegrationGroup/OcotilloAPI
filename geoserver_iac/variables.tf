@@ -39,16 +39,39 @@ variable "boot_disk_size_gb" {
   default     = 30
 }
 
-variable "data_disk_size_gb" {
-  type        = number
-  description = "Persistent data disk size in GB"
-  default     = 100
+variable "instance_image" {
+  type        = string
+  description = "Compute Engine boot image for the GeoServer VM"
+  default     = "projects/debian-cloud/global/images/family/debian-12"
 }
 
 variable "geoserver_image" {
   type        = string
   description = "GeoServer container image"
   default     = "docker.osgeo.org/geoserver:2.28.0"
+}
+
+variable "geoserver_data_bucket" {
+  type        = string
+  description = "Existing GCS bucket name that backs the GeoServer data directory mount"
+}
+
+variable "geoserver_data_mount_point" {
+  type        = string
+  description = "Host mount point for the GeoServer data bucket"
+  default     = "/mnt/disks/geoserver-data"
+}
+
+variable "geoserver_data_only_dir" {
+  type        = string
+  description = "Optional prefix within the bucket to mount as the GeoServer data directory"
+  default     = "data_dir"
+}
+
+variable "geoserver_data_read_only" {
+  type        = bool
+  description = "Whether the GeoServer data bucket should be mounted read-only"
+  default     = true
 }
 
 variable "admin_ssh_cidr" {

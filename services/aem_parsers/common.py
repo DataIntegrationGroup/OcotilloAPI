@@ -1,5 +1,6 @@
+# flake8: noqa: E501
 """
-aem_ingest.parsers.common — Shared constants and coordinate helpers.
+services.aem_parsers.common — Shared constants and coordinate helpers.
 
 Used by all three parsers.  Keeps coordinate math in one place so
 the CRS logic doesn't get duplicated (or subtly diverge).

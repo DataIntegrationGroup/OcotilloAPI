@@ -24,6 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
+from cli.aem import app as aem_ingest_app
+
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
 load_dotenv(override=False)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
@@ -33,9 +35,6 @@ water_levels = typer.Typer(help="Water-level utilities")
 data_migrations = typer.Typer(help="Data migration utilities")
 cli.add_typer(water_levels, name="water-levels")
 cli.add_typer(data_migrations, name="data-migrations")
-
-# AEM ingest CLI — registered as a sub-command group
-from aem_ingest.cli import app as aem_ingest_app
 
 cli.add_typer(aem_ingest_app, name="aem-ingest")
 
