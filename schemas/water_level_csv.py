@@ -169,9 +169,7 @@ class WaterLevelCsvRow(BaseModel):
         mode="after",
     )
     @classmethod
-    def normalize_datetime_field(
-        cls, value: datetime | None
-    ) -> datetime | None:
+    def normalize_datetime_field(cls, value: datetime | None) -> datetime | None:
         if value is None or (isinstance(value, str) and value.strip() == ""):
             return None
         return normalize_datetime_to_utc(value)
