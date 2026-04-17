@@ -141,9 +141,9 @@ Feature: Bulk upload well inventory from CSV via CLI
       | data_quality                      |
       | water_level_notes                 |
     And the required "date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware)
-      (e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00")
-    And the optional "water_level_date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware)
-      (e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00") when provided
+      # e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00"
+    And the optional "water_level_date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware) when provided
+      # e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00 
 
 #    And all optional lexicon fields contain valid lexicon values when provided
 #    And all optional numeric fields contain valid numeric values when provided

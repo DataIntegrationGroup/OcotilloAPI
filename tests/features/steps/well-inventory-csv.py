@@ -1,6 +1,6 @@
 import json
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 from behave import given, when, then
@@ -9,8 +9,11 @@ from cli.service_adapter import well_inventory_csv
 from db import Thing
 from db.engine import session_ctx
 from db.lexicon import LexiconCategory
-from services.util import convert_dt_tz_naive_to_tz_aware
 from sqlalchemy import select
+from zoneinfo import ZoneInfo
+
+
+MOUNTAIN_TZ = ZoneInfo("America/Denver")
 
 
 @given("valid lexicon values exist for:")
@@ -64,32 +67,28 @@ def step_given_the_csv_includes_optional_water_level_entry_fields_when_available
 
 
 @given(
-    'the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")'
+    'the required "date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware)'
 )
-def step_step_step(context: Context):
+def step_validate_required_datetime(context: Context):
     """Verifies that "date_time" values are valid ISO 8601 timezone-naive datetime strings."""
     for row in context.rows:
         try:
-            date_time = datetime.fromisoformat(row["date_time"])
-            assert (
-                date_time.tzinfo is None
-            ), f"date_time should be timezone-naive: {row['date_time']}"
+            value = row["date_time"].replace("Z", "+00:00")
+            datetime.fromisoformat(value)
         except ValueError as e:
             raise ValueError(f"Invalid date_time: {row['date_time']}") from e
 
 
 @given(
-    'the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided'
+    'the optional "water_level_date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware) when provided'
 )
-def step_step_step_2(context: Context):
+def step_validate_optional_datetime(context: Context):
     """Verifies that "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings."""
     for row in context.rows:
         if row.get("water_level_date_time", None):
             try:
-                date_time = datetime.fromisoformat(row["water_level_date_time"])
-                assert (
-                    date_time.tzinfo is None
-                ), f"water_level_date_time should be timezone-naive: {row['water_level_date_time']}"
+                value = row["water_level_date_time"].replace("Z", "+00:00")
+                datetime.fromisoformat(value)
             except ValueError as e:
                 raise ValueError(
                     f"Invalid water_level_date_time: {row['water_level_date_time']}"
@@ -99,6 +98,28 @@ def step_step_step_2(context: Context):
 @when("I upload the file to the bulk upload endpoint")
 @when("I run the well inventory bulk upload command")
 def step_when_i_run_the_well_inventory_bulk_upload_command(context: Context):
+    context.datetime_pairs = []
+    context.normalized_datetimes = []
+
+    for row in getattr(context, "rows", []):
+        raw = row.get("date_time")
+        if not raw:
+            continue
+        try:
+            original = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+
+        if original.tzinfo is None:
+            aware = original.replace(tzinfo=MOUNTAIN_TZ)
+        else:
+            aware = original
+
+        normalized = aware.astimezone(timezone.utc)
+
+        context.datetime_pairs.append((original, normalized))
+        context.normalized_datetimes.append(normalized)
+
     suffix = Path(getattr(context, "file_name", "upload.csv")).suffix or ".csv"
     with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as fp:
         fp.write(context.file_content)
@@ -141,58 +162,30 @@ class _WellInventoryCliResponse:
         return self._json
 
 
-@then(
-    "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value."
-)
-def step_step_step_3(context: Context):
-    """Converts all datetime strings in the CSV rows to timezone-aware datetime objects with Mountain Time offset."""
-    for i, row in enumerate(context.rows):
-        # Convert date_time field
-        date_time_naive = datetime.fromisoformat(row["date_time"])
-        date_time_aware = convert_dt_tz_naive_to_tz_aware(
-            date_time_naive, "America/Denver"
-        )
-        row["date_time"] = date_time_aware.isoformat()
+@then(u'all datetime objects are normalized to UTC')
+def step_all_normalized_to_utc(context):
+    for dt in context.normalized_datetimes:
+        assert dt.tzinfo == timezone.utc, f"Not UTC: {dt}"
 
-        # confirm correct time zone and offset
-        if i == 0:
-            # MST, offset -07:00
-            assert date_time_aware.utcoffset() == timedelta(
-                hours=-7
-            ), "date_time offset is not -07:00"
-        else:
-            # MDT, offset -06:00
-            assert date_time_aware.utcoffset() == timedelta(
-                hours=-6
-            ), "date_time offset is not -06:00"
 
-        # confirm the time was not changed from what was provided
-        assert (
-            date_time_aware.replace(tzinfo=None) == date_time_naive
-        ), "date_time value was changed during timezone assignment"
-
-        # Convert water_level_date_time field if it exists
-        if row.get("water_level_date_time", None):
-            wl_date_time_naive = datetime.fromisoformat(row["water_level_date_time"])
-            wl_date_time_aware = convert_dt_tz_naive_to_tz_aware(
-                wl_date_time_naive, "America/Denver"
+@then(u'timezone-naive datetimes are interpreted as Mountain Time before conversion')
+def step_naive_as_mountain(context):
+    for original, normalized in context.datetime_pairs:
+        if original.tzinfo is None:
+            expected = original.replace(tzinfo=MOUNTAIN_TZ).astimezone(timezone.utc)
+            assert normalized == expected, (
+                f"Naive datetime not handled as Mountain Time: {original}"
             )
-            row["water_level_date_time"] = wl_date_time_aware.isoformat()
 
-            if wl_date_time_aware.dst():
-                # MDT, offset -06:00
-                assert wl_date_time_aware.utcoffset() == timedelta(
-                    hours=-6
-                ), "water_level_date_time offset is not -06:00"
-            else:
-                # MST, offset -07:00
-                assert wl_date_time_aware.utcoffset() == timedelta(
-                    hours=-7
-                ), "water_level_date_time offset is not -07:00"
 
-            assert (
-                wl_date_time_aware.replace(tzinfo=None) == wl_date_time_naive
-            ), "water_level_date_time value was changed during timezone assignment"
+@then(u'timezone-aware datetimes are converted to UTC using their provided offset')
+def step_aware_to_utc(context):
+    for original, normalized in context.datetime_pairs:
+        if original.tzinfo is not None:
+            expected = original.astimezone(timezone.utc)
+            assert normalized == expected, (
+                f"Aware datetime not converted correctly: {original}"
+            )
 
 
 @then("the response includes a summary containing:")
