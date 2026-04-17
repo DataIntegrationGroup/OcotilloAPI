@@ -1,12 +1,44 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas import BaseResponseModel, UTCAwareDatetime
 from schemas.contact import ContactResponse
 from schemas.deployment import DeploymentResponse
-from schemas.observation import GroundwaterLevelObservationResponse
-from schemas.sample import SampleResponse
 from schemas.field import FieldEventParticipantResponse
+from schemas.observation import ObservationResponse
 from schemas.sensor import SensorResponse
-from schemas.thing import WellResponse, WellScreenResponse
+from schemas.thing import WellResponse, WellScreenBaseResponse
+
+
+class WellDetailsFieldEventSampleResponse(BaseResponseModel):
+    contact: ContactResponse | None = None
+    sample_date: UTCAwareDatetime
+    sample_name: str
+    sample_matrix: str
+    sample_method: str
+    qc_type: str
+    notes: str | None = None
+    depth_top: float | None = None
+    depth_bottom: float | None = None
+    observations: list[ObservationResponse] = Field(default_factory=list)
+
+
+class WellDetailsFieldActivityResponse(BaseResponseModel):
+    field_event_id: int
+    activity_type: str
+    notes: str | None = None
+    samples: list[WellDetailsFieldEventSampleResponse] = Field(default_factory=list)
+
+
+class WellDetailsFieldEventResponse(BaseResponseModel):
+    thing_id: int
+    event_date: UTCAwareDatetime
+    notes: str | None = None
+    field_event_participants: list[FieldEventParticipantResponse] = Field(
+        default_factory=list
+    )
+    field_activities: list[WellDetailsFieldActivityResponse] = Field(
+        default_factory=list
+    )
 
 
 class WellDetailsResponse(BaseModel):
@@ -16,11 +48,5 @@ class WellDetailsResponse(BaseModel):
     contacts: list[ContactResponse] = Field(default_factory=list)
     sensors: list[SensorResponse] = Field(default_factory=list)
     deployments: list[DeploymentResponse] = Field(default_factory=list)
-    well_screens: list[WellScreenResponse] = Field(default_factory=list)
-    recent_groundwater_level_observations: list[GroundwaterLevelObservationResponse] = (
-        Field(default_factory=list)
-    )
-    latest_field_event_sample: SampleResponse | None = None
-    field_event_participants: list[FieldEventParticipantResponse] = Field(
-        default_factory=list
-    )
+    well_screens: list[WellScreenBaseResponse] = Field(default_factory=list)
+    field_events: list[WellDetailsFieldEventResponse] = Field(default_factory=list)

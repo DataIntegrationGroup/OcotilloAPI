@@ -628,22 +628,31 @@ def test_get_water_well_details_payload(
         assert data["deployments"][0]["id"] == sensor_to_water_well_thing_deployment.id
         assert data["deployments"][0]["sensor"]["id"] == sensor.id
         assert data["well_screens"][0]["id"] == well_screen.id
-        assert (
-            data["recent_groundwater_level_observations"][0]["id"]
-            == groundwater_level_observation.id
+        assert "thing" not in data["well_screens"][0]
+        assert len(data["field_events"]) == 1
+        assert data["field_events"][0]["id"] == field_event.id
+        assert data["field_events"][0]["field_activities"][0]["id"] == (
+            groundwater_level_sample.field_activity_id
         )
-        assert data["latest_field_event_sample"]["id"] == groundwater_level_sample.id
-        assert data["latest_field_event_sample"]["field_event"]["id"] == field_event.id
-        assert data["latest_field_event_sample"]["contact"]["id"] == contact.id
+        assert data["field_events"][0]["field_activities"][0]["samples"][0]["id"] == (
+            groundwater_level_sample.id
+        )
         assert {
-            participant["id"] for participant in data["field_event_participants"]
+            observation["id"]
+            for observation in data["field_events"][0]["field_activities"][0][
+                "samples"
+            ][0]["observations"]
+        } == {groundwater_level_observation.id}
+        assert {
+            participant["id"]
+            for participant in data["field_events"][0]["field_event_participants"]
         } == {
             field_event_participant.id,
             second_participant_id,
         }
         assert {
             participant["participant"]["id"]
-            for participant in data["field_event_participants"]
+            for participant in data["field_events"][0]["field_event_participants"]
         } == {contact.id, second_contact_id}
     finally:
         with session_ctx() as session:
@@ -705,11 +714,13 @@ def test_get_water_well_details_payload_uses_latest_observation_sample(
 
         assert response.status_code == 200
         data = response.json()
-        assert data["latest_field_event_sample"]["id"] == later_sample_id
-        assert (
-            data["recent_groundwater_level_observations"][0]["id"]
-            == later_observation_id
+        activity_samples = data["field_events"][0]["field_activities"][0]["samples"]
+        matching_sample = next(
+            sample for sample in activity_samples if sample["id"] == later_sample_id
         )
+        assert {
+            observation["id"] for observation in matching_sample["observations"]
+        } == {later_observation_id}
     finally:
         with session_ctx() as session:
             later_observation = session.get(Observation, later_observation_id)

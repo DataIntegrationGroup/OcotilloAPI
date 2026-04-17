@@ -141,4 +141,18 @@ class SampleResponse(BaseResponseModel):
     depth_bottom: float | None
 
 
+class WellDetailsSampleResponse(BaseResponseModel):
+    field_event: FieldEventResponse
+    field_activity: FieldActivityResponse
+    contact: ContactResponse | None
+    sample_date: UTCAwareDatetime
+    sample_name: str
+    sample_matrix: SampleMatrix
+    sample_method: SampleMethod
+    qc_type: SampleQcType
+    notes: str | None
+    depth_top: float | None
+    depth_bottom: float | None
+
+
 # ============= EOF =============================================
