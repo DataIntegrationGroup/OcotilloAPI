@@ -1407,6 +1407,23 @@ class TestWellInventoryRowAliases:
         assert model.depth_to_water_ft == 11.2
         assert model.water_level_notes == "Initial reading"
 
+    def test_timezone_aware_datetimes_are_normalized_to_utc(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "date_time": "2025-02-15T10:30:00-07:00",
+                "water_level_date_time": "2025-02-15T11:45:00-07:00",
+                "depth_to_water_ft": 11.2,
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.date_time == datetime.fromisoformat("2025-02-15T17:30:00+00:00")
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T18:45:00+00:00"
+        )
+
     def test_blank_depth_to_water_is_treated_as_none(self):
         row = _minimal_valid_well_inventory_row()
         row.update(
