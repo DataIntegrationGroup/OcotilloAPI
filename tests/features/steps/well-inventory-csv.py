@@ -12,7 +12,6 @@ from db.lexicon import LexiconCategory
 from sqlalchemy import select
 from zoneinfo import ZoneInfo
 
-
 MOUNTAIN_TZ = ZoneInfo("America/Denver")
 
 
@@ -162,30 +161,30 @@ class _WellInventoryCliResponse:
         return self._json
 
 
-@then(u'all datetime objects are normalized to UTC')
+@then("all datetime objects are normalized to UTC")
 def step_all_normalized_to_utc(context):
     for dt in context.normalized_datetimes:
         assert dt.tzinfo == timezone.utc, f"Not UTC: {dt}"
 
 
-@then(u'timezone-naive datetimes are interpreted as Mountain Time before conversion')
+@then("timezone-naive datetimes are interpreted as Mountain Time before conversion")
 def step_naive_as_mountain(context):
     for original, normalized in context.datetime_pairs:
         if original.tzinfo is None:
             expected = original.replace(tzinfo=MOUNTAIN_TZ).astimezone(timezone.utc)
-            assert normalized == expected, (
-                f"Naive datetime not handled as Mountain Time: {original}"
-            )
+            assert (
+                normalized == expected
+            ), f"Naive datetime not handled as Mountain Time: {original}"
 
 
-@then(u'timezone-aware datetimes are converted to UTC using their provided offset')
+@then("timezone-aware datetimes are converted to UTC using their provided offset")
 def step_aware_to_utc(context):
     for original, normalized in context.datetime_pairs:
         if original.tzinfo is not None:
             expected = original.astimezone(timezone.utc)
-            assert normalized == expected, (
-                f"Aware datetime not converted correctly: {original}"
-            )
+            assert (
+                normalized == expected
+            ), f"Aware datetime not converted correctly: {original}"
 
 
 @then("the response includes a summary containing:")
