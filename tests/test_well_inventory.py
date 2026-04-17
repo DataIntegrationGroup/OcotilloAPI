@@ -655,7 +655,10 @@ def test_conflicting_mp_heights_raises_error(tmp_path):
 
 
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
-    """Blank depth-to-water is treated as missing while preserving the attempted measurement."""
+    """
+    Blank depth-to-water is treated as missing while preserving the attempted measurement.
+    Naive CSV datetimes are interpreted as America/Denver local time and stored as UTC.
+    """
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
@@ -677,16 +680,16 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
     result = well_inventory_csv(file_path)
     assert result.exit_code == 0, result.stderr
 
+    expected_utc = datetime.fromisoformat("2025-02-15T17:30:00+00:00")
+
     with session_ctx() as session:
         samples = session.query(Sample).all()
         observations = session.query(Observation).all()
 
         assert len(samples) == 1
         assert len(observations) == 1
-        assert samples[0].sample_date == datetime.fromisoformat("2025-02-15T10:30:00Z")
-        assert observations[0].observation_datetime == datetime.fromisoformat(
-            "2025-02-15T10:30:00Z"
-        )
+        assert samples[0].sample_date == expected_utc
+        assert observations[0].observation_datetime == expected_utc
         assert observations[0].value is None
         assert observations[0].measuring_point_height == 3.5
 
@@ -1398,11 +1401,28 @@ class TestWellInventoryRowAliases:
 
         assert model.sampler == "Tech 1"
         assert model.measurement_date_time == datetime.fromisoformat(
-            "2025-02-15T10:30:00"
+            "2025-02-15T17:30:00+00:00"
         )
         assert model.mp_height == 2.5
         assert model.depth_to_water_ft == 11.2
         assert model.water_level_notes == "Initial reading"
+
+    def test_timezone_aware_datetimes_are_normalized_to_utc(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "date_time": "2025-02-15T10:30:00-07:00",
+                "water_level_date_time": "2025-02-15T11:45:00-07:00",
+                "depth_to_water_ft": 11.2,
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.date_time == datetime.fromisoformat("2025-02-15T17:30:00+00:00")
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T18:45:00+00:00"
+        )
 
     def test_blank_depth_to_water_is_treated_as_none(self):
         row = _minimal_valid_well_inventory_row()
@@ -1416,7 +1436,7 @@ class TestWellInventoryRowAliases:
         model = WellInventoryRow(**row)
 
         assert model.measurement_date_time == datetime.fromisoformat(
-            "2025-02-15T10:30:00"
+            "2025-02-15T17:30:00+00:00"
         )
         assert model.depth_to_water_ft is None
 

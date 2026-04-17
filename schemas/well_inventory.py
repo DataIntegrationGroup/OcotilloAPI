@@ -48,7 +48,7 @@ from pydantic import (
     AliasChoices,
 )
 from schemas import past_or_today_validator, PastOrTodayDatetime
-from services.util import convert_dt_tz_naive_to_tz_aware
+from services.util import normalize_datetime_to_utc
 
 
 def empty_str_to_none(v):
@@ -361,20 +361,19 @@ class WellInventoryRow(BaseModel):
 
         return data
 
-    @field_validator("date_time", mode="before")
-    def make_date_time_tz_aware(cls, v):
-        if isinstance(v, str):
-            dt = datetime.fromisoformat(v)
-        elif isinstance(v, datetime):
-            dt = v
-        else:
-            raise ValueError("date_time must be a datetime or ISO format string")
+    @field_validator("date_time", mode="after")
+    @classmethod
+    def normalize_date_time(cls, value: datetime | None) -> datetime | None:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return None
+        return normalize_datetime_to_utc(value)
 
-        if dt.tzinfo is None:
-            aware_dt = convert_dt_tz_naive_to_tz_aware(dt, "America/Denver")
-            return aware_dt
-        else:
-            raise ValueError("date_time must be a timezone-naive datetime")
+    @field_validator("measurement_date_time", mode="after")
+    @classmethod
+    def normalize_measurement_date_time(cls, value: datetime | None) -> datetime | None:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return None
+        return normalize_datetime_to_utc(value)
 
     @model_validator(mode="after")
     def validate_model(self):

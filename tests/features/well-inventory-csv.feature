@@ -140,8 +140,10 @@ Feature: Bulk upload well inventory from CSV via CLI
       | depth_to_water_ft                 |
       | data_quality                      |
       | water_level_notes                 |
-    And the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
-    And the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided
+    And the required "date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware)
+      # e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00"
+    And the optional "water_level_date_time" values are valid ISO 8601 datetime strings (timezone-naive or timezone-aware) when provided
+      # e.g. "2025-02-15T10:30:00" or "2025-02-15T10:30:00-07:00 
 
 #    And all optional lexicon fields contain valid lexicon values when provided
 #    And all optional numeric fields contain valid numeric values when provided
@@ -149,7 +151,9 @@ Feature: Bulk upload well inventory from CSV via CLI
 
     When I run the well inventory bulk upload command
     # assumes users are entering datetimes as Mountain Time because location is restricted to New Mexico
-    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value.
+    Then all datetime objects are normalized to UTC
+    And timezone-naive datetimes are interpreted as Mountain Time before conversion
+    And timezone-aware datetimes are converted to UTC using their provided offset
     And the command exits with code 0
 #    And null values in the response are represented as JSON null
     And the response includes a summary containing:

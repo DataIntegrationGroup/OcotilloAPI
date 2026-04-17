@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -62,6 +62,26 @@ def transform_srid(geometry, source_srid, target_srid):
     else:
         transformer = TRANSFORMERS[transformer_key]
     return transform(transformer.transform, geometry)
+
+
+def normalize_datetime_to_utc(value: datetime | str) -> datetime:
+    dt: datetime
+
+    if isinstance(value, str):
+        dt = datetime.fromisoformat(value)
+    elif isinstance(value, datetime):
+        dt = value
+    else:
+        raise ValueError("value must be a datetime or ISO format string")
+
+    # Treat the datetime as "naive" if it has no tzinfo OR its tzinfo does not
+    # provide a valid UTC offset (utcoffset() returns None). Some tzinfo
+    # implementations can be attached but still behave like naive datetimes,
+    # so we handle both cases before assigning a default timezone.
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        dt = convert_dt_tz_naive_to_tz_aware(dt, "America/Denver")
+
+    return dt.astimezone(timezone.utc)
 
 
 def convert_dt_tz_naive_to_tz_aware(
@@ -156,7 +176,7 @@ def get_county_from_point(lon: float, lat: float) -> str | None:
         return attrs["BASENAME"]
 
 
-def get_quad_name_from_point(lon: float, lat: float) -> str:
+def get_quad_name_from_point(lon: float, lat: float) -> str | None:
     url = "https://carto.nationalmap.gov/arcgis/rest/services/map_indices/MapServer/10/query"
     params = {
         "f": "json",
