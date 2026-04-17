@@ -51,30 +51,40 @@ resource "google_compute_instance" "geoserver" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup-geoserver.sh.tpl", {
-    domain_name                = var.domain_name
-    geoserver_data_bucket      = var.geoserver_data_bucket
-    geoserver_data_mount_point = var.geoserver_data_mount_point
-    geoserver_data_only_dir    = var.geoserver_data_only_dir
-    geoserver_data_read_only   = var.geoserver_data_read_only
-    geoserver_image            = var.geoserver_image
+    domain_name                   = var.domain_name
+    geoserver_data_bucket         = var.geoserver_data_bucket
+    geoserver_data_mount_point    = var.geoserver_data_mount_point
+    geoserver_data_only_dir       = var.geoserver_data_only_dir
+    geoserver_data_read_only      = var.geoserver_data_read_only
+    geoserver_image               = var.geoserver_image
+    surveys_bucket                = var.surveys_bucket
+    surveys_container_mount_point = var.surveys_container_mount_point
+    surveys_mount_point           = var.surveys_mount_point
+    surveys_only_dir              = var.surveys_only_dir
   })
 
   depends_on = [
     google_project_service.compute,
     google_project_service.storage,
     google_storage_bucket_iam_member.geoserver_data_viewer,
+    google_storage_bucket_iam_member.geoserver_surveys_viewer,
   ]
 }
 
 resource "google_compute_instance_group" "geoserver" {
-  name      = local.instance_group
-  zone      = var.zone
-  instances = [google_compute_instance.geoserver.self_link]
+  name = local.instance_group
+  zone = var.zone
 
   named_port {
     name = "http"
     port = 8080
   }
+}
+
+resource "google_compute_instance_group_membership" "geoserver" {
+  instance_group = google_compute_instance_group.geoserver.name
+  instance       = google_compute_instance.geoserver.self_link
+  zone           = var.zone
 }
 
 resource "google_project_service" "servicenetworking" {
@@ -93,6 +103,14 @@ resource "google_service_account" "geoserver_vm" {
 
 resource "google_storage_bucket_iam_member" "geoserver_data_viewer" {
   bucket     = var.geoserver_data_bucket
+  role       = "roles/storage.objectViewer"
+  member     = "serviceAccount:${google_service_account.geoserver_vm.email}"
+  depends_on = [google_project_service.storage]
+}
+
+resource "google_storage_bucket_iam_member" "geoserver_surveys_viewer" {
+  count      = var.surveys_bucket != "" ? 1 : 0
+  bucket     = var.surveys_bucket
   role       = "roles/storage.objectViewer"
   member     = "serviceAccount:${google_service_account.geoserver_vm.email}"
   depends_on = [google_project_service.storage]

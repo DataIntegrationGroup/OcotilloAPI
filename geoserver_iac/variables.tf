@@ -71,7 +71,31 @@ variable "geoserver_data_only_dir" {
 variable "geoserver_data_read_only" {
   type        = bool
   description = "Whether the GeoServer data bucket should be mounted read-only"
-  default     = true
+  default     = false
+}
+
+variable "surveys_bucket" {
+  type        = string
+  description = "Optional GCS bucket name containing survey assets GeoServer should read"
+  default     = ""
+}
+
+variable "surveys_mount_point" {
+  type        = string
+  description = "Host mount point for the surveys bucket"
+  default     = "/mnt/disks/geoserver-surveys"
+}
+
+variable "surveys_only_dir" {
+  type        = string
+  description = "Optional prefix within the surveys bucket to mount for GeoServer access"
+  default     = ""
+}
+
+variable "surveys_container_mount_point" {
+  type        = string
+  description = "Container path where the surveys bucket should be exposed to GeoServer"
+  default     = "/opt/geoserver_data/surveys"
 }
 
 variable "admin_ssh_cidr" {

@@ -7,10 +7,15 @@ BUCKET_NAME="${geoserver_data_bucket}"
 MOUNT_POINT="${geoserver_data_mount_point}"
 ONLY_DIR="${geoserver_data_only_dir}"
 READ_ONLY="${geoserver_data_read_only}"
+SURVEYS_BUCKET="${surveys_bucket}"
+SURVEYS_MOUNT_POINT="${surveys_mount_point}"
+SURVEYS_ONLY_DIR="${surveys_only_dir}"
+SURVEYS_CONTAINER_MOUNT_POINT="${surveys_container_mount_point}"
 MOUNT_MODE="rw"
 FSTAB_OPTIONS="_netdev,allow_other,implicit_dirs,x-systemd.requires=network-online.target"
 DOCKER_VOLUME_SUFFIX=""
 GEOSERVER_DATA_MOUNT_PRESENT="false"
+SURVEYS_MOUNT_PRESENT="false"
 
 wait_for_apt() {
   while fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
@@ -58,7 +63,30 @@ retry() {
   done
 }
 
-mkdir -p "$MOUNT_POINT"
+ensure_bucket_mount() {
+  local bucket_name="$1"
+  local mount_point="$2"
+  local only_dir="$3"
+  local read_only="$4"
+  local mount_mode="rw"
+  local fstab_options="_netdev,allow_other,implicit_dirs,x-systemd.requires=network-online.target"
+
+  mkdir -p "$mount_point"
+
+  if [ -n "$only_dir" ]; then
+    fstab_options="$${fstab_options},only_dir=$${only_dir}"
+  fi
+
+  if [ "$read_only" = "true" ]; then
+    mount_mode="ro"
+  fi
+
+  if ! grep -q "^[^#].*[[:space:]]$${mount_point}[[:space:]]gcsfuse[[:space:]]" /etc/fstab; then
+    echo "$${bucket_name} $${mount_point} gcsfuse $${mount_mode},$${fstab_options} 0 0" >> /etc/fstab
+  fi
+
+  mountpoint -q "$mount_point" || mount "$mount_point"
+}
 
 apt_retry apt-get update
 apt_retry apt-get install -y ca-certificates curl gnupg lsb-release docker.io fuse
@@ -80,23 +108,20 @@ if ! grep -q "^user_allow_other$" /etc/fuse.conf; then
   echo "user_allow_other" >> /etc/fuse.conf
 fi
 
-if [ -n "$ONLY_DIR" ]; then
-  FSTAB_OPTIONS="$${FSTAB_OPTIONS},only_dir=$${ONLY_DIR}"
-fi
-
 if [ "$READ_ONLY" = "true" ]; then
   MOUNT_MODE="ro"
   DOCKER_VOLUME_SUFFIX=":ro"
 fi
 
-if ! grep -q "^$${BUCKET_NAME}[[:space:]]" /etc/fstab; then
-  echo "$${BUCKET_NAME} $${MOUNT_POINT} gcsfuse $${MOUNT_MODE},$${FSTAB_OPTIONS} 0 0" >> /etc/fstab
-fi
-
-mountpoint -q "$MOUNT_POINT" || mount "$MOUNT_POINT"
+ensure_bucket_mount "$BUCKET_NAME" "$MOUNT_POINT" "$ONLY_DIR" "$READ_ONLY"
 
 if [ -f "$MOUNT_POINT/global.xml" ]; then
   GEOSERVER_DATA_MOUNT_PRESENT="true"
+fi
+
+if [ -n "$SURVEYS_BUCKET" ]; then
+  ensure_bucket_mount "$SURVEYS_BUCKET" "$SURVEYS_MOUNT_POINT" "$SURVEYS_ONLY_DIR" "true"
+  SURVEYS_MOUNT_PRESENT="true"
 fi
 
 docker rm -f geoserver || true
@@ -113,6 +138,10 @@ docker_args=(
 
 if [ "$GEOSERVER_DATA_MOUNT_PRESENT" = "true" ]; then
   docker_args+=(-v "$${MOUNT_POINT}:/opt/geoserver_data$${DOCKER_VOLUME_SUFFIX}")
+fi
+
+if [ "$SURVEYS_MOUNT_PRESENT" = "true" ]; then
+  docker_args+=(-v "$${SURVEYS_MOUNT_POINT}:$${SURVEYS_CONTAINER_MOUNT_POINT}:ro")
 fi
 
 docker run "$${docker_args[@]}" ${geoserver_image}

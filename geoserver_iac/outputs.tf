@@ -13,3 +13,11 @@ output "geoserver_data_bucket" {
 output "geoserver_data_mount_prefix" {
   value = var.geoserver_data_only_dir
 }
+
+output "surveys_bucket" {
+  value = var.surveys_bucket
+}
+
+output "surveys_mount_prefix" {
+  value = var.surveys_only_dir
+}
