@@ -366,11 +366,11 @@ class WellInventoryRow(BaseModel):
     def normalize_date_time(cls, value: datetime | None) -> datetime | None:
         if value is None:
             return None
-        normalize_datetime_to_utc(value)
+        return normalize_datetime_to_utc(value)
 
     @field_validator("measurement_date_time", mode="after")
     @classmethod
-    def normalize_measurement_date_time(cls, v):
+    def normalize_measurement_date_time(cls, v) -> datetime | None:
         if v is None or (isinstance(v, str) and v.strip() == ""):
             return None
         return normalize_datetime_to_utc(v)

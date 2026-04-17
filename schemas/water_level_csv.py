@@ -156,7 +156,7 @@ class WaterLevelCsvRow(BaseModel):
 
     @field_validator("sample_method")
     @classmethod
-    def normalize_sample_method(cls, value: str) -> str:
+    def normalize_sample_method(cls, value: str) -> str | None:
         return _canonicalize_enum_value(
             cls.canonicalize_sample_method(value),
             SampleMethod,
@@ -169,7 +169,11 @@ class WaterLevelCsvRow(BaseModel):
         mode="after",
     )
     @classmethod
-    def normalize_datetime_field(cls, value: datetime | str) -> datetime:
+    def normalize_datetime_field(
+        cls, value: datetime | None
+    ) -> datetime | None:
+        if value is None:
+            return None
         return normalize_datetime_to_utc(value)
 
     @field_validator("depth_to_water_ft")
