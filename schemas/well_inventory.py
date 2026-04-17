@@ -364,16 +364,16 @@ class WellInventoryRow(BaseModel):
     @field_validator("date_time", mode="after")
     @classmethod
     def normalize_date_time(cls, value: datetime | None) -> datetime | None:
-        if value is None:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
             return None
         return normalize_datetime_to_utc(value)
 
     @field_validator("measurement_date_time", mode="after")
     @classmethod
-    def normalize_measurement_date_time(cls, v) -> datetime | None:
-        if v is None or (isinstance(v, str) and v.strip() == ""):
+    def normalize_measurement_date_time(cls, value: datetime | None) -> datetime | None:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
             return None
-        return normalize_datetime_to_utc(v)
+        return normalize_datetime_to_utc(value)
 
     @model_validator(mode="after")
     def validate_model(self):
