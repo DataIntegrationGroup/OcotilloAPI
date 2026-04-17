@@ -716,8 +716,10 @@ def test_get_water_well_details_payload_uses_latest_observation_sample(
         data = response.json()
         activity_samples = data["field_events"][0]["field_activities"][0]["samples"]
         matching_sample = next(
-            sample for sample in activity_samples if sample["id"] == later_sample_id
+            (sample for sample in activity_samples if sample["id"] == later_sample_id),
+            None,
         )
+        assert matching_sample is not None, "Expected later sample in field event"
         assert {
             observation["id"] for observation in matching_sample["observations"]
         } == {later_observation_id}
@@ -729,6 +731,41 @@ def test_get_water_well_details_payload_uses_latest_observation_sample(
             later_sample = session.get(Sample, later_sample_id)
             if later_sample is not None:
                 session.delete(later_sample)
+            session.commit()
+
+
+def test_get_water_well_details_payload_limits_field_events(
+    water_well_thing,
+    field_event,
+):
+    from db import FieldEvent
+
+    with session_ctx() as session:
+        later_field_event = FieldEvent(
+            thing_id=water_well_thing.id,
+            event_date="2025-01-02T00:00:00Z",
+            notes="later field event",
+            release_status="draft",
+        )
+        session.add(later_field_event)
+        session.commit()
+        session.refresh(later_field_event)
+        later_field_event_id = later_field_event.id
+
+    try:
+        response = client.get(
+            f"/thing/water-well/{water_well_thing.id}/details?field_event_limit=1"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["field_events"]) == 1
+        assert data["field_events"][0]["id"] == later_field_event_id
+    finally:
+        with session_ctx() as session:
+            later_field_event = session.get(FieldEvent, later_field_event_id)
+            if later_field_event is not None:
+                session.delete(later_field_event)
             session.commit()
 
 

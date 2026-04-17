@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.enums import ActivityType, SampleMatrix, SampleMethod, SampleQcType
 from schemas import BaseResponseModel, UTCAwareDatetime
 from schemas.contact import ContactResponse
 from schemas.deployment import DeploymentResponse
@@ -13,9 +14,9 @@ class WellDetailsFieldEventSampleResponse(BaseResponseModel):
     contact: ContactResponse | None = None
     sample_date: UTCAwareDatetime
     sample_name: str
-    sample_matrix: str
-    sample_method: str
-    qc_type: str
+    sample_matrix: SampleMatrix
+    sample_method: SampleMethod
+    qc_type: SampleQcType
     notes: str | None = None
     depth_top: float | None = None
     depth_bottom: float | None = None
@@ -24,7 +25,7 @@ class WellDetailsFieldEventSampleResponse(BaseResponseModel):
 
 class WellDetailsFieldActivityResponse(BaseResponseModel):
     field_event_id: int
-    activity_type: str
+    activity_type: ActivityType
     notes: str | None = None
     samples: list[WellDetailsFieldEventSampleResponse] = Field(default_factory=list)
 

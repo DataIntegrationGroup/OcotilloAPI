@@ -60,6 +60,7 @@ def get_well_details_payload(
     session: Session,
     request,
     thing_id: int,
+    field_event_limit: int = 25,
 ):
     with _payload_stage_timer("well_details", "payload_total", thing_id):
         with _payload_stage_timer("well_details", "load_well", thing_id):
@@ -103,6 +104,10 @@ def get_well_details_payload(
             well_screens = session.scalars(
                 select(WellScreen)
                 .where(WellScreen.thing_id == well.id)
+                .options(
+                    selectinload(WellScreen.aquifer_system),
+                    selectinload(WellScreen.geologic_formation),
+                )
                 .order_by(WellScreen.screen_depth_top.asc(), WellScreen.id.asc())
             ).all()
 
@@ -124,6 +129,7 @@ def get_well_details_payload(
                     .selectinload(Observation.parameter),
                 )
                 .order_by(FieldEvent.event_date.desc(), FieldEvent.id.desc())
+                .limit(field_event_limit)
             ).all()
 
         return {
