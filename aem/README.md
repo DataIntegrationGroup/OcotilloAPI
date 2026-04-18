@@ -16,4 +16,4 @@ that work:
 - `services/aem_ingest.py`
 - `services/aem_batch.py`
 - `services/aem_parsers/`
-- `cli/aem.py`
+- `cli/aem_ingest.py`

@@ -24,7 +24,7 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
-from cli.aem import app as aem_ingest_app
+from cli.aem_ingest import app as aem_ingest_app
 
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
 load_dotenv(override=False)

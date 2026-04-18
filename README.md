@@ -244,7 +244,7 @@ app/
 │   ├── aem_batch.py        # Batch AEM ingest
 │   └── aem_parsers/        # AEM source-format parsers
 ├── cli/                    # CLI command groups
-│   └── aem.py              # `oco aem-ingest` commands
+│   └── aem_ingest.py       # `oco aem-ingest` commands
 ├── tests/                  # Code tests
 └── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
 ```
@@ -329,7 +329,7 @@ package.
 - `services/aem_ingest.py`: single-file ingest orchestration
 - `services/aem_batch.py`: batch ingest from the mapping CSV
 - `services/aem_parsers/`: format detection and parser implementations
-- `cli/aem.py`: `oco aem-ingest` commands
+- `cli/aem_ingest.py`: `oco aem-ingest` commands
 
 This is currently ingest-only. It does not yet add API routes, admin screens,
 or OGC surfaces for AEM.

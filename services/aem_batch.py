@@ -342,22 +342,20 @@ def _dry_run(
     gcs_bucket: str,
 ) -> list[dict]:
     """Show what would be ingested without running anything."""
-    print("=" * 70)
-    print("DRY RUN — nothing will be ingested")
-    print("=" * 70)
-    print()
+    logger.info("=" * 70)
+    logger.info("DRY RUN — nothing will be ingested")
+    logger.info("=" * 70)
 
-    print(f"Files to ingest: {len(ingest_df)}")
-    print(f"Total size: {ingest_df['size_bytes'].sum() / 1e6:.1f} MB")
+    logger.info("Files to ingest: %d", len(ingest_df))
+    logger.info("Total size: %.1f MB", ingest_df["size_bytes"].sum() / 1e6)
     if db_conn_string:
-        print(f"Database: {db_conn_string[:40]}...")
+        logger.info("Database: %s...", db_conn_string[:40])
     else:
-        print("Database: shared app engine (.env-driven)")
-    print(f"GCS bucket: {gcs_bucket}")
-    print()
+        logger.info("Database: shared app engine (.env-driven)")
+    logger.info("GCS bucket: %s", gcs_bucket)
 
     # By survey
-    print("By survey:")
+    logger.info("By survey:")
     for survey_id, group in ingest_df.groupby("survey_id"):
         raw_count = len(
             full_df[
@@ -366,14 +364,16 @@ def _dry_run(
                 & (full_df["action"] == "MOVE")
             ]
         )
-        print(
-            f"  {survey_id}: {len(group)} inversion files, {raw_count} raw files for manifest"
+        logger.info(
+            "  %s: %d inversion files, %d raw files for manifest",
+            survey_id,
+            len(group),
+            raw_count,
         )
-    print()
 
     # File-by-file preview
-    print("Files that would be ingested:")
-    print("-" * 70)
+    logger.info("Files that would be ingested:")
+    logger.info("-" * 70)
     for idx, (_, row) in enumerate(ingest_df.iterrows()):
         detected_type = row["detected_type"]
         survey_id = row["survey_id"]
@@ -386,30 +386,37 @@ def _dry_run(
 
         system_str = f" system={system}" if system else ""
 
-        print(
-            f"  [{idx + 1:2d}] {row['file_name']}\n"
-            f"       survey={survey_id}  stage={row['processing_stage']}\n"
-            f"       code={prov['inversion_code']}  contractor={prov['contractor']}{system_str}\n"
-            f"       source: {row['source_path'][:80]}...\n"
-            f"       →  gcs: {row['proposed_gcs_path']}\n"
-            f"       size: {row['size_human']}"
+        logger.info(
+            "  [%2d] %s\n"
+            "       survey=%s  stage=%s\n"
+            "       code=%s  contractor=%s%s\n"
+            "       source: %s...\n"
+            "       →  gcs: %s\n"
+            "       size: %s",
+            idx + 1,
+            row["file_name"],
+            survey_id,
+            row["processing_stage"],
+            prov["inversion_code"],
+            prov["contractor"],
+            system_str,
+            row["source_path"][:80],
+            row["proposed_gcs_path"],
+            row["size_human"],
         )
-        print()
 
     # Warnings
     norm = ingest_df[ingest_df["normalization_needed"] == "Y"]
     if len(norm) > 0:
-        print(f"NOTE: {len(norm)} files have normalization_needed=Y")
-        print("  These will be ingested as-is. Normalization (wellid prefix)")
-        print("  is handled by the parser, not the migration script.")
-        print()
+        logger.warning("NOTE: %d files have normalization_needed=Y", len(norm))
+        logger.warning("  These will be ingested as-is. Normalization (wellid prefix)")
+        logger.warning("  is handled by the parser, not the migration script.")
 
     # Check for files not yet in GCS
-    print("PRE-FLIGHT CHECK:")
-    print("  Make sure aem_migrate.py has been run first —")
-    print("  the ingest pipeline reads from local paths but records")
-    print("  the GCS path as source_file provenance in PostGIS.")
-    print()
+    logger.warning("PRE-FLIGHT CHECK:")
+    logger.warning("  Make sure aem_migrate.py has been run first —")
+    logger.warning("  the ingest pipeline reads from local paths but records")
+    logger.warning("  the GCS path as source_file provenance in PostGIS.")
 
     return []
 
