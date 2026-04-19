@@ -41,7 +41,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
 
-
 # ---------------------------------------------------------------------------
 # aem_soundings — one row per layer per sounding
 # ---------------------------------------------------------------------------
