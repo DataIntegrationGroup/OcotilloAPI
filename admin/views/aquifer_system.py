@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-AquiferSystemAdmin view for NMSampleLocations.
+AquiferSystemAdmin view for OcotilloAPI.
 """
 
 from admin.fields import WKTField

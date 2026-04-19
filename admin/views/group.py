@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-GroupAdmin view for NMSampleLocations.
+GroupAdmin view for OcotilloAPI.
 """
 
 from admin.fields import WKTField

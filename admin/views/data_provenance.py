@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-DataProvenanceAdmin view for NMSampleLocations.
+DataProvenanceAdmin view for OcotilloAPI.
 """
 
 from admin.views.base import OcotilloModelView

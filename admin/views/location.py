@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-LocationAdmin view for NMSampleLocations.
+LocationAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Location model.
 """

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-Lexicon admin views for NMSampleLocations.
+Lexicon admin views for OcotilloAPI.
 """
 
 from admin.views.base import OcotilloModelView

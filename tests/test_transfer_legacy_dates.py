@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for AMPAPI date field population during AMPAPI → NMSampleLocations migration.
+Unit tests for AMPAPI date field population during AMPAPI → OcotilloAPI migration.
 
 These tests verify that:
 1. Location.nma_date_created is populated from CSV DateCreated (read-only post-migration)
@@ -22,16 +22,15 @@ These tests verify that:
 """
 
 import datetime
-from unittest.mock import patch
-
 import numpy as np
 import pandas as pd
 import pytest
-
 from db import Sample
-from transfers.well_transfer import _normalize_completion_date
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
+from transfers.well_transfer import _normalize_completion_date
+from unittest.mock import patch
+
 
 # ============================================================================
 # FIXTURES

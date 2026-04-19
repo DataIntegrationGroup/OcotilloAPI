@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-DeploymentAdmin view for NMSampleLocations.
+DeploymentAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Deployment model.
 """

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-AssetAdmin view for NMSampleLocations.
+AssetAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Asset model.
 """

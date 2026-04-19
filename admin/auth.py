@@ -17,26 +17,22 @@
 Admin authentication provider integrating with existing Authentik OIDC auth.
 
 This module provides a Starlette Admin AuthProvider that integrates with the
-existing Authentik-based authentication system used by the NMSampleLocations API.
+existing Authentik-based authentication system used by the OcotilloAPI API.
 """
 
+import base64
+import hashlib
 import os
 import secrets
-from typing import Optional
-from urllib.parse import urlencode
-
-import hashlib
-import base64
-
+from core.permissions import _get_token_payload, verify_token
 from dataclasses import dataclass
-from typing import List
-
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette_admin.auth import AdminUser, AuthProvider
 from starlette_admin.exceptions import LoginFailed
-
-from core.permissions import _get_token_payload, verify_token
+from typing import List
+from typing import Optional
+from urllib.parse import urlencode
 
 
 @dataclass

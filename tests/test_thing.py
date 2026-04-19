@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import date, timezone
-
 import pytest
-from sqlalchemy import delete
-
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -26,6 +22,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from datetime import date, timezone
 from db import MeasuringPointHistory, StatusHistory, Thing, ThingIdLink, WellScreen
 from db.engine import session_ctx
 from main import app
@@ -33,6 +30,7 @@ from schemas import DT_FMT
 from schemas.location import LocationResponse
 from schemas.thing import UpdateWell, ValidateWell
 from services.water_level_csv import bulk_upload_water_levels
+from sqlalchemy import delete
 from tests import (
     client,
     override_authentication,
@@ -820,10 +818,12 @@ def test_get_water_well_details_payload_includes_imported_water_level_staff(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["latest_field_event_sample"]["contact"]["name"] == "A Lopez"
+    activity_samples = data["field_events"][0]["field_activities"][0]["samples"]
+    assert len(activity_samples) == 1
+    assert activity_samples[0]["contact"]["name"] == "A Lopez"
     assert {
         participant["participant"]["name"]
-        for participant in data["field_event_participants"]
+        for participant in data["field_events"][0]["field_event_participants"]
     } == {"A Lopez", "B Chen"}
 
 
