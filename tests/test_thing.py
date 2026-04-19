@@ -32,6 +32,7 @@ from main import app
 from schemas import DT_FMT
 from schemas.location import LocationResponse
 from schemas.thing import UpdateWell, ValidateWell
+from services.water_level_csv import bulk_upload_water_levels
 from tests import (
     client,
     override_authentication,
@@ -767,6 +768,63 @@ def test_get_water_well_details_payload_limits_field_events(
             if later_field_event is not None:
                 session.delete(later_field_event)
             session.commit()
+            
+            
+def test_get_water_well_details_payload_includes_imported_water_level_staff(
+    water_well_thing,
+):
+    """Imported water-level rows should expose measuring staff via structured detail payload fields."""
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "field_staff_2",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "B Chen",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Imported measurement",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+
+    # `/details` is the primary frontend payload for latest water-level staff.
+    response = client.get(f"/thing/water-well/{water_well_thing.id}/details")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["latest_field_event_sample"]["contact"]["name"] == "A Lopez"
+    assert {
+        participant["participant"]["name"]
+        for participant in data["field_event_participants"]
+    } == {"A Lopez", "B Chen"}
 
 
 def test_get_water_well_details_payload_404_not_found():
