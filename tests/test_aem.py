@@ -1,25 +1,25 @@
 # flake8: noqa: E501
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
+import csv
+import datetime
 import pandas as pd
-from sqlalchemy import inspect
-from typer.testing import CliRunner
-
 from cli.cli import cli
 from db.engine import engine
 from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SourceFormat
 from services import aem_ingest as aem_ingest_service
+from services import aem_stac as aem_stac_service
 from services.aem_batch import run_batch
-from services.aem_oseo import load_oseo_config
 from services.aem_parsers import (
     detect_format,
     parse_agf_lci,
     parse_bylayer,
     parse_seogi_rho,
 )
+from sqlalchemy import inspect
+from typer.testing import CliRunner
 
 
 def test_aem_top_level_imports_and_tables_exist():
@@ -154,7 +154,19 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
         "write_raw_manifest",
         lambda *args, **kwargs: "surveys/test/metadata/raw_files.json",
     )
-    monkeypatch.setattr(aem_ingest_service, "load_oseo_config", lambda: None)
+    monkeypatch.setattr(
+        aem_ingest_service.aem_stac,
+        "write_stac_payloads",
+        lambda collection, items, config, gcs_client, ensure_prefix_readmes: {
+            "collection_gcs_path": "surveys/test/metadata/stac/collection.json",
+            "items_gcs_path": "surveys/test/metadata/stac/items.ndjson",
+        },
+    )
+    monkeypatch.setattr(
+        aem_ingest_service.aem_stac,
+        "load_stac_to_pgstac",
+        lambda collection, items: None,
+    )
 
     class FakeStorageClient:
         pass
@@ -182,8 +194,11 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
         "source_gcs_path": "surveys/gila_animas_2025/aem/inversion/preliminary/rho_GL250193_F02.csv",
         "parquet_gcs_path": "surveys/test/aem/file.parquet",
         "raw_manifest_gcs_path": "surveys/test/metadata/raw_files.json",
+        "stac_collection_id": "aem-gila_animas_2025",
+        "stac_item_count": 1,
+        "stac_collection_gcs_path": "surveys/test/metadata/stac/collection.json",
+        "stac_items_gcs_path": "surveys/test/metadata/stac/items.ndjson",
         "rows_loaded": 1,
-        "oseo": None,
     }
     assert called["parse"] == 1
     assert called["load"] == 1
@@ -232,16 +247,113 @@ def test_run_batch_dry_run_without_db_conn(tmp_path: Path):
     assert result == []
 
 
-def test_load_oseo_config_defaults_to_stac_schema(monkeypatch):
-    monkeypatch.setenv("GEOSERVER_URL", "https://example.com/geoserver")
-    monkeypatch.setenv("GEOSERVER_USERNAME", "admin")
-    monkeypatch.setenv("GEOSERVER_PASSWORD", "secret")
-    monkeypatch.delenv("GEOSERVER_OSEO_SCHEMA", raising=False)
+def test_build_stac_payloads_are_deterministic():
+    df = pd.DataFrame(
+        [
+            {
+                "line_id": "L2",
+                "record_id": "R2",
+                "easting": 500100,
+                "northing": 3800100,
+                "source_epsg": 32613,
+                "date_acquired": datetime.date(2025, 3, 2),
+            },
+            {
+                "line_id": "L1",
+                "record_id": "R1",
+                "easting": 500000,
+                "northing": 3800000,
+                "source_epsg": 32613,
+                "date_acquired": datetime.date(2025, 3, 1),
+            },
+        ]
+    )
+    config = IngestConfig(
+        filepath="/tmp/input.csv",
+        survey_id="gila_animas_2025",
+        processing_stage=ProcessingStage.PRELIMINARY,
+        inversion_code=InversionCode.SEOGI_PYTHON,
+        contractor="GeoTech/Seogi",
+        gcs_bucket="example-bucket",
+        source_gcs_path="surveys/gila_animas_2025/source.csv",
+    )
 
-    config = load_oseo_config()
+    collection = aem_stac_service.build_stac_collection(
+        df=df,
+        config=config,
+        parquet_gcs_path="surveys/gila_animas_2025/out.parquet",
+        raw_manifest_gcs_path="surveys/gila_animas_2025/raw_files.json",
+    )
+    items = aem_stac_service.build_stac_items(
+        df=df,
+        config=config,
+        parquet_gcs_path="surveys/gila_animas_2025/out.parquet",
+        raw_manifest_gcs_path="surveys/gila_animas_2025/raw_files.json",
+    )
 
-    assert config is not None
-    assert config.schema == "stac"
+    assert collection["id"] == "aem-gila_animas_2025"
+    assert collection["extent"]["temporal"]["interval"] == [
+        [
+            "2025-03-01T00:00:00Z",
+            "2025-03-02T00:00:00Z",
+        ]
+    ]
+    assert (
+        collection["assets"]["parquet"]["href"]
+        == "gs://example-bucket/surveys/gila_animas_2025/out.parquet"
+    )
+    assert [item["id"] for item in items] == [
+        "aem-gila_animas_2025-preliminary_inversion-L1-R1",
+        "aem-gila_animas_2025-preliminary_inversion-L2-R2",
+    ]
+    assert items[0]["properties"]["datetime"] == "2025-03-01T00:00:00Z"
+    assert items[1]["properties"]["datetime"] == "2025-03-02T00:00:00Z"
+
+
+def test_load_stac_to_pgstac_uses_upsert(monkeypatch):
+    calls = []
+
+    class FakeMethods:
+        upsert = "upsert"
+
+    class FakeDB:
+        def __init__(self, dsn):
+            self.dsn = dsn
+
+        def disconnect(self):
+            calls.append(("disconnect", self.dsn))
+
+    class FakeLoader:
+        def __init__(self, db):
+            self.db = db
+
+        def load_collections(self, file, insert_mode):
+            calls.append(("collections", list(file), insert_mode))
+
+        def load_items(self, file, insert_mode, chunksize):
+            calls.append(("items", list(file), insert_mode, chunksize))
+
+    monkeypatch.setattr(
+        aem_stac_service,
+        "_import_pypgstac",
+        lambda: (FakeDB, FakeLoader, FakeMethods),
+    )
+    monkeypatch.setattr(
+        aem_stac_service,
+        "_build_pgstac_dsn",
+        lambda: "postgresql://example",
+    )
+
+    collection = {"id": "aem-gila_animas_2025"}
+    items = [{"id": "item-1", "collection": "aem-gila_animas_2025"}]
+
+    aem_stac_service.load_stac_to_pgstac(collection, items)
+
+    assert calls == [
+        ("collections", [collection], "upsert"),
+        ("items", items, "upsert", 1000),
+        ("disconnect", "postgresql://example"),
+    ]
 
 
 def test_ensure_prefix_readmes_creates_all_parent_directory_readmes():

@@ -10,7 +10,8 @@ General patterns:
 
 AEM service modules:
 - `aem_ingest.py`: single-file ingest orchestration
-  Also contains the PostGIS bulk-load, Parquet/raw-manifest, and STAC export helpers.
+  Also contains the PostGIS bulk-load and Parquet/raw-manifest helpers.
+- `aem_stac.py`: STAC document builders, payload writers, and `pypgstac` load helpers
 - `aem_batch.py`: batch ingest from the mapping CSV
 - `aem_db.py`: DB access helpers for AEM ingest
 - `aem_provenance.py`: provenance and raw-file helper logic

@@ -1,0 +1,12 @@
+project_id                  = "your-gcp-project"
+region                      = "us-central1"
+service_name                = "stac-api"
+service_account_name        = "stac-api"
+image                       = "ghcr.io/stac-utils/stac-fastapi-pgstac:latest"
+cloud_sql_connection_name   = "your-gcp-project:us-central1:your-postgres-instance"
+postgres_database           = "postgres"
+postgres_user_secret_id     = "stac-postgres-user"
+postgres_password_secret_id = "stac-postgres-password"
+min_instance_count          = 0
+max_instance_count          = 10
+allow_unauthenticated       = true

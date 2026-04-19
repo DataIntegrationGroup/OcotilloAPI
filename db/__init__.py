@@ -1,4 +1,6 @@
 # ===============================================================================
+# flake8: noqa: F401,F403,F405,E501
+
 # Copyright 2025 ross
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +17,6 @@
 # ===============================================================================
 
 # import all models from db package so that Alembic can discover them
-
-from sqlalchemy import (
-    desc,
-    cast,
-)
-from sqlalchemy.dialects.postgresql import REGCONFIG
-from sqlalchemy.orm import configure_mappers
-from sqlalchemy_searchable import (
-    inspect_search_vectors,
-    search_manager,
-)
 
 from db.aem import *
 from db.analysis_method import *
@@ -50,7 +41,6 @@ from db.measuring_point_history import *
 from db.nma_legacy import *
 from db.notes import *
 from db.observation import *
-from db.opensearch import *
 from db.parameter import *
 from db.permission_history import *
 from db.publication import *
@@ -62,6 +52,16 @@ from db.thing import *
 from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
 from db.transducer import *
+from sqlalchemy import (
+    desc,
+    cast,
+)
+from sqlalchemy.dialects.postgresql import REGCONFIG
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy_searchable import (
+    inspect_search_vectors,
+    search_manager,
+)
 
 configure_mappers()
 

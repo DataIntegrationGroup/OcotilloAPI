@@ -21,24 +21,21 @@ Ensures Alembic can build the schema from scratch and reaches head.
 
 from pathlib import Path
 
+import db  # noqa: F401  # Register models for metadata.
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import inspect, text
-from sqlalchemy_searchable import sync_trigger
-from sqlalchemy_utils import TSVectorType
-
 from core.initializers import init_lexicon, init_parameter
 from db.base import Base
-import db  # noqa: F401  # Register models for metadata.
 from db.engine import session_ctx
+from db.initialization import recreate_public_schema
+from sqlalchemy import inspect
+from sqlalchemy_searchable import sync_trigger
+from sqlalchemy_utils import TSVectorType
 
 
 def _reset_schema() -> None:
     with session_ctx() as session:
-        session.execute(text("DROP SCHEMA public CASCADE"))
-        session.execute(text("CREATE SCHEMA public"))
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        session.commit()
+        recreate_public_schema(session)
 
 
 def _alembic_config() -> Config:
@@ -76,7 +73,8 @@ def test_migrations_upgrade_to_head():
         missing_tables = expected_tables - table_names
         assert not missing_tables, f"Missing tables: {sorted(missing_tables)}"
 
-        columns = {col["name"]: col for col in inspector.get_columns("location")}
+        location_cols = inspector.get_columns("location")
+        columns = {col["name"]: col for col in location_cols}
         assert "description" in columns
         assert columns["description"]["nullable"] is True
 

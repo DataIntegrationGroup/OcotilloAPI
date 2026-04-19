@@ -1,4 +1,6 @@
 # ===============================================================================
+# flake8: noqa: E501
+
 # Copyright 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,14 +31,12 @@ Related: GitHub Issue #356
 """
 
 import os
-
 import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, text
-
 from db.engine import engine, session_ctx
+from sqlalchemy import inspect, text
 
 
 def _alembic_config() -> Config:
@@ -226,14 +226,18 @@ class TestSchemaAfterMigration:
     def test_water_elevation_materialized_view_has_expected_columns(self):
         """Water elevation materialized view should match the feet-normalized schema."""
         with session_ctx() as session:
-            result = session.execute(text("""
+            result = session.execute(
+                text(
+                    """
                     SELECT attname
                     FROM pg_attribute
                     WHERE attrelid = 'ogc_water_elevation_wells'::regclass
                       AND attnum > 0
                       AND NOT attisdropped
                     ORDER BY attnum
-                    """))
+                    """
+                )
+            )
             columns = [row[0] for row in result.fetchall()]
 
         assert columns == [

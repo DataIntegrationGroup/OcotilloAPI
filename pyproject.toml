@@ -24,7 +24,6 @@ dependencies = [
   "certifi==2025.8.3",
   "cffi==2.0.0",
   "charset-normalizer==3.4.6",
-  "click==8.3.1",
   "cloud-sql-python-connector==1.20.1",
   "cryptography==46.0.7",
   "dnspython==2.8.0",
@@ -34,7 +33,6 @@ dependencies = [
   "fastapi-pagination==0.15.12",
   "frozenlist==1.8.0",
   "geoalchemy2==0.18.4",
-  "geoserver-rest==2.10.0",
   "geopandas>=0.14",
   "google-api-core==2.30.0",
   "google-auth==2.49.1",
@@ -63,8 +61,6 @@ dependencies = [
   "phonenumbers==9.0.26",
   "pillow==12.2.0",
   "pluggy==1.6.0",
-  "pre-commit==4.5.1",
-  "pyarrow>=14.0",
   "propcache==0.4.1",
   "proto-plus==1.27.2",
   "protobuf==6.33.5",
@@ -97,7 +93,6 @@ dependencies = [
   "sqlalchemy-utils==0.42.1",
   "starlette==0.52.1",
   "starlette-admin[i18n]==0.16.0",
-  "typer==0.24.1",
   "typing-extensions==4.15.0",
   "typing-inspection==0.4.2",
   "tzdata==2025.3",
@@ -105,6 +100,14 @@ dependencies = [
   "utm==0.8.1",
   "uvicorn==0.42.0",
   "yarl==1.23.0",
+]
+
+[project.optional-dependencies]
+cli = [
+  "click==8.3.1",
+  "pypgstac[psycopg]>=0.9.11",
+  "pyarrow>=14.0",
+  "typer==0.24.1",
 ]
 
 [tool.uv]
@@ -139,6 +142,7 @@ dev = [
   "black>=25.9.0",
   "faker>=25.0.0",
   "flake8>=7.3.0",
+  "pre-commit==4.5.1",
   "pyhamcrest>=2.0.3",
   "pytest>=9.0.3",
   "python-dotenv>=1.1.1",

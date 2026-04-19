@@ -1,13 +1,11 @@
 import copy
 import logging
 import os
-from logging.config import fileConfig
-
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, engine_from_config, pool, text
-
+from logging.config import fileConfig
 from services.env import get_bool_env
+from sqlalchemy import create_engine, engine_from_config, pool, text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -76,7 +74,7 @@ def build_database_url():
     database_name = os.environ.get("POSTGRES_DB", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", 5432)
-    prefix = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/"
+    prefix = f"postgresql+pg8000://{user}:{password}@{host}:{port}/"
     return prefix + database_name
 
 
@@ -204,7 +202,7 @@ def run_migrations_online() -> None:
         autocommit_grants = grant_connection.execution_options(
             isolation_level="AUTOCOMMIT"
         )
-        for schema_name in ("public", "stac"):
+        for schema_name in ("public",):
             schema_exists = autocommit_grants.execute(
                 text(
                     "SELECT 1 FROM information_schema.schemata "

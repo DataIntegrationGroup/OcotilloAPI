@@ -33,6 +33,10 @@ application as the primary API. The service is intended to scale to zero
 outside business hours and be kept warm during the workday with Cloud Scheduler
 hits to `/_ah/warmup`.
 
+STAC is no longer served from this application. A dedicated STAC service owns
+the STAC API and `pgstac`; OcotilloAPI builds STAC Collection/Item payloads for
+AEM ingest jobs and loads them into `pgstac` with `pypgstac`.
+
 ### Landing & metadata
 
 ```bash
@@ -126,6 +130,13 @@ uv sync --locked
 </td>
 </tr>
 </table>
+
+For CLI environments that need AEM STAC loading via `pypgstac`, install the
+CLI extra:
+
+```bash
+uv sync --locked --extra cli
+```
 
 
 #### 3. Setup pre-commit hookes

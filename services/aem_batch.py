@@ -10,7 +10,7 @@ for each file, and calls run_ingest() with the correct parameters.
 Run sequence:
   1. aem_migrate.py  — copies all files from shared drive to GCS
   2. aem_batch.py    — reads same CSV, ingests inversion files into PostGIS
-  3. PostGIS + Parquet + ingest metadata are populated and GeoServer-ready
+  3. PostGIS + Parquet + STAC payloads are populated and loaded into pgstac
 
 Usage:
   # See what would be ingested without touching anything
@@ -30,10 +30,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import pandas as pd
 import sys
 import time
-
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 

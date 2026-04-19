@@ -7,11 +7,9 @@ of truth for where every file lives in GCS. This pipeline does NOT decide
 GCS paths — it receives the mapper's proposed_gcs_path via
 config.source_gcs_path and records it in the PostGIS source_file column.
 
-GeoServer OpenSearch for EO is expected to read authoritative AEM metadata
-directly from PostGIS. The OSEO tables live in the migrated `stac` schema.
-This pipeline configures GeoServer against that schema and upserts
-collections/products through the OSEO admin REST API when GeoServer
-credentials are configured.
+This service no longer owns any STAC API, OSEO, or GeoServer integration.
+Instead, it builds deterministic STAC Collection and Item payloads, writes
+those payloads to GCS for replay, and loads them into pgstac via pypgstac.
 
 Steps per file:
   1. Validate config (Pydantic, including mapper-provided source_gcs_path)
@@ -20,8 +18,8 @@ Steps per file:
   4. Load into PostGIS (aem_soundings + aem_sounding_metadata)
   5. Write Parquet to GCS
   6. Write raw file manifest to GCS
-  7. Configure GeoServer stores against the migrated stac schema
-  8. Upsert OSEO collection/product metadata
+  7. Write STAC payload artifacts for replay
+  8. Load the payloads into pgstac with pypgstac
   9. Return ingest result metadata for operational logging
 """
 
@@ -31,21 +29,15 @@ import io
 import json
 import logging
 import os
-import tempfile
-from datetime import datetime, timezone
-
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import tempfile
+from datetime import datetime, timezone
 from google.cloud import storage
-
 from schemas.aem import IngestConfig, REQUIRED_COLUMNS, SourceFormat
+from services import aem_stac
 from services.aem_db import get_raw_connection
-from services.aem_oseo import (
-    ingest_oseo_metadata,
-    load_oseo_config,
-    provision_oseo_services,
-)
 from services.aem_parsers import (
     detect_format,
     parse_agf_lci,
@@ -188,7 +180,8 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -205,7 +198,8 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -219,7 +213,8 @@ def load_to_postgis(
         cur.execute(copy_sql, stream=buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -227,7 +222,8 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), 4326)
             FROM _ingest_staging;
-        """)
+        """
+        )
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
@@ -389,8 +385,7 @@ def write_raw_manifest(
 
     The manifest lists every raw acquisition file for this survey so
     researchers can find and download raw data for re-inversion without
-    needing to know the GCS folder structure.  Referenced by the
-    GeoServer/OpenSearch metadata can reference this manifest as needed.
+    needing to know the GCS folder structure.
 
     Args:
         survey_id: e.g. 'gila_animas_2025'
@@ -503,24 +498,33 @@ def run_ingest(
     )
     logger.info("Step 5 — Raw manifest written: %s", raw_manifest_gcs_path)
 
-    oseo_result = None
-    oseo_config = load_oseo_config()
-    if oseo_config is None:
-        logger.warning(
-            "Step 6 — OSEO publish skipped: missing GeoServer environment config"
-        )
-    else:
-        provision_oseo_services(oseo_config)
-        oseo_result = ingest_oseo_metadata(
-            df,
-            config,
-            oseo_config,
-        )
-        logger.info(
-            "Step 6 — OSEO metadata upserted: collection=%s product=%s",
-            oseo_result["collection_id"],
-            oseo_result["product_id"],
-        )
+    stac_collection = aem_stac.build_stac_collection(
+        df=df,
+        config=config,
+        parquet_gcs_path=parquet_gcs_path,
+        raw_manifest_gcs_path=raw_manifest_gcs_path,
+    )
+    stac_items = aem_stac.build_stac_items(
+        df=df,
+        config=config,
+        parquet_gcs_path=parquet_gcs_path,
+        raw_manifest_gcs_path=raw_manifest_gcs_path,
+    )
+    stac_payload_paths = aem_stac.write_stac_payloads(
+        stac_collection,
+        stac_items,
+        config,
+        gcs_client,
+        ensure_prefix_readmes=ensure_prefix_readmes,
+    )
+    logger.info(
+        "Step 6 — STAC payloads written: %s, %s",
+        stac_payload_paths["collection_gcs_path"],
+        stac_payload_paths["items_gcs_path"],
+    )
+
+    aem_stac.load_stac_to_pgstac(stac_collection, stac_items)
+    logger.info("Step 7 — pgstac upsert complete: %d items", len(stac_items))
 
     result = {
         "survey_id": config.survey_id,
@@ -529,11 +533,14 @@ def run_ingest(
         "source_gcs_path": config.source_gcs_path,
         "parquet_gcs_path": parquet_gcs_path,
         "raw_manifest_gcs_path": raw_manifest_gcs_path,
+        "stac_collection_id": stac_collection["id"],
+        "stac_item_count": len(stac_items),
+        "stac_collection_gcs_path": stac_payload_paths["collection_gcs_path"],
+        "stac_items_gcs_path": stac_payload_paths["items_gcs_path"],
         "rows_loaded": n_rows,
-        "oseo": oseo_result,
     }
     logger.info(
-        "Step 7 — Ingest result prepared: survey=%s stage=%s rows=%d",
+        "Step 8 — Ingest result prepared: survey=%s stage=%s rows=%d",
         result["survey_id"],
         result["processing_stage"],
         result["rows_loaded"],

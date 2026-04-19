@@ -1,5 +1,8 @@
 # ADR3: Migrating OGC Delivery From Mounted pygeoapi to GeoServer
 
+> Superseded in part on April 19, 2026. OcotilloAPI continues to serve `/ogcapi`
+> via mounted `pygeoapi`, while STAC moves to a dedicated service outside this repo.
+
 ## Status
 
 Proposed
