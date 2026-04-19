@@ -768,8 +768,8 @@ def test_get_water_well_details_payload_limits_field_events(
             if later_field_event is not None:
                 session.delete(later_field_event)
             session.commit()
-            
-            
+
+
 def test_get_water_well_details_payload_includes_imported_water_level_staff(
     water_well_thing,
 ):
