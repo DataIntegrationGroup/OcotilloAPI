@@ -32,13 +32,13 @@ else:
 # from myapp import mymodel
 
 # from db import Base  # Import your Base from models/__init__.py
-from db import Base
-from db.initialization import grant_app_read_members
+from db import Base  # noqa: E402
+from db.initialization import grant_app_read_members  # noqa: E402
 
 # Import AEM models so Alembic autogenerate discovers them.
 # These models share the same Base (db.base.Base), so their tables are
 # included in target_metadata automatically.
-import db.aem  # noqa: F401
+import db.aem  # noqa: E402,F401
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
@@ -73,10 +73,11 @@ def build_database_url():
     # Default/Postgres
     user = os.environ.get("POSTGRES_USER", "")
     password = os.environ.get("POSTGRES_PASSWORD", "")
-    db = os.environ.get("POSTGRES_DB", "")
+    database_name = os.environ.get("POSTGRES_DB", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", 5432)
-    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+    prefix = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/"
+    return prefix + database_name
 
 
 url = build_database_url()
@@ -84,7 +85,8 @@ config.set_main_option("sqlalchemy.url", url)
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    # only include tables in sql alchemy model, not auto-generated tables from PostGIS or TIGER
+    # only include tables in sql alchemy model, not auto-generated
+    # tables from PostGIS or TIGER
     # Handle None names for unnamed constraints
     if name is None:
         return True
@@ -195,20 +197,38 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
-    alembic_logger.info("Alembic migrations completed; applying app_read grants")
+    alembic_logger.info(  # noqa: E501
+        "Alembic migrations completed; applying app_read grants"
+    )
     with connectable.connect() as grant_connection:
         autocommit_grants = grant_connection.execution_options(
             isolation_level="AUTOCOMMIT"
         )
-        autocommit_grants.execute(
-            text("GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read")
-        )
-        autocommit_grants.execute(
-            text(
-                "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-                "GRANT SELECT ON TABLES TO app_read"
+        for schema_name in ("public", "stac"):
+            schema_exists = autocommit_grants.execute(
+                text(
+                    "SELECT 1 FROM information_schema.schemata "
+                    "WHERE schema_name = :schema_name"
+                ),
+                {"schema_name": schema_name},
+            ).first()
+            if not schema_exists:
+                continue
+            autocommit_grants.execute(
+                text(f'GRANT USAGE ON SCHEMA "{schema_name}" TO app_read')
             )
-        )
+            autocommit_grants.execute(
+                text(
+                    f'GRANT SELECT ON ALL TABLES IN SCHEMA "{schema_name}" '
+                    "TO app_read"
+                )
+            )
+            autocommit_grants.execute(
+                text(
+                    f'ALTER DEFAULT PRIVILEGES IN SCHEMA "{schema_name}" '
+                    "GRANT SELECT ON TABLES TO app_read"
+                )
+            )
     alembic_logger.info("Applied app_read grants")
 
 

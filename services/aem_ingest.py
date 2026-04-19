@@ -8,8 +8,10 @@ GCS paths — it receives the mapper's proposed_gcs_path via
 config.source_gcs_path and records it in the PostGIS source_file column.
 
 GeoServer OpenSearch for EO is expected to read authoritative AEM metadata
-directly from PostGIS. This pipeline therefore does not build or publish
-standalone STAC stub files.
+directly from PostGIS. The OSEO tables live in the migrated `stac` schema.
+This pipeline configures GeoServer against that schema and upserts
+collections/products through the OSEO admin REST API when GeoServer
+credentials are configured.
 
 Steps per file:
   1. Validate config (Pydantic, including mapper-provided source_gcs_path)
@@ -18,7 +20,9 @@ Steps per file:
   4. Load into PostGIS (aem_soundings + aem_sounding_metadata)
   5. Write Parquet to GCS
   6. Write raw file manifest to GCS
-  7. Return ingest result metadata for operational logging
+  7. Configure GeoServer stores against the migrated stac schema
+  8. Upsert OSEO collection/product metadata
+  9. Return ingest result metadata for operational logging
 """
 
 from __future__ import annotations
@@ -37,6 +41,11 @@ from google.cloud import storage
 
 from schemas.aem import IngestConfig, REQUIRED_COLUMNS, SourceFormat
 from services.aem_db import get_raw_connection
+from services.aem_oseo import (
+    ingest_oseo_metadata,
+    load_oseo_config,
+    provision_oseo_services,
+)
 from services.aem_parsers import (
     detect_format,
     parse_agf_lci,
@@ -179,7 +188,8 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -196,7 +206,8 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -210,7 +221,8 @@ def load_to_postgis(
         cur.execute(copy_sql, stream=buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -218,7 +230,8 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), 4326)
             FROM _ingest_staging;
-        """)
+        """
+        )
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
@@ -494,6 +507,25 @@ def run_ingest(
     )
     logger.info("Step 5 — Raw manifest written: %s", raw_manifest_gcs_path)
 
+    oseo_result = None
+    oseo_config = load_oseo_config()
+    if oseo_config is None:
+        logger.warning(
+            "Step 6 — OSEO publish skipped: missing GeoServer environment config"
+        )
+    else:
+        provision_oseo_services(oseo_config)
+        oseo_result = ingest_oseo_metadata(
+            df,
+            config,
+            oseo_config,
+        )
+        logger.info(
+            "Step 6 — OSEO metadata upserted: collection=%s product=%s",
+            oseo_result["collection_id"],
+            oseo_result["product_id"],
+        )
+
     result = {
         "survey_id": config.survey_id,
         "processing_stage": config.processing_stage.value,
@@ -502,9 +534,10 @@ def run_ingest(
         "parquet_gcs_path": parquet_gcs_path,
         "raw_manifest_gcs_path": raw_manifest_gcs_path,
         "rows_loaded": n_rows,
+        "oseo": oseo_result,
     }
     logger.info(
-        "Step 6 — Ingest result prepared: survey=%s stage=%s rows=%d",
+        "Step 7 — Ingest result prepared: survey=%s stage=%s rows=%d",
         result["survey_id"],
         result["processing_stage"],
         result["rows_loaded"],

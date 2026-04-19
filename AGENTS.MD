@@ -32,6 +32,11 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
 - After code cleanup, run `black` on the touched Python files and run `flake8` on the touched Python files before wrapping up.
 - Run targeted validation for the modified area after cleanup; use broader validation when the change affects shared boot, deploy, or database paths.
 
+## 5. Prefer maintained library clients over hand-built REST wrappers
+- When integrating with an external system, first check whether the project already depends on a maintained client library that covers the needed API surface.
+- If a suitable library exists, prefer using it instead of hand-building REST helper functions with raw `requests` calls.
+- Fall back to direct REST calls only for API gaps the library does not support cleanly, and keep that custom surface as small as possible.
+
 Following this playbook keeps ETL runs measured in seconds/minutes instead of hours. EOF
 
 ## Activate python venv

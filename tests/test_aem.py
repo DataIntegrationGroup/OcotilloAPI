@@ -13,6 +13,7 @@ from db.engine import engine
 from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SourceFormat
 from services import aem_ingest as aem_ingest_service
 from services.aem_batch import run_batch
+from services.aem_oseo import load_oseo_config
 from services.aem_parsers import (
     detect_format,
     parse_agf_lci,
@@ -153,6 +154,7 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
         "write_raw_manifest",
         lambda *args, **kwargs: "surveys/test/metadata/raw_files.json",
     )
+    monkeypatch.setattr(aem_ingest_service, "load_oseo_config", lambda: None)
 
     class FakeStorageClient:
         pass
@@ -181,6 +183,7 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
         "parquet_gcs_path": "surveys/test/aem/file.parquet",
         "raw_manifest_gcs_path": "surveys/test/metadata/raw_files.json",
         "rows_loaded": 1,
+        "oseo": None,
     }
     assert called["parse"] == 1
     assert called["load"] == 1
@@ -227,6 +230,18 @@ def test_run_batch_dry_run_without_db_conn(tmp_path: Path):
     )
 
     assert result == []
+
+
+def test_load_oseo_config_defaults_to_stac_schema(monkeypatch):
+    monkeypatch.setenv("GEOSERVER_URL", "https://example.com/geoserver")
+    monkeypatch.setenv("GEOSERVER_USERNAME", "admin")
+    monkeypatch.setenv("GEOSERVER_PASSWORD", "secret")
+    monkeypatch.delenv("GEOSERVER_OSEO_SCHEMA", raising=False)
+
+    config = load_oseo_config()
+
+    assert config is not None
+    assert config.schema == "stac"
 
 
 def test_ensure_prefix_readmes_creates_all_parent_directory_readmes():

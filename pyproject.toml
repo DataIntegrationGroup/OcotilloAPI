@@ -34,6 +34,7 @@ dependencies = [
   "fastapi-pagination==0.15.12",
   "frozenlist==1.8.0",
   "geoalchemy2==0.18.4",
+  "geoserver-rest==2.10.0",
   "geopandas>=0.14",
   "google-api-core==2.30.0",
   "google-auth==2.49.1",

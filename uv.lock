@@ -933,6 +933,20 @@ wheels = [
 ]
 
 [[package]]
+name = "geoserver-rest"
+version = "2.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pygments" },
+    { name = "requests" },
+    { name = "xmltodict" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/87/62c102526ad5da885cc466d18e67637c26987f485bd12343bc6fa891ab09/geoserver_rest-2.10.0.tar.gz", hash = "sha256:117f582fbdb1e7f4babb87a5f186c5fa38c906809e41dab6030aa655178f3c5f", size = 34771, upload-time = "2025-08-13T22:37:39.738Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/74/664bdaf5e48451eb4ce28e4e610fb4bce47e738313ae7ab04a0d6a54ff70/geoserver_rest-2.10.0-py3-none-any.whl", hash = "sha256:025ccd63e1e9beba6fec4f3bf587593607c9ec68c5cffbd56a0e9bde9018b31a", size = 25020, upload-time = "2025-08-13T22:37:38.807Z" },
+]
+
+[[package]]
 name = "google-api-core"
 version = "2.30.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1490,6 +1504,7 @@ dependencies = [
     { name = "frozenlist" },
     { name = "geoalchemy2" },
     { name = "geopandas" },
+    { name = "geoserver-rest" },
     { name = "google-api-core" },
     { name = "google-auth" },
     { name = "google-cloud-core" },
@@ -1605,6 +1620,7 @@ requires-dist = [
     { name = "frozenlist", specifier = "==1.8.0" },
     { name = "geoalchemy2", specifier = "==0.18.4" },
     { name = "geopandas", specifier = ">=0.14" },
+    { name = "geoserver-rest", specifier = "==2.10.0" },
     { name = "google-api-core", specifier = "==2.30.0" },
     { name = "google-auth", specifier = "==2.49.1" },
     { name = "google-cloud-core", specifier = "==2.5.0" },
@@ -3076,6 +3092,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/61/f1/ee81806690a87dab5f5653c1f146c92bc066d7f4cebc603ef88eb9e13957/werkzeug-3.1.6.tar.gz", hash = "sha256:210c6bede5a420a913956b4791a7f4d6843a43b6fcee4dfa08a65e93007d0d25", size = 864736, upload-time = "2026-02-19T15:17:18.884Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/ec/d58832f89ede95652fd01f4f24236af7d32b70cab2196dfcc2d2fd13c5c2/werkzeug-3.1.6-py3-none-any.whl", hash = "sha256:7ddf3357bb9564e407607f988f683d72038551200c704012bb9a4c523d42f131", size = 225166, upload-time = "2026-02-19T15:17:17.475Z" },
+]
+
+[[package]]
+name = "xmltodict"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/70/80f3b7c10d2630aa66414bf23d210386700aa390547278c789afa994fd7e/xmltodict-1.0.4.tar.gz", hash = "sha256:6d94c9f834dd9e44514162799d344d815a3a4faec913717a9ecbfa5be1bb8e61", size = 26124, upload-time = "2026-02-22T02:21:22.074Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/34/98a2f52245f4d47be93b580dae5f9861ef58977d73a79eb47c58f1ad1f3a/xmltodict-1.0.4-py3-none-any.whl", hash = "sha256:a4a00d300b0e1c59fc2bfccb53d7b2e88c32f200df138a0dd2229f842497026a", size = 13580, upload-time = "2026-02-22T02:21:21.039Z" },
 ]
 
 [[package]]
