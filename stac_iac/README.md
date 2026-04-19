@@ -4,6 +4,7 @@ Terraform for the dedicated STAC API stack.
 
 This directory owns:
 - Cloud Run deployment for `stac-fastapi-pgstac`
+- Cloud Run Job for `pgstac` bootstrap and upgrades
 - service account and IAM bindings
 - Secret Manager wiring for database credentials
 - Cloud SQL connectivity to the existing PostGIS instance
@@ -25,6 +26,7 @@ This directory does not manage GeoServer.
 - `main.tf`: Cloud Run, service account, IAM, and service wiring
 - `outputs.tf`: useful deployment outputs
 - `terraform.tfvars.example`: example variable values
+- `RUNBOOK.md`: step-by-step setup and deployment instructions
 
 ## Notes
 

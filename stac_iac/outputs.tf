@@ -7,3 +7,8 @@ output "service_account_email" {
   description = "Service account used by Cloud Run"
   value       = google_service_account.stac_api.email
 }
+
+output "bootstrap_job_name" {
+  description = "Cloud Run Job used to initialize or upgrade pgstac"
+  value       = google_cloud_run_v2_job.pgstac_bootstrap.name
+}

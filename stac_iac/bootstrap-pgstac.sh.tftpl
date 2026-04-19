@@ -1,0 +1,36 @@
+set -eu
+
+echo "Bootstrapping pgstac in database: ${postgres_database}"
+
+psql -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+psql -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS btree_gist;"
+
+pypgstac migrate
+
+psql -v ON_ERROR_STOP=1 -c \
+  "ALTER DATABASE \"${postgres_database}\" SET search_path TO pgstac, public;"
+
+psql \
+  -v ON_ERROR_STOP=1 \
+  -v runtime_user="$RUNTIME_PGUSER" \
+  -v runtime_password="$RUNTIME_PGPASSWORD" \
+  <<'SQL'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'runtime_user') THEN
+        EXECUTE format(
+            'CREATE ROLE %I LOGIN PASSWORD %L',
+            :'runtime_user',
+            :'runtime_password'
+        );
+    END IF;
+END $$;
+SQL
+
+psql -v ON_ERROR_STOP=1 -v runtime_user="$RUNTIME_PGUSER" -c \
+  "GRANT pgstac_read TO \"$RUNTIME_PGUSER\";"
+
+psql -v ON_ERROR_STOP=1 -v runtime_user="$RUNTIME_PGUSER" -c \
+  "ALTER ROLE \"$RUNTIME_PGUSER\" SET search_path TO pgstac, public;"
+
+echo "pgstac bootstrap completed successfully."

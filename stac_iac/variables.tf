@@ -46,6 +46,29 @@ variable "postgres_password_secret_id" {
   type        = string
 }
 
+variable "bootstrap_job_name" {
+  description = "Cloud Run Job name for pgstac bootstrap"
+  type        = string
+  default     = "stac-bootstrap"
+}
+
+variable "bootstrap_image" {
+  description = "Container image with psql and pypgstac for pgstac bootstrap"
+  type        = string
+}
+
+variable "bootstrap_postgres_user_secret_id" {
+  description = "Optional Secret Manager secret id for the bootstrap database user"
+  type        = string
+  default     = null
+}
+
+variable "bootstrap_postgres_password_secret_id" {
+  description = "Optional Secret Manager secret id for the bootstrap database password"
+  type        = string
+  default     = null
+}
+
 variable "container_port" {
   description = "Container listen port"
   type        = number
