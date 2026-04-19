@@ -15,7 +15,7 @@ import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -86,10 +86,6 @@ class IngestConfig(BaseModel):
     processing_stage: ProcessingStage
     inversion_code: InversionCode
     contractor: str = Field(description="e.g. 'GeoTech/Seogi', 'GIP/Aarhus'")
-    db_conn_string: Optional[str] = Field(
-        default=None,
-        description="Optional PostgreSQL connection string override",
-    )
     gcs_bucket: str = Field(description="GCS bucket name")
 
     # GCS path for the source file — provided by the mapper (aem_gcs_mapper.py),
@@ -348,3 +344,40 @@ def validate_dataframe(df, source_label: str = "unknown") -> list[str]:
             warnings.append(msg)
 
     return warnings
+
+
+def validate_dataframe_sample(
+    df,
+    source_label: str = "unknown",
+    sample_size: int = 5,
+) -> None:
+    """Run a cheap row-model smoke check against a deterministic sample.
+
+    This catches parser-shape regressions that column-level checks can miss
+    without paying the cost of validating million-row DataFrames end-to-end.
+    """
+    if df.empty:
+        return
+
+    sample_positions = {
+        0,
+        len(df) - 1,
+        len(df) // 2,
+    }
+
+    if len(df) > 3 and sample_size > 3:
+        max_extra = min(sample_size - 3, len(df) - 3)
+        stride = max(1, len(df) // (max_extra + 1))
+        for idx in range(stride, len(df) - 1, stride):
+            sample_positions.add(idx)
+            if len(sample_positions) >= sample_size:
+                break
+
+    for idx in sorted(sample_positions):
+        payload = df.iloc[idx].where(df.iloc[idx].notna(), None).to_dict()
+        try:
+            SoundingRow.model_validate(payload)
+        except ValidationError as exc:
+            raise ValueError(
+                f"[{source_label}] sampled row validation failed at row {idx}: {exc}"
+            ) from exc

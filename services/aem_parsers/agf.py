@@ -23,7 +23,7 @@ import re
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe
+from schemas.aem import validate_dataframe, validate_dataframe_sample
 from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
 
 logger = logging.getLogger(__name__)
@@ -141,6 +141,7 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
     long_df["_system"] = system
 
     validate_dataframe(long_df, filepath)
+    validate_dataframe_sample(long_df, filepath)
 
     logger.info(
         "AGF parsed: %d rows, %d unique soundings",

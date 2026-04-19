@@ -18,7 +18,7 @@ import logging
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe
+from schemas.aem import validate_dataframe, validate_dataframe_sample
 from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
 
 logger = logging.getLogger(__name__)
@@ -116,6 +116,7 @@ def parse_bylayer(filepath: str) -> pd.DataFrame:
     df = ensure_canonical_columns(df)
 
     validate_dataframe(df, filepath)
+    validate_dataframe_sample(df, filepath)
 
     logger.info(
         "byLayer parsed: %d rows, %d unique soundings",

@@ -219,7 +219,6 @@ def test_run_batch_dry_run_without_db_conn(tmp_path: Path):
 
     result = run_batch(
         mapping_path=str(mapping_path),
-        db_conn_string=None,
         gcs_bucket="example-bucket",
         dry_run=True,
     )

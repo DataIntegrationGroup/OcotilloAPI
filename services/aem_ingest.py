@@ -184,7 +184,7 @@ def load_to_postgis(
     if dropped > 0:
         logger.warning("Dropped %d rows with NULLs in required columns", dropped)
 
-    raw_conn = get_raw_connection(config.db_conn_string)
+    raw_conn = get_raw_connection()
     cur = raw_conn.cursor()
 
     try:
@@ -432,15 +432,13 @@ def write_raw_manifest(
 # ---------------------------------------------------------------------------
 
 
-def _query_postgis_stac_fields(
-    db_conn_string: str, survey_id: str, processing_stage: str
-) -> dict | None:
+def _query_postgis_stac_fields(survey_id: str, processing_stage: str) -> dict | None:
     """Run the three PostGIS queries that populate STAC bbox, geometry,
     and summary statistics.
 
     Returns a dict with all derived fields, or None if queries fail.
     """
-    raw_conn = get_raw_connection(db_conn_string)
+    raw_conn = get_raw_connection()
     cur = raw_conn.cursor()
 
     try:
@@ -633,9 +631,7 @@ def build_stac_stub(
             survey_metadata = meta.model_dump()
 
     # Query PostGIS for derived fields, fall back to DataFrame
-    derived = _query_postgis_stac_fields(
-        config.db_conn_string, survey_id, processing_stage
-    )
+    derived = _query_postgis_stac_fields(survey_id, processing_stage)
     if derived is None:
         derived = _derive_stac_fields_from_df(df)
 

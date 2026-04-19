@@ -85,12 +85,6 @@ def run(
     contractor: Annotated[
         str, typer.Option("--contractor", help="e.g. 'GeoTech/Seogi'")
     ],
-    db_conn: Annotated[
-        Optional[str],
-        typer.Option(
-            "--db-conn", help="Optional PostgreSQL connection string override"
-        ),
-    ] = None,
     gcs_bucket: Annotated[
         Optional[str], typer.Option("--gcs-bucket", help="GCS bucket name override")
     ] = None,
@@ -133,7 +127,6 @@ def run(
         processing_stage=ProcessingStage(stage),
         inversion_code=InversionCode(inversion_code),
         contractor=contractor,
-        db_conn_string=db_conn,
         gcs_bucket=_resolve_bucket(gcs_bucket),
         source_gcs_path=source_gcs_path,
         flight_id=flight_id,
@@ -228,12 +221,6 @@ def batch(
     mapping: Annotated[
         Path, typer.Option("--mapping", help="Path to gcs_path_mapping.csv")
     ],
-    db_conn: Annotated[
-        Optional[str],
-        typer.Option(
-            "--db-conn", help="Optional PostgreSQL connection string override"
-        ),
-    ] = None,
     bucket: Annotated[
         Optional[str], typer.Option("--bucket", help="GCS bucket name override")
     ] = None,
@@ -262,7 +249,6 @@ def batch(
     _setup_logging(verbose)
     stac_items = run_batch(
         mapping_path=str(mapping),
-        db_conn_string=db_conn,
         gcs_bucket=_resolve_bucket(bucket),
         root_override=root,
         dry_run=dry_run,

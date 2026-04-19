@@ -14,13 +14,13 @@ Run sequence:
 
 Usage:
   # See what would be ingested without touching anything
-  aem-batch --mapping gcs_path_mapping.csv --db-conn ... --bucket ... --dry-run
+  aem-batch --mapping gcs_path_mapping.csv --bucket ... --dry-run
 
   # Test with 2 files from one survey
-  aem-batch --mapping gcs_path_mapping.csv --db-conn ... --bucket ... --limit 2 --survey estancia_2025
+  aem-batch --mapping gcs_path_mapping.csv --bucket ... --limit 2 --survey estancia_2025
 
   # Full run — all ingestible files
-  aem-batch --mapping gcs_path_mapping.csv --db-conn ... --bucket ...
+  aem-batch --mapping gcs_path_mapping.csv --bucket ...
 
 Authors: Marissa (data curator), Jake (platform engineer)
 """
@@ -159,7 +159,6 @@ def build_raw_file_list(df: pd.DataFrame, survey_id: str) -> list[dict]:
 
 def run_batch(
     mapping_path: str,
-    db_conn_string: str | None,
     gcs_bucket: str,
     root_override: str | None = None,
     dry_run: bool = False,
@@ -171,7 +170,6 @@ def run_batch(
 
     Args:
         mapping_path: Path to gcs_path_mapping.csv
-        db_conn_string: PostgreSQL connection string
         gcs_bucket: GCS bucket name
         root_override: Override source_path root (for personal Drive copies)
         dry_run: Show what would happen without running anything
@@ -212,7 +210,7 @@ def run_batch(
 
     # ----- Dry run -----
     if dry_run:
-        return _dry_run(ingest_df, df, db_conn_string, gcs_bucket)
+        return _dry_run(ingest_df, df, gcs_bucket)
 
     # ----- Live run -----
     from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SkytemSystem
@@ -268,7 +266,6 @@ def run_batch(
                 processing_stage=ProcessingStage(row["processing_stage"]),
                 inversion_code=InversionCode(prov["inversion_code"]),
                 contractor=prov["contractor"],
-                db_conn_string=db_conn_string,
                 gcs_bucket=gcs_bucket,
                 source_gcs_path=row["proposed_gcs_path"],
                 flight_id=None,  # auto-extracted from filename by parser
@@ -338,7 +335,6 @@ def run_batch(
 def _dry_run(
     ingest_df: pd.DataFrame,
     full_df: pd.DataFrame,
-    db_conn_string: str | None,
     gcs_bucket: str,
 ) -> list[dict]:
     """Show what would be ingested without running anything."""
@@ -348,10 +344,7 @@ def _dry_run(
 
     logger.info("Files to ingest: %d", len(ingest_df))
     logger.info("Total size: %.1f MB", ingest_df["size_bytes"].sum() / 1e6)
-    if db_conn_string:
-        logger.info("Database: %s...", db_conn_string[:40])
-    else:
-        logger.info("Database: shared app engine (.env-driven)")
+    logger.info("Database: shared app engine (.env-driven)")
     logger.info("GCS bucket: %s", gcs_bucket)
 
     # By survey
@@ -439,11 +432,6 @@ def main():
         help="Path to gcs_path_mapping.csv",
     )
     parser.add_argument(
-        "--db-conn",
-        required=True,
-        help="PostgreSQL connection string",
-    )
-    parser.add_argument(
         "--bucket",
         required=True,
         help="GCS bucket name (e.g. nmbgmr-aem-data)",
@@ -492,7 +480,6 @@ def main():
 
     stac_items = run_batch(
         mapping_path=args.mapping,
-        db_conn_string=args.db_conn,
         gcs_bucket=args.bucket,
         root_override=args.root,
         dry_run=args.dry_run,

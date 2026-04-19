@@ -25,7 +25,7 @@ from typing import Optional
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe
+from schemas.aem import validate_dataframe, validate_dataframe_sample
 from services.aem_parsers.common import (
     ensure_canonical_columns,
     reproject_to_target,
@@ -131,6 +131,7 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
     long_df["_flight_id"] = flight_id
 
     validate_dataframe(long_df, filepath)
+    validate_dataframe_sample(long_df, filepath)
 
     logger.info(
         "Seogi parsed: %d rows, %d unique soundings",
