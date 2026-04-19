@@ -31,7 +31,6 @@ from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import _normalize_completion_date
 from unittest.mock import patch
 
-
 # ============================================================================
 # FIXTURES
 # ============================================================================
