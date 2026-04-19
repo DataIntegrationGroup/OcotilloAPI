@@ -8,13 +8,11 @@ the CRS logic doesn't get duplicated (or subtly diverge).
 
 from __future__ import annotations
 
-import logging
-
 import numpy as np
 import pandas as pd
-from pyproj import Transformer
 
-logger = logging.getLogger(__name__)
+from schemas.aem import validate_dataframe, validate_dataframe_sample
+from services.util import reproject_to_target
 
 # All surveys are delivered in UTM Zone 13N. GIP/SkyTEM and AGF deliver
 # NAD83 (EPSG:26913). GeoTech/Seogi delivers WGS84 UTM 13N (EPSG:32613).
@@ -54,31 +52,6 @@ CANONICAL_COLUMNS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Coordinate helpers
-# ---------------------------------------------------------------------------
-
-
-def reproject_to_target(df: pd.DataFrame, source_epsg: int) -> pd.DataFrame:
-    """Reproject easting/northing to TARGET_EPSG (26913) when needed.
-
-    Used for Format B (Seogi) where source is EPSG:32613 (WGS84 UTM 13N).
-    The difference between WGS84 and NAD83 is ~1 m — small but real.
-    We record the original CRS in source_epsg for provenance.
-    """
-    if source_epsg == TARGET_EPSG:
-        return df
-
-    to_target = Transformer.from_crs(
-        f"EPSG:{source_epsg}", f"EPSG:{TARGET_EPSG}", always_xy=True
-    )
-    new_e, new_n = to_target.transform(df["easting"].values, df["northing"].values)
-    df["easting"] = new_e
-    df["northing"] = new_n
-
-    return df
-
-
 def ensure_canonical_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Add any missing canonical columns as NaN/None.
 
@@ -90,4 +63,22 @@ def ensure_canonical_columns(df: pd.DataFrame) -> pd.DataFrame:
     for col in CANONICAL_COLUMNS:
         if col not in df.columns:
             df[col] = np.nan
+    return df
+
+
+def finalize_parsed_dataframe(
+    df: pd.DataFrame,
+    source_label: str,
+    source_epsg: int,
+) -> pd.DataFrame:
+    """Apply the shared post-parse normalization and smoke checks."""
+    df["line_id"] = df["line_id"].astype(str)
+    df["layer_no"] = df["layer_no"].astype("Int16")
+    df["source_epsg"] = source_epsg
+
+    df = reproject_to_target(df, source_epsg, TARGET_EPSG)
+    df = ensure_canonical_columns(df)
+
+    validate_dataframe(df, source_label)
+    validate_dataframe_sample(df, source_label)
     return df

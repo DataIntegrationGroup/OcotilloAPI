@@ -25,11 +25,7 @@ from typing import Optional
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe, validate_dataframe_sample
-from services.aem_parsers.common import (
-    ensure_canonical_columns,
-    reproject_to_target,
-)
+from services.aem_parsers.common import finalize_parsed_dataframe
 from services.aem_parsers.detect import extract_flight_id
 
 logger = logging.getLogger(__name__)
@@ -118,20 +114,10 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
         }
     )
 
-    long_df["line_id"] = long_df["line_id"].astype(str)
-    long_df["layer_no"] = long_df["layer_no"].astype("Int16")
-    long_df["source_epsg"] = 32613
-
-    long_df = reproject_to_target(long_df, source_epsg=32613)
-
-    # Ensure all canonical columns exist (Seogi has many NULLs)
-    long_df = ensure_canonical_columns(long_df)
+    long_df = finalize_parsed_dataframe(long_df, filepath, source_epsg=32613)
 
     # Store flight_id for metadata table
     long_df["_flight_id"] = flight_id
-
-    validate_dataframe(long_df, filepath)
-    validate_dataframe_sample(long_df, filepath)
 
     logger.info(
         "Seogi parsed: %d rows, %d unique soundings",

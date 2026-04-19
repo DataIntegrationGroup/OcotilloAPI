@@ -49,19 +49,40 @@ def _get_json(
 
 def transform_srid(geometry, source_srid, target_srid):
     """
-    geometry must be a shapely geometry object, like Point, Polygon, or MultiPolygon
+    geometry must be a shapely geometry object, like Point, Polygon,
+    or MultiPolygon
     """
+    transformer = _get_transformer(source_srid, target_srid)
+    return transform(transformer.transform, geometry)
+
+
+def _get_transformer(source_srid, target_srid):
     transformer_key = (source_srid, target_srid)
     if transformer_key not in TRANSFORMERS:
         source_crs = pyproj.CRS(f"EPSG:{source_srid}")
         target_crs = pyproj.CRS(f"EPSG:{target_srid}")
-        transformer = pyproj.Transformer.from_crs(
+        TRANSFORMERS[transformer_key] = pyproj.Transformer.from_crs(
             source_crs, target_crs, always_xy=True
         )
-        TRANSFORMERS[transformer_key] = transformer
-    else:
-        transformer = TRANSFORMERS[transformer_key]
-    return transform(transformer.transform, geometry)
+    return TRANSFORMERS[transformer_key]
+
+
+def reproject_to_target(
+    df,
+    source_srid: int,
+    target_srid: int,
+    x_col: str = "easting",
+    y_col: str = "northing",
+):
+    """Reproject coordinate columns in a DataFrame-like object in place."""
+    if source_srid == target_srid:
+        return df
+
+    transformer = _get_transformer(source_srid, target_srid)
+    new_x, new_y = transformer.transform(df[x_col].values, df[y_col].values)
+    df[x_col] = new_x
+    df[y_col] = new_y
+    return df
 
 
 def convert_dt_tz_naive_to_tz_aware(

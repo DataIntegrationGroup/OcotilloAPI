@@ -23,8 +23,7 @@ import re
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe, validate_dataframe_sample
-from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
+from services.aem_parsers.common import finalize_parsed_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -128,20 +127,10 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
         }
     )
 
-    long_df["line_id"] = long_df["line_id"].astype(str)
-    long_df["layer_no"] = long_df["layer_no"].astype("Int16")
-    long_df["source_epsg"] = 26913
-
-    long_df = reproject_to_target(long_df, source_epsg=26913)
-
-    # Ensure all canonical columns exist
-    long_df = ensure_canonical_columns(long_df)
+    long_df = finalize_parsed_dataframe(long_df, filepath, source_epsg=26913)
 
     # Store system tag for provenance
     long_df["_system"] = system
-
-    validate_dataframe(long_df, filepath)
-    validate_dataframe_sample(long_df, filepath)
 
     logger.info(
         "AGF parsed: %d rows, %d unique soundings",

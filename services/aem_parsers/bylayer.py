@@ -18,8 +18,7 @@ import logging
 
 import pandas as pd
 
-from schemas.aem import validate_dataframe, validate_dataframe_sample
-from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
+from services.aem_parsers.common import finalize_parsed_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -105,18 +104,7 @@ def parse_bylayer(filepath: str) -> pd.DataFrame:
     # record_id must be TEXT (not integer) — it will carry flight prefixes
     # in Format B, and we keep the type consistent across all formats.
     df["record_id"] = df["record_id"].astype(str)
-    df["line_id"] = df["line_id"].astype(str)
-    df["layer_no"] = df["layer_no"].astype("Int16")
-
-    df["source_epsg"] = 26913
-
-    df = reproject_to_target(df, source_epsg=26913)
-
-    # Ensure all canonical columns exist (fill missing with NaN)
-    df = ensure_canonical_columns(df)
-
-    validate_dataframe(df, filepath)
-    validate_dataframe_sample(df, filepath)
+    df = finalize_parsed_dataframe(df, filepath, source_epsg=26913)
 
     logger.info(
         "byLayer parsed: %d rows, %d unique soundings",
