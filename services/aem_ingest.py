@@ -31,6 +31,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from google.cloud import storage
+from pyproj import Transformer
 from shapely.geometry import MultiPoint, mapping
 
 from schemas.aem import IngestConfig, SourceFormat, SURVEY_METADATA
@@ -60,21 +61,17 @@ INSERT_COLUMNS = [
     "line_id",
     "record_id",
     "layer_no",
-    "easting_m",
-    "northing_m",
-    "longitude_dd",
-    "latitude_dd",
-    "elevation_m",
-    "sensor_alt_m",
-    "terrain_clear_m",
-    "depth_top_m",
-    "depth_bot_m",
-    "thickness_m",
-    "resistivity_ohmm",
+    "elevation",
+    "sensor_alt",
+    "terrain_clear",
+    "depth_top",
+    "depth_bot",
+    "thickness",
+    "resistivity",
     "resistivity_std",
-    "conductivity_sm",
-    "doi_conservative_m",
-    "doi_standard_m",
+    "conductivity",
+    "doi_conservative",
+    "doi_standard",
     "resdata",
     "restotal",
     "plni",
@@ -84,11 +81,11 @@ INSERT_COLUMNS = [
 REQUIRED_COLUMNS = [
     "line_id",
     "layer_no",
-    "easting_m",
-    "northing_m",
-    "depth_top_m",
-    "depth_bot_m",
-    "resistivity_ohmm",
+    "easting",
+    "northing",
+    "depth_top",
+    "depth_bot",
+    "resistivity",
 ]
 
 
@@ -148,7 +145,7 @@ def load_to_postgis(
 
     Uses a staging-table approach:
       1. COPY into a temp table via psycopg2's copy_expert (fast bulk load)
-      2. INSERT INTO aem_soundings with ST_Transform(ST_GeomFromEWKT(...))
+      2. INSERT INTO aem_soundings with ST_Transform(ST_GeomFromEWKT(...), 4326)
       3. Aggregate and upsert into aem_sounding_metadata
 
     The source_file column stores the mapper's GCS path (config.source_gcs_path).
@@ -174,9 +171,9 @@ def load_to_postgis(
         "SRID="
         + df["source_epsg"].astype(int).astype(str)
         + ";POINT("
-        + df["easting_m"].astype(str)
+        + df["easting"].astype(str)
         + " "
-        + df["northing_m"].astype(str)
+        + df["northing"].astype(str)
         + ")"
     )
 
@@ -191,25 +188,26 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
                 line_id TEXT, record_id TEXT, layer_no SMALLINT,
-                easting_m DOUBLE PRECISION, northing_m DOUBLE PRECISION,
-                longitude_dd DOUBLE PRECISION, latitude_dd DOUBLE PRECISION,
-                elevation_m DOUBLE PRECISION, sensor_alt_m DOUBLE PRECISION,
-                terrain_clear_m DOUBLE PRECISION,
-                depth_top_m DOUBLE PRECISION, depth_bot_m DOUBLE PRECISION,
-                thickness_m DOUBLE PRECISION,
-                resistivity_ohmm DOUBLE PRECISION, resistivity_std DOUBLE PRECISION,
-                conductivity_sm DOUBLE PRECISION,
-                doi_conservative_m DOUBLE PRECISION, doi_standard_m DOUBLE PRECISION,
+                easting DOUBLE PRECISION, northing DOUBLE PRECISION,
+                elevation DOUBLE PRECISION, sensor_alt DOUBLE PRECISION,
+                terrain_clear DOUBLE PRECISION,
+                depth_top DOUBLE PRECISION, depth_bot DOUBLE PRECISION,
+                thickness DOUBLE PRECISION,
+                resistivity DOUBLE PRECISION, resistivity_std DOUBLE PRECISION,
+                conductivity DOUBLE PRECISION,
+                doi_conservative DOUBLE PRECISION, doi_standard DOUBLE PRECISION,
                 resdata DOUBLE PRECISION, restotal DOUBLE PRECISION,
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -223,15 +221,17 @@ def load_to_postgis(
         cur.copy_expert(copy_sql, buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
             SELECT
                 {', '.join(INSERT_COLUMNS)},
-                ST_Transform(ST_GeomFromEWKT(geom_wkt), {TARGET_EPSG})
+                ST_Transform(ST_GeomFromEWKT(geom_wkt), 4326)
             FROM _ingest_staging;
-        """)
+        """
+        )
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
@@ -266,12 +266,12 @@ def _insert_metadata(
     """Aggregate sounding-level summaries and upsert into aem_sounding_metadata."""
     group_cols = ["line_id", "record_id"]
     meta = df.groupby(group_cols, as_index=False).agg(
-        easting_m=("easting_m", "first"),
-        northing_m=("northing_m", "first"),
+        easting=("easting", "first"),
+        northing=("northing", "first"),
         num_layers=("layer_no", "count"),
-        max_depth_m=("depth_bot_m", "min"),
+        max_depth=("depth_bot", "min"),
         has_uncertainty=("resistivity_std", lambda x: x.notna().any()),
-        has_doi=("doi_conservative_m", lambda x: x.notna().any()),
+        has_doi=("doi_conservative", lambda x: x.notna().any()),
         source_epsg=("source_epsg", "first"),
     )
 
@@ -292,20 +292,19 @@ def _insert_metadata(
             """
             INSERT INTO aem_sounding_metadata (
                 survey_id, line_id, record_id, processing_stage,
-                geom, easting_m, northing_m,
-                flight_id, date_acquired, num_layers, max_depth_m,
+                geom,
+                flight_id, date_acquired, num_layers, max_depth,
                 has_uncertainty, has_doi, inversion_code, source_epsg
             ) VALUES (
                 %s, %s, %s, %s,
-                ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), %s), %s),
-                %s, %s,
+                ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), %s), 4326),
                 %s, %s, %s, %s,
                 %s, %s, %s, %s
             )
             ON CONFLICT (survey_id, line_id, record_id, processing_stage)
             DO UPDATE SET
                 num_layers = EXCLUDED.num_layers,
-                max_depth_m = EXCLUDED.max_depth_m,
+                max_depth = EXCLUDED.max_depth,
                 has_uncertainty = EXCLUDED.has_uncertainty,
                 has_doi = EXCLUDED.has_doi
             """,
@@ -314,16 +313,13 @@ def _insert_metadata(
                 row["line_id"],
                 row["record_id"],
                 row["processing_stage"],
-                row["easting_m"],
-                row["northing_m"],
+                row["easting"],
+                row["northing"],
                 int(row["source_epsg"]),
-                TARGET_EPSG,
-                row["easting_m"],
-                row["northing_m"],
                 row.get("flight_id"),
                 row.get("date_acquired"),
                 int(row["num_layers"]) if pd.notna(row["num_layers"]) else None,
-                float(row["max_depth_m"]) if pd.notna(row["max_depth_m"]) else None,
+                float(row["max_depth"]) if pd.notna(row["max_depth"]) else None,
                 bool(row["has_uncertainty"]),
                 bool(row["has_doi"]),
                 row["inversion_code"],
@@ -487,10 +483,10 @@ def _query_postgis_stac_fields(
             SELECT
                 COUNT(DISTINCT record_id)               AS num_soundings,
                 MAX(layer_no)                           AS num_layers,
-                MIN(depth_top_m)                        AS depth_min_m,
-                MAX(depth_bot_m)                        AS depth_max_m,
+                MIN(depth_top)                          AS depth_min_m,
+                MAX(depth_bot)                          AS depth_max_m,
                 BOOL_OR(resistivity_std IS NOT NULL)    AS has_uncertainty,
-                BOOL_OR(doi_conservative_m IS NOT NULL) AS has_doi
+                BOOL_OR(doi_conservative IS NOT NULL)   AS has_doi
             FROM aem_soundings
             WHERE survey_id = %s AND processing_stage = %s
             """,
@@ -547,12 +543,15 @@ def _derive_stac_fields_from_df(df: pd.DataFrame) -> dict:
     """
     logger.warning("Using DataFrame fallback for STAC fields (PostGIS unavailable)")
 
-    min_lon = float(df["longitude_dd"].min())
-    max_lon = float(df["longitude_dd"].max())
-    min_lat = float(df["latitude_dd"].min())
-    max_lat = float(df["latitude_dd"].max())
+    to_wgs84 = Transformer.from_crs(f"EPSG:{TARGET_EPSG}", "EPSG:4326", always_xy=True)
+    lon, lat = to_wgs84.transform(df["easting"].values, df["northing"].values)
 
-    points = gpd.points_from_xy(df["longitude_dd"], df["latitude_dd"])
+    min_lon = float(min(lon))
+    max_lon = float(max(lon))
+    min_lat = float(min(lat))
+    max_lat = float(max(lat))
+
+    points = gpd.points_from_xy(lon, lat)
     hull = MultiPoint(list(points)).convex_hull
     geometry = mapping(hull)
 
@@ -571,13 +570,13 @@ def _derive_stac_fields_from_df(df: pd.DataFrame) -> dict:
         "num_soundings": df["record_id"].nunique(),
         "num_layers": int(df["layer_no"].max()) if df["layer_no"].notna().any() else 0,
         "depth_min_m": (
-            float(df["depth_top_m"].min()) if df["depth_top_m"].notna().any() else None
+            float(df["depth_top"].min()) if df["depth_top"].notna().any() else None
         ),
         "depth_max_m": (
-            float(df["depth_bot_m"].max()) if df["depth_bot_m"].notna().any() else None
+            float(df["depth_bot"].max()) if df["depth_bot"].notna().any() else None
         ),
         "has_uncertainty": bool(df["resistivity_std"].notna().any()),
-        "has_doi": bool(df["doi_conservative_m"].notna().any()),
+        "has_doi": bool(df["doi_conservative"].notna().any()),
     }
 
 
@@ -601,7 +600,7 @@ def build_stac_stub(
         parquet_gcs_path: GCS path of the Parquet output.
         raw_manifest_gcs_path: GCS path of raw_files.json.
         survey_metadata: Dict with static per-survey values (survey_region,
-            system, line_spacing_m, line_km, is_skytem).  If None, looked up
+            system, line_spacing, line_length, is_skytem).  If None, looked up
             from SURVEY_METADATA by config.survey_id.
         geoserver_base_url: Base URL for GeoServer endpoints.
         stac_base_url: Base URL for STAC catalog.
@@ -630,8 +629,8 @@ def build_stac_stub(
             survey_metadata = {
                 "survey_region": "Unknown",
                 "system": "Unknown",
-                "line_spacing_m": 0,
-                "line_km": None,
+                "line_spacing": 0,
+                "line_length": None,
                 "is_skytem": False,
             }
         else:
@@ -673,8 +672,8 @@ def build_stac_stub(
             "nmbgmr:inversion_code": inversion_code,
             "nmbgmr:contractor": contractor,
             "nmbgmr:system": survey_metadata["system"],
-            "nmbgmr:line_spacing_m": survey_metadata["line_spacing_m"],
-            "nmbgmr:line_km": survey_metadata["line_km"],
+            "nmbgmr:line_spacing_m": survey_metadata["line_spacing"],
+            "nmbgmr:line_km": survey_metadata["line_length"],
             "nmbgmr:source_epsg": source_epsg,
             # Statistics — derived from PostGIS after ingest
             "nmbgmr:num_soundings": derived["num_soundings"],

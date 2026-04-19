@@ -6,8 +6,8 @@ Revises: t6u7v8w9x0y1
 Create Date: 2026-04-16 15:50:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from geoalchemy2 import Geometry
 
 # revision identifiers, used by Alembic.
@@ -60,26 +60,52 @@ def upgrade() -> None:
         sa.Column("layer_no", sa.SmallInteger(), nullable=False),
         sa.Column(
             "geom",
-            Geometry(geometry_type="POINT", srid=26913),
+            Geometry(geometry_type="POINT", srid=4326),
             nullable=False,
-            comment="PostGIS point in NAD83 UTM Zone 13N",
+            comment="PostGIS point in WGS84 (EPSG:4326)",
         ),
-        sa.Column("easting_m", sa.Float(), nullable=False),
-        sa.Column("northing_m", sa.Float(), nullable=False),
-        sa.Column("longitude_dd", sa.Float(), nullable=True),
-        sa.Column("latitude_dd", sa.Float(), nullable=True),
-        sa.Column("elevation_m", sa.Float(), nullable=True),
-        sa.Column("sensor_alt_m", sa.Float(), nullable=True),
-        sa.Column("terrain_clear_m", sa.Float(), nullable=True),
-        sa.Column("depth_top_m", sa.Float(), nullable=False),
-        sa.Column("depth_bot_m", sa.Float(), nullable=False),
         sa.Column(
-            "thickness_m",
+            "elevation",
             sa.Float(),
             nullable=True,
-            comment="NULL for Seogi outputs",
+            comment="in meters with vertical datum of NAVD88",
         ),
-        sa.Column("resistivity_ohmm", sa.Float(), nullable=False),
+        sa.Column(
+            "sensor_alt",
+            sa.Float(),
+            nullable=True,
+            comment="in meters above ground",
+        ),
+        sa.Column(
+            "terrain_clear",
+            sa.Float(),
+            nullable=True,
+            comment="in meters above terrain",
+        ),
+        sa.Column(
+            "depth_top",
+            sa.Float(),
+            nullable=False,
+            comment="in meters below surface",
+        ),
+        sa.Column(
+            "depth_bot",
+            sa.Float(),
+            nullable=False,
+            comment="in meters below surface",
+        ),
+        sa.Column(
+            "thickness",
+            sa.Float(),
+            nullable=True,
+            comment="in meters; NULL for Seogi outputs",
+        ),
+        sa.Column(
+            "resistivity",
+            sa.Float(),
+            nullable=False,
+            comment="in ohm-meters",
+        ),
         sa.Column(
             "resistivity_std",
             sa.Float(),
@@ -87,22 +113,22 @@ def upgrade() -> None:
             comment="NULL for Seogi — pipeline doesn't produce uncertainty",
         ),
         sa.Column(
-            "conductivity_sm",
+            "conductivity",
             sa.Float(),
             nullable=True,
-            comment="NULL for Seogi",
+            comment="in siemens per meter; NULL for Seogi",
         ),
         sa.Column(
-            "doi_conservative_m",
+            "doi_conservative",
             sa.Float(),
             nullable=True,
-            comment="NULL for Seogi",
+            comment="in meters; NULL for Seogi",
         ),
         sa.Column(
-            "doi_standard_m",
+            "doi_standard",
             sa.Float(),
             nullable=True,
-            comment="NULL for Seogi",
+            comment="in meters; NULL for Seogi",
         ),
         sa.Column("resdata", sa.Float(), nullable=True),
         sa.Column("restotal", sa.Float(), nullable=True),
@@ -126,7 +152,7 @@ def upgrade() -> None:
     op.create_index(
         "idx_soundings_depth",
         "aem_soundings",
-        ["depth_top_m", "depth_bot_m"],
+        ["depth_top", "depth_bot"],
         unique=False,
     )
     op.create_index(
@@ -163,15 +189,18 @@ def upgrade() -> None:
         sa.Column("processing_stage", sa.Text(), nullable=False),
         sa.Column(
             "geom",
-            Geometry(geometry_type="POINT", srid=26913),
+            Geometry(geometry_type="POINT", srid=4326),
             nullable=False,
         ),
-        sa.Column("easting_m", sa.Float(), nullable=False),
-        sa.Column("northing_m", sa.Float(), nullable=False),
         sa.Column("flight_id", sa.Text(), nullable=True),
         sa.Column("date_acquired", sa.Date(), nullable=True),
         sa.Column("num_layers", sa.SmallInteger(), nullable=True),
-        sa.Column("max_depth_m", sa.Float(), nullable=True),
+        sa.Column(
+            "max_depth",
+            sa.Float(),
+            nullable=True,
+            comment="in meters below surface",
+        ),
         sa.Column("has_uncertainty", sa.Boolean(), nullable=False),
         sa.Column("has_doi", sa.Boolean(), nullable=False),
         sa.Column("inversion_code", sa.Text(), nullable=True),

@@ -19,7 +19,7 @@ import logging
 import pandas as pd
 
 from schemas.aem import validate_dataframe
-from services.aem_parsers.common import add_latlon, ensure_canonical_columns
+from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
 
 logger = logging.getLogger(__name__)
 
@@ -82,17 +82,17 @@ def parse_bylayer(filepath: str) -> pd.DataFrame:
         "LINE_NO": "line_id",
         "ID": "record_id",
         "LAYER_NO": "layer_no",
-        "UTMX": "easting_m",
-        "UTMY": "northing_m",
-        "ELEVATION_CELL": "elevation_m",
-        "DEPTH_TOP": "depth_top_m",
-        "DEPTH_BOTTOM": "depth_bot_m",
-        "THICKNESS": "thickness_m",
-        "RESISTIVITY": "resistivity_ohmm",
+        "UTMX": "easting",
+        "UTMY": "northing",
+        "ELEVATION_CELL": "elevation",
+        "DEPTH_TOP": "depth_top",
+        "DEPTH_BOTTOM": "depth_bot",
+        "THICKNESS": "thickness",
+        "RESISTIVITY": "resistivity",
         "RESISTIVITY_STD": "resistivity_std",
-        "CONDUCTIVITY": "conductivity_sm",
-        "DOI_CONSERVATIVE": "doi_conservative_m",
-        "DOI_STANDARD": "doi_standard_m",
+        "CONDUCTIVITY": "conductivity",
+        "DOI_CONSERVATIVE": "doi_conservative",
+        "DOI_STANDARD": "doi_standard",
         "RESDATA": "resdata",
         "RESTOTAL": "restotal",
         "PLNI": "plni",
@@ -110,8 +110,7 @@ def parse_bylayer(filepath: str) -> pd.DataFrame:
 
     df["source_epsg"] = 26913
 
-    # Add lat/lon from UTM (no reprojection needed, same EPSG)
-    df = add_latlon(df, source_epsg=26913)
+    df = reproject_to_target(df, source_epsg=26913)
 
     # Ensure all canonical columns exist (fill missing with NaN)
     df = ensure_canonical_columns(df)

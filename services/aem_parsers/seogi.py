@@ -28,7 +28,7 @@ import pandas as pd
 from schemas.aem import validate_dataframe
 from services.aem_parsers.common import (
     ensure_canonical_columns,
-    reproject_and_add_latlon,
+    reproject_to_target,
 )
 from services.aem_parsers.detect import extract_flight_id
 
@@ -99,9 +99,9 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
             layer_df["plm"] = df["plm"]
 
         layer_df["layer_no"] = layer_idx
-        layer_df["depth_top_m"] = df[top_col]
-        layer_df["depth_bot_m"] = df[bot_col]
-        layer_df["resistivity_ohmm"] = df[rho_col]
+        layer_df["depth_top"] = df[top_col]
+        layer_df["depth_bot"] = df[bot_col]
+        layer_df["resistivity"] = df[rho_col]
         rows.append(layer_df)
 
     long_df = pd.concat(rows, ignore_index=True)
@@ -111,9 +111,9 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
     long_df = long_df.rename(
         columns={
             "line_no": "line_id",
-            "utmx": "easting_m",
-            "utmy": "northing_m",
-            "elevation": "elevation_m",
+            "utmx": "easting",
+            "utmy": "northing",
+            "elevation": "elevation",
             "plm": "plni",
         }
     )
@@ -122,8 +122,7 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
     long_df["layer_no"] = long_df["layer_no"].astype("Int16")
     long_df["source_epsg"] = 32613
 
-    # Reproject WGS84 UTM 13N → NAD83 UTM 13N and add lat/lon
-    long_df = reproject_and_add_latlon(long_df, source_epsg=32613)
+    long_df = reproject_to_target(long_df, source_epsg=32613)
 
     # Ensure all canonical columns exist (Seogi has many NULLs)
     long_df = ensure_canonical_columns(long_df)

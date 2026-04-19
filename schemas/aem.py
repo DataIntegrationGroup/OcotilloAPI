@@ -17,6 +17,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -154,10 +155,10 @@ class SurveyMetadata(BaseModel):
 
     survey_region: str = Field(description="e.g. 'Gila-Animas Basin'")
     system: str = Field(description="e.g. 'VTEM ET', 'SkyTEM 306HP + 312HP'")
-    line_spacing_m: int = Field(description="Nominal line spacing in metres")
-    line_km: Optional[int] = Field(
+    line_spacing: int = Field(description="Nominal line spacing in meters")
+    line_length: Optional[int] = Field(
         default=None,
-        description="Total survey line-km (None if TBD)",
+        description="Total survey line length in kilometers (None if TBD)",
     )
     is_skytem: bool = Field(
         default=False,
@@ -174,43 +175,43 @@ SURVEY_METADATA: dict[str, SurveyMetadata] = {
     "gila_animas_2025": SurveyMetadata(
         survey_region="Gila-Animas Basin",
         system="VTEM ET",
-        line_spacing_m=250,
-        line_km=2319,
+        line_spacing=250,
+        line_length=2319,
         is_skytem=False,
     ),
     "estancia_2025": SurveyMetadata(
         survey_region="Estancia Basin",
         system="VTEM ET",
-        line_spacing_m=250,
-        line_km=2330,
+        line_spacing=250,
+        line_length=2330,
         is_skytem=False,
     ),
     "n_tularosa_2025": SurveyMetadata(
         survey_region="Northern Tularosa Basin",
         system="VTEM ET + VTEM Max + ZTEM",
-        line_spacing_m=250,
-        line_km=None,  # TBD
+        line_spacing=250,
+        line_length=None,  # TBD
         is_skytem=False,
     ),
     "mimbres_2025": SurveyMetadata(
         survey_region="Mimbres Basin",
         system="SkyTEM 306HP + 312HP",
-        line_spacing_m=200,
-        line_km=3296,
+        line_spacing=200,
+        line_length=3296,
         is_skytem=True,
     ),
     "lrg_2025": SurveyMetadata(
         survey_region="Lower Rio Grande",
         system="SkyTEM 306HP",
-        line_spacing_m=200,
-        line_km=4002,
+        line_spacing=200,
+        line_length=4002,
         is_skytem=True,
     ),
     "mrg_2025": SurveyMetadata(
         survey_region="Middle Rio Grande",
         system="SkyTEM",
-        line_spacing_m=200,
-        line_km=2000,
+        line_spacing=200,
+        line_length=2000,
         is_skytem=True,
     ),
 }
@@ -248,31 +249,37 @@ class SoundingRow(BaseModel):
     record_id: str  # TEXT not INTEGER — Seogi needs F01_1 prefix
     layer_no: int = Field(ge=1, le=200)
 
-    # Position (stored in EPSG:26913 after reprojection)
-    easting_m: float
-    northing_m: float
-    longitude_dd: Optional[float] = None
-    latitude_dd: Optional[float] = None
+    # Position used to derive the stored WGS84 geometry during ingest
+    easting: float = Field(description="in meters, projected coordinate")
+    northing: float = Field(description="in meters, projected coordinate")
 
     # Elevation
-    elevation_m: Optional[float] = None
-    sensor_alt_m: Optional[float] = None
-    terrain_clear_m: Optional[float] = None
+    elevation: Optional[float] = Field(
+        default=None, description="in meters with vertical datum of NAVD88"
+    )
+    sensor_alt: Optional[float] = Field(
+        default=None, description="in meters above ground"
+    )
+    terrain_clear: Optional[float] = Field(
+        default=None, description="in meters above terrain"
+    )
 
     # Layer geometry
-    depth_top_m: float
-    depth_bot_m: float
-    thickness_m: Optional[float] = None
+    depth_top: float = Field(description="in meters below surface")
+    depth_bot: float = Field(description="in meters below surface")
+    thickness: Optional[float] = Field(default=None, description="in meters")
 
     # Inversion result
-    resistivity_ohmm: float = Field(gt=0)
+    resistivity: float = Field(gt=0, description="in ohm-meters")
 
     # Uncertainty — NULL when pipeline doesn't produce it (e.g. Seogi).
     # This is meaningful: NULL = "not estimated", not "unknown".
     resistivity_std: Optional[float] = None
-    conductivity_sm: Optional[float] = None
-    doi_conservative_m: Optional[float] = None
-    doi_standard_m: Optional[float] = None
+    conductivity: Optional[float] = Field(
+        default=None, description="in siemens per meter"
+    )
+    doi_conservative: Optional[float] = Field(default=None, description="in meters")
+    doi_standard: Optional[float] = Field(default=None, description="in meters")
     resdata: Optional[float] = None
     restotal: Optional[float] = None
     plni: Optional[float] = None
@@ -288,11 +295,11 @@ class SoundingRow(BaseModel):
 REQUIRED_COLUMNS = [
     "line_id",
     "layer_no",
-    "easting_m",
-    "northing_m",
-    "depth_top_m",
-    "depth_bot_m",
-    "resistivity_ohmm",
+    "easting",
+    "northing",
+    "depth_top",
+    "depth_bot",
+    "resistivity",
 ]
 
 
@@ -325,12 +332,12 @@ def validate_dataframe(df, source_label: str = "unknown") -> list[str]:
             warnings.append(msg)
 
     # Sanity checks
-    if "resistivity_ohmm" in df.columns:
-        neg_count = (df["resistivity_ohmm"].dropna() <= 0).sum()
+    if "resistivity" in df.columns:
+        neg_count = (df["resistivity"].dropna() <= 0).sum()
         if neg_count > 0:
             msg = (
                 f"[{source_label}] {neg_count:,} rows with "
-                f"resistivity_ohmm <= 0 (physically impossible)"
+                f"resistivity <= 0 (physically impossible)"
             )
             logger.warning(msg)
             warnings.append(msg)

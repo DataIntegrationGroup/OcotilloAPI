@@ -54,7 +54,7 @@ def test_detect_and_parse_bylayer(tmp_path: Path):
     df = parse_bylayer(str(filepath))
 
     assert len(df) == 1
-    assert set(["line_id", "record_id", "resistivity_ohmm"]).issubset(df.columns)
+    assert set(["line_id", "record_id", "resistivity"]).issubset(df.columns)
     assert df.iloc[0]["record_id"] == "1"
 
 
@@ -117,11 +117,11 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
                 "record_id": "F02_1",
                 "line_id": "L1",
                 "layer_no": 1,
-                "easting_m": 500000,
-                "northing_m": 3800000,
-                "depth_top_m": 0,
-                "depth_bot_m": 10,
-                "resistivity_ohmm": 100,
+                "easting": 500000,
+                "northing": 3800000,
+                "depth_top": 0,
+                "depth_bot": 10,
+                "resistivity": 100,
                 "source_epsg": 32613,
             }
         ]

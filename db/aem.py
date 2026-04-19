@@ -8,7 +8,7 @@ Alembic uses these models as the source of truth for migrations:
 
 The models mirror the DDL in the session summary doc, with two additions:
   - SQLAlchemy column types map to the PostGIS types
-  - GeoAlchemy2 handles the GEOMETRY(Point, 26913) columns
+  - GeoAlchemy2 handles the GEOMETRY(Point, 4326) columns
 
 Design notes for non-SQLAlchemy readers:
   - sounding_id is auto-generated (BIGSERIAL) — never set it manually
@@ -40,6 +40,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
+
 
 # ---------------------------------------------------------------------------
 # aem_soundings — one row per layer per sounding
@@ -95,31 +96,39 @@ class AemSounding(Base):
     )
     layer_no: Mapped[int] = mapped_column(SmallInteger, nullable=False)
 
-    # ---- Position (all stored in EPSG:26913 after reprojection) ----
+    # ---- Position (store a single authoritative WGS84 geometry) ----
     geom = Column(
-        Geometry(geometry_type="POINT", srid=26913),
+        Geometry(geometry_type="POINT", srid=4326),
         nullable=False,
-        comment="PostGIS point in NAD83 UTM Zone 13N",
+        comment="PostGIS point in WGS84 (EPSG:4326)",
     )
-    easting_m: Mapped[float] = mapped_column(Float, nullable=False)
-    northing_m: Mapped[float] = mapped_column(Float, nullable=False)
-    longitude_dd: Mapped[float | None] = mapped_column(Float)
-    latitude_dd: Mapped[float | None] = mapped_column(Float)
 
     # ---- Elevation ----
-    elevation_m: Mapped[float | None] = mapped_column(Float)
-    sensor_alt_m: Mapped[float | None] = mapped_column(Float)
-    terrain_clear_m: Mapped[float | None] = mapped_column(Float)
+    elevation: Mapped[float | None] = mapped_column(
+        Float, comment="in meters with vertical datum of NAVD88"
+    )
+    sensor_alt: Mapped[float | None] = mapped_column(
+        Float, comment="in meters above ground"
+    )
+    terrain_clear: Mapped[float | None] = mapped_column(
+        Float, comment="in meters above terrain"
+    )
 
     # ---- Layer geometry (depths are negative = below surface) ----
-    depth_top_m: Mapped[float] = mapped_column(Float, nullable=False)
-    depth_bot_m: Mapped[float] = mapped_column(Float, nullable=False)
-    thickness_m: Mapped[float | None] = mapped_column(
-        Float, comment="NULL for Seogi outputs"
+    depth_top: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="in meters below surface"
+    )
+    depth_bot: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="in meters below surface"
+    )
+    thickness: Mapped[float | None] = mapped_column(
+        Float, comment="in meters; NULL for Seogi outputs"
     )
 
     # ---- Inversion result ----
-    resistivity_ohmm: Mapped[float] = mapped_column(Float, nullable=False)
+    resistivity: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="in ohm-meters"
+    )
 
     # ---- Uncertainty (NULL when pipeline doesn't produce it) ----
     # NULL is meaningful here: it means the inversion pipeline didn't
@@ -128,14 +137,14 @@ class AemSounding(Base):
     resistivity_std: Mapped[float | None] = mapped_column(
         Float, comment="NULL for Seogi — pipeline doesn't produce uncertainty"
     )
-    conductivity_sm: Mapped[float | None] = mapped_column(
-        Float, comment="NULL for Seogi"
+    conductivity: Mapped[float | None] = mapped_column(
+        Float, comment="in siemens per meter; NULL for Seogi"
     )
-    doi_conservative_m: Mapped[float | None] = mapped_column(
-        Float, comment="NULL for Seogi"
+    doi_conservative: Mapped[float | None] = mapped_column(
+        Float, comment="in meters; NULL for Seogi"
     )
-    doi_standard_m: Mapped[float | None] = mapped_column(
-        Float, comment="NULL for Seogi"
+    doi_standard: Mapped[float | None] = mapped_column(
+        Float, comment="in meters; NULL for Seogi"
     )
     resdata: Mapped[float | None] = mapped_column(Float)
     restotal: Mapped[float | None] = mapped_column(Float)
@@ -151,7 +160,7 @@ class AemSounding(Base):
     __table_args__ = (
         Index("idx_soundings_geom", geom, postgresql_using="gist"),
         Index("idx_soundings_survey_stage", "survey_id", "processing_stage"),
-        Index("idx_soundings_depth", "depth_top_m", "depth_bot_m"),
+        Index("idx_soundings_depth", "depth_top", "depth_bot"),
         Index("idx_soundings_line", "survey_id", "line_id"),
         Index(
             "idx_soundings_final",
@@ -193,11 +202,9 @@ class AemSoundingMetadata(Base):
 
     # ---- Position ----
     geom = Column(
-        Geometry(geometry_type="POINT", srid=26913),
+        Geometry(geometry_type="POINT", srid=4326),
         nullable=False,
     )
-    easting_m: Mapped[float] = mapped_column(Float, nullable=False)
-    northing_m: Mapped[float] = mapped_column(Float, nullable=False)
 
     # ---- Flight / time ----
     flight_id: Mapped[str | None] = mapped_column(Text)
@@ -205,7 +212,9 @@ class AemSoundingMetadata(Base):
 
     # ---- Aggregated stats ----
     num_layers: Mapped[int | None] = mapped_column(SmallInteger)
-    max_depth_m: Mapped[float | None] = mapped_column(Float)
+    max_depth: Mapped[float | None] = mapped_column(
+        Float, comment="in meters below surface"
+    )
     has_uncertainty: Mapped[bool] = mapped_column(Boolean, default=False)
     has_doi: Mapped[bool] = mapped_column(Boolean, default=False)
 

@@ -24,7 +24,7 @@ import re
 import pandas as pd
 
 from schemas.aem import validate_dataframe
-from services.aem_parsers.common import add_latlon, ensure_canonical_columns
+from services.aem_parsers.common import ensure_canonical_columns, reproject_to_target
 
 logger = logging.getLogger(__name__)
 
@@ -82,23 +82,23 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
 
         # Sounding-level columns (constant across layers)
         if "ALTITUDE__m_" in df.columns:
-            layer_df["sensor_alt_m"] = df["ALTITUDE__m_"]
+            layer_df["sensor_alt"] = df["ALTITUDE__m_"]
         if "ALTITUDE_A_PRIORI__m_" in df.columns:
-            layer_df["terrain_clear_m"] = df["ALTITUDE_A_PRIORI__m_"]
+            layer_df["terrain_clear"] = df["ALTITUDE_A_PRIORI__m_"]
         if "RESDATA" in df.columns:
             layer_df["resdata"] = df["RESDATA"]
         if "RESTOTAL" in df.columns:
             layer_df["restotal"] = df["RESTOTAL"]
         if "DOI_UPPER_m" in df.columns:
-            layer_df["doi_conservative_m"] = df["DOI_UPPER_m"]
+            layer_df["doi_conservative"] = df["DOI_UPPER_m"]
         if "DOI_LOWER_m" in df.columns:
-            layer_df["doi_standard_m"] = df["DOI_LOWER_m"]
+            layer_df["doi_standard"] = df["DOI_LOWER_m"]
 
         # Layer-level columns
         layer_df["layer_no"] = layer_no
-        layer_df["depth_top_m"] = df[dep_top_col]
-        layer_df["depth_bot_m"] = df[dep_bot_col]
-        layer_df["resistivity_ohmm"] = df[rho_col]
+        layer_df["depth_top"] = df[dep_top_col]
+        layer_df["depth_bot"] = df[dep_bot_col]
+        layer_df["resistivity"] = df[rho_col]
 
         # Optional layer-level uncertainty columns
         rho_std_col = f"RHO_STD[{src_idx}]"
@@ -107,11 +107,11 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
 
         sigma_col = f"SIGMA[{src_idx}]"
         if sigma_col in df.columns:
-            layer_df["conductivity_sm"] = df[sigma_col]
+            layer_df["conductivity"] = df[sigma_col]
 
         thk_col = f"THK_m[{src_idx}]"
         if thk_col in df.columns:
-            layer_df["thickness_m"] = df[thk_col]
+            layer_df["thickness"] = df[thk_col]
 
         rows.append(layer_df)
 
@@ -122,9 +122,9 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
     long_df = long_df.rename(
         columns={
             "Line": "line_id",
-            "E_UTM13Nm": "easting_m",
-            "N_UTM13Nm": "northing_m",
-            "DEM_m": "elevation_m",
+            "E_UTM13Nm": "easting",
+            "N_UTM13Nm": "northing",
+            "DEM_m": "elevation",
         }
     )
 
@@ -132,8 +132,7 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
     long_df["layer_no"] = long_df["layer_no"].astype("Int16")
     long_df["source_epsg"] = 26913
 
-    # Add lat/lon (no reprojection — already in 26913)
-    long_df = add_latlon(long_df, source_epsg=26913)
+    long_df = reproject_to_target(long_df, source_epsg=26913)
 
     # Ensure all canonical columns exist
     long_df = ensure_canonical_columns(long_df)
