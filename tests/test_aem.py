@@ -153,11 +153,6 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
         "write_raw_manifest",
         lambda *args, **kwargs: "surveys/test/metadata/raw_files.json",
     )
-    monkeypatch.setattr(
-        aem_ingest_service,
-        "build_stac_stub",
-        lambda *args, **kwargs: {"id": "test_item"},
-    )
 
     class FakeStorageClient:
         pass
@@ -178,7 +173,15 @@ def test_run_ingest_dispatches_parser_and_writers(monkeypatch, tmp_path: Path):
 
     result = aem_ingest_service.run_ingest(config)
 
-    assert result["id"] == "test_item"
+    assert result == {
+        "survey_id": "gila_animas_2025",
+        "processing_stage": "preliminary_inversion",
+        "inversion_code": "seogi_python",
+        "source_gcs_path": "surveys/gila_animas_2025/aem/inversion/preliminary/rho_GL250193_F02.csv",
+        "parquet_gcs_path": "surveys/test/aem/file.parquet",
+        "raw_manifest_gcs_path": "surveys/test/metadata/raw_files.json",
+        "rows_loaded": 1,
+    }
     assert called["parse"] == 1
     assert called["load"] == 1
 

@@ -136,8 +136,8 @@ def run(
         ),
     )
 
-    stac_stub = run_ingest(config)
-    typer.echo(json.dumps(stac_stub, indent=2))
+    ingest_result = run_ingest(config)
+    typer.echo(json.dumps(ingest_result, indent=2))
 
 
 @app.command()
@@ -247,7 +247,7 @@ def batch(
 ):
     """Run batch ingest for every ingestible file listed in the mapping CSV."""
     _setup_logging(verbose)
-    stac_items = run_batch(
+    ingest_results = run_batch(
         mapping_path=str(mapping),
         gcs_bucket=_resolve_bucket(bucket),
         root_override=root,
@@ -257,4 +257,150 @@ def batch(
         stage_filter=stage,
     )
     if not dry_run:
-        typer.echo(json.dumps(stac_items, indent=2, default=str))
+        typer.echo(json.dumps(ingest_results, indent=2, default=str))
+
+
+@app.command()
+def opensearch_survey(
+    survey_id: Annotated[
+        str, typer.Argument(help="Survey ID to ingest into OpenSearch")
+    ],
+    title: Annotated[
+        Optional[str],
+        typer.Option("--title", help="Survey title for OpenSearch collection"),
+    ] = None,
+    description: Annotated[
+        Optional[str],
+        typer.Option("--description", help="Survey description"),
+    ] = None,
+    contractor: Annotated[
+        Optional[str],
+        typer.Option("--contractor", help="Contractor/operator name"),
+    ] = None,
+    processing_stage: Annotated[
+        Optional[str],
+        typer.Option(
+            "--stage", help="Processing stage (preliminary_inversion, final_inversion)"
+        ),
+    ] = None,
+    user_id: Annotated[
+        Optional[str],
+        typer.Option("--user-id", help="Creator user ID"),
+    ] = None,
+    user_name: Annotated[
+        Optional[str],
+        typer.Option("--user-name", help="Creator user name"),
+    ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Debug logging")
+    ] = False,
+):
+    """Create OpenSearch collection for an AEM survey."""
+    _setup_logging(verbose)
+
+    from db.engine import session_ctx
+    from services.opensearch_aem import OpenSearchAEMService
+
+    try:
+        with session_ctx() as session:
+            service = OpenSearchAEMService(session)
+            success, collection_id, error = service.create_aem_survey_collection(
+                survey_id=survey_id,
+                title=title,
+                description=description,
+                contractor=contractor,
+                processing_stage=processing_stage,
+                created_by_id=user_id,
+                created_by_name=user_name,
+            )
+
+            if success:
+                typer.echo(
+                    json.dumps(
+                        {
+                            "success": True,
+                            "collection_id": collection_id,
+                            "survey_id": survey_id,
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                typer.echo(
+                    json.dumps(
+                        {"success": False, "error": error, "survey_id": survey_id},
+                        indent=2,
+                    ),
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(
+            json.dumps(
+                {"success": False, "error": str(e), "survey_id": survey_id},
+                indent=2,
+            ),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def opensearch_items(
+    survey_id: Annotated[str, typer.Argument(help="Survey ID")],
+    collection_id: Annotated[int, typer.Argument(help="OpenSearch collection ID")],
+    limit: Annotated[
+        Optional[int],
+        typer.Option("--limit", help="Max soundings to ingest (for testing)"),
+    ] = None,
+    validate_only: Annotated[
+        bool,
+        typer.Option("--validate-only", help="Validate without committing"),
+    ] = False,
+    user_id: Annotated[
+        Optional[str],
+        typer.Option("--user-id", help="Creator user ID"),
+    ] = None,
+    user_name: Annotated[
+        Optional[str],
+        typer.Option("--user-name", help="Creator user name"),
+    ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Debug logging")
+    ] = False,
+):
+    """Ingest AEM soundings as OpenSearch items in a collection."""
+    _setup_logging(verbose)
+
+    from db.engine import session_ctx
+    from services.opensearch_aem import OpenSearchAEMService
+
+    try:
+        with session_ctx() as session:
+            service = OpenSearchAEMService(session)
+            result = service.ingest_aem_soundings_as_items(
+                survey_id=survey_id,
+                collection_id=collection_id,
+                created_by_id=user_id,
+                created_by_name=user_name,
+                limit=limit,
+                validate_only=validate_only,
+            )
+
+            typer.echo(json.dumps(result, indent=2, default=str))
+
+            if not result.get("success", False):
+                raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(
+            json.dumps(
+                {
+                    "success": False,
+                    "error": str(e),
+                    "survey_id": survey_id,
+                },
+                indent=2,
+            ),
+            err=True,
+        )
+        raise typer.Exit(code=1)

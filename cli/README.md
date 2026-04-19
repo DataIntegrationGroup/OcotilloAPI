@@ -36,7 +36,7 @@ Purpose by command:
 
 - `detect`: identify the supported AEM source format for a single file.
 - `parse`: normalize a single file to the canonical sounding schema without touching PostGIS or GCS.
-- `run`: execute the full single-file ingest pipeline into PostGIS, GCS artifacts, and STAC output.
+- `run`: execute the full single-file ingest pipeline into PostGIS and GCS artifacts.
 - `batch`: ingest every eligible file from a mapper-generated `gcs_path_mapping.csv`.
 
 AEM examples:
@@ -68,6 +68,7 @@ AEM runtime notes:
 
 - `run` and `batch` require a GCS bucket via `--gcs-bucket` or `--bucket`, or `AEM_GCS_BUCKET` / `GCS_BUCKET_NAME`.
 - `run` and `batch` also need database connectivity unless you are doing a dry run.
+- GeoServer OpenSearch for EO is expected to read authoritative AEM metadata from PostGIS; the ingest pipeline does not publish standalone STAC stub files.
 - `parse` requires `--system` for AGF LCI files and may require `--flight-id` for Seogi inputs.
 
 ## Guides

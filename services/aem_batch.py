@@ -10,7 +10,7 @@ for each file, and calls run_ingest() with the correct parameters.
 Run sequence:
   1. aem_migrate.py  — copies all files from shared drive to GCS
   2. aem_batch.py    — reads same CSV, ingests inversion files into PostGIS
-  3. PostGIS + Parquet + STAC are now populated and GeoServer-ready
+  3. PostGIS + Parquet + ingest metadata are populated and GeoServer-ready
 
 Usage:
   # See what would be ingested without touching anything
@@ -28,7 +28,6 @@ Authors: Marissa (data curator), Jake (platform engineer)
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -178,7 +177,7 @@ def run_batch(
         stage_filter: Only process this processing_stage
 
     Returns:
-        List of STAC item dicts (empty list in dry-run mode).
+        List of ingest result dicts (empty list in dry-run mode).
     """
     df = pd.read_csv(mapping_path)
     logger.info("Loaded mapping CSV: %d total rows", len(df))
@@ -216,7 +215,7 @@ def run_batch(
     from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SkytemSystem
     from services.aem_ingest import run_ingest
 
-    stac_items = []
+    ingest_results = []
     succeeded = 0
     failed = 0
     errors = []
@@ -274,7 +273,7 @@ def run_batch(
 
             # Run ingest
             t0 = time.monotonic()
-            stac_item = run_ingest(
+            ingest_result = run_ingest(
                 config,
                 raw_file_paths=raw_files,
                 raw_manifest_notes=(
@@ -284,14 +283,14 @@ def run_batch(
             )
             duration = time.monotonic() - t0
 
-            stac_items.append(stac_item)
+            ingest_results.append(ingest_result)
             succeeded += 1
             logger.info(
                 "[%d/%d] SUCCESS: %s → %s (%.1fs)",
                 file_num,
                 total,
                 filename,
-                stac_item["id"],
+                ingest_result["parquet_gcs_path"],
                 duration,
             )
 
@@ -322,14 +321,7 @@ def run_batch(
         for err in errors:
             logger.error("  %s (%s): %s", err["file"], err["survey"], err["error"])
 
-    # Write STAC items to JSON for downstream catalog registration
-    if stac_items:
-        stac_output = f"batch_stac_items_{int(time.time())}.json"
-        with open(stac_output, "w") as f:
-            json.dump(stac_items, f, indent=2, default=str)
-        logger.info("STAC items written to %s", stac_output)
-
-    return stac_items
+    return ingest_results
 
 
 def _dry_run(
@@ -478,7 +470,7 @@ def main():
         stream=sys.stderr,
     )
 
-    stac_items = run_batch(
+    ingest_results = run_batch(
         mapping_path=args.mapping,
         gcs_bucket=args.bucket,
         root_override=args.root,
@@ -489,7 +481,7 @@ def main():
     )
 
     if not args.dry_run:
-        logger.info("Returned %d STAC items", len(stac_items))
+        logger.info("Returned %d ingest results", len(ingest_results))
 
 
 if __name__ == "__main__":

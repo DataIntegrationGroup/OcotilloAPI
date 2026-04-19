@@ -3,9 +3,13 @@
 services.aem_ingest — Orchestrates the full ingest pipeline.
 
 Architecture note: the GCS mapper (aem_gcs_mapper.py) is the single source
-of truth for where every file lives in GCS.  This pipeline does NOT decide
-GCS paths — it receives the mapper's proposed_gcs_path via config.source_gcs_path
-and records it in the PostGIS source_file column and in the STAC asset link.
+of truth for where every file lives in GCS. This pipeline does NOT decide
+GCS paths — it receives the mapper's proposed_gcs_path via
+config.source_gcs_path and records it in the PostGIS source_file column.
+
+GeoServer OpenSearch for EO is expected to read authoritative AEM metadata
+directly from PostGIS. This pipeline therefore does not build or publish
+standalone STAC stub files.
 
 Steps per file:
   1. Validate config (Pydantic, including mapper-provided source_gcs_path)
@@ -14,7 +18,7 @@ Steps per file:
   4. Load into PostGIS (aem_soundings + aem_sounding_metadata)
   5. Write Parquet to GCS
   6. Write raw file manifest to GCS
-  7. Build and return STAC item (queries PostGIS for bbox/geometry/stats)
+  7. Return ingest result metadata for operational logging
 """
 
 from __future__ import annotations
@@ -26,15 +30,12 @@ import os
 import tempfile
 from datetime import datetime, timezone
 
-import geopandas as gpd
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from google.cloud import storage
-from pyproj import Transformer
-from shapely.geometry import MultiPoint, mapping
 
-from schemas.aem import IngestConfig, SourceFormat, SURVEY_METADATA
+from schemas.aem import IngestConfig, REQUIRED_COLUMNS, SourceFormat
 from services.aem_db import get_raw_connection
 from services.aem_parsers import (
     detect_format,
@@ -42,7 +43,7 @@ from services.aem_parsers import (
     parse_bylayer,
     parse_seogi_rho,
 )
-from services.aem_parsers.common import CANONICAL_COLUMNS, TARGET_EPSG
+from services.aem_parsers.common import CANONICAL_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -76,16 +77,6 @@ INSERT_COLUMNS = [
     "restotal",
     "plni",
     "date_acquired",
-]
-
-REQUIRED_COLUMNS = [
-    "line_id",
-    "layer_no",
-    "easting",
-    "northing",
-    "depth_top",
-    "depth_bot",
-    "resistivity",
 ]
 
 
@@ -144,7 +135,7 @@ def load_to_postgis(
     aem_sounding_metadata.
 
     Uses a staging-table approach:
-      1. COPY into a temp table via psycopg2's copy_expert (fast bulk load)
+      1. COPY into a temp table via pg8000's execute(..., stream=...) support
       2. INSERT INTO aem_soundings with ST_Transform(ST_GeomFromEWKT(...), 4326)
       3. Aggregate and upsert into aem_sounding_metadata
 
@@ -188,7 +179,8 @@ def load_to_postgis(
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -205,7 +197,8 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             ) ON COMMIT DROP;
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         buf = io.StringIO()
@@ -216,10 +209,11 @@ def load_to_postgis(
             f"COPY _ingest_staging ({', '.join(staging_cols)}) "
             f"FROM STDIN WITH (FORMAT csv, NULL '\\N')"
         )
-        cur.copy_expert(copy_sql, buf)
+        cur.execute(copy_sql, stream=buf)
         logger.info("COPY to staging: %d rows", len(df))
 
-        cur.execute(f"""
+        cur.execute(
+            f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -227,7 +221,8 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), 4326)
             FROM _ingest_staging;
-        """)
+        """
+        )
         sounding_rows = cur.rowcount
         logger.info("Inserted %d rows into aem_soundings", sounding_rows)
 
@@ -390,7 +385,7 @@ def write_raw_manifest(
     The manifest lists every raw acquisition file for this survey so
     researchers can find and download raw data for re-inversion without
     needing to know the GCS folder structure.  Referenced by the
-    raw_manifest asset in the STAC item.
+    GeoServer/OpenSearch metadata can reference this manifest as needed.
 
     Args:
         survey_id: e.g. 'gila_animas_2025'
@@ -428,345 +423,6 @@ def write_raw_manifest(
 
 
 # ---------------------------------------------------------------------------
-# STAC item builder — queries PostGIS for bbox/geometry/statistics
-# ---------------------------------------------------------------------------
-
-
-def _query_postgis_stac_fields(survey_id: str, processing_stage: str) -> dict | None:
-    """Run the three PostGIS queries that populate STAC bbox, geometry,
-    and summary statistics.
-
-    Returns a dict with all derived fields, or None if queries fail.
-    """
-    raw_conn = get_raw_connection()
-    cur = raw_conn.cursor()
-
-    try:
-        # Query 1: bbox and convex hull geometry
-        cur.execute(
-            """
-            SELECT
-                ST_AsGeoJSON(ST_ConvexHull(ST_Collect(ST_Transform(geom, 4326)))) AS geometry,
-                ST_XMin(ST_Extent(ST_Transform(geom, 4326))) AS min_lon,
-                ST_YMin(ST_Extent(ST_Transform(geom, 4326))) AS min_lat,
-                ST_XMax(ST_Extent(ST_Transform(geom, 4326))) AS max_lon,
-                ST_YMax(ST_Extent(ST_Transform(geom, 4326))) AS max_lat
-            FROM aem_soundings
-            WHERE survey_id = %s AND processing_stage = %s
-            """,
-            (survey_id, processing_stage),
-        )
-        geo_row = cur.fetchone()
-
-        # Query 2: temporal extent
-        cur.execute(
-            """
-            SELECT
-                MIN(date_acquired) AS start_datetime,
-                MAX(date_acquired) AS end_datetime
-            FROM aem_soundings
-            WHERE survey_id = %s AND processing_stage = %s
-            """,
-            (survey_id, processing_stage),
-        )
-        time_row = cur.fetchone()
-
-        # Query 3: summary statistics
-        cur.execute(
-            """
-            SELECT
-                COUNT(DISTINCT record_id)               AS num_soundings,
-                MAX(layer_no)                           AS num_layers,
-                MIN(depth_top)                          AS depth_min_m,
-                MAX(depth_bot)                          AS depth_max_m,
-                BOOL_OR(resistivity_std IS NOT NULL)    AS has_uncertainty,
-                BOOL_OR(doi_conservative IS NOT NULL)   AS has_doi
-            FROM aem_soundings
-            WHERE survey_id = %s AND processing_stage = %s
-            """,
-            (survey_id, processing_stage),
-        )
-        stats_row = cur.fetchone()
-
-        if geo_row is None or geo_row[0] is None:
-            logger.warning("PostGIS geometry query returned no results")
-            return None
-
-        # Parse geometry JSON
-        geometry = json.loads(geo_row[0])
-        bbox = [
-            float(geo_row[1]),
-            float(geo_row[2]),
-            float(geo_row[3]),
-            float(geo_row[4]),
-        ]
-
-        # Parse temporal
-        start_dt = None
-        end_dt = None
-        if time_row and time_row[0] is not None:
-            start_dt = time_row[0].strftime("%Y-%m-%dT00:00:00Z")
-            end_dt = time_row[1].strftime("%Y-%m-%dT00:00:00Z")
-
-        return {
-            "geometry": geometry,
-            "bbox": bbox,
-            "start_datetime": start_dt,
-            "end_datetime": end_dt,
-            "num_soundings": int(stats_row[0]) if stats_row[0] else 0,
-            "num_layers": int(stats_row[1]) if stats_row[1] else 0,
-            "depth_min_m": float(stats_row[2]) if stats_row[2] is not None else None,
-            "depth_max_m": float(stats_row[3]) if stats_row[3] is not None else None,
-            "has_uncertainty": (
-                bool(stats_row[4]) if stats_row[4] is not None else False
-            ),
-            "has_doi": bool(stats_row[5]) if stats_row[5] is not None else False,
-        }
-
-    except Exception:
-        logger.exception("PostGIS STAC queries failed — will fall back to DataFrame")
-        return None
-    finally:
-        cur.close()
-        raw_conn.close()
-
-
-def _derive_stac_fields_from_df(df: pd.DataFrame) -> dict:
-    """Fallback: derive STAC bbox/geometry/stats from the DataFrame
-    when PostGIS queries are unavailable.
-    """
-    logger.warning("Using DataFrame fallback for STAC fields (PostGIS unavailable)")
-
-    to_wgs84 = Transformer.from_crs(f"EPSG:{TARGET_EPSG}", "EPSG:4326", always_xy=True)
-    lon, lat = to_wgs84.transform(df["easting"].values, df["northing"].values)
-
-    min_lon = float(min(lon))
-    max_lon = float(max(lon))
-    min_lat = float(min(lat))
-    max_lat = float(max(lat))
-
-    points = gpd.points_from_xy(lon, lat)
-    hull = MultiPoint(list(points)).convex_hull
-    geometry = mapping(hull)
-
-    start_dt = None
-    end_dt = None
-    if "date_acquired" in df.columns and df["date_acquired"].notna().any():
-        dates = pd.to_datetime(df["date_acquired"].dropna())
-        start_dt = dates.min().strftime("%Y-%m-%dT00:00:00Z")
-        end_dt = dates.max().strftime("%Y-%m-%dT00:00:00Z")
-
-    return {
-        "geometry": geometry,
-        "bbox": [min_lon, min_lat, max_lon, max_lat],
-        "start_datetime": start_dt,
-        "end_datetime": end_dt,
-        "num_soundings": df["record_id"].nunique(),
-        "num_layers": int(df["layer_no"].max()) if df["layer_no"].notna().any() else 0,
-        "depth_min_m": (
-            float(df["depth_top"].min()) if df["depth_top"].notna().any() else None
-        ),
-        "depth_max_m": (
-            float(df["depth_bot"].max()) if df["depth_bot"].notna().any() else None
-        ),
-        "has_uncertainty": bool(df["resistivity_std"].notna().any()),
-        "has_doi": bool(df["doi_conservative"].notna().any()),
-    }
-
-
-def build_stac_stub(
-    df: pd.DataFrame,
-    config: IngestConfig,
-    parquet_gcs_path: str,
-    raw_manifest_gcs_path: str,
-    survey_metadata: dict | None = None,
-    geoserver_base_url: str = "https://data.nmbgmr.nmt.edu/geoserver",
-    stac_base_url: str = "https://data.nmbgmr.nmt.edu/stac",
-) -> dict:
-    """Build a complete STAC 1.0.0 item matching the stac_schema.md spec.
-
-    Queries PostGIS for bbox, geometry, and summary statistics.  Falls back
-    to deriving these from the DataFrame if PostGIS is unavailable.
-
-    Args:
-        df: Loaded DataFrame (fallback only).
-        config: Validated IngestConfig.
-        parquet_gcs_path: GCS path of the Parquet output.
-        raw_manifest_gcs_path: GCS path of raw_files.json.
-        survey_metadata: Dict with static per-survey values (survey_region,
-            system, line_spacing, line_length, is_skytem).  If None, looked up
-            from SURVEY_METADATA by config.survey_id.
-        geoserver_base_url: Base URL for GeoServer endpoints.
-        stac_base_url: Base URL for STAC catalog.
-
-    Returns:
-        Dict conforming to STAC Item 1.0.0 with nmbgmr: namespace.
-    """
-    survey_id = config.survey_id
-    processing_stage = config.processing_stage.value
-    inversion_code = config.inversion_code.value
-    contractor = config.contractor
-    gcs_bucket = config.gcs_bucket
-    source_gcs_path = config.source_gcs_path
-
-    logger.info("Building STAC item for %s / %s", survey_id, processing_stage)
-
-    # Resolve survey metadata — from argument, lookup table, or empty defaults
-    if survey_metadata is None:
-        meta = SURVEY_METADATA.get(survey_id)
-        if meta is None:
-            logger.warning(
-                "No survey metadata found for '%s' — STAC nmbgmr: fields "
-                "will have placeholder values. Add this survey to SURVEY_METADATA.",
-                survey_id,
-            )
-            survey_metadata = {
-                "survey_region": "Unknown",
-                "system": "Unknown",
-                "line_spacing": 0,
-                "line_length": None,
-                "is_skytem": False,
-            }
-        else:
-            survey_metadata = meta.model_dump()
-
-    # Query PostGIS for derived fields, fall back to DataFrame
-    derived = _query_postgis_stac_fields(survey_id, processing_stage)
-    if derived is None:
-        derived = _derive_stac_fields_from_df(df)
-
-    source_epsg = (
-        int(df["source_epsg"].iloc[0]) if "source_epsg" in df.columns else None
-    )
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Item ID: {survey_id}_{processing_stage} — no inversion_code
-    item_id = f"{survey_id}_{processing_stage}"
-
-    stac_item: dict = {
-        "type": "Feature",
-        "stac_version": "1.0.0",
-        "id": item_id,
-        "collection": survey_id,
-        "geometry": derived["geometry"],
-        "bbox": derived["bbox"],
-        "properties": {
-            # Required temporal — datetime always null for multi-date datasets
-            "datetime": None,
-            "start_datetime": derived["start_datetime"],
-            "end_datetime": derived["end_datetime"],
-            "created": now_iso,
-            "updated": now_iso,
-            # Custom nmbgmr: namespace — survey identity
-            "nmbgmr:survey_id": survey_id,
-            "nmbgmr:survey_region": survey_metadata["survey_region"],
-            "nmbgmr:processing_stage": processing_stage,
-            "nmbgmr:inversion_code": inversion_code,
-            "nmbgmr:contractor": contractor,
-            "nmbgmr:system": survey_metadata["system"],
-            "nmbgmr:line_spacing_m": survey_metadata["line_spacing"],
-            "nmbgmr:line_km": survey_metadata["line_length"],
-            "nmbgmr:source_epsg": source_epsg,
-            # Statistics — derived from PostGIS after ingest
-            "nmbgmr:num_soundings": derived["num_soundings"],
-            "nmbgmr:num_layers": derived["num_layers"],
-            "nmbgmr:depth_min_m": derived["depth_min_m"],
-            "nmbgmr:depth_max_m": derived["depth_max_m"],
-            # Quality flags
-            "nmbgmr:has_uncertainty": derived["has_uncertainty"],
-            "nmbgmr:has_doi": derived["has_doi"],
-            # DOI — null until Phase 3 DataCite minting
-            "nmbgmr:doi_url": None,
-        },
-        "assets": {
-            "inversion_source": {
-                "href": f"gs://{gcs_bucket}/{source_gcs_path}",
-                "type": "text/plain",
-                "title": f"Source inversion file — {inversion_code}",
-                "roles": ["data", "source"],
-            },
-            "data_parquet": {
-                "href": f"gs://{gcs_bucket}/{parquet_gcs_path}",
-                "type": "application/x-parquet",
-                "title": "Bulk download — canonical schema Parquet (all flights merged)",
-                "roles": ["data"],
-                "nmbgmr:note": (
-                    "Canonical aem_soundings schema. Queryable with DuckDB, "
-                    "pandas, pyarrow. HTTP range requests supported."
-                ),
-            },
-            "data_wfs": {
-                "href": (
-                    f"{geoserver_base_url}/aem/ows?"
-                    f"service=WFS&version=2.0.0&request=GetFeature"
-                    f"&typeName=aem:aem_soundings"
-                    f"&CQL_FILTER=survey_id='{survey_id}'"
-                    f" AND processing_stage='{processing_stage}'"
-                ),
-                "type": "application/json",
-                "title": "WFS endpoint — sounding locations and resistivity",
-                "roles": ["data"],
-            },
-            "data_wms": {
-                "href": (
-                    f"{geoserver_base_url}/aem/ows?"
-                    f"service=WMS&version=1.3.0&request=GetMap"
-                    f"&layers=aem:aem_soundings"
-                ),
-                "type": "image/png",
-                "title": "WMS endpoint — sounding location map",
-                "roles": ["overview"],
-            },
-            "raw_manifest": {
-                "href": f"gs://{gcs_bucket}/{raw_manifest_gcs_path}",
-                "type": "application/json",
-                "title": "Raw file manifest — all source files for this survey",
-                "roles": ["metadata"],
-                "nmbgmr:note": (
-                    "Lists all raw acquisition files, companion files, "
-                    "and their GCS paths."
-                ),
-            },
-        },
-        "links": [
-            {
-                "rel": "self",
-                "href": f"{stac_base_url}/collections/{survey_id}/items/{item_id}",
-            },
-            {"rel": "root", "href": stac_base_url},
-            {
-                "rel": "collection",
-                "href": f"{stac_base_url}/collections/{survey_id}",
-            },
-        ],
-    }
-
-    # Conditionally add companions asset for SkyTEM surveys
-    if survey_metadata.get("is_skytem", False):
-        stac_item["assets"]["companions"] = {
-            "href": f"gs://{gcs_bucket}/surveys/{survey_id}/acquisition/companions/",
-            "type": "application/json",
-            "title": "Aarhus Workbench companion files — GEX + TTP + LIN",
-            "roles": ["source"],
-            "nmbgmr:note": (
-                "Required for re-inversion in Aarhus Workbench. "
-                "Contains system geometry (GEX), column definitions (TTP), "
-                "and line definitions (LIN)."
-            ),
-        }
-
-    logger.info(
-        "STAC item built: %s — %d soundings, %d layers, " "uncertainty=%s, doi=%s",
-        item_id,
-        derived["num_soundings"],
-        derived["num_layers"],
-        derived["has_uncertainty"],
-        derived["has_doi"],
-    )
-    return stac_item
-
-
-# ---------------------------------------------------------------------------
 # Top-level orchestrator
 # ---------------------------------------------------------------------------
 
@@ -786,7 +442,7 @@ def run_ingest(
         raw_manifest_notes: Free-text notes for the manifest.
 
     Returns:
-        STAC item dict.
+        Ingest result summary.
     """
     filepath = config.filepath
 
@@ -842,14 +498,21 @@ def run_ingest(
     )
     logger.info("Step 5 — Raw manifest written: %s", raw_manifest_gcs_path)
 
-    # Step 6: Build STAC item (queries PostGIS for derived fields)
-    stac_item = build_stac_stub(
-        df,
-        config,
-        parquet_gcs_path,
-        raw_manifest_gcs_path,
+    result = {
+        "survey_id": config.survey_id,
+        "processing_stage": config.processing_stage.value,
+        "inversion_code": config.inversion_code.value,
+        "source_gcs_path": config.source_gcs_path,
+        "parquet_gcs_path": parquet_gcs_path,
+        "raw_manifest_gcs_path": raw_manifest_gcs_path,
+        "rows_loaded": n_rows,
+    }
+    logger.info(
+        "Step 6 — Ingest result prepared: survey=%s stage=%s rows=%d",
+        result["survey_id"],
+        result["processing_stage"],
+        result["rows_loaded"],
     )
-    logger.info("Step 6 — STAC item built: %s", stac_item["id"])
 
     logger.info("INGEST COMPLETE: %s → %d rows loaded", filepath, n_rows)
-    return stac_item
+    return result

@@ -27,9 +27,10 @@ from sqlalchemy_searchable import (
     search_manager,
 )
 
-from db.analysis_method import *
 from db.aem import *
+from db.analysis_method import *
 from db.aquifer_system import *
+from db.aquifer_type import *
 from db.aquifer_type import *
 from db.asset import *
 from db.base import *
@@ -46,8 +47,10 @@ from db.group import *
 from db.lexicon import *
 from db.location import *
 from db.measuring_point_history import *
+from db.nma_legacy import *
 from db.notes import *
 from db.observation import *
+from db.opensearch import *
 from db.parameter import *
 from db.permission_history import *
 from db.publication import *
@@ -58,22 +61,7 @@ from db.status_history import *
 from db.thing import *
 from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
-from db.aquifer_type import *
-from db.nma_legacy import *
 from db.transducer import *
-
-from sqlalchemy import (
-    func,
-    desc,
-    cast,
-    Text,
-)
-from sqlalchemy.dialects.postgresql import REGCONFIG
-from sqlalchemy_searchable import (
-    inspect_search_vectors,
-    search_manager,
-)
-from sqlalchemy.orm import configure_mappers
 
 configure_mappers()
 
