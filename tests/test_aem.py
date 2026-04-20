@@ -308,6 +308,59 @@ def test_build_stac_payloads_are_deterministic():
     ]
     assert items[0]["properties"]["datetime"] == "2025-03-01T00:00:00Z"
     assert items[1]["properties"]["datetime"] == "2025-03-02T00:00:00Z"
+    assert "wms" not in collection["assets"]
+    assert "wfs" not in collection["assets"]
+    assert "wcs" not in collection["assets"]
+
+
+def test_build_stac_collection_includes_survey_level_geoserver_assets(monkeypatch):
+    monkeypatch.setenv("GEOSERVER_PUBLIC_URL", "https://maps.example.com")
+    monkeypatch.setenv("GEOSERVER_WORKSPACE", "aem")
+
+    df = pd.DataFrame(
+        [
+            {
+                "line_id": "L1",
+                "record_id": "R1",
+                "easting": 500000,
+                "northing": 3800000,
+                "source_epsg": 32613,
+            }
+        ]
+    )
+    config = IngestConfig(
+        filepath="/tmp/input.csv",
+        survey_id="gila_animas_2025",
+        processing_stage=ProcessingStage.PRELIMINARY,
+        inversion_code=InversionCode.SEOGI_PYTHON,
+        contractor="GeoTech/Seogi",
+        gcs_bucket="example-bucket",
+        source_gcs_path="surveys/gila_animas_2025/source.csv",
+    )
+
+    collection = aem_stac_service.build_stac_collection(
+        df=df,
+        config=config,
+        parquet_gcs_path="surveys/gila_animas_2025/out.parquet",
+        raw_manifest_gcs_path="surveys/gila_animas_2025/raw_files.json",
+    )
+
+    assert collection["assets"]["wms"]["href"] == (
+        "https://maps.example.com/geoserver/ows"
+        "?service=WMS&version=1.3.0&request=GetCapabilities"
+    )
+    assert collection["assets"]["wfs"]["href"] == (
+        "https://maps.example.com/geoserver/ows"
+        "?service=WFS&version=2.0.0&request=GetFeature"
+        "&typeNames=aem%3Aaem-gila_animas_2025"
+        "&outputFormat=application%2Fjson"
+    )
+    assert collection["assets"]["wcs"]["href"] == (
+        "https://maps.example.com/geoserver/ows"
+        "?service=WCS&version=2.0.1&request=DescribeCoverage"
+        "&coverageId=aem%3Aaem-gila_animas_2025"
+    )
+    assert collection["assets"]["wms"]["geoserver:layer"] == "aem:aem-gila_animas_2025"
 
 
 def test_load_stac_to_pgstac_uses_upsert(monkeypatch):

@@ -12,6 +12,7 @@ AEM service modules:
 - `aem_ingest.py`: single-file ingest orchestration
   Also contains the PostGIS bulk-load and Parquet/raw-manifest helpers.
 - `aem_stac.py`: STAC document builders, payload writers, and `pypgstac` load helpers
+  Also adds optional survey-level GeoServer WMS/WFS/WCS collection assets when the GeoServer env vars are configured.
 - `aem_batch.py`: batch ingest from the mapping CSV
 - `aem_db.py`: DB access helpers for AEM ingest
 - `aem_provenance.py`: provenance and raw-file helper logic

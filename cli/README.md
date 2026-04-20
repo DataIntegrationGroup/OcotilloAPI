@@ -70,6 +70,7 @@ AEM runtime notes:
 - `run` and `batch` require a GCS bucket via `--gcs-bucket` or `--bucket`, or `AEM_GCS_BUCKET` / `GCS_BUCKET_NAME`.
 - `run` and `batch` also need database connectivity unless you are doing a dry run.
 - `run` writes replayable STAC payload artifacts under the survey metadata prefix and loads them into `pgstac` with `pypgstac`.
+- `run` can also add survey-level GeoServer WMS/WFS/WCS assets to the STAC Collection when `GEOSERVER_PUBLIC_URL` and `GEOSERVER_WORKSPACE` are configured.
 - OcotilloAPI does not publish to GeoServer or serve the STAC API; the dedicated STAC stack still owns `stac-fastapi-pgstac`.
 - `parse` requires `--system` for AGF LCI files and may require `--flight-id` for Seogi inputs.
 

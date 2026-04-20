@@ -14,7 +14,7 @@ from google.cloud import storage
 from schemas.aem import SURVEY_METADATA, IngestConfig
 from services.util import transform_srid
 from shapely.geometry import box, mapping
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,80 @@ def _stac_datetime_or_none(value) -> str | None:
 
 def _gcs_href(bucket: str, path: str) -> str:
     return f"gs://{bucket}/{path}"
+
+
+def _get_env_or_none(name: str) -> str | None:
+    value = os.environ.get(name, "").strip()
+    return value or None
+
+
+def _build_geoserver_endpoint(
+    public_url: str,
+    default_path: str,
+    override_env_name: str,
+) -> str:
+    override = _get_env_or_none(override_env_name)
+    if override is None:
+        return f"{public_url.rstrip('/')}{default_path}"
+    if override.startswith("http://") or override.startswith("https://"):
+        return override
+    return f"{public_url.rstrip('/')}/{override.lstrip('/')}"
+
+
+def _geoserver_layer_name(collection_id: str, workspace: str) -> str:
+    return f"{workspace}:{collection_id}"
+
+
+def build_geoserver_collection_assets(collection_id: str) -> dict[str, dict]:
+    """Build survey-level GeoServer assets from environment configuration."""
+    public_url = _get_env_or_none("GEOSERVER_PUBLIC_URL")
+    workspace = _get_env_or_none("GEOSERVER_WORKSPACE")
+    if public_url is None or workspace is None:
+        return {}
+
+    layer_name = _geoserver_layer_name(collection_id, workspace)
+    wms_endpoint = _build_geoserver_endpoint(
+        public_url, "/geoserver/ows", "GEOSERVER_WMS_PATH"
+    )
+    wfs_endpoint = _build_geoserver_endpoint(
+        public_url, "/geoserver/ows", "GEOSERVER_WFS_PATH"
+    )
+    wcs_endpoint = _build_geoserver_endpoint(
+        public_url, "/geoserver/ows", "GEOSERVER_WCS_PATH"
+    )
+
+    return {
+        "wms": {
+            "href": f"{wms_endpoint}?{urlencode({'service': 'WMS', 'version': '1.3.0', 'request': 'GetCapabilities'})}",
+            "type": "application/xml",
+            "roles": ["visual", "metadata"],
+            "title": "GeoServer WMS service",
+            "geoserver:service": "WMS",
+            "geoserver:workspace": workspace,
+            "geoserver:layer": layer_name,
+            "geoserver:request": "GetCapabilities",
+        },
+        "wfs": {
+            "href": f"{wfs_endpoint}?{urlencode({'service': 'WFS', 'version': '2.0.0', 'request': 'GetFeature', 'typeNames': layer_name, 'outputFormat': 'application/json'})}",
+            "type": "application/geo+json",
+            "roles": ["data", "metadata"],
+            "title": "GeoServer WFS feature access",
+            "geoserver:service": "WFS",
+            "geoserver:workspace": workspace,
+            "geoserver:layer": layer_name,
+            "geoserver:request": "GetFeature",
+        },
+        "wcs": {
+            "href": f"{wcs_endpoint}?{urlencode({'service': 'WCS', 'version': '2.0.1', 'request': 'DescribeCoverage', 'coverageId': layer_name})}",
+            "type": "application/xml",
+            "roles": ["data", "metadata"],
+            "title": "GeoServer WCS coverage metadata",
+            "geoserver:service": "WCS",
+            "geoserver:workspace": workspace,
+            "geoserver:layer": layer_name,
+            "geoserver:request": "DescribeCoverage",
+        },
+    }
 
 
 def _fallback_stac_datetime(config: IngestConfig) -> str:
@@ -120,6 +194,28 @@ def build_stac_collection(
             }
         )
 
+    assets = {
+        "source": {
+            "href": _gcs_href(config.gcs_bucket, config.source_gcs_path),
+            "type": "text/csv",
+            "roles": ["data", "metadata"],
+            "title": "Canonical source inversion file",
+        },
+        "parquet": {
+            "href": _gcs_href(config.gcs_bucket, parquet_gcs_path),
+            "type": "application/x-parquet",
+            "roles": ["data"],
+            "title": "Canonical sounding parquet export",
+        },
+        "raw_manifest": {
+            "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
+            "type": "application/json",
+            "roles": ["metadata"],
+            "title": "Raw source file manifest",
+        },
+    }
+    assets.update(build_geoserver_collection_assets(f"aem-{config.survey_id.lower()}"))
+
     return {
         "type": "Collection",
         "stac_version": "1.0.0",
@@ -162,26 +258,7 @@ def build_stac_collection(
                 "roles": ["metadata"],
             },
         },
-        "assets": {
-            "source": {
-                "href": _gcs_href(config.gcs_bucket, config.source_gcs_path),
-                "type": "text/csv",
-                "roles": ["data", "metadata"],
-                "title": "Canonical source inversion file",
-            },
-            "parquet": {
-                "href": _gcs_href(config.gcs_bucket, parquet_gcs_path),
-                "type": "application/x-parquet",
-                "roles": ["data"],
-                "title": "Canonical sounding parquet export",
-            },
-            "raw_manifest": {
-                "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
-                "type": "application/json",
-                "roles": ["metadata"],
-                "title": "Raw source file manifest",
-            },
-        },
+        "assets": assets,
         "ocotillo:survey_id": config.survey_id,
         "ocotillo:processing_stage": config.processing_stage.value,
         "ocotillo:inversion_code": config.inversion_code.value,
