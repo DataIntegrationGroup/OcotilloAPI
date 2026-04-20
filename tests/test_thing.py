@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import date, timezone
-
 import pytest
-from sqlalchemy import delete
-
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -26,6 +22,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from datetime import date, timezone
 from db import MeasuringPointHistory, StatusHistory, Thing, ThingIdLink, WellScreen
 from db.engine import session_ctx
 from main import app
@@ -33,6 +30,7 @@ from schemas import DT_FMT
 from schemas.location import LocationResponse
 from schemas.thing import UpdateWell, ValidateWell
 from services.water_level_csv import bulk_upload_water_levels
+from sqlalchemy import delete
 from tests import (
     client,
     override_authentication,
@@ -629,22 +627,31 @@ def test_get_water_well_details_payload(
         assert data["deployments"][0]["id"] == sensor_to_water_well_thing_deployment.id
         assert data["deployments"][0]["sensor"]["id"] == sensor.id
         assert data["well_screens"][0]["id"] == well_screen.id
-        assert (
-            data["recent_groundwater_level_observations"][0]["id"]
-            == groundwater_level_observation.id
+        assert "thing" not in data["well_screens"][0]
+        assert len(data["field_events"]) == 1
+        assert data["field_events"][0]["id"] == field_event.id
+        assert data["field_events"][0]["field_activities"][0]["id"] == (
+            groundwater_level_sample.field_activity_id
         )
-        assert data["latest_field_event_sample"]["id"] == groundwater_level_sample.id
-        assert data["latest_field_event_sample"]["field_event"]["id"] == field_event.id
-        assert data["latest_field_event_sample"]["contact"]["id"] == contact.id
+        assert data["field_events"][0]["field_activities"][0]["samples"][0]["id"] == (
+            groundwater_level_sample.id
+        )
         assert {
-            participant["id"] for participant in data["field_event_participants"]
+            observation["id"]
+            for observation in data["field_events"][0]["field_activities"][0][
+                "samples"
+            ][0]["observations"]
+        } == {groundwater_level_observation.id}
+        assert {
+            participant["id"]
+            for participant in data["field_events"][0]["field_event_participants"]
         } == {
             field_event_participant.id,
             second_participant_id,
         }
         assert {
             participant["participant"]["id"]
-            for participant in data["field_event_participants"]
+            for participant in data["field_events"][0]["field_event_participants"]
         } == {contact.id, second_contact_id}
     finally:
         with session_ctx() as session:
@@ -706,11 +713,15 @@ def test_get_water_well_details_payload_uses_latest_observation_sample(
 
         assert response.status_code == 200
         data = response.json()
-        assert data["latest_field_event_sample"]["id"] == later_sample_id
-        assert (
-            data["recent_groundwater_level_observations"][0]["id"]
-            == later_observation_id
+        activity_samples = data["field_events"][0]["field_activities"][0]["samples"]
+        matching_sample = next(
+            (sample for sample in activity_samples if sample["id"] == later_sample_id),
+            None,
         )
+        assert matching_sample is not None, "Expected later sample in field event"
+        assert {
+            observation["id"] for observation in matching_sample["observations"]
+        } == {later_observation_id}
     finally:
         with session_ctx() as session:
             later_observation = session.get(Observation, later_observation_id)
@@ -719,6 +730,41 @@ def test_get_water_well_details_payload_uses_latest_observation_sample(
             later_sample = session.get(Sample, later_sample_id)
             if later_sample is not None:
                 session.delete(later_sample)
+            session.commit()
+
+
+def test_get_water_well_details_payload_limits_field_events(
+    water_well_thing,
+    field_event,
+):
+    from db import FieldEvent
+
+    with session_ctx() as session:
+        later_field_event = FieldEvent(
+            thing_id=water_well_thing.id,
+            event_date="2025-01-02T00:00:00Z",
+            notes="later field event",
+            release_status="draft",
+        )
+        session.add(later_field_event)
+        session.commit()
+        session.refresh(later_field_event)
+        later_field_event_id = later_field_event.id
+
+    try:
+        response = client.get(
+            f"/thing/water-well/{water_well_thing.id}/details?field_event_limit=1"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["field_events"]) == 1
+        assert data["field_events"][0]["id"] == later_field_event_id
+    finally:
+        with session_ctx() as session:
+            later_field_event = session.get(FieldEvent, later_field_event_id)
+            if later_field_event is not None:
+                session.delete(later_field_event)
             session.commit()
 
 
@@ -772,10 +818,12 @@ def test_get_water_well_details_payload_includes_imported_water_level_staff(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["latest_field_event_sample"]["contact"]["name"] == "A Lopez"
+    activity_samples = data["field_events"][0]["field_activities"][0]["samples"]
+    assert len(activity_samples) == 1
+    assert activity_samples[0]["contact"]["name"] == "A Lopez"
     assert {
         participant["participant"]["name"]
-        for participant in data["field_event_participants"]
+        for participant in data["field_events"][0]["field_event_participants"]
     } == {"A Lopez", "B Chen"}
 
 

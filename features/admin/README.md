@@ -66,8 +66,8 @@ Documents Location admin CRUD operations and business rules:
 ### Run Tests
 
 ```bash
-# From NMSampleLocations directory
-cd /path/to/NMSampleLocations
+# From OcotilloAPI directory
+cd /path/to/OcotilloAPI
 
 # Run all admin feature tests
 behave features/admin/

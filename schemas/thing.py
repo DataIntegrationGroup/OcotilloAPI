@@ -349,13 +349,8 @@ class ThingResponse(WellResponse, SpringResponse):
     measuring_point_height: float | None
 
 
-class WellScreenResponse(BaseResponseModel):
-    """
-    Response schema for well screen details.
-    """
-
+class WellScreenBaseResponse(BaseResponseModel):
     thing_id: int
-    thing: WellResponse
     aquifer_system_id: int | None = None
     aquifer_system: str | None = None
     aquifer_type: str | None = None
@@ -385,6 +380,14 @@ class WellScreenResponse(BaseResponseModel):
         if geologic_formation is not None:
             return geologic_formation.formation_code
         return None
+
+
+class WellScreenResponse(WellScreenBaseResponse):
+    """
+    Response schema for well screen details.
+    """
+
+    thing: WellResponse
 
 
 class GeoJSONGeometry(BaseModel):

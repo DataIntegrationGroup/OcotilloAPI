@@ -197,6 +197,7 @@ def get_well_details(
     thing_id: int,
     session: session_dependency,
     request: Request,
+    field_event_limit: int = Query(default=25, ge=1, le=100),
 ) -> WellDetailsResponse:
     """
     Retrieve the consolidated payload needed to render the well details page.
@@ -206,6 +207,7 @@ def get_well_details(
         session=session,
         request=request,
         thing_id=thing_id,
+        field_event_limit=field_event_limit,
     )
 
 

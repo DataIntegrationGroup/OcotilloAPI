@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-AquiferTypeAdmin view for NMSampleLocations.
+AquiferTypeAdmin view for OcotilloAPI.
 """
 
 from admin.views.base import OcotilloModelView

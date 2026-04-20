@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-NotesAdmin view for NMSampleLocations.
+NotesAdmin view for OcotilloAPI.
 """
 
 from admin.views.base import OcotilloModelView

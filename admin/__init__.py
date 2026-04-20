@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-Starlette Admin package for NMSampleLocations.
+Starlette Admin package for OcotilloAPI.
 
 Provides web-based administrative interface for managing database records.
 """
