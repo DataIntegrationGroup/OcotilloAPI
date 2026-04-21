@@ -25,7 +25,7 @@ from typing import Optional
 
 import pandas as pd
 
-from services.aem_parsers.common import finalize_parsed_dataframe
+from services.aem_parsers.common import copy_temporal_columns, finalize_parsed_dataframe
 from services.aem_parsers.detect import extract_flight_id
 
 logger = logging.getLogger(__name__)
@@ -89,6 +89,7 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
                 )
 
         layer_df = df[["record_id", "line_no", "utmx", "utmy", "elevation"]].copy()
+        layer_df = copy_temporal_columns(df, layer_df)
 
         # Include plm if present (some Seogi outputs include it)
         if "plm" in df.columns:

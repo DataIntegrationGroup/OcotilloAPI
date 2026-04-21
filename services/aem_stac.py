@@ -9,12 +9,16 @@ import os
 import pandas as pd
 import re
 from collections.abc import Callable, Iterable
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from google.cloud import storage
 from schemas.aem import SURVEY_METADATA, IngestConfig
+from services.aem_parsers.common import (
+    TEMPORAL_DATETIME_COLUMNS,
+    TEMPORAL_TIME_COLUMNS,
+)
 from services.util import transform_srid
 from shapely.geometry import box, mapping
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote, quote_plus, urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +46,75 @@ def _stac_datetime_or_none(value) -> str | None:
     return f"{text_value}Z"
 
 
+def _combine_date_and_time(date_value, time_value):
+    if date_value is None or pd.isna(date_value):
+        return None
+    if time_value is None or pd.isna(time_value):
+        return date_value
+
+    if isinstance(date_value, pd.Timestamp):
+        date_value = date_value.to_pydatetime()
+    if isinstance(time_value, pd.Timestamp):
+        time_value = time_value.to_pydatetime()
+
+    if isinstance(date_value, datetime):
+        if date_value.time() != datetime.min.time():
+            return date_value
+        date_part = date_value.date()
+    elif isinstance(date_value, date):
+        date_part = date_value
+    else:
+        parsed_date = pd.to_datetime(date_value, errors="coerce")
+        if pd.isna(parsed_date):
+            return date_value
+        date_part = parsed_date.date()
+
+    if isinstance(time_value, datetime):
+        time_part = time_value.timetz()
+    elif isinstance(time_value, time):
+        time_part = time_value
+    else:
+        parsed_time = pd.to_datetime(time_value, errors="coerce")
+        if pd.isna(parsed_time):
+            return date_value
+        time_part = parsed_time.timetz()
+
+    return datetime.combine(date_part, time_part)
+
+
+def _stac_datetimes_from_frame(df: pd.DataFrame) -> list[str]:
+    for col in TEMPORAL_DATETIME_COLUMNS:
+        if col not in df.columns:
+            continue
+        values = [_stac_datetime_or_none(value) for value in df[col]]
+        cleaned = sorted({value for value in values if value is not None})
+        if cleaned:
+            return cleaned
+
+    if "date_acquired" not in df.columns:
+        return []
+
+    for time_col in TEMPORAL_TIME_COLUMNS:
+        if time_col not in df.columns:
+            continue
+        values = [
+            _stac_datetime_or_none(_combine_date_and_time(date_value, time_value))
+            for date_value, time_value in zip(
+                df["date_acquired"], df[time_col], strict=False
+            )
+        ]
+        cleaned = sorted({value for value in values if value is not None})
+        if cleaned:
+            return cleaned
+
+    values = [_stac_datetime_or_none(value) for value in df["date_acquired"]]
+    return sorted({value for value in values if value is not None})
+
+
 def _gcs_href(bucket: str, path: str) -> str:
-    return f"gs://{bucket}/{path}"
+    return (
+        f"https://storage.googleapis.com/{bucket}/{quote(path.lstrip('/'), safe='/')}"
+    )
 
 
 def _get_env_or_none(name: str) -> str | None:
@@ -56,12 +127,30 @@ def _build_geoserver_endpoint(
     default_path: str,
     override_env_name: str,
 ) -> str:
+    def _join_url_path(base_url: str, path: str) -> str:
+        normalized_base = base_url.rstrip("/")
+        normalized_path = f"/{path.lstrip('/')}"
+        if normalized_base.endswith(normalized_path):
+            return normalized_base
+        base_parts = normalized_base.split("/")
+        path_parts = normalized_path.lstrip("/").split("/")
+        overlap = 0
+        max_overlap = min(len(base_parts), len(path_parts))
+        for size in range(max_overlap, 0, -1):
+            if base_parts[-size:] == path_parts[:size]:
+                overlap = size
+                break
+        if overlap:
+            suffix = "/".join(path_parts[overlap:])
+            return normalized_base if not suffix else f"{normalized_base}/{suffix}"
+        return f"{normalized_base}{normalized_path}"
+
     override = _get_env_or_none(override_env_name)
     if override is None:
-        return f"{public_url.rstrip('/')}{default_path}"
+        return _join_url_path(public_url, default_path)
     if override.startswith("http://") or override.startswith("https://"):
         return override
-    return f"{public_url.rstrip('/')}/{override.lstrip('/')}"
+    return _join_url_path(public_url, override)
 
 
 def _geoserver_layer_name(collection_id: str, workspace: str) -> str:
@@ -158,17 +247,7 @@ def _stac_temporal_extent(
     df: pd.DataFrame,
     config: IngestConfig,
 ) -> tuple[str, str]:
-    temporal_values = (
-        sorted(
-            {
-                _stac_datetime_or_none(value)
-                for value in df.get("date_acquired", pd.Series())
-            }
-        )
-        if "date_acquired" in df.columns
-        else []
-    )
-    temporal_values = [value for value in temporal_values if value is not None]
+    temporal_values = _stac_datetimes_from_frame(df)
     if not temporal_values:
         fallback = _fallback_stac_datetime(config)
         return fallback, fallback
@@ -316,11 +395,7 @@ def build_stac_items(
         )
         geometry = mapping(geometry_point)
         bbox = [round(float(value), 6) for value in geometry_point.bounds]
-        datetimes = [
-            _stac_datetime_or_none(value)
-            for value in group.get("date_acquired", pd.Series())
-        ]
-        datetimes = sorted({value for value in datetimes if value is not None})
+        datetimes = _stac_datetimes_from_frame(group)
         if datetimes:
             datetime_value = datetimes[0] if len(datetimes) == 1 else None
             start_datetime = datetimes[0]

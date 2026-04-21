@@ -20,6 +20,21 @@ from services.util import reproject_to_target
 # to 26913 in-memory before deriving the stored WGS84 geometry.
 TARGET_EPSG = 26913
 
+TEMPORAL_DATETIME_COLUMNS = [
+    "acquisition_datetime",
+    "datetime_acquired",
+    "acquired_at",
+    "timestamp",
+    "datetime_utc",
+    "utc_datetime",
+]
+TEMPORAL_TIME_COLUMNS = [
+    "acquisition_time",
+    "time_acquired",
+    "time_utc",
+    "utc_time",
+]
+
 # Canonical column names for the parser/Parquet contract.
 # The database only persists the non-coordinate fields plus a WGS84 geometry.
 CANONICAL_COLUMNS = [
@@ -64,6 +79,17 @@ def ensure_canonical_columns(df: pd.DataFrame) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = np.nan
     return df
+
+
+def copy_temporal_columns(
+    source_df: pd.DataFrame,
+    target_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Preserve likely acquisition timestamp columns through parser reshaping."""
+    for col in TEMPORAL_DATETIME_COLUMNS + TEMPORAL_TIME_COLUMNS:
+        if col in source_df.columns and col not in target_df.columns:
+            target_df[col] = source_df[col]
+    return target_df
 
 
 def finalize_parsed_dataframe(

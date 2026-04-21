@@ -23,7 +23,7 @@ import re
 
 import pandas as pd
 
-from services.aem_parsers.common import finalize_parsed_dataframe
+from services.aem_parsers.common import copy_temporal_columns, finalize_parsed_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,7 @@ def parse_agf_lci(filepath: str, system: str) -> pd.DataFrame:
                 raise ValueError(f"Expected column '{col}' not found in AGF file.")
 
         layer_df = df[["record_id", "Line", "E_UTM13Nm", "N_UTM13Nm", "DEM_m"]].copy()
+        layer_df = copy_temporal_columns(df, layer_df)
 
         # Sounding-level columns (constant across layers)
         if "ALTITUDE__m_" in df.columns:
