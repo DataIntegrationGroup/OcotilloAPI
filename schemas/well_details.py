@@ -51,3 +51,4 @@ class WellDetailsResponse(BaseModel):
     deployments: list[DeploymentResponse] = Field(default_factory=list)
     well_screens: list[WellScreenBaseResponse] = Field(default_factory=list)
     field_events: list[WellDetailsFieldEventResponse] = Field(default_factory=list)
+    first_field_event: WellDetailsFieldEventResponse | None = None

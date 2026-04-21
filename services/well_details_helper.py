@@ -111,26 +111,37 @@ def get_well_details_payload(
                 .order_by(WellScreen.screen_depth_top.asc(), WellScreen.id.asc())
             ).all()
 
+        _participant_options = selectinload(
+            FieldEvent.field_event_participants
+        ).selectinload(FieldEventParticipant.participant)
+        _activity_options = [
+            selectinload(FieldEvent.field_activities)
+            .selectinload(FieldActivity.samples)
+            .selectinload(Sample.field_event_participant)
+            .selectinload(FieldEventParticipant.participant),
+            selectinload(FieldEvent.field_activities)
+            .selectinload(FieldActivity.samples)
+            .selectinload(Sample.observations)
+            .selectinload(Observation.parameter),
+        ]
+
         with _payload_stage_timer("well_details", "load_field_events", thing_id):
             field_events = session.scalars(
                 select(FieldEvent)
                 .where(FieldEvent.thing_id == well.id)
-                .options(
-                    selectinload(FieldEvent.field_event_participants).selectinload(
-                        FieldEventParticipant.participant
-                    ),
-                    selectinload(FieldEvent.field_activities)
-                    .selectinload(FieldActivity.samples)
-                    .selectinload(Sample.field_event_participant)
-                    .selectinload(FieldEventParticipant.participant),
-                    selectinload(FieldEvent.field_activities)
-                    .selectinload(FieldActivity.samples)
-                    .selectinload(Sample.observations)
-                    .selectinload(Observation.parameter),
-                )
+                .options(_participant_options, *_activity_options)
                 .order_by(FieldEvent.event_date.desc(), FieldEvent.id.desc())
                 .limit(field_event_limit)
             ).all()
+
+        with _payload_stage_timer("well_details", "load_first_field_event", thing_id):
+            first_field_event = session.scalars(
+                select(FieldEvent)
+                .where(FieldEvent.thing_id == well.id)
+                .options(_participant_options)
+                .order_by(FieldEvent.event_date.asc(), FieldEvent.id.asc())
+                .limit(1)
+            ).first()
 
         return {
             "well": well,
@@ -139,6 +150,7 @@ def get_well_details_payload(
             "deployments": deployments,
             "well_screens": well_screens,
             "field_events": field_events,
+            "first_field_event": first_field_event,
         }
 
 
