@@ -111,11 +111,9 @@ def get_well_details_payload(
                 .order_by(WellScreen.screen_depth_top.asc(), WellScreen.id.asc())
             ).all()
 
-        _participant_options = (
-            selectinload(FieldEvent.field_event_participants).selectinload(
-                FieldEventParticipant.participant
-            )
-        )
+        _participant_options = selectinload(
+            FieldEvent.field_event_participants
+        ).selectinload(FieldEventParticipant.participant)
         _activity_options = [
             selectinload(FieldEvent.field_activities)
             .selectinload(FieldActivity.samples)
