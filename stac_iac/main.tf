@@ -4,24 +4,7 @@ locals {
     stack   = "stac"
   }
 
-  bootstrap_labels = {
-    service = var.bootstrap_job_name
-    stack   = "stac"
-  }
-
-  bootstrap_postgres_user_secret_id = coalesce(
-    var.bootstrap_postgres_user_secret_id,
-    var.postgres_user_secret_id,
-  )
-
-  bootstrap_postgres_password_secret_id = coalesce(
-    var.bootstrap_postgres_password_secret_id,
-    var.postgres_password_secret_id,
-  )
-
-  bootstrap_script = templatefile("${path.module}/bootstrap-pgstac.sh.tftpl", {
-    postgres_database = var.postgres_database
-  })
+  cloud_sql_proxy_image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.19.0"
 }
 
 resource "google_service_account" "stac_api" {
@@ -42,9 +25,10 @@ resource "google_project_iam_member" "secret_accessor" {
 }
 
 resource "google_cloud_run_v2_service" "stac_api" {
-  name     = var.service_name
-  location = var.region
-  ingress  = var.ingress
+  name                = var.service_name
+  location            = var.region
+  ingress             = var.ingress
+  deletion_protection = var.deletion_protection
 
   template {
     service_account = google_service_account.stac_api.email
@@ -55,28 +39,18 @@ resource "google_cloud_run_v2_service" "stac_api" {
       max_instance_count = var.max_instance_count
     }
 
-    volumes {
-      name = "cloudsql"
-      cloud_sql_instance {
-        instances = [var.cloud_sql_connection_name]
-      }
-    }
-
     containers {
-      image = var.image
+      name       = "stac-api"
+      image      = var.image
+      depends_on = ["cloud-sql-proxy"]
 
       ports {
         container_port = var.container_port
       }
 
-      volume_mounts {
-        name       = "cloudsql"
-        mount_path = "/cloudsql"
-      }
-
       env {
         name  = "PGHOST"
-        value = "/cloudsql/${var.cloud_sql_connection_name}"
+        value = "127.0.0.1"
       }
 
       env {
@@ -108,98 +82,32 @@ resource "google_cloud_run_v2_service" "stac_api" {
           }
         }
       }
-    }
-  }
 
-  depends_on = [
-    google_project_iam_member.cloudsql_client,
-    google_project_iam_member.secret_accessor,
-  ]
-}
-
-resource "google_cloud_run_v2_job" "pgstac_bootstrap" {
-  name     = var.bootstrap_job_name
-  location = var.region
-
-  template {
-    template {
-      service_account = google_service_account.stac_api.email
-      labels          = local.bootstrap_labels
-
-      volumes {
-        name = "cloudsql"
-        cloud_sql_instance {
-          instances = [var.cloud_sql_connection_name]
-        }
+      env {
+        name  = "CORS_ORIGINS"
+        value = var.cors_origins
       }
+    }
 
-      containers {
-        image = var.bootstrap_image
-        command = [
-          "/bin/sh",
-          "-c",
-          local.bootstrap_script,
-        ]
+    containers {
+      name  = "cloud-sql-proxy"
+      image = local.cloud_sql_proxy_image
+      args = [
+        "--address",
+        "0.0.0.0",
+        "--port",
+        "5432",
+        var.cloud_sql_connection_name,
+      ]
 
-        volume_mounts {
-          name       = "cloudsql"
-          mount_path = "/cloudsql"
+      startup_probe {
+        tcp_socket {
+          port = 5432
         }
 
-        env {
-          name  = "PGHOST"
-          value = "/cloudsql/${var.cloud_sql_connection_name}"
-        }
-
-        env {
-          name  = "PGPORT"
-          value = "5432"
-        }
-
-        env {
-          name  = "PGDATABASE"
-          value = var.postgres_database
-        }
-
-        env {
-          name = "PGUSER"
-          value_source {
-            secret_key_ref {
-              secret  = local.bootstrap_postgres_user_secret_id
-              version = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "PGPASSWORD"
-          value_source {
-            secret_key_ref {
-              secret  = local.bootstrap_postgres_password_secret_id
-              version = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "RUNTIME_PGUSER"
-          value_source {
-            secret_key_ref {
-              secret  = var.postgres_user_secret_id
-              version = "latest"
-            }
-          }
-        }
-
-        env {
-          name = "RUNTIME_PGPASSWORD"
-          value_source {
-            secret_key_ref {
-              secret  = var.postgres_password_secret_id
-              version = "latest"
-            }
-          }
-        }
+        period_seconds    = 5
+        timeout_seconds   = 3
+        failure_threshold = 12
       }
     }
   }

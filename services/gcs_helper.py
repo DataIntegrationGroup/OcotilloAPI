@@ -76,6 +76,8 @@ def get_storage_bucket(client=None, bucket: str = None):
     return _get_cached_bucket(bucket_name)
 
 
+# TODO: Replace _log_stage call sites with contextmanager-based timing helpers
+# to match the staged logging pattern used elsewhere in the services layer.
 def _log_stage(stage: str, started_at: float, **extra):
     if not is_debug_timing_enabled():
         return
@@ -102,6 +104,10 @@ def _hash_file(file_obj) -> str:
     return hasher.hexdigest()
 
 
+def make_blob_uri(bucket_name: str, blob_name: str) -> str:
+    return f"https://storage.cloud.google.com/{bucket_name}/{blob_name}"
+
+
 def make_blob_name_and_uri(file):
     started_at = time.perf_counter()
     head, extension = os.path.splitext(file.filename)
@@ -118,6 +124,49 @@ def make_blob_name_and_uri(file):
         blob_name=blob_name,
     )
     return blob_name, uri
+
+
+def gcs_upload_to_blob_name(file: UploadFile, blob_name: str, bucket=None):
+    upload_started_at = time.perf_counter()
+    if bucket is None:
+        bucket_started_at = time.perf_counter()
+        bucket = get_storage_bucket()
+        _log_stage("resolve_bucket", bucket_started_at, filename=file.filename)
+
+    lookup_started_at = time.perf_counter()
+    eblob = bucket.get_blob(blob_name, timeout=GCS_LOOKUP_TIMEOUT_SECS)
+    _log_stage(
+        "lookup_blob",
+        lookup_started_at,
+        filename=file.filename,
+        blob_name=blob_name,
+        blob_exists=eblob is not None,
+    )
+
+    if not eblob:
+        blob = bucket.blob(blob_name)
+        file.file.seek(0)
+        upload_blob_started_at = time.perf_counter()
+        blob.upload_from_file(
+            file.file,
+            content_type=file.content_type,
+            timeout=GCS_UPLOAD_TIMEOUT_SECS,
+        )
+        _log_stage(
+            "upload_blob",
+            upload_blob_started_at,
+            filename=file.filename,
+            blob_name=blob_name,
+        )
+
+    uri = make_blob_uri(bucket.name, blob_name)
+    _log_stage(
+        "upload_request_total",
+        upload_started_at,
+        filename=file.filename,
+        blob_name=blob_name,
+    )
+    return uri, blob_name
 
 
 def gcs_upload(file: UploadFile, bucket=None):

@@ -5,7 +5,7 @@ not part of the core app runtime.
 
 Contents:
 - `aem_gcs_mapper.py`: mapping/planning utility for source files and GCS paths
-- `aem_migrate.py`: operational migration helper
+- `aem_migrate.py`: deprecated wrapper around `oco aem-ingest batch`
 - `gcs_path_mapping.csv`: reviewed ingest/migration mapping input
 - migration logs and summaries generated during operational runs
 
@@ -15,5 +15,6 @@ that work:
 - `schemas/aem.py`
 - `services/aem_ingest.py`
 - `services/aem_batch.py`
+- `services/aem_migration.py`
 - `services/aem_parsers/`
 - `cli/aem_ingest.py`

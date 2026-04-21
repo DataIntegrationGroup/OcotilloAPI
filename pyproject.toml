@@ -108,6 +108,10 @@ cli = [
   "pypgstac[psycopg]>=0.9.11",
   "pyarrow>=14.0",
   "typer==0.24.1",
+  "tqdm==4.66.1",
+  "psycopg>=3.3.3",
+  "psycopg-pool>=3.3.0",
+  "geoserver-rest==2.10.0",
 ]
 
 [tool.uv]

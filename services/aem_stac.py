@@ -472,6 +472,18 @@ def _import_pypgstac():
     return PgstacDB, Loader, Methods
 
 
+def _should_skip_pgstac_load_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return (
+        "failed to detect the target database version" in message
+        or "pgstac is not installed" in message
+        or 'relation "pgstac.migrations" does not exist' in message
+        or "relation 'pgstac.migrations' does not exist" in message
+        or 'schema "pgstac" does not exist' in message
+        or "schema 'pgstac' does not exist" in message
+    )
+
+
 def load_stac_to_pgstac(collection: dict, items: Iterable[dict]) -> None:
     """Upsert STAC payloads into pgstac using pypgstac."""
     try:
@@ -485,11 +497,19 @@ def load_stac_to_pgstac(collection: dict, items: Iterable[dict]) -> None:
     db = PgstacDB(dsn=_build_pgstac_dsn())
     loader = Loader(db)
     try:
-        loader.load_collections(iter([collection]), insert_mode=Methods.upsert)
-        loader.load_items(
-            iter(items),
-            insert_mode=Methods.upsert,
-            chunksize=1000,
-        )
+        try:
+            loader.load_collections(iter([collection]), insert_mode=Methods.upsert)
+            loader.load_items(
+                iter(items),
+                insert_mode=Methods.upsert,
+                chunksize=1000,
+            )
+        except Exception as exc:
+            if not _should_skip_pgstac_load_error(exc):
+                raise
+            logger.warning(
+                "Skipping pgstac load because the target database is not initialized for pgstac: %s",
+                exc,
+            )
     finally:
         db.disconnect()

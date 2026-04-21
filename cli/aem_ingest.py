@@ -113,6 +113,13 @@ def run(
         Optional[str],
         typer.Option("--date-acquired", help="Acquisition date (YYYY-MM-DD)"),
     ] = None,
+    skip_stac_uploads: Annotated[
+        bool,
+        typer.Option(
+            "--skip-stac-uploads",
+            help="Skip writing STAC payloads and loading them into pgstac",
+        ),
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Debug logging")
     ] = False,
@@ -135,7 +142,7 @@ def run(
         ),
     )
 
-    ingest_result = run_ingest(config)
+    ingest_result = run_ingest(config, skip_stac_uploads=skip_stac_uploads)
     typer.echo(json.dumps(ingest_result, indent=2))
 
 
@@ -240,11 +247,32 @@ def batch(
         Optional[str],
         typer.Option("--stage", help="Only ingest this processing_stage"),
     ] = None,
+    skip_soundings_upload: Annotated[
+        bool,
+        typer.Option(
+            "--skip-soundings-upload",
+            help="Skip loading parsed soundings into PostGIS during batch ingest",
+        ),
+    ] = False,
+    skip_asset_db_publish: Annotated[
+        bool,
+        typer.Option(
+            "--skip-asset-db-publish",
+            help="Skip writing GeoTIFF asset metadata to Ocotillo DB during batch ingest",
+        ),
+    ] = False,
+    skip_stac_uploads: Annotated[
+        bool,
+        typer.Option(
+            "--skip-stac-uploads",
+            help="Skip writing STAC payloads and loading them into pgstac during batch ingest",
+        ),
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Debug logging")
     ] = False,
 ):
-    """Run batch ingest for every ingestible file listed in the mapping CSV."""
+    """Run migration + ingest for mapper rows, including KMZ sidecar conversion."""
     _setup_logging(verbose)
     ingest_results = run_batch(
         mapping_path=str(mapping),
@@ -254,6 +282,9 @@ def batch(
         limit=limit,
         survey_filter=survey,
         stage_filter=stage,
+        skip_soundings_upload=skip_soundings_upload,
+        skip_asset_db_publish=skip_asset_db_publish,
+        skip_stac_uploads=skip_stac_uploads,
     )
     if not dry_run:
         typer.echo(json.dumps(ingest_results, indent=2, default=str))

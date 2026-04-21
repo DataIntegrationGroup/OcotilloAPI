@@ -1,38 +1,16 @@
 # flake8: noqa: E501
-"""
-services.aem_batch — Batch runner for the NMBGMR AEM ingest pipeline
-
-Connects the migration script (aem_migrate.py) to the ingest pipeline
-(aem_ingest).  Reads gcs_path_mapping.csv, filters to ingestible file
-types (seogi_rho, aarhus_bylayer, agf_lci_csv), resolves provenance
-for each file, and calls run_ingest() with the correct parameters.
-
-Run sequence:
-  1. aem_migrate.py  — copies all files from shared drive to GCS
-  2. aem_batch.py    — reads same CSV, ingests inversion files into PostGIS
-  3. PostGIS + Parquet + STAC payloads are populated and loaded into pgstac
-
-Usage:
-  # See what would be ingested without touching anything
-  aem-batch --mapping gcs_path_mapping.csv --bucket ... --dry-run
-
-  # Test with 2 files from one survey
-  aem-batch --mapping gcs_path_mapping.csv --bucket ... --limit 2 --survey estancia_2025
-
-  # Full run — all ingestible files
-  aem-batch --mapping gcs_path_mapping.csv --bucket ...
-
-Authors: Marissa (data curator), Jake (platform engineer)
-"""
+"""Batch runner for AEM migration + ingest."""
 
 from __future__ import annotations
 
 import argparse
 import logging
-import os
 import pandas as pd
 import sys
 import time
+from pathlib import Path
+
+from services.aem_migration import MigrationRunner
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +24,9 @@ logger = logging.getLogger(__name__)
 # and processing_stage — but inversion_code and contractor are not in the CSV,
 # so we resolve them from the detected_type + survey_id combination.
 
-INGESTIBLE_TYPES = {"seogi_rho", "aarhus_bylayer", "agf_lci_csv"}
+INVERSION_INGESTIBLE_TYPES = {"seogi_rho", "aarhus_bylayer", "agf_lci_csv"}
+GEOTIFF_INGESTIBLE_TYPES = {"geotiff"}
+INGESTIBLE_TYPES = INVERSION_INGESTIBLE_TYPES | GEOTIFF_INGESTIBLE_TYPES
 
 # detected_type → (inversion_code, contractor)
 # Some types are survey-dependent, so we also check survey_id.
@@ -163,8 +143,11 @@ def run_batch(
     limit: int | None = None,
     survey_filter: str | None = None,
     stage_filter: str | None = None,
+    skip_soundings_upload: bool = False,
+    skip_asset_db_publish: bool = False,
+    skip_stac_uploads: bool = False,
 ) -> list[dict]:
-    """Run the ingest pipeline for all ingestible files in the mapping CSV.
+    """Run migration for MOVE rows, then ingest/publish ingestible outputs.
 
     Args:
         mapping_path: Path to gcs_path_mapping.csv
@@ -174,50 +157,77 @@ def run_batch(
         limit: Only process this many files (for testing)
         survey_filter: Only process this survey_id
         stage_filter: Only process this processing_stage
+        skip_soundings_upload: Skip loading parsed soundings into PostGIS
+        skip_asset_db_publish: Skip writing GeoTIFF asset metadata to Ocotillo DB
+        skip_stac_uploads: Skip writing STAC payloads and loading them into pgstac
 
     Returns:
         List of ingest result dicts (empty list in dry-run mode).
     """
-    df = pd.read_csv(mapping_path)
-    logger.info("Loaded mapping CSV: %d total rows", len(df))
+    migration_runner = MigrationRunner(
+        mapping_path=mapping_path,
+        bucket_name=gcs_bucket,
+        root_override=root_override,
+    )
+    filtered_df = migration_runner.get_filtered_rows(
+        survey_filter=survey_filter,
+        stage_filter=stage_filter,
+        limit=limit,
+    )
+    logger.info("Filtered mapping rows: %d", len(filtered_df))
 
-    # Filter to ingestible types with MOVE action
-    mask = df["detected_type"].isin(INGESTIBLE_TYPES) & (df["action"] == "MOVE")
-    ingest_df = df[mask].copy()
-    logger.info("Ingestible files: %d", len(ingest_df))
+    move_df = filtered_df[filtered_df["action"] == "MOVE"].copy()
+    ingest_df = move_df[move_df["detected_type"].isin(INGESTIBLE_TYPES)].copy()
+    logger.info("MOVE rows to migrate: %d", len(move_df))
+    logger.info("Ingestible MOVE rows: %d", len(ingest_df))
 
-    # Apply filters
-    if survey_filter:
-        ingest_df = ingest_df[ingest_df["survey_id"] == survey_filter]
-        logger.info("Filtered to survey '%s': %d files", survey_filter, len(ingest_df))
-    if stage_filter:
-        ingest_df = ingest_df[ingest_df["processing_stage"] == stage_filter]
-        logger.info("Filtered to stage '%s': %d files", stage_filter, len(ingest_df))
-
-    if len(ingest_df) == 0:
-        logger.warning("No ingestible files match filters — nothing to do")
+    if len(filtered_df) == 0:
+        logger.warning("No mapping rows match filters — nothing to do")
         return []
-
-    # Apply limit
-    if limit is not None:
-        ingest_df = ingest_df.head(limit)
-        logger.info("Limited to first %d files", limit)
-
-    # Sort by survey then filename for predictable order
-    ingest_df = ingest_df.sort_values(["survey_id", "file_name"]).reset_index(drop=True)
 
     # ----- Dry run -----
     if dry_run:
-        return _dry_run(ingest_df, df, gcs_bucket)
+        migration_runner.run(
+            dry_run=True,
+            survey_filter=survey_filter,
+            stage_filter=stage_filter,
+            limit=limit,
+        )
+        return _dry_run(ingest_df, migration_runner.df, gcs_bucket)
+
+    migration_runner.run(
+        dry_run=False,
+        survey_filter=survey_filter,
+        stage_filter=stage_filter,
+        limit=limit,
+    )
+    migration_runner.write_outputs()
+
+    migration_status_by_gcs_path = {
+        result.gcs_path: result.status for result in migration_runner.results
+    }
+
+    if len(ingest_df) == 0:
+        logger.info("No ingestible MOVE rows matched filters after migration")
+        return []
+
+    ingest_df = ingest_df.sort_values(["survey_id", "file_name"]).reset_index(drop=True)
 
     # ----- Live run -----
     from schemas.aem import IngestConfig, InversionCode, ProcessingStage, SkytemSystem
+    from services.aem_asset_ingest import (
+        AEMIngestRecord,
+        ingest_validated_aem_asset,
+    )
+    from services.gcs_helper import get_storage_bucket
     from services.aem_ingest import run_ingest
+    from starlette.datastructures import Headers, UploadFile
 
     ingest_results = []
     succeeded = 0
     failed = 0
     errors = []
+    gcs_bucket_obj = get_storage_bucket(bucket=gcs_bucket)
 
     for idx, (_, row) in enumerate(ingest_df.iterrows()):
         file_num = idx + 1
@@ -236,62 +246,145 @@ def run_batch(
         )
 
         try:
-            # Resolve provenance
-            prov = resolve_provenance(detected_type, survey_id)
-            system = resolve_system(detected_type, filename)
-
-            # Resolve source path
-            source_path = row["source_path"]
-            if root_override and not os.path.exists(source_path):
-                # Try substituting root
-                common = os.path.commonpath(
-                    [p.replace("\\", "/") for p in df["source_path"].head(20)]
-                )
-                relative = (
-                    source_path.replace("\\", "/")
-                    .replace(common.replace("\\", "/"), "")
-                    .lstrip("/")
-                )
-                source_path = os.path.join(root_override, relative)
-
-            # Build raw file list for this survey (for manifest)
-            raw_files = build_raw_file_list(df, survey_id)
-
-            # Build IngestConfig
-            config = IngestConfig(
-                filepath=source_path,
-                survey_id=survey_id,
-                processing_stage=ProcessingStage(row["processing_stage"]),
-                inversion_code=InversionCode(prov["inversion_code"]),
-                contractor=prov["contractor"],
-                gcs_bucket=gcs_bucket,
-                source_gcs_path=row["proposed_gcs_path"],
-                flight_id=None,  # auto-extracted from filename by parser
-                system=SkytemSystem(system) if system else None,
+            migration_status = migration_status_by_gcs_path.get(
+                row["proposed_gcs_path"]
             )
+            if migration_status not in {"uploaded", "skipped_exists"}:
+                raise RuntimeError(
+                    "Migration step did not complete successfully "
+                    f"(status={migration_status or 'missing'})"
+                )
 
-            # Run ingest
+            source_path = migration_runner.resolve_source_path(row["source_path"])
+
             t0 = time.monotonic()
-            ingest_result = run_ingest(
-                config,
-                raw_file_paths=raw_files,
-                raw_manifest_notes=(
-                    f"Generated by aem_batch.py during batch ingest. "
-                    f"{len(raw_files)} raw files for survey {survey_id}."
-                ),
-            )
+            if detected_type in INVERSION_INGESTIBLE_TYPES:
+                # Resolve provenance
+                prov = resolve_provenance(detected_type, survey_id)
+                system = resolve_system(detected_type, filename)
+
+                # Build raw file list for this survey (for manifest)
+                raw_files = build_raw_file_list(migration_runner.df, survey_id)
+
+                # Build IngestConfig
+                config = IngestConfig(
+                    filepath=source_path,
+                    survey_id=survey_id,
+                    processing_stage=ProcessingStage(row["processing_stage"]),
+                    inversion_code=InversionCode(prov["inversion_code"]),
+                    contractor=prov["contractor"],
+                    gcs_bucket=gcs_bucket,
+                    source_gcs_path=row["proposed_gcs_path"],
+                    flight_id=None,  # auto-extracted from filename by parser
+                    system=SkytemSystem(system) if system else None,
+                )
+
+                ingest_result = run_ingest(
+                    config,
+                    raw_file_paths=raw_files,
+                    raw_manifest_notes=(
+                        f"Generated by aem_batch.py during batch ingest. "
+                        f"{len(raw_files)} raw files for survey {survey_id}."
+                    ),
+                    skip_soundings_upload=skip_soundings_upload,
+                    skip_stac_uploads=skip_stac_uploads,
+                )
+            elif detected_type in GEOTIFF_INGESTIBLE_TYPES:
+                file_path = Path(source_path)
+                with file_path.open("rb") as stream:
+                    upload = UploadFile(
+                        file=stream,
+                        filename=filename,
+                        size=file_path.stat().st_size,
+                        headers=Headers({"content-type": "image/tiff"}),
+                    )
+                    asset_record = AEMIngestRecord(
+                        survey_id=survey_id,
+                        file_name=filename,
+                        proposed_gcs_path=row["proposed_gcs_path"],
+                        action=row["action"],
+                        normalization_needed=(
+                            row.get("normalization_needed", "N") == "Y"
+                        ),
+                        detected_type=detected_type,
+                        processing_stage=row["processing_stage"],
+                    )
+                    if skip_asset_db_publish:
+                        asset_result = ingest_validated_aem_asset(
+                            None,
+                            upload,
+                            asset_record,
+                            bucket=gcs_bucket_obj,
+                            persist_asset_metadata=False,
+                        )
+                    else:
+                        from db.engine import session_ctx
+
+                        with session_ctx() as session:
+                            asset_result = ingest_validated_aem_asset(
+                                session,
+                                upload,
+                                asset_record,
+                                bucket=gcs_bucket_obj,
+                            )
+                            session.commit()
+
+                publish_result = asset_result.publish_result
+                ingest_result = {
+                    "asset_id": asset_result.asset.id,
+                    "asset_name": asset_result.asset.name,
+                    "asset_storage_path": asset_result.asset.storage_path,
+                    "asset_uri": asset_result.asset.uri,
+                    "asset_db_publish_skipped": skip_asset_db_publish,
+                    "publish_target": (
+                        publish_result.target if publish_result else None
+                    ),
+                    "publish_status": (
+                        publish_result.status if publish_result else None
+                    ),
+                    "publish_workspace": (
+                        publish_result.workspace if publish_result else None
+                    ),
+                    "publish_store_name": (
+                        publish_result.store_name if publish_result else None
+                    ),
+                    "publish_layer_name": (
+                        publish_result.layer_name if publish_result else None
+                    ),
+                    "publish_detail": (
+                        publish_result.detail if publish_result else None
+                    ),
+                    "processing_stage": row["processing_stage"],
+                    "source_gcs_path": row["proposed_gcs_path"],
+                    "survey_id": survey_id,
+                }
+            else:
+                raise ValueError(
+                    f"Unsupported detected_type for batch ingest: {detected_type}"
+                )
             duration = time.monotonic() - t0
 
             ingest_results.append(ingest_result)
             succeeded += 1
-            logger.info(
-                "[%d/%d] SUCCESS: %s → %s (%.1fs)",
-                file_num,
-                total,
-                filename,
-                ingest_result["parquet_gcs_path"],
-                duration,
-            )
+            if "parquet_gcs_path" in ingest_result:
+                logger.info(
+                    "[%d/%d] SUCCESS: %s → %s (%.1fs)",
+                    file_num,
+                    total,
+                    filename,
+                    ingest_result["parquet_gcs_path"],
+                    duration,
+                )
+            else:
+                logger.info(
+                    "[%d/%d] SUCCESS: %s → %s (%s, %.1fs)",
+                    file_num,
+                    total,
+                    filename,
+                    ingest_result["asset_storage_path"],
+                    ingest_result["publish_status"],
+                    duration,
+                )
 
         except Exception as e:
             failed += 1
@@ -348,10 +441,15 @@ def _dry_run(
                 & (full_df["action"] == "MOVE")
             ]
         )
+        inversion_count = int(
+            group["detected_type"].isin(INVERSION_INGESTIBLE_TYPES).sum()
+        )
+        geotiff_count = int(group["detected_type"].isin(GEOTIFF_INGESTIBLE_TYPES).sum())
         logger.info(
-            "  %s: %d inversion files, %d raw files for manifest",
+            "  %s: %d inversion files, %d geotiffs, %d raw files for manifest",
             survey_id,
-            len(group),
+            inversion_count,
+            geotiff_count,
             raw_count,
         )
 
@@ -361,33 +459,51 @@ def _dry_run(
     for idx, (_, row) in enumerate(ingest_df.iterrows()):
         detected_type = row["detected_type"]
         survey_id = row["survey_id"]
-        try:
-            prov = resolve_provenance(detected_type, survey_id)
-            system = resolve_system(detected_type, row["file_name"])
-        except ValueError:
-            prov = {"inversion_code": "UNKNOWN", "contractor": "UNKNOWN"}
-            system = None
+        if detected_type in INVERSION_INGESTIBLE_TYPES:
+            try:
+                prov = resolve_provenance(detected_type, survey_id)
+                system = resolve_system(detected_type, row["file_name"])
+            except ValueError:
+                prov = {"inversion_code": "UNKNOWN", "contractor": "UNKNOWN"}
+                system = None
 
-        system_str = f" system={system}" if system else ""
+            system_str = f" system={system}" if system else ""
 
-        logger.info(
-            "  [%2d] %s\n"
-            "       survey=%s  stage=%s\n"
-            "       code=%s  contractor=%s%s\n"
-            "       source: %s...\n"
-            "       →  gcs: %s\n"
-            "       size: %s",
-            idx + 1,
-            row["file_name"],
-            survey_id,
-            row["processing_stage"],
-            prov["inversion_code"],
-            prov["contractor"],
-            system_str,
-            row["source_path"][:80],
-            row["proposed_gcs_path"],
-            row["size_human"],
-        )
+            logger.info(
+                "  [%2d] %s\n"
+                "       survey=%s  stage=%s\n"
+                "       code=%s  contractor=%s%s\n"
+                "       source: %s...\n"
+                "       →  gcs: %s\n"
+                "       size: %s",
+                idx + 1,
+                row["file_name"],
+                survey_id,
+                row["processing_stage"],
+                prov["inversion_code"],
+                prov["contractor"],
+                system_str,
+                row["source_path"][:80],
+                row["proposed_gcs_path"],
+                row["size_human"],
+            )
+        else:
+            logger.info(
+                "  [%2d] %s\n"
+                "       survey=%s  stage=%s\n"
+                "       asset_type=%s  publish_target=geoserver\n"
+                "       source: %s...\n"
+                "       →  gcs: %s\n"
+                "       size: %s",
+                idx + 1,
+                row["file_name"],
+                survey_id,
+                row["processing_stage"],
+                detected_type,
+                row["source_path"][:80],
+                row["proposed_gcs_path"],
+                row["size_human"],
+            )
 
     # Warnings
     norm = ingest_df[ingest_df["normalization_needed"] == "Y"]
@@ -396,11 +512,7 @@ def _dry_run(
         logger.warning("  These will be ingested as-is. Normalization (wellid prefix)")
         logger.warning("  is handled by the parser, not the migration script.")
 
-    # Check for files not yet in GCS
-    logger.warning("PRE-FLIGHT CHECK:")
-    logger.warning("  Make sure aem_migrate.py has been run first —")
-    logger.warning("  the ingest pipeline reads from local paths but records")
-    logger.warning("  the GCS path as source_file provenance in PostGIS.")
+    logger.info("Batch dry-run includes the migration step for all filtered MOVE rows.")
 
     return []
 
@@ -454,6 +566,21 @@ def main():
         help="Only ingest files from this processing_stage",
     )
     parser.add_argument(
+        "--skip-soundings-upload",
+        action="store_true",
+        help="Skip loading parsed soundings into PostGIS during batch ingest",
+    )
+    parser.add_argument(
+        "--skip-asset-db-publish",
+        action="store_true",
+        help="Skip writing GeoTIFF asset metadata to Ocotillo DB during batch ingest",
+    )
+    parser.add_argument(
+        "--skip-stac-uploads",
+        action="store_true",
+        help="Skip writing STAC payloads and loading them into pgstac during batch ingest",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -477,6 +604,9 @@ def main():
         limit=args.limit,
         survey_filter=args.survey,
         stage_filter=args.stage,
+        skip_soundings_upload=args.skip_soundings_upload,
+        skip_asset_db_publish=args.skip_asset_db_publish,
+        skip_stac_uploads=args.skip_stac_uploads,
     )
 
     if not args.dry_run:

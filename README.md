@@ -362,8 +362,19 @@ oco aem-ingest run path/to/file \
   --contractor "GeoTech/Seogi" \
   --source-gcs-path surveys/gila_animas_2025/aem/inversion/preliminary/rho_GL250193_F02.csv
 
-# Run batch ingest from the mapper CSV
+# Run migration + batch ingest from the mapper CSV.
+# This migrates all filtered MOVE rows to GCS, converts KMZ files to GPKG,
+# ingests inversion files, and publishes eligible AEM GeoTIFF assets.
 oco aem-ingest batch --mapping aem/gcs_path_mapping.csv --dry-run
+
+# Run batch ingest but skip loading soundings into PostGIS
+oco aem-ingest batch --mapping aem/gcs_path_mapping.csv --skip-soundings-upload
+
+# Run batch ingest but skip writing GeoTIFF asset metadata to the Ocotillo DB
+oco aem-ingest batch --mapping aem/gcs_path_mapping.csv --skip-asset-db-publish
+
+# Run ingest without writing STAC payloads or loading pgstac
+oco aem-ingest batch --mapping aem/gcs_path_mapping.csv --skip-stac-uploads
 ```
 
 AEM uses the same `.env`-driven database configuration as the rest of the app

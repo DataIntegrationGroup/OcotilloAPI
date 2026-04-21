@@ -4,7 +4,6 @@ Terraform for the dedicated STAC API stack.
 
 This directory owns:
 - Cloud Run deployment for `stac-fastapi-pgstac`
-- Cloud Run Job for `pgstac` bootstrap and upgrades
 - service account and IAM bindings
 - Secret Manager wiring for database credentials
 - Cloud SQL connectivity to the existing PostGIS instance
@@ -31,4 +30,5 @@ This directory does not manage GeoServer.
 ## Notes
 
 - The STAC API is intended to run independently from OcotilloAPI.
-- `pgstac` lifecycle should be managed from this stack or adjacent STAC-specific automation, not from OcotilloAPI Alembic migrations.
+- `pgstac` initialization and upgrades are manual operational steps documented in the runbook, not Terraform-managed resources.
+- The Cloud Run service sets `CORS_ORIGINS` for `stac-fastapi-pgstac`; the default `*` allows the app to emit `Access-Control-Allow-Origin: *` for cross-origin requests.

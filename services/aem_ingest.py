@@ -80,6 +80,54 @@ INSERT_COLUMNS = [
     "date_acquired",
 ]
 
+DEFAULT_POSTGIS_COPY_BATCH_SIZE = 5_000
+
+
+def _postgis_copy_batch_size() -> int:
+    """Return the configured PostGIS batch size with a safe default."""
+    raw = os.getenv("AEM_POSTGIS_COPY_BATCH_SIZE")
+    if raw is None:
+        return DEFAULT_POSTGIS_COPY_BATCH_SIZE
+
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid AEM_POSTGIS_COPY_BATCH_SIZE=%r; using default %d",
+            raw,
+            DEFAULT_POSTGIS_COPY_BATCH_SIZE,
+        )
+        return DEFAULT_POSTGIS_COPY_BATCH_SIZE
+
+    if value <= 0:
+        logger.warning(
+            "Non-positive AEM_POSTGIS_COPY_BATCH_SIZE=%r; using default %d",
+            raw,
+            DEFAULT_POSTGIS_COPY_BATCH_SIZE,
+        )
+        return DEFAULT_POSTGIS_COPY_BATCH_SIZE
+
+    return value
+
+
+def _next_batch_stop(df: pd.DataFrame, start: int, batch_size: int) -> int:
+    """Advance the batch boundary so a sounding never spans two batches."""
+    stop = min(start + batch_size, len(df))
+    if stop >= len(df):
+        return len(df)
+
+    while stop < len(df):
+        prev = df.iloc[stop - 1]
+        current = df.iloc[stop]
+        if (
+            prev["line_id"] != current["line_id"]
+            or prev["record_id"] != current["record_id"]
+        ):
+            break
+        stop += 1
+
+    return stop
+
 
 def _directory_readme_contents(directory_path: str) -> str:
     """Build a short README body for a GCS directory prefix."""
@@ -135,10 +183,12 @@ def load_to_postgis(
     """Bulk-insert normalized DataFrame into aem_soundings and
     aem_sounding_metadata.
 
-    Uses a staging-table approach:
-      1. COPY into a temp table via pg8000's execute(..., stream=...) support
+    Uses a batched staging-table approach:
+      1. COPY a bounded batch into a temp table via pg8000's
+         execute(..., stream=...) support
       2. INSERT INTO aem_soundings with ST_Transform(ST_GeomFromEWKT(...), 4326)
-      3. Aggregate and upsert into aem_sounding_metadata
+      3. TRUNCATE the staging table before loading the next batch
+      4. Aggregate and upsert into aem_sounding_metadata
 
     The source_file column stores the mapper's GCS path (config.source_gcs_path).
 
@@ -176,11 +226,19 @@ def load_to_postgis(
     if dropped > 0:
         logger.warning("Dropped %d rows with NULLs in required columns", dropped)
 
+    df = df.sort_values(
+        ["line_id", "record_id", "layer_no"], kind="stable"
+    ).reset_index(drop=True)
+
     raw_conn = get_raw_connection()
     cur = raw_conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute("DROP TABLE IF EXISTS _ingest_staging;")
+        cur.execute("DROP TABLE IF EXISTS _ingest_metadata_keys;")
+
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -196,22 +254,25 @@ def load_to_postgis(
                 resdata DOUBLE PRECISION, restotal DOUBLE PRECISION,
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
-            ) ON COMMIT DROP;
-        """)
+            );
+        """
+        )
+
+        cur.execute(
+            """
+            CREATE TEMP TABLE _ingest_metadata_keys (
+                line_id TEXT,
+                record_id TEXT
+            );
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
-        buf = io.StringIO()
-        df[staging_cols].to_csv(buf, index=False, header=False, na_rep="\\N")
-        buf.seek(0)
-
         copy_sql = (
             f"COPY _ingest_staging ({', '.join(staging_cols)}) "
             f"FROM STDIN WITH (FORMAT csv, NULL '\\N')"
         )
-        cur.execute(copy_sql, stream=buf)
-        logger.info("COPY to staging: %d rows", len(df))
-
-        cur.execute(f"""
+        insert_sql = f"""
             INSERT INTO aem_soundings (
                 {', '.join(INSERT_COLUMNS)}, geom
             )
@@ -219,19 +280,94 @@ def load_to_postgis(
                 {', '.join(INSERT_COLUMNS)},
                 ST_Transform(ST_GeomFromEWKT(geom_wkt), 4326)
             FROM _ingest_staging;
-        """)
-        sounding_rows = cur.rowcount
-        logger.info("Inserted %d rows into aem_soundings", sounding_rows)
+        """
 
-        _insert_metadata(
-            cur,
-            config.survey_id,
-            config.processing_stage.value,
-            config.inversion_code.value,
-            df,
+        metadata_keys = df[["line_id", "record_id"]].drop_duplicates()
+        key_buf = io.StringIO()
+        metadata_keys.to_csv(key_buf, index=False, header=False, na_rep="\\N")
+        key_buf.seek(0)
+        cur.execute(
+            "COPY _ingest_metadata_keys (line_id, record_id) "
+            "FROM STDIN WITH (FORMAT csv, NULL '\\N')",
+            stream=key_buf,
         )
 
-        raw_conn.commit()
+        cur.execute(
+            """
+            DELETE FROM aem_sounding_metadata m
+            USING _ingest_metadata_keys k
+            WHERE m.survey_id = %s
+              AND m.processing_stage = %s
+              AND m.line_id = k.line_id
+              AND m.record_id = k.record_id;
+            """,
+            (config.survey_id, config.processing_stage.value),
+        )
+        cur.execute(
+            """
+            DELETE FROM aem_soundings
+            WHERE survey_id = %s
+              AND processing_stage = %s
+              AND source_file = %s;
+            """,
+            (
+                config.survey_id,
+                config.processing_stage.value,
+                config.source_gcs_path,
+            ),
+        )
+
+        sounding_rows = 0
+        batch_size = _postgis_copy_batch_size()
+        logger.info("Using PostGIS batch size: %d rows", batch_size)
+
+        start = 0
+        while start < len(df):
+            stop = _next_batch_stop(df, start, batch_size)
+            batch_df = df.iloc[start:stop]
+
+            buf = io.StringIO()
+            batch_df[staging_cols].to_csv(buf, index=False, header=False, na_rep="\\N")
+            buf.seek(0)
+
+            cur.execute(copy_sql, stream=buf)
+            logger.info(
+                "COPY to staging: rows %d-%d of %d",
+                start + 1,
+                stop,
+                len(df),
+            )
+
+            cur.execute(insert_sql)
+            batch_rows = cur.rowcount
+            sounding_rows += batch_rows
+            logger.info(
+                "Inserted %d rows into aem_soundings for batch %d-%d",
+                batch_rows,
+                start + 1,
+                stop,
+            )
+
+            _insert_metadata(
+                cur,
+                config.survey_id,
+                config.processing_stage.value,
+                config.inversion_code.value,
+                batch_df,
+            )
+
+            cur.execute("TRUNCATE _ingest_staging;")
+            raw_conn.commit()
+            logger.info(
+                "Committed PostGIS batch %d-%d for %s",
+                start + 1,
+                stop,
+                config.source_gcs_path,
+            )
+
+            start = stop
+
+        logger.info("Inserted %d rows into aem_soundings", sounding_rows)
         logger.info("PostGIS load committed successfully")
         return sounding_rows
 
@@ -240,6 +376,12 @@ def load_to_postgis(
         logger.exception("PostGIS load failed, transaction rolled back")
         raise
     finally:
+        try:
+            cur.execute("DROP TABLE IF EXISTS _ingest_staging;")
+            cur.execute("DROP TABLE IF EXISTS _ingest_metadata_keys;")
+            raw_conn.commit()
+        except Exception:
+            raw_conn.rollback()
         cur.close()
         raw_conn.close()
 
@@ -427,6 +569,8 @@ def run_ingest(
     config: IngestConfig,
     raw_file_paths: list[dict] | None = None,
     raw_manifest_notes: str = "",
+    skip_soundings_upload: bool = False,
+    skip_stac_uploads: bool = False,
 ) -> dict:
     """Orchestrate the full ingest pipeline for a single AEM inversion file.
 
@@ -436,6 +580,8 @@ def run_ingest(
             If None, an empty manifest is written (populated later by
             the migration script).
         raw_manifest_notes: Free-text notes for the manifest.
+        skip_soundings_upload: Skip loading parsed soundings into PostGIS.
+        skip_stac_uploads: Skip writing STAC payloads and loading them into pgstac.
 
     Returns:
         Ingest result summary.
@@ -476,8 +622,12 @@ def run_ingest(
         df["date_acquired"] = config.date_acquired
 
     # Step 3: Load into PostGIS
-    n_rows = load_to_postgis(df, config)
-    logger.info("Step 3 — PostGIS loaded: %d rows", n_rows)
+    if skip_soundings_upload:
+        n_rows = 0
+        logger.info("Step 3 — PostGIS load skipped (--skip-soundings-upload)")
+    else:
+        n_rows = load_to_postgis(df, config)
+        logger.info("Step 3 — PostGIS loaded: %d rows", n_rows)
 
     # Step 4: Write Parquet
     gcs_client = storage.Client()
@@ -494,33 +644,42 @@ def run_ingest(
     )
     logger.info("Step 5 — Raw manifest written: %s", raw_manifest_gcs_path)
 
-    stac_collection = aem_stac.build_stac_collection(
-        df=df,
-        config=config,
-        parquet_gcs_path=parquet_gcs_path,
-        raw_manifest_gcs_path=raw_manifest_gcs_path,
-    )
-    stac_items = aem_stac.build_stac_items(
-        df=df,
-        config=config,
-        parquet_gcs_path=parquet_gcs_path,
-        raw_manifest_gcs_path=raw_manifest_gcs_path,
-    )
-    stac_payload_paths = aem_stac.write_stac_payloads(
-        stac_collection,
-        stac_items,
-        config,
-        gcs_client,
-        ensure_prefix_readmes=ensure_prefix_readmes,
-    )
-    logger.info(
-        "Step 6 — STAC payloads written: %s, %s",
-        stac_payload_paths["collection_gcs_path"],
-        stac_payload_paths["items_gcs_path"],
-    )
+    stac_collection = None
+    stac_items = []
+    stac_payload_paths = {
+        "collection_gcs_path": None,
+        "items_gcs_path": None,
+    }
+    if skip_stac_uploads:
+        logger.info("Step 6 — STAC uploads skipped (--skip-stac-uploads)")
+    else:
+        stac_collection = aem_stac.build_stac_collection(
+            df=df,
+            config=config,
+            parquet_gcs_path=parquet_gcs_path,
+            raw_manifest_gcs_path=raw_manifest_gcs_path,
+        )
+        stac_items = aem_stac.build_stac_items(
+            df=df,
+            config=config,
+            parquet_gcs_path=parquet_gcs_path,
+            raw_manifest_gcs_path=raw_manifest_gcs_path,
+        )
+        stac_payload_paths = aem_stac.write_stac_payloads(
+            stac_collection,
+            stac_items,
+            config,
+            gcs_client,
+            ensure_prefix_readmes=ensure_prefix_readmes,
+        )
+        logger.info(
+            "Step 6 — STAC payloads written: %s, %s",
+            stac_payload_paths["collection_gcs_path"],
+            stac_payload_paths["items_gcs_path"],
+        )
 
-    aem_stac.load_stac_to_pgstac(stac_collection, stac_items)
-    logger.info("Step 7 — pgstac upsert complete: %d items", len(stac_items))
+        aem_stac.load_stac_to_pgstac(stac_collection, stac_items)
+        logger.info("Step 7 — pgstac upsert complete: %d items", len(stac_items))
 
     result = {
         "survey_id": config.survey_id,
@@ -529,7 +688,7 @@ def run_ingest(
         "source_gcs_path": config.source_gcs_path,
         "parquet_gcs_path": parquet_gcs_path,
         "raw_manifest_gcs_path": raw_manifest_gcs_path,
-        "stac_collection_id": stac_collection["id"],
+        "stac_collection_id": stac_collection["id"] if stac_collection else None,
         "stac_item_count": len(stac_items),
         "stac_collection_gcs_path": stac_payload_paths["collection_gcs_path"],
         "stac_items_gcs_path": stac_payload_paths["items_gcs_path"],

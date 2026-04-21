@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
 from sqlalchemy_utils import TSVectorType
@@ -37,6 +38,27 @@ class Asset(Base, AutoBaseMixin, ReleaseMixin):
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
     uri: Mapped[str] = mapped_column(String, nullable=False)
+    publish_target: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
+    publish_status: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
+    publish_workspace: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
+    publish_store_name: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
+    publish_layer_name: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
+    publish_last_attempt_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    publish_last_error: Mapped[Optional[str]] = mapped_column(  # noqa: E501
+        String, nullable=True
+    )
 
     search_vector: Mapped[TSVectorType] = mapped_column(
         TSVectorType("name", "mime_type", "storage_service", "storage_path")

@@ -24,6 +24,14 @@ variable "service_account_name" {
 variable "image" {
   description = "Container image for stac-fastapi-pgstac"
   type        = string
+
+  validation {
+    condition = can(regex(
+      "^(?:docker\\.io/|(?:[a-z0-9-]+\\.)?gcr\\.io/|(?:[a-z0-9-]+-)?docker\\.pkg\\.dev/)",
+      var.image,
+    ))
+    error_message = "Cloud Run only accepts images from docker.io, gcr.io, or Artifact Registry (<region>-docker.pkg.dev). Mirror GHCR images into Artifact Registry or use a supported registry path."
+  }
 }
 
 variable "cloud_sql_connection_name" {
@@ -46,27 +54,10 @@ variable "postgres_password_secret_id" {
   type        = string
 }
 
-variable "bootstrap_job_name" {
-  description = "Cloud Run Job name for pgstac bootstrap"
+variable "cors_origins" {
+  description = "Comma-delimited CORS origins passed to stac-fastapi-pgstac"
   type        = string
-  default     = "stac-bootstrap"
-}
-
-variable "bootstrap_image" {
-  description = "Container image with psql and pypgstac for pgstac bootstrap"
-  type        = string
-}
-
-variable "bootstrap_postgres_user_secret_id" {
-  description = "Optional Secret Manager secret id for the bootstrap database user"
-  type        = string
-  default     = null
-}
-
-variable "bootstrap_postgres_password_secret_id" {
-  description = "Optional Secret Manager secret id for the bootstrap database password"
-  type        = string
-  default     = null
+  default     = "*"
 }
 
 variable "container_port" {
@@ -97,4 +88,10 @@ variable "allow_unauthenticated" {
   description = "Whether to allow public invoker access"
   type        = bool
   default     = true
+}
+
+variable "deletion_protection" {
+  description = "Whether to enable Cloud Run deletion protection for the STAC API service"
+  type        = bool
+  default     = false
 }
