@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Optional
+from typing import Annotated, Optional
 from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
@@ -151,9 +151,10 @@ def get_water_wells(
     request: Request,
     sort: Optional[str] = None,
     order: Optional[str] = None,
-    filter_: str = Query(alias="filter", default=None),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: Optional[str] = None,
     name: Optional[str] = None,
+    name_contains: Optional[str] = None,
     include_contacts: bool = False,
 ) -> CustomPage[WellResponse]:
     """
@@ -161,7 +162,7 @@ def get_water_wells(
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
     return get_db_things(
-        filter_,
+        None,
         order,
         query,
         session,
@@ -169,6 +170,8 @@ def get_water_wells(
         name=name,
         thing_type=thing_type,
         include_contacts=include_contacts,
+        filters=filter_params,
+        name_contains=name_contains,
     )
 
 
@@ -293,14 +296,24 @@ def get_springs(
     request: Request,
     sort: str = None,
     order: str = None,
-    filter_: str = Query(alias="filter", default=None),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: str = None,
+    name_contains: Optional[str] = None,
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
+    return get_db_things(
+        None,
+        order,
+        query,
+        session,
+        sort,
+        thing_type=thing_type,
+        filters=filter_params,
+        name_contains=name_contains,
+    )
 
 
 @router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK)
@@ -359,23 +372,23 @@ def get_things(
     sort: Optional[str] = None,
     order: Optional[str] = None,
     include_contacts: bool = False,
-    filter_: str = Query(
-        default=None,
-        alias="filter",
-    ),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
+    name_contains: Optional[str] = None,
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
     """
 
     return get_db_things(
-        filter_,
+        None,
         order,
         query,
         session,
         sort,
         within=within,
         include_contacts=include_contacts,
+        filters=filter_params,
+        name_contains=name_contains,
     )
 
 
