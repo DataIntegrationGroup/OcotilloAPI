@@ -18,7 +18,19 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import Column, Float, Integer, Select, String, Text, func, not_, select
+from sqlalchemy import (
+    Column,
+    Float,
+    Integer,
+    Select,
+    String,
+    Text,
+    and_,
+    exists,
+    func,
+    not_,
+    select,
+)
 from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.sql.elements import OperatorExpression
 from starlette.status import HTTP_404_NOT_FOUND
@@ -26,6 +38,20 @@ from starlette.status import HTTP_404_NOT_FOUND
 from db import search as search_func
 from services.env import to_bool
 from services.regex import QUERY_REGEX
+
+# -----------------------------------------------------------------------------
+# Thing virtual ``filter`` fields (JSON ``field`` / ``operator`` / ``value``).
+# Used by GET routes that pass Thing through ``order_sort_filter``.
+#
+# contacts: any linked ThingContactAssociation whose Contact.name matches.
+#   Operators: contains, ncontains, startswith, endswith, eq.
+#   ``ne``: wells that have no linked contact with this exact name.
+#
+# monitoring_status / well_status: latest open StatusHistory row for that type.
+#   Operators: contains, ncontains, startswith, endswith, eq, ne.
+#
+# All other ``field`` values must resolve to a mapped SQL column on Thing.
+# -----------------------------------------------------------------------------
 
 
 def make_where(col: Column, op: str, v: str) -> OperatorExpression:
@@ -117,21 +143,166 @@ def _python_type(column: Any):
         return None
 
 
+def _apply_thing_derived_status_filter(
+    sql: Select[Any],
+    thing_table: type,
+    status_type_literal: str,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter Thing rows using the latest open StatusHistory row.
+
+    Mirrors monitoring_status / well_status: open row (end_date None) with
+    newest start_date wins.
+    """
+    from db.status_history import StatusHistory
+
+    sh = StatusHistory
+    tt = thing_table.__tablename__
+
+    max_start = (
+        select(func.max(sh.start_date))
+        .select_from(sh)
+        .where(
+            sh.target_table == tt,
+            sh.target_id == thing_table.id,
+            sh.status_type == status_type_literal,
+            sh.end_date.is_(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+    base_clause = and_(
+        sh.target_table == tt,
+        sh.target_id == thing_table.id,
+        sh.status_type == status_type_literal,
+        sh.end_date.is_(None),
+        sh.start_date == max_start,
+    )
+
+    if operator == "ncontains":
+        return sql.where(
+            ~exists(
+                select(1).where(
+                    base_clause,
+                    sh.status_value.ilike(f"%{value}%"),
+                )
+            )
+        )
+
+    if operator == "contains":
+        pred = sh.status_value.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = sh.status_value.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = sh.status_value.ilike(f"%{value}")
+    elif operator == "eq":
+        pred = sh.status_value == str(value)
+    elif operator == "ne":
+        pred = sh.status_value != str(value)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for derived "
+                "status filters (contains, ncontains, eq, ne, startswith, "
+                "endswith)"
+            ),
+        )
+
+    return sql.where(exists(select(1).where(base_clause, pred)))
+
+
+def _apply_thing_contacts_filter(
+    sql: Select[Any],
+    thing_table: type,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """
+    Match wells if any linked contact name matches (association table join).
+
+    OR across associations. Organization and role are not searched.
+    """
+    from db.contact import Contact, ThingContactAssociation
+
+    tca = ThingContactAssociation
+    c = Contact
+
+    def _linked_contact_select(predicate):
+        return (
+            select(1)
+            .select_from(tca)
+            .join(c, tca.contact_id == c.id)
+            .where(
+                tca.thing_id == thing_table.id,
+                c.name.isnot(None),
+                predicate,
+            )
+        )
+
+    if operator == "ncontains":
+        ncl = _linked_contact_select(c.name.ilike(f"%{value}%"))
+        return sql.where(~exists(ncl))
+
+    if operator == "ne":
+        neq = _linked_contact_select(c.name == str(value))
+        return sql.where(~exists(neq))
+
+    if operator == "contains":
+        pred = c.name.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = c.name.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = c.name.ilike(f"%{value}")
+    elif operator == "eq":
+        pred = c.name == str(value)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for contacts "
+                "filters (contains, ncontains, eq, ne, startswith, endswith)"
+            ),
+        )
+
+    return sql.where(exists(_linked_contact_select(pred)))
+
+
 def _apply_json_filter_clause(
     sql: Select[Any], table: DeclarativeBase, f: dict
 ) -> Select[Any]:
-    """Apply one Refine logical filter dict (field / operator / value) to a SELECT."""
+    """Apply one Refine logical filter dict to a SELECT."""
     required_keys = {"field", "value", "operator"}
     missing = required_keys - f.keys()
     if missing:
         raise HTTPException(
             status_code=422,
-            detail=f"Missing required filter keys: {', '.join(sorted(missing))}",
+            detail=(
+                "Missing required filter keys: "
+                f"{', '.join(sorted(missing))}"
+            ),
         )
 
     field = f["field"]
     value = f["value"]
     operator = f["operator"]
+
+    if getattr(table, "__name__", None) == "Thing" and field in (
+        "monitoring_status",
+        "well_status",
+    ):
+        status_type_map = {
+            "monitoring_status": "Monitoring Status",
+            "well_status": "Well Status",
+        }
+        return _apply_thing_derived_status_filter(
+            sql, table, status_type_map[field], operator, value
+        )
+
+    if getattr(table, "__name__", None) == "Thing" and field == "contacts":
+        return _apply_thing_contacts_filter(sql, table, operator, value)
 
     try:
         column = getattr(table, field)
