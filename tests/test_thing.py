@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
+
 import pytest
 from core.dependencies import (
     admin_function,
@@ -931,6 +933,45 @@ def test_get_water_wells_includes_contact_summary(
             "role": contact.role,
         }
     ]
+
+
+def test_get_water_wells_filter_contacts_contains(water_well_thing, contact):
+    fl = json.dumps({"field": "contacts", "operator": "contains", "value": "Test"})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_filter_contacts_contains_no_match(water_well_thing, contact):
+    fl = json.dumps(
+        {
+            "field": "contacts",
+            "operator": "contains",
+            "value": "ZyxyzNoMatch999",
+        }
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id not in ids
+
+
+def test_get_water_wells_filter_contacts_ncontains(water_well_thing, contact):
+    fl = json.dumps(
+        {
+            "field": "contacts",
+            "operator": "ncontains",
+            "value": "ZyxyzNoMatch999",
+        }
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
 
 
 def test_get_water_well_by_id_404_not_found(water_well_thing):
