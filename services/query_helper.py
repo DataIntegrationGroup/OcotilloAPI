@@ -279,10 +279,7 @@ def _apply_json_filter_clause(
     if missing:
         raise HTTPException(
             status_code=422,
-            detail=(
-                "Missing required filter keys: "
-                f"{', '.join(sorted(missing))}"
-            ),
+            detail=("Missing required filter keys: " f"{', '.join(sorted(missing))}"),
         )
 
     field = f["field"]
