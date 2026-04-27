@@ -347,8 +347,7 @@ def load_to_postgis(
         cur.execute("DROP TABLE IF EXISTS _ingest_staging;")
         cur.execute("DROP TABLE IF EXISTS _ingest_metadata_keys;")
 
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -365,17 +364,14 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             );
-        """
-        )
+        """)
 
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TEMP TABLE _ingest_metadata_keys (
                 line_id TEXT,
                 record_id TEXT
             );
-        """
-        )
+        """)
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         copy_sql = (
