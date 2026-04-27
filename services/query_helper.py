@@ -18,7 +18,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column, Select, func, String
+from sqlalchemy import Column, Float, Integer, Select, String, Text, func, not_, select
 from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.sql.elements import OperatorExpression
 from starlette.status import HTTP_404_NOT_FOUND
@@ -110,8 +110,130 @@ def simple_all_getter(session, table) -> list[object]:
     return session.scalars(sql).all()
 
 
+def _python_type(column: Any):
+    try:
+        return column.type.python_type
+    except Exception:
+        return None
+
+
+def _apply_json_filter_clause(
+    sql: Select[Any], table: DeclarativeBase, f: dict
+) -> Select[Any]:
+    """Apply one Refine logical filter dict (field / operator / value) to a SELECT."""
+    required_keys = {"field", "value", "operator"}
+    missing = required_keys - f.keys()
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Missing required filter keys: {', '.join(sorted(missing))}",
+        )
+
+    field = f["field"]
+    value = f["value"]
+    operator = f["operator"]
+
+    try:
+        column = getattr(table, field)
+    except AttributeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown filter field {field!r} for {table.__name__}",
+        ) from exc
+
+    py_t = _python_type(column)
+    is_string = py_t is str or isinstance(column.type, (String, Text))
+
+    if operator == "contains":
+        if not is_string:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operator contains is not supported for field {field!r}",
+            )
+        return sql.where(column.ilike(f"%{value}%"))
+
+    if operator == "ncontains":
+        if not is_string:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operator ncontains is not supported for field {field!r}",
+            )
+        return sql.where(not_(column.ilike(f"%{value}%")))
+
+    if operator == "startswith":
+        if not is_string:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operator startswith is not supported for field {field!r}",
+            )
+        return sql.where(column.ilike(f"{value}%"))
+
+    if operator == "endswith":
+        if not is_string:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Operator endswith is not supported for field {field!r}",
+            )
+        return sql.where(column.ilike(f"%{value}"))
+
+    if operator == "eq":
+        if py_t is float:
+            return sql.where(column == float(value))
+        if py_t is int:
+            return sql.where(column == int(value))
+        if is_string:
+            return sql.where(column == str(value))
+        return sql.where(column == value)
+
+    if operator == "ne":
+        if py_t is float:
+            return sql.where(column != float(value))
+        if py_t is int:
+            return sql.where(column != int(value))
+        if is_string:
+            return sql.where(column != str(value))
+        return sql.where(column != value)
+
+    if operator == "gt":
+        return sql.where(column > float(value) if py_t is float else column > value)
+
+    if operator == "gte":
+        return sql.where(column >= float(value) if py_t is float else column >= value)
+
+    if operator == "lt":
+        return sql.where(column < float(value) if py_t is float else column < value)
+
+    if operator == "lte":
+        return sql.where(column <= float(value) if py_t is float else column <= value)
+
+    if operator == "null":
+        return sql.where(column.is_(None))
+
+    if operator == "nnull":
+        return sql.where(column.is_not(None))
+
+    if operator == "in":
+        if not isinstance(value, (list, tuple)):
+            raise HTTPException(
+                status_code=400,
+                detail="Operator in requires an array value",
+            )
+        return sql.where(column.in_(list(value)))
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unsupported filter operator {operator!r}",
+    )
+
+
 def order_sort_filter(
-    sql: Select[Any], table: DeclarativeBase, sort: str, order: str, filter_: str
+    sql: Select[Any],
+    table: DeclarativeBase,
+    sort: str | None,
+    order: str | None,
+    filter_: str | None = None,
+    *,
+    filters: list[str] | None = None,
 ) -> Select[Any]:
     if order:
         if not sort:
@@ -132,27 +254,21 @@ def order_sort_filter(
         else:
             raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
 
+    filter_jsons: list[str] = []
+    if filters:
+        filter_jsons.extend([x for x in filters if x])
     if filter_:
-        required_keys = {"field", "value", "operator"}
-        if filter_ is not None:
-            try:
-                f = json.loads(filter_)
-            except Exception:
-                raise HTTPException(status_code=400, detail="Invalid JSON in filter")
+        filter_jsons.append(filter_)
 
-            missing = required_keys - f.keys()
-            if missing:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"Missing required filter keys: {', '.join(missing)}",
-                )
+    for raw in filter_jsons:
+        try:
+            f = json.loads(raw)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400, detail="Invalid JSON in filter"
+            ) from exc
 
-        field = f["field"]
-        value = f["value"]
-        operator = f["operator"]
-        column = getattr(table, field)
-        if operator == "contains":
-            sql = sql.where(column.ilike(f"%{value}%"))
+        sql = _apply_json_filter_clause(sql, table, f)
 
     return sql
 
