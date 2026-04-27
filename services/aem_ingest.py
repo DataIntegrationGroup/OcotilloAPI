@@ -29,6 +29,7 @@ import io
 import json
 import logging
 import os
+import re
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -44,9 +45,15 @@ from services.aem_parsers import (
     parse_bylayer,
     parse_seogi_rho,
 )
+from services.aem_parsers.detect import extract_flight_id
 from services.aem_parsers.common import CANONICAL_COLUMNS
 
 logger = logging.getLogger(__name__)
+
+SEOGI_SOURCE_EPSG_OVERRIDES = {
+    # Gila-Animas is in UTM zone 12N; treating it as zone 13 shifts geometries east.
+    "gila_animas_2025": 32612,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +134,109 @@ def _next_batch_stop(df: pd.DataFrame, start: int, batch_size: int) -> int:
         stop += 1
 
     return stop
+
+
+def _resolve_seogi_source_epsg(survey_id: str) -> int:
+    return SEOGI_SOURCE_EPSG_OVERRIDES.get(survey_id, 32613)
+
+
+def _normalize_line_join_value(value) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        numeric = float(text)
+    except (TypeError, ValueError):
+        return text
+    return str(int(numeric)) if numeric.is_integer() else text
+
+
+def _normalize_flight_id_for_join(flight_id: str | None) -> str | None:
+    """Only use parsed flight IDs that match the expected F## pattern."""
+    if flight_id is None:
+        return None
+    normalized = flight_id.strip()
+    if re.fullmatch(r"F\d+(?:-F\d+)*", normalized):
+        return normalized
+    return None
+
+
+def _apply_acquisition_metadata_timestamps(
+    df: pd.DataFrame,
+    acquisition_file_paths: list[dict] | None,
+    flight_id: str | None = None,
+) -> pd.DataFrame:
+    """Join Date from raw acquisition CSVs onto parsed soundings."""
+    if (
+        not acquisition_file_paths
+        or "_source_point_order" not in df.columns
+        or "line_id" not in df.columns
+    ):
+        return df
+
+    timestamp_frames: list[pd.DataFrame] = []
+    for raw_file in acquisition_file_paths:
+        raw_flight_id = raw_file.get("flight_id")
+        if flight_id and raw_flight_id and raw_flight_id != flight_id:
+            continue
+
+        source_path = raw_file.get("source_path")
+        if not source_path or not str(source_path).lower().endswith(".csv"):
+            continue
+
+        try:
+            raw_df = pd.read_csv(source_path)
+        except Exception as exc:
+            logger.warning(
+                "Skipping acquisition timestamp companion %s: %s",
+                source_path,
+                exc,
+            )
+            continue
+
+        required_columns = {"Line", "Date"}
+        if not required_columns.issubset(raw_df.columns):
+            continue
+
+        timestamps = raw_df.loc[:, ["Line", "Date"]].copy()
+        timestamps["_join_line_id"] = timestamps["Line"].map(_normalize_line_join_value)
+        timestamps["_source_point_order"] = (
+            timestamps.groupby("_join_line_id", sort=False).cumcount() + 1
+        )
+        timestamps = timestamps.rename(columns={"Date": "date_acquired"})
+        timestamp_frames.append(
+            timestamps[["_join_line_id", "_source_point_order", "date_acquired"]]
+        )
+
+    if not timestamp_frames:
+        return df
+
+    timestamp_df = pd.concat(timestamp_frames, ignore_index=True)
+    enriched_df = df.copy()
+    enriched_df["_join_line_id"] = enriched_df["line_id"].map(
+        _normalize_line_join_value
+    )
+    enriched_df = enriched_df.merge(
+        timestamp_df,
+        on=["_join_line_id", "_source_point_order"],
+        how="left",
+        suffixes=("", "_companion"),
+    )
+
+    for column in ["date_acquired"]:
+        companion_column = f"{column}_companion"
+        if companion_column in enriched_df.columns:
+            if column not in enriched_df.columns:
+                enriched_df[column] = enriched_df[companion_column]
+            else:
+                enriched_df[column] = enriched_df[column].where(
+                    enriched_df[column].notna(), enriched_df[companion_column]
+                )
+            enriched_df = enriched_df.drop(columns=[companion_column])
+
+    return enriched_df.drop(columns=["_join_line_id"])
 
 
 def _directory_readme_contents(directory_path: str) -> str:
@@ -237,7 +347,8 @@ def load_to_postgis(
         cur.execute("DROP TABLE IF EXISTS _ingest_staging;")
         cur.execute("DROP TABLE IF EXISTS _ingest_metadata_keys;")
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_staging (
                 survey_id TEXT, processing_stage TEXT, inversion_code TEXT,
                 contractor TEXT, source_file TEXT, source_epsg INTEGER,
@@ -254,14 +365,17 @@ def load_to_postgis(
                 plni DOUBLE PRECISION, date_acquired DATE,
                 geom_wkt TEXT
             );
-        """)
+        """
+        )
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TEMP TABLE _ingest_metadata_keys (
                 line_id TEXT,
                 record_id TEXT
             );
-        """)
+        """
+        )
 
         staging_cols = INSERT_COLUMNS + ["geom_wkt"]
         copy_sql = (
@@ -564,9 +678,12 @@ def write_raw_manifest(
 def run_ingest(
     config: IngestConfig,
     raw_file_paths: list[dict] | None = None,
+    acquisition_file_paths: list[dict] | None = None,
     raw_manifest_notes: str = "",
     skip_soundings_upload: bool = False,
     skip_stac_uploads: bool = False,
+    debug_stac_limit: bool = False,
+    debug_stac_remaining_by_collection: dict[str, int] | None = None,
 ) -> dict:
     """Orchestrate the full ingest pipeline for a single AEM inversion file.
 
@@ -575,9 +692,14 @@ def run_ingest(
         raw_file_paths: List of raw file dicts for the manifest.
             If None, an empty manifest is written (populated later by
             the migration script).
+        acquisition_file_paths: Local raw acquisition CSVs used to stamp
+            Date onto parsed soundings before STAC generation.
         raw_manifest_notes: Free-text notes for the manifest.
         skip_soundings_upload: Skip loading parsed soundings into PostGIS.
         skip_stac_uploads: Skip writing STAC payloads and loading them into pgstac.
+        debug_stac_limit: Limit STAC item uploads to 1000 records per collection.
+        debug_stac_remaining_by_collection: Shared per-collection remaining item
+            budget for debug-limited batch runs.
 
     Returns:
         Ingest result summary.
@@ -601,7 +723,12 @@ def run_ingest(
     if fmt == SourceFormat.BYLAYER:
         df = parse_bylayer(filepath)
     elif fmt == SourceFormat.SEOGI_RHO:
-        df = parse_seogi_rho(filepath, flight_id=config.flight_id)
+        source_epsg = _resolve_seogi_source_epsg(config.survey_id)
+        df = parse_seogi_rho(
+            filepath,
+            flight_id=config.flight_id,
+            source_epsg=source_epsg,
+        )
     elif fmt == SourceFormat.AGF_LCI:
         if config.system is None:
             raise ValueError(
@@ -609,18 +736,35 @@ def run_ingest(
                 "(e.g. '306hp' or '312hp')"
             )
         df = parse_agf_lci(filepath, system=config.system.value)
+        source_epsg = (
+            int(df["source_epsg"].dropna().iloc[0])
+            if "source_epsg" in df.columns and df["source_epsg"].notna().any()
+            else 26913
+        )
     else:
         raise ValueError(f"Unknown format: {fmt}")
+    if fmt == SourceFormat.BYLAYER:
+        source_epsg = (
+            int(df["source_epsg"].dropna().iloc[0])
+            if "source_epsg" in df.columns and df["source_epsg"].notna().any()
+            else 26913
+        )
 
     logger.info("Step 2 — Parsed: %d rows", len(df))
 
     if config.date_acquired:
         df["date_acquired"] = config.date_acquired
+    elif fmt == SourceFormat.SEOGI_RHO:
+        df = _apply_acquisition_metadata_timestamps(
+            df,
+            acquisition_file_paths,
+            flight_id=_normalize_flight_id_for_join(extract_flight_id(config.filepath)),
+        )
 
     # Step 3: Load into PostGIS
     if skip_soundings_upload:
         n_rows = 0
-        logger.info("Step 3 — PostGIS load skipped (--skip-soundings-upload)")
+        logger.info("Step 3 — PostGIS load skipped")
     else:
         n_rows = load_to_postgis(df, config)
         logger.info("Step 3 — PostGIS loaded: %d rows", n_rows)
@@ -640,29 +784,70 @@ def run_ingest(
     )
     logger.info("Step 5 — Raw manifest written: %s", raw_manifest_gcs_path)
 
-    stac_collection = None
+    stac_collections = []
     stac_items = []
     stac_payload_paths = {
         "collection_gcs_path": None,
         "items_gcs_path": None,
+        "collection_gcs_paths": {},
     }
     if skip_stac_uploads:
         logger.info("Step 6 — STAC uploads skipped (--skip-stac-uploads)")
     else:
-        stac_collection = aem_stac.build_stac_collection(
+        raw_stac_df = aem_stac.build_raw_stac_dataframe(
+            acquisition_file_paths=acquisition_file_paths,
+            raw_file_paths=raw_file_paths,
+            source_epsg=source_epsg,
+        )
+        stac_collections = [
+            aem_stac.build_stac_collection(
+                df=raw_stac_df if not raw_stac_df.empty else df,
+                config=config,
+                parquet_gcs_path=parquet_gcs_path,
+                raw_manifest_gcs_path=raw_manifest_gcs_path,
+                raw_file_paths=raw_file_paths,
+                kind="raw",
+            ),
+            aem_stac.build_stac_collection(
+                df=df,
+                config=config,
+                parquet_gcs_path=parquet_gcs_path,
+                raw_manifest_gcs_path=raw_manifest_gcs_path,
+                raw_file_paths=raw_file_paths,
+                kind="inversion",
+            ),
+        ]
+        raw_stac_items = aem_stac.build_raw_stac_items(
+            raw_stac_df,
+            config=config,
+            raw_manifest_gcs_path=raw_manifest_gcs_path,
+        )
+        inversion_stac_items = aem_stac.build_stac_items(
             df=df,
             config=config,
             parquet_gcs_path=parquet_gcs_path,
             raw_manifest_gcs_path=raw_manifest_gcs_path,
         )
-        stac_items = aem_stac.build_stac_items(
-            df=df,
-            config=config,
-            parquet_gcs_path=parquet_gcs_path,
-            raw_manifest_gcs_path=raw_manifest_gcs_path,
-        )
+        stac_items = raw_stac_items + inversion_stac_items
+        total_stac_items = len(stac_items)
+        if debug_stac_limit:
+            stac_items = aem_stac.limit_stac_items_per_collection(
+                stac_items,
+                max_items_per_collection=1000,
+                remaining_by_collection=debug_stac_remaining_by_collection,
+            )
+            logger.warning(
+                "Step 6 — Debug STAC limit enabled: uploading %d of %d items (max 1000 per collection)",
+                len(stac_items),
+                total_stac_items,
+            )
+            if debug_stac_remaining_by_collection is not None:
+                logger.warning(
+                    "Step 6 — Remaining debug STAC item budget by collection: %s",
+                    debug_stac_remaining_by_collection,
+                )
         stac_payload_paths = aem_stac.write_stac_payloads(
-            stac_collection,
+            stac_collections,
             stac_items,
             config,
             gcs_client,
@@ -674,8 +859,25 @@ def run_ingest(
             stac_payload_paths["items_gcs_path"],
         )
 
-        aem_stac.load_stac_to_pgstac(stac_collection, stac_items)
+        aem_stac.load_stac_to_pgstac(stac_collections, stac_items)
         logger.info("Step 7 — pgstac upsert complete: %d items", len(stac_items))
+
+    inversion_collection = next(
+        (
+            collection
+            for collection in stac_collections
+            if collection["ocotillo:collection_kind"] == "inversion"
+        ),
+        None,
+    )
+    raw_collection = next(
+        (
+            collection
+            for collection in stac_collections
+            if collection["ocotillo:collection_kind"] == "raw"
+        ),
+        None,
+    )
 
     result = {
         "survey_id": config.survey_id,
@@ -684,9 +886,14 @@ def run_ingest(
         "source_gcs_path": config.source_gcs_path,
         "parquet_gcs_path": parquet_gcs_path,
         "raw_manifest_gcs_path": raw_manifest_gcs_path,
-        "stac_collection_id": stac_collection["id"] if stac_collection else None,
+        "stac_collection_id": (
+            inversion_collection["id"] if inversion_collection else None
+        ),
+        "stac_raw_collection_id": raw_collection["id"] if raw_collection else None,
         "stac_item_count": len(stac_items),
+        "stac_debug_limit_applied": debug_stac_limit,
         "stac_collection_gcs_path": stac_payload_paths["collection_gcs_path"],
+        "stac_collection_gcs_paths": stac_payload_paths["collection_gcs_paths"],
         "stac_items_gcs_path": stac_payload_paths["items_gcs_path"],
         "rows_loaded": n_rows,
     }

@@ -31,7 +31,7 @@ The AEM ingest commands are mounted under `aem-ingest`:
 - `python -m cli.cli aem-ingest detect <filepath>`
 - `python -m cli.cli aem-ingest parse <filepath> [--flight-id F02] [--system 306hp|312hp] [--out parsed.parquet]`
 - `python -m cli.cli aem-ingest run <filepath> --survey-id <survey> --stage preliminary_inversion|final_inversion --inversion-code seogi_python|aarhus_sci|aarhus_lci --contractor <name> --source-gcs-path <gcs/path> [--skip-stac-uploads]`
-- `python -m cli.cli aem-ingest batch --mapping aem/gcs_path_mapping.csv [--bucket <gcs-bucket>] [--survey <survey>] [--stage <processing_stage>] [--limit N] [--dry-run] [--skip-soundings-upload] [--skip-asset-db-publish] [--skip-stac-uploads]`
+- `python -m cli.cli aem-ingest batch --mapping aem/gcs_path_mapping.csv [--bucket <gcs-bucket>] [--survey <survey>] [--stage <processing_stage>] [--limit N] [--dry-run] [--upload-soundings] [--skip-asset-db-publish] [--skip-stac-uploads]`
 
 Purpose by command:
 
@@ -67,7 +67,7 @@ python -m cli.cli aem-ingest batch \
 python -m cli.cli aem-ingest batch \
   --mapping aem/gcs_path_mapping.csv \
   --bucket nmbgmr-aem-data \
-  --skip-soundings-upload
+  --upload-soundings
 
 python -m cli.cli aem-ingest batch \
   --mapping aem/gcs_path_mapping.csv \
@@ -84,6 +84,7 @@ AEM runtime notes:
 
 - `run` and `batch` require a GCS bucket via `--gcs-bucket` or `--bucket`, or `AEM_GCS_BUCKET` / `GCS_BUCKET_NAME`.
 - `run` and `batch` also need database connectivity unless you are doing a dry run.
+- `batch` skips PostGIS sounding uploads by default. Use `--upload-soundings` to opt in.
 - `run` writes replayable STAC payload artifacts under the survey metadata prefix and loads them into `pgstac` with `pypgstac`.
 - `--skip-stac-uploads` skips STAC payload generation, GCS STAC artifact writes, and `pgstac` loading.
 - `run` can also add survey-level GeoServer WMS/WFS/WCS assets to the STAC Collection when `GEOSERVER_PUBLIC_URL` and `GEOSERVER_WORKSPACE` are configured.

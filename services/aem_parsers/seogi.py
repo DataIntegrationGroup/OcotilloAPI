@@ -31,13 +31,18 @@ from services.aem_parsers.detect import extract_flight_id
 logger = logging.getLogger(__name__)
 
 
-def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFrame:
+def parse_seogi_rho(
+    filepath: str,
+    flight_id: Optional[str] = None,
+    source_epsg: int = 32613,
+) -> pd.DataFrame:
     """Parse a Seogi Python rho CSV to canonical long-format schema.
 
     Args:
         filepath: Path to the rho CSV file.
         flight_id: Flight identifier (e.g. 'F02').  If None, extracted
                    from the filename.
+        source_epsg: Source CRS for Seogi projected coordinates.
 
     Returns:
         DataFrame with canonical column names, ready for PostGIS load.
@@ -73,6 +78,9 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
     # Prefix record with flight ID to create globally unique record_id.
     # record=1 in F02 becomes "F02_1".  This is why record_id is TEXT.
     df["record_id"] = flight_id + "_" + df["record"].astype(str)
+    # Preserve within-line source order so companion acquisition CSVs can
+    # stamp timestamps onto soundings before STAC generation.
+    df["_source_point_order"] = df.groupby("line_no", sort=False).cumcount() + 1
 
     # ---- Pivot wide → long ----
     rows = []
@@ -88,7 +96,9 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
                     f"Layer {layer_idx} is incomplete."
                 )
 
-        layer_df = df[["record_id", "line_no", "utmx", "utmy", "elevation"]].copy()
+        layer_df = df[
+            ["record_id", "line_no", "utmx", "utmy", "elevation", "_source_point_order"]
+        ].copy()
         layer_df = copy_temporal_columns(df, layer_df)
 
         # Include plm if present (some Seogi outputs include it)
@@ -115,7 +125,7 @@ def parse_seogi_rho(filepath: str, flight_id: Optional[str] = None) -> pd.DataFr
         }
     )
 
-    long_df = finalize_parsed_dataframe(long_df, filepath, source_epsg=32613)
+    long_df = finalize_parsed_dataframe(long_df, filepath, source_epsg=source_epsg)
 
     # Store flight_id for metadata table
     long_df["_flight_id"] = flight_id

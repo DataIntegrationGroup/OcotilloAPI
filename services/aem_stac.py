@@ -5,22 +5,82 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import pandas as pd
 import re
+from collections import defaultdict
 from collections.abc import Callable, Iterable
 from datetime import date, datetime, time, timezone
+from pathlib import Path
 from google.cloud import storage
 from schemas.aem import SURVEY_METADATA, IngestConfig
-from services.aem_parsers.common import (
-    TEMPORAL_DATETIME_COLUMNS,
-    TEMPORAL_TIME_COLUMNS,
-)
+from services.aem_parsers.common import TEMPORAL_DATETIME_COLUMNS
 from services.util import transform_srid
-from shapely.geometry import box, mapping
+from shapely.geometry import MultiPoint, Point, box, mapping
 from urllib.parse import quote, quote_plus, urlencode
 
 logger = logging.getLogger(__name__)
+
+RAW_EASTING_COLUMNS = [
+    "utmx",
+    "utm_x",
+    "utm_easting",
+    "easting",
+    "x",
+]
+RAW_NORTHING_COLUMNS = [
+    "utmy",
+    "utm_y",
+    "utm_northing",
+    "northing",
+    "y",
+]
+RAW_LINE_COLUMNS = ["Line", "line", "line_no", "lineid", "line_id"]
+
+
+def _round_bbox_outward(bounds: tuple[float, float, float, float]) -> list[float]:
+    scale = 10**6
+    minx, miny, maxx, maxy = bounds
+    return [
+        math.floor(float(minx) * scale) / scale,
+        math.floor(float(miny) * scale) / scale,
+        math.ceil(float(maxx) * scale) / scale,
+        math.ceil(float(maxy) * scale) / scale,
+    ]
+
+
+def _stac_date_only_or_none(value) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, pd.Timestamp):
+        value = value.to_pydatetime()
+    if isinstance(value, datetime):
+        return (
+            datetime.combine(value.date(), datetime.min.time(), tzinfo=timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+    if isinstance(value, date):
+        return (
+            datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
+    parsed = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed):
+        text_value = str(value).strip()
+        if not text_value:
+            return None
+        if "T" in text_value:
+            text_value = text_value.split("T", 1)[0]
+        return f"{text_value}T00:00:00Z"
+    return (
+        datetime.combine(parsed.date(), datetime.min.time(), tzinfo=timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def _stac_datetime_or_none(value) -> str | None:
@@ -38,55 +98,88 @@ def _stac_datetime_or_none(value) -> str | None:
             .isoformat()
             .replace("+00:00", "Z")
         )
-    text_value = str(value)
-    if "T" not in text_value:
-        return f"{text_value}T00:00:00Z"
-    if text_value.endswith("Z") or "+" in text_value[10:]:
-        return text_value
-    return f"{text_value}Z"
+
+    parsed = pd.to_datetime(value, errors="coerce", utc=True)
+    if pd.isna(parsed):
+        return None
+    return parsed.to_pydatetime().isoformat().replace("+00:00", "Z")
 
 
-def _combine_date_and_time(date_value, time_value):
+def _coerce_time_value(value) -> time | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, pd.Timestamp):
+        value = value.to_pydatetime()
+    if isinstance(value, datetime):
+        return value.timetz().replace(tzinfo=None)
+    if isinstance(value, time):
+        return value.replace(tzinfo=None)
+
+    text = str(value).strip()
+    if not text:
+        return None
+    if ":" in text:
+        parsed = pd.to_datetime(text, errors="coerce")
+        if pd.isna(parsed):
+            return None
+        return parsed.to_pydatetime().time().replace(tzinfo=None)
+
+    match = re.fullmatch(r"(\d+)(?:\.(\d+))?", text)
+    if match is None:
+        parsed = pd.to_datetime(text, errors="coerce")
+        if pd.isna(parsed):
+            return None
+        return parsed.to_pydatetime().time().replace(tzinfo=None)
+
+    try:
+        seconds_of_day = float(text)
+    except ValueError:
+        return None
+    if seconds_of_day < 0 or seconds_of_day >= 86400:
+        return None
+
+    whole_seconds = int(seconds_of_day)
+    fractional_microsecond = int(round((seconds_of_day - whole_seconds) * 1_000_000))
+    if fractional_microsecond == 1_000_000:
+        whole_seconds += 1
+        fractional_microsecond = 0
+    if whole_seconds >= 86400:
+        return None
+    hour, remainder = divmod(whole_seconds, 3600)
+    minute, second = divmod(remainder, 60)
+    return time(hour, minute, second, fractional_microsecond)
+
+
+def _stac_datetime_from_date_and_time_or_none(
+    date_value,
+    time_value,
+    require_time: bool = False,
+) -> str | None:
     if date_value is None or pd.isna(date_value):
         return None
-    if time_value is None or pd.isna(time_value):
-        return date_value
+    parsed_date = pd.to_datetime(date_value, errors="coerce")
+    if pd.isna(parsed_date):
+        return None
 
-    if isinstance(date_value, pd.Timestamp):
-        date_value = date_value.to_pydatetime()
-    if isinstance(time_value, pd.Timestamp):
-        time_value = time_value.to_pydatetime()
-
-    if isinstance(date_value, datetime):
-        if date_value.time() != datetime.min.time():
-            return date_value
-        date_part = date_value.date()
-    elif isinstance(date_value, date):
-        date_part = date_value
+    parsed_time = _coerce_time_value(time_value)
+    if parsed_time is None:
+        if require_time:
+            return None
+        combined = datetime.combine(
+            parsed_date.date(), datetime.min.time(), tzinfo=timezone.utc
+        )
     else:
-        parsed_date = pd.to_datetime(date_value, errors="coerce")
-        if pd.isna(parsed_date):
-            return date_value
-        date_part = parsed_date.date()
-
-    if isinstance(time_value, datetime):
-        time_part = time_value.timetz()
-    elif isinstance(time_value, time):
-        time_part = time_value
-    else:
-        parsed_time = pd.to_datetime(time_value, errors="coerce")
-        if pd.isna(parsed_time):
-            return date_value
-        time_part = parsed_time.timetz()
-
-    return datetime.combine(date_part, time_part)
+        combined = datetime.combine(
+            parsed_date.date(), parsed_time, tzinfo=timezone.utc
+        )
+    return combined.isoformat().replace("+00:00", "Z")
 
 
 def _stac_datetimes_from_frame(df: pd.DataFrame) -> list[str]:
     for col in TEMPORAL_DATETIME_COLUMNS:
         if col not in df.columns:
             continue
-        values = [_stac_datetime_or_none(value) for value in df[col]]
+        values = [_stac_date_only_or_none(value) for value in df[col]]
         cleaned = sorted({value for value in values if value is not None})
         if cleaned:
             return cleaned
@@ -94,27 +187,85 @@ def _stac_datetimes_from_frame(df: pd.DataFrame) -> list[str]:
     if "date_acquired" not in df.columns:
         return []
 
-    for time_col in TEMPORAL_TIME_COLUMNS:
-        if time_col not in df.columns:
-            continue
-        values = [
-            _stac_datetime_or_none(_combine_date_and_time(date_value, time_value))
-            for date_value, time_value in zip(
-                df["date_acquired"], df[time_col], strict=False
-            )
-        ]
+    values = [_stac_date_only_or_none(value) for value in df["date_acquired"]]
+    return sorted({value for value in values if value is not None})
+
+
+def _raw_stac_datetimes_from_frame(df: pd.DataFrame) -> list[str]:
+    if "acquisition_datetime" in df.columns:
+        values = [_stac_datetime_or_none(value) for value in df["acquisition_datetime"]]
         cleaned = sorted({value for value in values if value is not None})
         if cleaned:
             return cleaned
 
-    values = [_stac_datetime_or_none(value) for value in df["date_acquired"]]
-    return sorted({value for value in values if value is not None})
+    if "Date" in df.columns:
+        time_col = None
+        for candidate in ["GTime", "Time", "time", "acquisition_time"]:
+            if candidate in df.columns:
+                time_col = candidate
+                break
+        if time_col is not None:
+            values = [
+                _stac_datetime_from_date_and_time_or_none(
+                    date_value, time_value, require_time=True
+                )
+                for date_value, time_value in zip(
+                    df["Date"], df[time_col], strict=False
+                )
+            ]
+            cleaned = sorted({value for value in values if value is not None})
+            if cleaned:
+                return cleaned
+    return _stac_datetimes_from_frame(df)
 
 
 def _gcs_href(bucket: str, path: str) -> str:
     return (
         f"https://storage.googleapis.com/{bucket}/{quote(path.lstrip('/'), safe='/')}"
     )
+
+
+def _stac_asset_key(text: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+    return normalized or "asset"
+
+
+def _build_raw_data_assets(
+    bucket: str,
+    raw_file_paths: list[dict] | None,
+) -> dict[str, dict]:
+    if not raw_file_paths:
+        return {}
+
+    assets: dict[str, dict] = {}
+    used_keys: set[str] = set()
+    for raw_file in raw_file_paths:
+        gcs_path = raw_file.get("gcs_path")
+        filename = raw_file.get("file") or gcs_path
+        if not gcs_path or not filename:
+            continue
+
+        base_key = f"raw_{_stac_asset_key(str(filename).rsplit('.', 1)[0])}"
+        key = base_key
+        suffix = 2
+        while key in used_keys:
+            key = f"{base_key}_{suffix}"
+            suffix += 1
+        used_keys.add(key)
+
+        asset = {
+            "href": _gcs_href(bucket, gcs_path),
+            "roles": ["data"],
+            "title": f"Raw acquisition file: {filename}",
+        }
+        if str(filename).lower().endswith(".csv"):
+            asset["type"] = "text/csv"
+        flight_id = raw_file.get("flight_id")
+        if flight_id:
+            asset["ocotillo:flight_id"] = flight_id
+        assets[key] = asset
+
+    return assets
 
 
 def _get_env_or_none(name: str) -> str | None:
@@ -219,13 +370,13 @@ def _fallback_stac_datetime(config: IngestConfig) -> str:
     return f"{match.group(1)}-01-01T00:00:00Z"
 
 
-def _wgs84_bbox_from_dataframe(df: pd.DataFrame) -> list[float] | None:
+def _wgs84_points_from_dataframe(df: pd.DataFrame) -> list[Point]:
     if df.empty or "easting" not in df.columns or "northing" not in df.columns:
-        return None
+        return []
 
     coords = df[["easting", "northing", "source_epsg"]].dropna()
     if coords.empty:
-        return None
+        return []
 
     source_srids = coords["source_epsg"].astype(int).unique().tolist()
     if len(source_srids) != 1:
@@ -233,14 +384,39 @@ def _wgs84_bbox_from_dataframe(df: pd.DataFrame) -> list[float] | None:
             f"Expected one source_epsg for STAC handoff, got {source_srids}"
         )
 
-    projected_bbox = box(
-        float(coords["easting"].min()),
-        float(coords["northing"].min()),
-        float(coords["easting"].max()),
-        float(coords["northing"].max()),
+    unique_points = (
+        coords[["easting", "northing"]]
+        .drop_duplicates()
+        .sort_values(["easting", "northing"])
     )
-    wgs84_bbox = transform_srid(projected_bbox, source_srids[0], 4326).bounds
-    return [round(float(value), 6) for value in wgs84_bbox]
+    return [
+        transform_srid(
+            Point(float(row.easting), float(row.northing)),
+            source_srids[0],
+            4326,
+        )
+        for row in unique_points.itertuples(index=False)
+    ]
+
+
+def _wgs84_bbox_from_dataframe(df: pd.DataFrame) -> list[float] | None:
+    wgs84_points = _wgs84_points_from_dataframe(df)
+    if not wgs84_points:
+        return None
+
+    return _round_bbox_outward(MultiPoint(wgs84_points).bounds)
+
+
+def _wgs84_geometry_from_dataframe(df: pd.DataFrame) -> dict | None:
+    wgs84_points = _wgs84_points_from_dataframe(df)
+    if not wgs84_points:
+        return None
+
+    if len(wgs84_points) == 1:
+        geometry = wgs84_points[0]
+    else:
+        geometry = MultiPoint(wgs84_points).convex_hull
+    return mapping(geometry)
 
 
 def _stac_temporal_extent(
@@ -254,16 +430,211 @@ def _stac_temporal_extent(
     return temporal_values[0], temporal_values[-1]
 
 
+def _stac_temporal_extent_from_values(
+    values: list[str],
+    config: IngestConfig,
+) -> tuple[str, str]:
+    if not values:
+        fallback = _fallback_stac_datetime(config)
+        return fallback, fallback
+    return values[0], values[-1]
+
+
+def _stac_temporal_properties(
+    df: pd.DataFrame,
+    config: IngestConfig,
+) -> dict[str, str]:
+    start, end = _stac_temporal_extent(df, config)
+    if start == end:
+        return {"datetime": start}
+    return {"start_datetime": start, "end_datetime": end}
+
+
+def _raw_stac_temporal_extent(
+    df: pd.DataFrame,
+    config: IngestConfig,
+) -> tuple[str, str]:
+    return _stac_temporal_extent_from_values(_raw_stac_datetimes_from_frame(df), config)
+
+
+def _stac_collection_id(config: IngestConfig, kind: str) -> str:
+    if kind == "raw":
+        return f"aem-{config.survey_id.lower()}-raw"
+    if kind == "inversion":
+        return (
+            f"aem-{config.survey_id.lower()}-"
+            f"{config.processing_stage.value}-{config.inversion_code.value}"
+        )
+    raise ValueError(f"Unsupported STAC collection kind: {kind}")
+
+
+def _first_matching_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    lowered = {col.lower(): col for col in df.columns}
+    for candidate in candidates:
+        match = lowered.get(candidate.lower())
+        if match is not None:
+            return match
+    return None
+
+
+def build_raw_stac_dataframe(
+    acquisition_file_paths: list[dict] | None,
+    raw_file_paths: list[dict] | None,
+    source_epsg: int,
+) -> pd.DataFrame:
+    """Build a normalized raw-point frame from acquisition CSVs for STAC output."""
+    if not acquisition_file_paths:
+        return pd.DataFrame()
+
+    raw_gcs_by_file = {
+        raw_file.get("file"): raw_file
+        for raw_file in (raw_file_paths or [])
+        if raw_file.get("file")
+    }
+    frames: list[pd.DataFrame] = []
+
+    for raw_file in acquisition_file_paths:
+        source_path = raw_file.get("source_path")
+        if not source_path or not str(source_path).lower().endswith(".csv"):
+            continue
+
+        try:
+            raw_df = pd.read_csv(source_path)
+        except Exception as exc:
+            logger.warning("Skipping raw STAC companion %s: %s", source_path, exc)
+            continue
+
+        easting_col = _first_matching_column(raw_df, RAW_EASTING_COLUMNS)
+        northing_col = _first_matching_column(raw_df, RAW_NORTHING_COLUMNS)
+        if easting_col is None or northing_col is None:
+            logger.warning(
+                "Skipping raw STAC companion %s because coordinate columns were not found",
+                source_path,
+            )
+            continue
+
+        frame = raw_df.copy()
+        frame["_csv_row_number"] = frame.index + 2
+        frame["easting"] = pd.to_numeric(frame[easting_col], errors="coerce")
+        frame["northing"] = pd.to_numeric(frame[northing_col], errors="coerce")
+        frame = frame.dropna(subset=["easting", "northing"])
+        if frame.empty:
+            continue
+
+        line_col = _first_matching_column(frame, RAW_LINE_COLUMNS)
+        if line_col is not None:
+            frame["line_id"] = frame[line_col].astype(str)
+        else:
+            frame["line_id"] = None
+
+        frame["source_epsg"] = source_epsg
+        frame["raw_file"] = raw_file.get("file")
+        frame["flight_id"] = raw_file.get("flight_id")
+        frame["source_path"] = source_path
+        gcs_meta = raw_gcs_by_file.get(raw_file.get("file"), {})
+        frame["raw_gcs_path"] = gcs_meta.get("gcs_path")
+        frame["raw_point_order"] = range(1, len(frame) + 1)
+
+        time_col = _first_matching_column(
+            frame, ["GTime", "Time", "time", "acquisition_time"]
+        )
+        if "Date" in frame.columns:
+            frame["acquisition_datetime"] = [
+                _stac_datetime_from_date_and_time_or_none(
+                    date_value,
+                    time_value,
+                    require_time=time_col is not None,
+                )
+                for date_value, time_value in zip(
+                    frame["Date"],
+                    frame[time_col] if time_col is not None else [None] * len(frame),
+                    strict=False,
+                )
+            ]
+            frame["date_acquired"] = frame["Date"]
+            if time_col is not None:
+                unusable_time_mask = (
+                    frame["Date"].notna() & frame["acquisition_datetime"].isna()
+                )
+                if unusable_time_mask.any():
+                    unusable_rows = frame.loc[unusable_time_mask, "_csv_row_number"]
+                    sample_rows = unusable_rows.head(10).astype(int).tolist()
+                    logger.warning(
+                        "Raw acquisition file %s has %d rows with unusable %s values; sample CSV rows: %s",
+                        raw_file.get("file") or source_path,
+                        int(unusable_time_mask.sum()),
+                        time_col,
+                        sample_rows,
+                    )
+
+        frames.append(
+            frame[
+                [
+                    "easting",
+                    "northing",
+                    "source_epsg",
+                    "line_id",
+                    "raw_file",
+                    "flight_id",
+                    "source_path",
+                    "raw_gcs_path",
+                    "raw_point_order",
+                    *(
+                        ["acquisition_datetime", "date_acquired"]
+                        if "acquisition_datetime" in frame.columns
+                        else []
+                    ),
+                ]
+            ]
+        )
+
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
+
+
+def limit_stac_items_per_collection(
+    items: Iterable[dict],
+    max_items_per_collection: int,
+    remaining_by_collection: dict[str, int] | None = None,
+) -> list[dict]:
+    """Return at most N items per collection, preserving input order."""
+    counts: dict[str, int] = defaultdict(int)
+    limited_items: list[dict] = []
+    for item in items:
+        collection_id = item["collection"]
+        remaining = (
+            remaining_by_collection.get(collection_id, max_items_per_collection)
+            if remaining_by_collection is not None
+            else max_items_per_collection
+        )
+        if remaining <= 0 or counts[collection_id] >= remaining:
+            continue
+        limited_items.append(item)
+        counts[collection_id] += 1
+
+    if remaining_by_collection is not None:
+        for collection_id, count in counts.items():
+            current_remaining = remaining_by_collection.get(
+                collection_id, max_items_per_collection
+            )
+            remaining_by_collection[collection_id] = max(current_remaining - count, 0)
+    return limited_items
+
+
 def build_stac_collection(
     df: pd.DataFrame,
     config: IngestConfig,
     parquet_gcs_path: str,
     raw_manifest_gcs_path: str,
+    raw_file_paths: list[dict] | None = None,
+    kind: str = "inversion",
 ) -> dict:
     """Build a deterministic STAC Collection document."""
     survey_metadata = SURVEY_METADATA.get(config.survey_id)
-    start, end = _stac_temporal_extent(df, config)
     bbox = _wgs84_bbox_from_dataframe(df)
+    geometry = _wgs84_geometry_from_dataframe(df)
+    collection_id = _stac_collection_id(config, kind)
     providers = [{"name": config.contractor, "roles": ["producer"]}]
     if survey_metadata:
         providers.append(
@@ -273,57 +644,50 @@ def build_stac_collection(
             }
         )
 
-    assets = {
-        "source": {
-            "href": _gcs_href(config.gcs_bucket, config.source_gcs_path),
-            "type": "text/csv",
-            "roles": ["data", "metadata"],
-            "title": "Canonical source inversion file",
-        },
-        "parquet": {
-            "href": _gcs_href(config.gcs_bucket, parquet_gcs_path),
-            "type": "application/x-parquet",
-            "roles": ["data"],
-            "title": "Canonical sounding parquet export",
-        },
-        "raw_manifest": {
-            "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
-            "type": "application/json",
-            "roles": ["metadata"],
-            "title": "Raw source file manifest",
-        },
-    }
-    assets.update(build_geoserver_collection_assets(f"aem-{config.survey_id.lower()}"))
-
-    return {
-        "type": "Collection",
-        "stac_version": "1.0.0",
-        "id": f"aem-{config.survey_id.lower()}",
-        "title": f"AEM Survey: {config.survey_id}",
-        "description": (
-            f"Airborne electromagnetic survey {config.survey_id} "
-            f"({config.processing_stage.value})"
-        ),
-        "license": "proprietary",
-        "extent": {
-            "spatial": {"bbox": [bbox or [-180.0, -90.0, 180.0, 90.0]]},
-            "temporal": {"interval": [[start, end]]},
-        },
-        "links": [],
-        "providers": providers,
-        "keywords": [
-            "aem",
-            "resistivity",
-            config.survey_id,
-            config.processing_stage.value,
-            config.inversion_code.value,
-        ],
-        "summaries": {
-            "processing_stage": [config.processing_stage.value],
-            "inversion_code": [config.inversion_code.value],
-            "contractor": [config.contractor],
-        },
-        "item_assets": {
+    if kind == "raw":
+        start, end = _raw_stac_temporal_extent(df, config)
+        assets = {
+            "raw_manifest": {
+                "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
+                "type": "application/json",
+                "roles": ["metadata"],
+                "title": "Raw source file manifest",
+            },
+        }
+        assets.update(_build_raw_data_assets(config.gcs_bucket, raw_file_paths))
+        item_assets = None
+        temporal_interval = [[start, end]]
+        title_suffix = "Raw Acquisition"
+        description = (
+            f"Airborne electromagnetic raw acquisition metadata for {config.survey_id}"
+        )
+    elif kind == "inversion":
+        assets = {
+            "source": {
+                "href": _gcs_href(config.gcs_bucket, config.source_gcs_path),
+                "type": "text/csv",
+                "roles": ["data", "metadata"],
+                "title": "Canonical source inversion file",
+            },
+            "parquet": {
+                "href": _gcs_href(config.gcs_bucket, parquet_gcs_path),
+                "type": "application/x-parquet",
+                "roles": ["data"],
+                "title": "Canonical sounding parquet export",
+            },
+            "raw_manifest": {
+                "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
+                "type": "application/json",
+                "roles": ["metadata"],
+                "title": "Raw source file manifest",
+            },
+        }
+        assets.update(
+            build_geoserver_collection_assets(
+                f"aem-{config.survey_id.lower()}-{config.processing_stage.value}-{config.inversion_code.value}"
+            )
+        )
+        item_assets = {
             "source": {
                 "type": "text/csv",
                 "roles": ["data", "metadata"],
@@ -336,12 +700,70 @@ def build_stac_collection(
                 "type": "application/json",
                 "roles": ["metadata"],
             },
+        }
+        temporal_interval = [[None, None]]
+        title_suffix = "Inversion"
+        description = (
+            f"Airborne electromagnetic inversion outputs for {config.survey_id} "
+            f"({config.processing_stage.value}, {config.inversion_code.value})"
+        )
+    else:
+        raise ValueError(f"Unsupported STAC collection kind: {kind}")
+
+    return {
+        "type": "Collection",
+        "stac_version": "1.0.0",
+        "id": collection_id,
+        "title": f"AEM Survey {title_suffix}: {config.survey_id}",
+        "description": description,
+        "license": "proprietary",
+        "extent": {
+            "spatial": {"bbox": [bbox or [-180.0, -90.0, 180.0, 90.0]]},
+            "temporal": {"interval": temporal_interval},
         },
+        **(
+            {"geometry": geometry}
+            if kind == "inversion" and geometry is not None
+            else {}
+        ),
+        "links": [],
+        "providers": providers,
+        "keywords": [
+            "aem",
+            "resistivity",
+            config.survey_id,
+            kind,
+            *(
+                [config.processing_stage.value, config.inversion_code.value]
+                if kind == "inversion"
+                else []
+            ),
+        ],
+        "summaries": {
+            "contractor": [config.contractor],
+            "collection_kind": [kind],
+            **(
+                {
+                    "processing_stage": [config.processing_stage.value],
+                    "inversion_code": [config.inversion_code.value],
+                }
+                if kind == "inversion"
+                else {}
+            ),
+        },
+        **({"item_assets": item_assets} if item_assets is not None else {}),
         "assets": assets,
         "ocotillo:survey_id": config.survey_id,
-        "ocotillo:processing_stage": config.processing_stage.value,
-        "ocotillo:inversion_code": config.inversion_code.value,
+        "ocotillo:collection_kind": kind,
         "ocotillo:contractor": config.contractor,
+        **(
+            {
+                "ocotillo:processing_stage": config.processing_stage.value,
+                "ocotillo:inversion_code": config.inversion_code.value,
+            }
+            if kind == "inversion"
+            else {}
+        ),
         "ocotillo:survey_region": (
             survey_metadata.survey_region if survey_metadata else None
         ),
@@ -395,18 +817,6 @@ def build_stac_items(
         )
         geometry = mapping(geometry_point)
         bbox = [round(float(value), 6) for value in geometry_point.bounds]
-        datetimes = _stac_datetimes_from_frame(group)
-        if datetimes:
-            datetime_value = datetimes[0] if len(datetimes) == 1 else None
-            start_datetime = datetimes[0]
-            end_datetime = datetimes[-1]
-            estimated_datetime = False
-        else:
-            fallback = _fallback_stac_datetime(config)
-            datetime_value = fallback
-            start_datetime = fallback
-            end_datetime = fallback
-            estimated_datetime = True
         item_id = (
             "aem-"
             f"{config.survey_id}-{config.processing_stage.value}-"
@@ -418,14 +828,12 @@ def build_stac_items(
                 "stac_version": "1.0.0",
                 "stac_extensions": [],
                 "id": item_id,
-                "collection": f"aem-{config.survey_id.lower()}",
+                "collection": _stac_collection_id(config, "inversion"),
                 "geometry": geometry,
                 "bbox": bbox,
                 "links": [],
                 "properties": {
-                    "datetime": datetime_value,
-                    "start_datetime": start_datetime,
-                    "end_datetime": end_datetime,
+                    **_stac_temporal_properties(group, config),
                     "proj:epsg": source_srids[0],
                     "ocotillo:survey_id": config.survey_id,
                     "ocotillo:processing_stage": config.processing_stage.value,
@@ -443,7 +851,6 @@ def build_stac_items(
                         if "depth_bot" in group and group["depth_bot"].notna().any()
                         else None
                     ),
-                    "ocotillo:datetime_estimated": estimated_datetime,
                     "ocotillo:survey_region": (
                         survey_metadata.survey_region if survey_metadata else None
                     ),
@@ -477,49 +884,139 @@ def build_stac_items(
     return items
 
 
+def build_raw_stac_items(
+    raw_df: pd.DataFrame,
+    config: IngestConfig,
+    raw_manifest_gcs_path: str,
+) -> list[dict]:
+    """Build STAC Items for each raw acquisition point."""
+    if raw_df.empty:
+        return []
+
+    source_srids = raw_df["source_epsg"].dropna().astype(int).unique().tolist()
+    if len(source_srids) != 1:
+        raise ValueError(
+            f"Expected one source_epsg for raw STAC items, got {source_srids}"
+        )
+
+    items: list[dict] = []
+    collection_id = _stac_collection_id(config, "raw")
+    for row in raw_df.itertuples(index=False):
+        geometry_point = transform_srid(
+            Point(float(row.easting), float(row.northing)),
+            source_srids[0],
+            4326,
+        )
+        geometry = mapping(geometry_point)
+        bbox = [round(float(value), 6) for value in geometry_point.bounds]
+        file_stem = _stac_asset_key(Path(str(row.raw_file or "raw")).stem)
+        item_id = f"aem-{config.survey_id}-raw-{file_stem}-{int(row.raw_point_order)}"
+        datetime_value = getattr(row, "acquisition_datetime", None)
+        if datetime_value is None:
+            datetime_value = _stac_date_only_or_none(
+                getattr(row, "date_acquired", None)
+            )
+        if datetime_value is None:
+            datetime_value = _fallback_stac_datetime(config)
+
+        assets = {
+            "raw_manifest": {
+                "href": _gcs_href(config.gcs_bucket, raw_manifest_gcs_path),
+                "type": "application/json",
+                "roles": ["metadata"],
+                "title": "Raw source file manifest",
+            }
+        }
+        if getattr(row, "raw_gcs_path", None):
+            assets["source"] = {
+                "href": _gcs_href(config.gcs_bucket, row.raw_gcs_path),
+                "type": "text/csv",
+                "roles": ["data", "metadata"],
+                "title": f"Raw acquisition file: {row.raw_file}",
+            }
+
+        items.append(
+            {
+                "type": "Feature",
+                "stac_version": "1.0.0",
+                "stac_extensions": [],
+                "id": item_id,
+                "collection": collection_id,
+                "geometry": geometry,
+                "bbox": bbox,
+                "links": [],
+                "properties": {
+                    "datetime": datetime_value,
+                    "proj:epsg": source_srids[0],
+                    "ocotillo:survey_id": config.survey_id,
+                    "ocotillo:collection_kind": "raw",
+                    "ocotillo:contractor": config.contractor,
+                    "ocotillo:line_id": row.line_id,
+                    "ocotillo:flight_id": row.flight_id,
+                    "ocotillo:raw_file": row.raw_file,
+                    "ocotillo:point_order": int(row.raw_point_order),
+                },
+                "assets": assets,
+            }
+        )
+
+    return items
+
+
 def write_stac_payloads(
-    collection: dict,
+    collections: Iterable[dict],
     items: Iterable[dict],
     config: IngestConfig,
     gcs_client: storage.Client,
     ensure_prefix_readmes: Callable[[str, storage.Client, list[str]], list[str]],
-) -> dict[str, str]:
+) -> dict[str, str | dict[str, str]]:
     """Write replayable STAC payloads to GCS."""
+    collections = list(collections)
     prefix = f"surveys/{config.survey_id}/metadata/stac"
-    collection_path = (
-        f"{prefix}/{config.survey_id}_{config.processing_stage.value}_"
-        f"{config.inversion_code.value}_collection.json"
-    )
+    collection_paths: dict[str, str] = {}
+    for collection in collections:
+        kind = collection["ocotillo:collection_kind"]
+        collection_paths[kind] = f"{prefix}/{config.survey_id}_{kind}_collection.json"
     items_path = (
         f"{prefix}/{config.survey_id}_{config.processing_stage.value}_"
         f"{config.inversion_code.value}_items.ndjson"
     )
-    collection_payload = dict(collection)
-    collection_payload["generated_at"] = datetime.now(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
     item_lines = [json.dumps(item) for item in items]
 
-    ensure_prefix_readmes(config.gcs_bucket, gcs_client, [collection_path, items_path])
-    bucket = gcs_client.bucket(config.gcs_bucket)
-    bucket.blob(collection_path).upload_from_string(
-        json.dumps(collection_payload, indent=2),
-        content_type="application/json",
+    ensure_prefix_readmes(
+        config.gcs_bucket,
+        gcs_client,
+        [*collection_paths.values(), items_path],
     )
+    bucket = gcs_client.bucket(config.gcs_bucket)
+    for collection in collections:
+        collection_payload = dict(collection)
+        collection_payload["generated_at"] = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        bucket.blob(
+            collection_paths[collection["ocotillo:collection_kind"]]
+        ).upload_from_string(
+            json.dumps(collection_payload, indent=2),
+            content_type="application/json",
+        )
     bucket.blob(items_path).upload_from_string(
         "\n".join(item_lines) + ("\n" if item_lines else ""),
         content_type="application/x-ndjson",
     )
     logger.info(
-        "STAC payloads uploaded to gs://%s/%s and gs://%s/%s",
-        config.gcs_bucket,
-        collection_path,
+        "STAC payloads uploaded to collections=%s and items=gs://%s/%s",
+        {
+            kind: f"gs://{config.gcs_bucket}/{path}"
+            for kind, path in collection_paths.items()
+        },
         config.gcs_bucket,
         items_path,
     )
     return {
-        "collection_gcs_path": collection_path,
+        "collection_gcs_path": collection_paths.get("inversion"),
         "items_gcs_path": items_path,
+        "collection_gcs_paths": collection_paths,
     }
 
 
@@ -559,8 +1056,9 @@ def _should_skip_pgstac_load_error(exc: Exception) -> bool:
     )
 
 
-def load_stac_to_pgstac(collection: dict, items: Iterable[dict]) -> None:
+def load_stac_to_pgstac(collections: Iterable[dict], items: Iterable[dict]) -> None:
     """Upsert STAC payloads into pgstac using pypgstac."""
+    collections = list(collections)
     try:
         PgstacDB, Loader, Methods = _import_pypgstac()
     except ImportError as exc:
@@ -573,7 +1071,7 @@ def load_stac_to_pgstac(collection: dict, items: Iterable[dict]) -> None:
     loader = Loader(db)
     try:
         try:
-            loader.load_collections(iter([collection]), insert_mode=Methods.upsert)
+            loader.load_collections(iter(collections), insert_mode=Methods.upsert)
             loader.load_items(
                 iter(items),
                 insert_mode=Methods.upsert,

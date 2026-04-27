@@ -120,6 +120,13 @@ def run(
             help="Skip writing STAC payloads and loading them into pgstac",
         ),
     ] = False,
+    debug_stac_limit: Annotated[
+        bool,
+        typer.Option(
+            "--debug-stac-limit",
+            help="Limit STAC item uploads to 1000 records per collection",
+        ),
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Debug logging")
     ] = False,
@@ -142,7 +149,11 @@ def run(
         ),
     )
 
-    ingest_result = run_ingest(config, skip_stac_uploads=skip_stac_uploads)
+    ingest_result = run_ingest(
+        config,
+        skip_stac_uploads=skip_stac_uploads,
+        debug_stac_limit=debug_stac_limit,
+    )
     typer.echo(json.dumps(ingest_result, indent=2))
 
 
@@ -247,11 +258,11 @@ def batch(
         Optional[str],
         typer.Option("--stage", help="Only ingest this processing_stage"),
     ] = None,
-    skip_soundings_upload: Annotated[
+    upload_soundings: Annotated[
         bool,
         typer.Option(
-            "--skip-soundings-upload",
-            help="Skip loading parsed soundings into PostGIS during batch ingest",
+            "--upload-soundings",
+            help="Load parsed soundings into PostGIS during batch ingest (disabled by default)",
         ),
     ] = False,
     skip_asset_db_publish: Annotated[
@@ -268,6 +279,13 @@ def batch(
             help="Skip writing STAC payloads and loading them into pgstac during batch ingest",
         ),
     ] = False,
+    debug_stac_limit: Annotated[
+        bool,
+        typer.Option(
+            "--debug-stac-limit",
+            help="Limit STAC item uploads to 1000 records per collection during batch ingest",
+        ),
+    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Debug logging")
     ] = False,
@@ -282,9 +300,10 @@ def batch(
         limit=limit,
         survey_filter=survey,
         stage_filter=stage,
-        skip_soundings_upload=skip_soundings_upload,
+        skip_soundings_upload=not upload_soundings,
         skip_asset_db_publish=skip_asset_db_publish,
         skip_stac_uploads=skip_stac_uploads,
+        debug_stac_limit=debug_stac_limit,
     )
     if not dry_run:
         typer.echo(json.dumps(ingest_results, indent=2, default=str))
