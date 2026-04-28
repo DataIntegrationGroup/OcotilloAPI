@@ -18,7 +18,21 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import Column, Float, Integer, Select, String, Text, func, not_, select
+from sqlalchemy import (
+    Column,
+    Float,
+    Integer,
+    Select,
+    String,
+    Text,
+    and_,
+    case,
+    exists,
+    func,
+    not_,
+    nulls_last,
+    select,
+)
 from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.sql.elements import OperatorExpression
 from starlette.status import HTTP_404_NOT_FOUND
@@ -26,6 +40,65 @@ from starlette.status import HTTP_404_NOT_FOUND
 from db import search as search_func
 from services.env import to_bool
 from services.regex import QUERY_REGEX
+
+# -----------------------------------------------------------------------------
+# REFINE LIST FILTERS (JSON OVER QUERY STRING)
+#
+# Ocotillo UI uses Refine. ``getList`` sends each active DataGrid filter as one
+# HTTP query parameter named ``filter``, repeated when multiple columns are
+# filtered:
+#
+#   GET /contact?filter={"field":"things","operator":"contains","value":"DE"}
+#
+# FastAPI should declare that parameter as ``list[str]`` (alias ``filter``),
+# never a single ``str``. A single-string binding drops extra filters when users
+# combine column filters (wrong totals vs rows).
+#
+# Each JSON object must contain keys ``field``, ``operator``, and ``value``.
+# ``order_sort_filter`` merges legacy ``filter_`` with ``filters``, JSON-decodes
+# each string, then ANDs predicates by calling ``_apply_json_filter_clause``
+# repeatedly.
+#
+# WHY VIRTUAL ``field`` NAMES (NOT RAW ORM NAMES FOR FILTERING)
+#
+# Some UI columns summarize **many related rows**, for example Associated Sites
+# on contacts. SQLAlchemy exposes that as ``Contact.things``, an association
+# proxy, **not** a ``String`` column. The default filter path does
+# ``getattr(table, field)`` and applies ``ILIKE`` to a column. Proxies are not
+# columns, and even if they were, "contains" must mean "match **any** linked
+# site name", which needs a subquery or join. So we reserve virtual ``field``
+# strings that match what the UI sends and implement them explicitly below.
+#
+# ASSOCIATION PAIR (INVERSE OF EACH OTHER)
+#
+# ``Thing`` virtual field ``contacts``: filter wells by **any** linked
+# ``Contact.name`` via ``ThingContactAssociation``. Used from the wells list.
+#
+# ``Contact`` virtual field ``things``: filter contacts by **any** linked
+# ``Thing.name`` via the same association table. Used from the contacts list.
+#
+# Both use ``EXISTS (SELECT 1 FROM … WHERE …)`` so we never duplicate parent
+# rows when a contact links to many sites or a site has many contacts. Joining
+# associations in the outer FROM would multiply rows and break pagination.
+#
+# Text predicates apply only to **name** on the far side of the association
+# (not organization, role, or other columns) unless we deliberately extend the
+# helpers and document that contract.
+#
+# Thing-only virtual fields ``monitoring_status`` / ``well_status``: latest
+# open ``StatusHistory`` row for that type. Operators: contains, ncontains,
+# startswith, endswith, eq, ne.
+#
+# All other ``field`` values must resolve to a real mapped SQL column on the
+# primary table for this query (Thing or Contact).
+#
+# ``sort`` + ``order``: use mapped columns, or Thing keys in
+# ``THING_VIRTUAL_SORT_FIELDS`` / Contact ``things``, implemented in
+# ``_apply_thing_virtual_sort`` and ``_apply_contact_virtual_sort``.
+# Python ``@property`` and association proxies are not valid ``ORDER BY`` targets.
+#
+# Long-form narrative: docs/refine-json-filters-and-virtual-fields.md
+# -----------------------------------------------------------------------------
 
 
 def make_where(col: Column, op: str, v: str) -> OperatorExpression:
@@ -117,21 +190,554 @@ def _python_type(column: Any):
         return None
 
 
+def _apply_thing_derived_status_filter(
+    sql: Select[Any],
+    thing_table: type,
+    status_type_literal: str,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter Thing rows using the latest open StatusHistory row.
+
+    Mirrors monitoring_status / well_status: open row (end_date None) with
+    newest start_date wins.
+    """
+    from db.status_history import StatusHistory
+
+    sh = StatusHistory
+    tt = thing_table.__tablename__
+
+    max_start = (
+        select(func.max(sh.start_date))
+        .select_from(sh)
+        .where(
+            sh.target_table == tt,
+            sh.target_id == thing_table.id,
+            sh.status_type == status_type_literal,
+            sh.end_date.is_(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+    base_clause = and_(
+        sh.target_table == tt,
+        sh.target_id == thing_table.id,
+        sh.status_type == status_type_literal,
+        sh.end_date.is_(None),
+        sh.start_date == max_start,
+    )
+
+    if operator == "ncontains":
+        return sql.where(
+            ~exists(
+                select(1).where(
+                    base_clause,
+                    sh.status_value.ilike(f"%{value}%"),
+                )
+            )
+        )
+
+    if operator == "contains":
+        pred = sh.status_value.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = sh.status_value.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = sh.status_value.ilike(f"%{value}")
+    elif operator == "eq":
+        pred = sh.status_value == str(value)
+    elif operator == "ne":
+        pred = sh.status_value != str(value)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for derived "
+                "status filters (contains, ncontains, eq, ne, startswith, "
+                "endswith)"
+            ),
+        )
+
+    return sql.where(exists(select(1).where(base_clause, pred)))
+
+
+def _thing_latest_open_status_sort_scalar(
+    thing_table: type,
+    status_type_literal: str,
+):
+    """Scalar subquery: ``status_value`` for the current open status row.
+
+    Aligns with ``Thing.monitoring_status`` / ``Thing.well_status`` properties and
+    with ``_apply_thing_derived_status_filter``: among rows with
+    ``end_date IS NULL`` for this ``status_type``, pick the row with the
+    maximum ``start_date``, then read ``status_value``.
+    """
+    from db.status_history import StatusHistory
+
+    sh = StatusHistory
+    tt = thing_table.__tablename__
+
+    max_start = (
+        select(func.max(sh.start_date))
+        .select_from(sh)
+        .where(
+            sh.target_table == tt,
+            sh.target_id == thing_table.id,
+            sh.status_type == status_type_literal,
+            sh.end_date.is_(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+    return (
+        select(sh.status_value)
+        .select_from(sh)
+        .where(
+            sh.target_table == tt,
+            sh.target_id == thing_table.id,
+            sh.status_type == status_type_literal,
+            sh.end_date.is_(None),
+            sh.start_date == max_start,
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
+def _thing_site_name_sort_scalar(thing_table: type):
+    """NMBGMR ``ThingIdLink.alternate_id`` with lowest link ``id`` (matches ``Thing.site_name``)."""
+    from db.thing import ThingIdLink
+
+    til = ThingIdLink
+    return (
+        select(til.alternate_id)
+        .select_from(til)
+        .where(
+            til.thing_id == thing_table.id,
+            til.alternate_organization == "NMBGMR",
+        )
+        .order_by(til.id.asc())
+        .limit(1)
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
+def _thing_contacts_min_name_sort_scalar(thing_table: type):
+    """Minimum ``lower(Contact.name)`` across associations (stable proxy for display order)."""
+    from db.contact import Contact, ThingContactAssociation
+
+    tca = ThingContactAssociation
+    c = Contact
+    return (
+        select(func.min(func.lower(c.name)))
+        .select_from(tca)
+        .join(c, tca.contact_id == c.id)
+        .where(
+            tca.thing_id == thing_table.id,
+            c.name.isnot(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
+def _thing_aquifers_min_name_sort_scalar(thing_table: type):
+    """Minimum ``lower(AquiferSystem.name)`` across linked aquifers."""
+    from db.aquifer_system import AquiferSystem
+    from db.thing_aquifer_association import ThingAquiferAssociation
+
+    taa = ThingAquiferAssociation
+    aq = AquiferSystem
+    return (
+        select(func.min(func.lower(aq.name)))
+        .select_from(taa)
+        .join(aq, taa.aquifer_system_id == aq.id)
+        .where(taa.thing_id == thing_table.id)
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
+def _thing_measuring_point_height_sort_scalar(thing_table: type):
+    """Height from the latest ``MeasuringPointHistory`` row with non-null height."""
+    from db.measuring_point_history import MeasuringPointHistory
+
+    mph = MeasuringPointHistory
+    return (
+        select(mph.measuring_point_height)
+        .select_from(mph)
+        .where(
+            mph.thing_id == thing_table.id,
+            mph.measuring_point_height.isnot(None),
+        )
+        .order_by(mph.start_date.desc())
+        .limit(1)
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
+def _thing_open_status_order_expression(thing_table: type):
+    """Rank ``Open`` before ``Closed``, unknown values last, no row second-to-last group."""
+    sv = _thing_latest_open_status_sort_scalar(thing_table, "Open Status")
+    return case(
+        (sv.is_(None), 2),
+        (sv == "Open", 0),
+        (sv == "Closed", 1),
+        else_=3,
+    )
+
+
+def _contact_things_min_name_sort_scalar(contact_table: type):
+    """Minimum ``lower(Thing.name)`` across a contact's associated sites."""
+    from db.contact import ThingContactAssociation
+    from db.thing import Thing
+
+    tca = ThingContactAssociation
+    t = Thing
+    return (
+        select(func.min(func.lower(t.name)))
+        .select_from(tca)
+        .join(t, tca.thing_id == t.id)
+        .where(
+            tca.contact_id == contact_table.id,
+            t.name.isnot(None),
+        )
+        .correlate(contact_table)
+        .scalar_subquery()
+    )
+
+
+THING_VIRTUAL_SORT_FIELDS = frozenset(
+    {
+        "monitoring_status",
+        "well_status",
+        "datalogger_suitability_status",
+        "site_name",
+        "contacts",
+        "aquifers",
+        "open_status",
+        "measuring_point_height",
+    }
+)
+
+
+def _apply_thing_virtual_sort(
+    sql: Select[Any],
+    thing_table: type,
+    sort: str,
+    order: str,
+) -> Select[Any] | None:
+    """Apply SQL ``ORDER BY`` for Thing columns that are not mapped attributes."""
+    if sort not in THING_VIRTUAL_SORT_FIELDS:
+        return None
+
+    ord_ = order.lower()
+    if ord_ not in ("asc", "desc"):
+        raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
+
+    def str_order(expr):
+        if ord_ == "asc":
+            return sql.order_by(
+                nulls_last(expr.asc()),
+                thing_table.id.asc(),
+            )
+        return sql.order_by(
+            nulls_last(expr.desc()),
+            thing_table.id.desc(),
+        )
+
+    def num_order(expr):
+        if ord_ == "asc":
+            return sql.order_by(
+                nulls_last(expr.asc()),
+                thing_table.id.asc(),
+            )
+        return sql.order_by(
+            nulls_last(expr.desc()),
+            thing_table.id.desc(),
+        )
+
+    if sort == "monitoring_status":
+        expr = func.lower(
+            _thing_latest_open_status_sort_scalar(thing_table, "Monitoring Status")
+        )
+        return str_order(expr)
+
+    if sort == "well_status":
+        expr = func.lower(
+            _thing_latest_open_status_sort_scalar(thing_table, "Well Status")
+        )
+        return str_order(expr)
+
+    if sort == "datalogger_suitability_status":
+        expr = func.lower(
+            _thing_latest_open_status_sort_scalar(
+                thing_table, "Datalogger Suitability Status"
+            )
+        )
+        return str_order(expr)
+
+    if sort == "site_name":
+        return str_order(func.lower(_thing_site_name_sort_scalar(thing_table)))
+
+    if sort == "contacts":
+        return str_order(_thing_contacts_min_name_sort_scalar(thing_table))
+
+    if sort == "aquifers":
+        return str_order(_thing_aquifers_min_name_sort_scalar(thing_table))
+
+    if sort == "open_status":
+        return num_order(_thing_open_status_order_expression(thing_table))
+
+    if sort == "measuring_point_height":
+        return num_order(_thing_measuring_point_height_sort_scalar(thing_table))
+
+    raise NotImplementedError(
+        f"Thing virtual sort {sort!r} is listed in THING_VIRTUAL_SORT_FIELDS "
+        "but not implemented in _apply_thing_virtual_sort"
+    )
+
+
+def _apply_contact_virtual_sort(
+    sql: Select[Any],
+    contact_table: type,
+    sort: str,
+    order: str,
+) -> Select[Any] | None:
+    """Apply SQL ``ORDER BY`` for Contact columns that are not mapped columns."""
+    if sort != "things":
+        return None
+
+    ord_ = order.lower()
+    if ord_ not in ("asc", "desc"):
+        raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
+
+    expr = func.lower(_contact_things_min_name_sort_scalar(contact_table))
+    if ord_ == "asc":
+        return sql.order_by(
+            nulls_last(expr.asc()),
+            contact_table.id.asc(),
+        )
+    return sql.order_by(
+        nulls_last(expr.desc()),
+        contact_table.id.desc(),
+    )
+
+
+def _apply_thing_contacts_filter(
+    sql: Select[Any],
+    thing_table: type,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter ``Thing`` rows using linked contacts (many-to-many).
+
+    **Why this exists.** The wells list exposes a ``contacts`` column backed by
+    ``ThingContactAssociation``. Refine sends ``field=contacts``. That name is not
+    a plain ``Thing`` column, so the default ILIKE path cannot apply.
+
+    **Semantics.** Return wells where **any** linked contact satisfies the text
+    operator on ``Contact.name`` (OR across association rows). We do **not**
+    scan organization or role here; extend this function intentionally if those
+    become product requirements.
+
+    **SQL shape.** ``EXISTS`` avoids duplicating ``Thing`` rows when a well has
+    multiple contacts (pagination stays one row per well).
+
+    Pairing: ``_apply_contact_things_filter`` is the inverse direction for the
+    contact list ``things`` column. See module comment and
+    docs/refine-json-filters-and-virtual-fields.md.
+    """
+    from db.contact import Contact, ThingContactAssociation
+
+    tca = ThingContactAssociation
+    c = Contact
+
+    def _linked_contact_select(predicate):
+        return (
+            select(1)
+            .select_from(tca)
+            .join(c, tca.contact_id == c.id)
+            .where(
+                tca.thing_id == thing_table.id,
+                c.name.isnot(None),
+                predicate,
+            )
+        )
+
+    any_linked_contact = (
+        select(1)
+        .select_from(tca)
+        .join(c, tca.contact_id == c.id)
+        .where(tca.thing_id == thing_table.id)
+    )
+
+    if operator == "nnull":
+        return sql.where(exists(any_linked_contact))
+
+    if operator == "null":
+        return sql.where(~exists(any_linked_contact))
+
+    if operator == "ncontains":
+        ncl = _linked_contact_select(c.name.ilike(f"%{value}%"))
+        return sql.where(~exists(ncl))
+
+    if operator == "ne":
+        neq = _linked_contact_select(c.name == str(value))
+        return sql.where(~exists(neq))
+
+    if operator == "contains":
+        pred = c.name.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = c.name.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = c.name.ilike(f"%{value}")
+    elif operator == "eq":
+        pred = c.name == str(value)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for contacts "
+                "filters (contains, ncontains, eq, ne, startswith, endswith, "
+                "null, nnull)"
+            ),
+        )
+
+    return sql.where(exists(_linked_contact_select(pred)))
+
+
+def _apply_contact_things_filter(
+    sql: Select[Any],
+    contact_table: type,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter ``Contact`` rows using linked monitoring sites (many-to-many).
+
+    **Why this exists.** The UI Associated Sites column summarizes related
+    ``Thing`` rows. Refine sends ``field`` equal to ``things``. That relation is an
+    association proxy on ``Contact``, not a searchable string column. Filters for
+    Associated Sites must not go through the generic column ILIKE path (they would
+    raise or behave incorrectly).
+
+    **Semantics.** Keep contacts where **any** linked ``Thing.name`` matches
+    the predicate (OR across ``ThingContactAssociation`` rows). Only ``name`` is
+    searched for text operators, matching how the UI builds the display string
+    from site names.
+
+    **SQL shape.** ``EXISTS`` prevents one contact appearing multiple times when
+    they own many sites.
+
+    Inverse of ``_apply_thing_contacts_filter``. Narrative documentation:
+    docs/refine-json-filters-and-virtual-fields.md.
+    """
+    from db.contact import ThingContactAssociation
+    from db.thing import Thing
+
+    tca = ThingContactAssociation
+    t = Thing
+
+    def _linked_thing_select(predicate):
+        return (
+            select(1)
+            .select_from(tca)
+            .join(t, tca.thing_id == t.id)
+            .where(
+                tca.contact_id == contact_table.id,
+                t.name.isnot(None),
+                predicate,
+            )
+        )
+
+    any_linked_thing = (
+        select(1)
+        .select_from(tca)
+        .join(t, tca.thing_id == t.id)
+        .where(tca.contact_id == contact_table.id)
+    )
+
+    if operator == "nnull":
+        return sql.where(exists(any_linked_thing))
+
+    if operator == "null":
+        return sql.where(~exists(any_linked_thing))
+
+    if operator == "ncontains":
+        nlk = _linked_thing_select(t.name.ilike(f"%{value}%"))
+        return sql.where(~exists(nlk))
+
+    if operator == "ne":
+        neq = _linked_thing_select(t.name == str(value))
+        return sql.where(~exists(neq))
+
+    if operator == "contains":
+        pred = t.name.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = t.name.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = t.name.ilike(f"%{value}")
+    elif operator == "eq":
+        pred = t.name == str(value)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for things "
+                "filters (contains, ncontains, eq, ne, startswith, endswith, "
+                "null, nnull)"
+            ),
+        )
+
+    return sql.where(exists(_linked_thing_select(pred)))
+
+
 def _apply_json_filter_clause(
     sql: Select[Any], table: DeclarativeBase, f: dict
 ) -> Select[Any]:
-    """Apply one Refine logical filter dict (field / operator / value) to a SELECT."""
+    """Apply one Refine logical filter dict to an SQLAlchemy SELECT.
+
+    Dispatch order matters. Virtual association branches (Contact ``things``,
+    Thing ``contacts``, Thing derived statuses) **must** run before the generic
+    ``getattr(table, field)`` path; otherwise proxies or unsupported types hit
+    the column branch and produce 400 responses.
+
+    Each call applies a **single** predicate. ``order_sort_filter`` chains
+    multiple JSON filters with AND semantics.
+    """
     required_keys = {"field", "value", "operator"}
     missing = required_keys - f.keys()
     if missing:
+        keys = ", ".join(sorted(missing))
         raise HTTPException(
             status_code=422,
-            detail=f"Missing required filter keys: {', '.join(sorted(missing))}",
+            detail=f"Missing required filter keys: {keys}",
         )
 
     field = f["field"]
     value = f["value"]
     operator = f["operator"]
+
+    if getattr(table, "__name__", None) == "Thing" and field in (
+        "monitoring_status",
+        "well_status",
+    ):
+        status_type_map = {
+            "monitoring_status": "Monitoring Status",
+            "well_status": "Well Status",
+        }
+        return _apply_thing_derived_status_filter(
+            sql, table, status_type_map[field], operator, value
+        )
+
+    if getattr(table, "__name__", None) == "Contact" and field == "things":
+        return _apply_contact_things_filter(sql, table, operator, value)
+
+    if getattr(table, "__name__", None) == "Thing" and field == "contacts":
+        return _apply_thing_contacts_filter(sql, table, operator, value)
 
     try:
         column = getattr(table, field)
@@ -235,6 +841,21 @@ def order_sort_filter(
     *,
     filters: list[str] | None = None,
 ) -> Select[Any]:
+    """Apply optional sort and zero or more Refine JSON filters to ``sql``.
+
+    **Repeatable ``filter`` parameters.** Pass ``filters`` as the list of raw
+    JSON strings from FastAPI ``Query(alias='filter')``. Each entry decodes to
+    one predicate; all predicates are combined with AND. The legacy ``filter_``
+    argument supports older callers that still pass a single JSON string.
+
+    **Why both ``filter_`` and ``filters``.** Backward compatibility while we
+    migrate every list route to list-shaped query params. UI clients should use
+    repeated ``filter`` keys only.
+
+    Virtual association fields are implemented inside
+    ``_apply_json_filter_clause``. See
+    docs/refine-json-filters-and-virtual-fields.md for background.
+    """
     if order:
         if not sort:
             raise ValueError(
@@ -242,17 +863,26 @@ def order_sort_filter(
                 f"The sort parameter should be a column name in the table {table}."
             )
 
-        attr = getattr(table, sort)
-        # test if column is a string col
-        if isinstance(attr.type, String):
-            attr = func.lower(attr)
+        virtual_sorted = None
+        if getattr(table, "__name__", None) == "Thing":
+            virtual_sorted = _apply_thing_virtual_sort(sql, table, sort, order)
+        elif getattr(table, "__name__", None) == "Contact":
+            virtual_sorted = _apply_contact_virtual_sort(sql, table, sort, order)
 
-        if order.lower() == "asc":
-            sql = sql.order_by(attr.asc())
-        elif order.lower() == "desc":
-            sql = sql.order_by(attr.desc())
+        if virtual_sorted is not None:
+            sql = virtual_sorted
         else:
-            raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
+            attr = getattr(table, sort)
+            # test if column is a string col
+            if isinstance(attr.type, String):
+                attr = func.lower(attr)
+
+            if order.lower() == "asc":
+                sql = sql.order_by(attr.asc())
+            elif order.lower() == "desc":
+                sql = sql.order_by(attr.desc())
+            else:
+                raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
 
     filter_jsons: list[str] = []
     if filters:

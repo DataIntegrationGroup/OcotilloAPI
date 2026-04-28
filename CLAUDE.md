@@ -161,6 +161,14 @@ postgresql+pg8000://{user}:{password}@{host}:{port}/{database}
 - **Legacy Migration**: Transfer scripts convert from UTM (SRID 26913) to WGS84
 - **GeoAlchemy2**: Used for SQLAlchemy ↔ PostGIS integration
 
+### Refine UI list filters
+
+Ocotillo UI passes DataGrid filters as repeated query parameters named `filter`, each containing JSON `{ "field", "operator", "value" }`. Association-backed columns (`contacts` on wells, `things` on contacts) are **virtual**: they map to EXISTS subqueries in `services/query_helper.py`, not to `ILIKE` on an ORM proxy.
+
+Sorting the wells list by **Monitoring status** or **Well status** uses SQL subqueries on `StatusHistory`, not Python `@property` accessors, because `ORDER BY` must see database expressions.
+
+Read **`docs/refine-json-filters-and-virtual-fields.md`** before changing filter behavior or adding virtual fields.
+
 ### Error Handling
 
 All custom exceptions should use `PydanticStyleException` for consistent API error responses:

@@ -18,7 +18,8 @@ supports research, field operations, and public data delivery for the Bureau of 
 
 - 🌐 RESTful API for managing sample location data
 - 🗺️ Native GeoJSON support via PostGIS
-- 🔎 Filtering by location, date, type, and more
+- 🔎 Filtering by location, date, type, and more  
+  Refine-powered list pages send JSON filters via repeated `filter=` query params. Virtual fields (`contacts` on things, `things` on contacts) implement association search in SQL. Background and rationale: [docs/refine-json-filters-and-virtual-fields.md](docs/refine-json-filters-and-virtual-fields.md).
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
 - 🧾 Interactive API documentation via OpenAPI and ReDoc
