@@ -974,9 +974,7 @@ def test_get_water_wells_filter_contacts_ncontains(water_well_thing, contact):
     assert water_well_thing.id in ids
 
 
-def test_get_water_wells_filter_contacts_nnull(
-    water_well_thing, contact
-):
+def test_get_water_wells_filter_contacts_nnull(water_well_thing, contact):
     fl = json.dumps(
         {"field": "contacts", "operator": "nnull", "value": True},
     )
