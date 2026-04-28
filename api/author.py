@@ -30,7 +30,7 @@ router = APIRouter(
     "/{author_id}/publications",
     response_model=list[PublicationResponse],
 )
-async def get_author_publications(
+def get_author_publications(
     user: viewer_dependency, author_id: int, session: session_dependency
 ):
     """

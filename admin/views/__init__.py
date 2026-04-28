@@ -14,15 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 """
-Admin views package for NMSampleLocations.
+Admin views package for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on database models.
 """
 
-from admin.views.asset import AssetAdmin
-from admin.views.associated_data import AssociatedDataAdmin
 from admin.views.aquifer_system import AquiferSystemAdmin
 from admin.views.aquifer_type import AquiferTypeAdmin
+from admin.views.asset import AssetAdmin
+from admin.views.associated_data import AssociatedDataAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
 from admin.views.contact import ContactAdmin
 from admin.views.data_provenance import DataProvenanceAdmin
@@ -55,8 +55,8 @@ from admin.views.transducer_observation import TransducerObservationAdmin
 from admin.views.waterlevelscontinuous_pressure_daily import (
     WaterLevelsContinuousPressureDailyAdmin,
 )
-from admin.views.weather_photos import WeatherPhotosAdmin
 from admin.views.weather_data import WeatherDataAdmin
+from admin.views.weather_photos import WeatherPhotosAdmin
 
 __all__ = [
     "AssetAdmin",

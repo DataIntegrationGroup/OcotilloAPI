@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-ObservationAdmin view for NMSampleLocations.
+ObservationAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Observation (Water Levels) model.
 """

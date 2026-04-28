@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-GeologicFormationAdmin view for NMSampleLocations.
+GeologicFormationAdmin view for OcotilloAPI.
 """
 
 from admin.fields import WKTField

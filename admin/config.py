@@ -16,10 +16,8 @@
 """
 Starlette Admin configuration and initialization.
 
-This module creates and configures the admin interface for NMSampleLocations.
+This module creates and configures the admin interface for OcotilloAPI.
 """
-
-from starlette_admin.contrib.sqla import Admin
 
 from admin.auth import NMSampleLocationsAuthProvider
 from admin.views import (
@@ -93,6 +91,7 @@ from db.sample import Sample
 from db.sensor import Sensor
 from db.thing import Thing
 from db.transducer import TransducerObservation
+from starlette_admin.contrib.sqla import Admin
 
 
 def create_admin(app):

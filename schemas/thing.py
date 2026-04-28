@@ -205,6 +205,7 @@ class MonitoringFrequencyResponse(BaseModel):
 
 class BaseThingResponse(BaseResponseModel):
     name: str
+    site_name: str | None = None
     thing_type: str
     current_location: LocationGeoJSONResponse
     first_visit_date: PastOrTodayDate | None
@@ -247,6 +248,7 @@ class WellResponse(BaseThingResponse):
     well_depth: float | None = None
     well_depth_unit: str = "ft"
     well_depth_source: str | None
+    historic_depth_to_water: list[str] = []
     hole_depth: float | None = None
     hole_depth_unit: str = "ft"
     well_casing_diameter: float | None = None  # in inches
@@ -263,7 +265,7 @@ class WellResponse(BaseThingResponse):
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
     well_status: str | None
-    open_status: str | None
+    open_status: bool | None
     datalogger_suitability_status: str | None
     measuring_point_height: float | None
     measuring_point_height_unit: str = "ft"
@@ -275,6 +277,7 @@ class WellResponse(BaseThingResponse):
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
     nma_formation_zone: str | None
+    well_location_note: list[str] = []
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -346,13 +349,8 @@ class ThingResponse(WellResponse, SpringResponse):
     measuring_point_height: float | None
 
 
-class WellScreenResponse(BaseResponseModel):
-    """
-    Response schema for well screen details.
-    """
-
+class WellScreenBaseResponse(BaseResponseModel):
     thing_id: int
-    thing: WellResponse
     aquifer_system_id: int | None = None
     aquifer_system: str | None = None
     aquifer_type: str | None = None
@@ -382,6 +380,14 @@ class WellScreenResponse(BaseResponseModel):
         if geologic_formation is not None:
             return geologic_formation.formation_code
         return None
+
+
+class WellScreenResponse(WellScreenBaseResponse):
+    """
+    Response schema for well screen details.
+    """
+
+    thing: WellResponse
 
 
 class GeoJSONGeometry(BaseModel):

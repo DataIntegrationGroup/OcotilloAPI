@@ -50,3 +50,6 @@ cli/logs
 # deployment files
 app.yaml
 docs/
+
+#Codex
+.codex

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-SensorAdmin view for NMSampleLocations.
+SensorAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Sensor (Equipment) model.
 """

@@ -2,7 +2,15 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
-from db import FieldActivity, FieldEvent, Observation, Sample, Thing
+from db import (
+    Contact,
+    FieldActivity,
+    FieldEvent,
+    FieldEventParticipant,
+    Observation,
+    Sample,
+    Thing,
+)
 from db.measuring_point_history import MeasuringPointHistory
 from db.engine import session_ctx
 from tests import get_parameter_id
@@ -218,12 +226,332 @@ def test_bulk_upload_water_levels_is_idempotent(water_well_thing):
         assert len(observations) == 1
         assert samples[0].sample_name == "Test Well-WL-202502151730"
         assert samples[0].sample_matrix == "groundwater"
+        assert samples[0].field_event_participant is not None
+        assert samples[0].field_event_participant.participant.name == "A Lopez"
         assert observations[0].groundwater_level_reason == "Water level not affected"
         assert (
             observations[0].nma_data_quality
             == "Water level accurate to within two hundreths of a foot"
         )
         assert observations[0].measuring_point_height == 1.5
+
+
+def test_bulk_upload_water_levels_creates_field_event_participants(water_well_thing):
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "field_staff_2",
+                    "field_staff_3",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "B Chen",
+                    "C Diaz",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+
+    with session_ctx() as session:
+        field_event = session.scalars(
+            select(FieldEvent)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(Thing.id == water_well_thing.id)
+        ).one()
+        participants = session.scalars(
+            select(FieldEventParticipant)
+            .where(FieldEventParticipant.field_event_id == field_event.id)
+            .order_by(FieldEventParticipant.id.asc())
+        ).all()
+        contacts = session.scalars(
+            select(Contact)
+            .where(
+                Contact.name.in_(["A Lopez", "B Chen", "C Diaz"]),
+                Contact.organization == "NMBGMR",
+                Contact.contact_type == "Field Event Participant",
+            )
+            .order_by(Contact.name.asc())
+        ).all()
+
+        assert len(participants) == 3
+        assert [participant.participant_role for participant in participants] == [
+            "Lead",
+            "Participant",
+            "Participant",
+        ]
+        assert {participant.field_event_id for participant in participants} == {
+            field_event.id
+        }
+        # Notes now carry only freeform text; staff identity should come from the
+        # structured participant records and the sample participant link.
+        assert field_event.notes == "Initial measurement"
+        assert len(contacts) == 3
+        field_activity = session.scalars(
+            select(FieldActivity).where(FieldActivity.field_event_id == field_event.id)
+        ).one()
+        assert field_activity.notes is None
+        sample = session.scalars(
+            select(Sample)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .where(FieldActivity.field_event_id == field_event.id)
+        ).one()
+        assert sample.field_event_participant_id == participants[0].id
+        assert sample.field_event_participant.participant.name == "A Lopez"
+
+
+def test_bulk_upload_water_levels_does_not_duplicate_field_event_participants_on_rerun(
+    water_well_thing,
+):
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "field_staff_2",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "B Chen",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    first = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert first.exit_code == 0, first.payload
+
+    with session_ctx() as session:
+        field_event = session.scalars(
+            select(FieldEvent)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(Thing.id == water_well_thing.id)
+        ).one()
+        participants = session.scalars(
+            select(FieldEventParticipant)
+            .where(FieldEventParticipant.field_event_id == field_event.id)
+            .order_by(FieldEventParticipant.id.asc())
+        ).all()
+        sample = session.scalars(
+            select(Sample)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .where(FieldActivity.field_event_id == field_event.id)
+        ).one()
+
+        # Capture the exact participant/contact linkage from the first import so
+        # the rerun can prove the importer reused those records rather than
+        # creating replacements.
+        first_participant_ids = [participant.id for participant in participants]
+        first_contact_ids = [participant.contact_id for participant in participants]
+        first_sample_participant_id = sample.field_event_participant_id
+
+    second = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert second.exit_code == 0, second.payload
+
+    with session_ctx() as session:
+        field_events = session.scalars(
+            select(FieldEvent)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(Thing.id == water_well_thing.id)
+        ).all()
+        participants = session.scalars(
+            select(FieldEventParticipant)
+            .where(FieldEventParticipant.field_event_id == field_events[0].id)
+            .order_by(FieldEventParticipant.id.asc())
+        ).all()
+        sample = session.scalars(
+            select(Sample)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .where(FieldActivity.field_event_id == field_events[0].id)
+        ).one()
+
+        assert len(field_events) == 1
+        assert len(participants) == 2
+        assert [participant.id for participant in participants] == first_participant_ids
+        assert [
+            participant.contact_id for participant in participants
+        ] == first_contact_ids
+        assert sample.field_event_participant_id == first_sample_participant_id
+        assert sample.field_event_participant is not None
+        assert sample.field_event_participant.participant.name == "A Lopez"
+
+
+def test_bulk_upload_water_levels_fails_when_measuring_person_is_ambiguous(
+    water_well_thing,
+):
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "field_staff_2",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 1
+    assert result.payload["summary"]["total_rows_imported"] == 0
+    assert result.payload["validation_errors"] == [
+        "Row 1: measuring_person 'A Lopez' matched multiple field event "
+        "participants; field_staff values must identify exactly one measuring "
+        "person"
+    ]
+
+    with session_ctx() as session:
+        samples = session.scalars(select(Sample)).all()
+        participants = session.scalars(select(FieldEventParticipant)).all()
+
+        assert samples == []
+        assert participants == []
+
+
+def test_bulk_upload_water_levels_reuses_contact_with_same_name_and_organization(
+    water_well_thing,
+):
+    staff_name = "Z Vega"
+
+    with session_ctx() as session:
+        existing_contact = Contact(
+            name=staff_name,
+            organization="NMBGMR",
+            role="Technician",
+            contact_type="Primary",
+        )
+        session.add(existing_contact)
+        session.commit()
+        existing_contact_id = existing_contact.id
+
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    staff_name,
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    staff_name,
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+
+    with session_ctx() as session:
+        contacts = session.scalars(
+            select(Contact)
+            .where(Contact.name == staff_name)
+            .where(Contact.organization == "NMBGMR")
+        ).all()
+        participants = session.scalars(select(FieldEventParticipant)).all()
+
+        assert len(contacts) == 1
+        assert contacts[0].id == existing_contact_id
+        assert len(participants) == 1
+        assert participants[0].contact_id == existing_contact_id
 
 
 def test_bulk_upload_water_levels_warns_when_mp_height_differs_from_history(

@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Optional
+from typing import Annotated, Optional
 from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import selectinload
 from starlette.status import (
     HTTP_200_OK,
@@ -80,50 +80,41 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 
 
 def database_error_handler(
-    payload: CreateWell | CreateSpring, error: ProgrammingError
+    payload: CreateWell | CreateSpring | CreateWellScreen | CreateThingIdLink,
+    error: IntegrityError | ProgrammingError,
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a thing.
     """
 
-    error_message = error.orig.args[0]["M"]
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
 
-    if (
-        error_message
-        == 'insert or update on table "group_thing_association" violates foreign key constraint "group_thing_association_group_id_fkey"'
-    ):
-
+    if 'constraint "group_thing_association_group_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "group_id"],
             "msg": f"Group with ID {payload.group_id} not found.",
             "type": "value_error",
             "input": {"group_id": payload.group_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "location_thing_association" violates foreign key constraint "location_thing_association_location_id_fkey"'
-    ):
-
+    elif 'constraint "location_thing_association_location_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "location_id"],
             "msg": f"Location with ID {payload.location_id} not found.",
             "type": "value_error",
             "input": {"location_id": payload.location_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_thing_id_fkey"'
-    ):
+    elif 'constraint "well_screen_thing_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
         }
-    elif (
-        error_message
-        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_screen_type_fkey"'
-    ):
+    elif 'constraint "well_screen_screen_type_fkey"' in error_message:
         valid_screen_types = get_terms_by_category("casing_material")
         valid_screen_types_for_msg = " | ".join(valid_screen_types)
         detail = {
@@ -132,15 +123,19 @@ def database_error_handler(
             "type": "value_error",
             "input": {"screen_type": payload.screen_type},
         }
-    elif (
-        error_message
-        == 'insert or update on table "thing_id_link" violates foreign key constraint "thing_id_link_thing_id_fkey"'
-    ):
+    elif 'constraint "thing_id_link_thing_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
+        }
+    else:
+        detail = {
+            "loc": ["body"],
+            "msg": error_message,
+            "type": "value_error",
+            "input": {},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -150,15 +145,16 @@ def database_error_handler(
 
 
 @router.get("/water-well", summary="Get all water wells", status_code=HTTP_200_OK)
-async def get_water_wells(
+def get_water_wells(
     user: viewer_dependency,
     session: session_dependency,
     request: Request,
     sort: Optional[str] = None,
     order: Optional[str] = None,
-    filter_: str = Query(alias="filter", default=None),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: Optional[str] = None,
     name: Optional[str] = None,
+    name_contains: Optional[str] = None,
     include_contacts: bool = False,
 ) -> CustomPage[WellResponse]:
     """
@@ -166,7 +162,7 @@ async def get_water_wells(
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
     return get_db_things(
-        filter_,
+        None,
         order,
         query,
         session,
@@ -174,13 +170,15 @@ async def get_water_wells(
         name=name,
         thing_type=thing_type,
         include_contacts=include_contacts,
+        filters=filter_params,
+        name_contains=name_contains,
     )
 
 
 @router.get(
     "/water-well/{thing_id}", summary="Get water well by ID", status_code=HTTP_200_OK
 )
-async def get_well_by_id(
+def get_well_by_id(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -197,11 +195,12 @@ async def get_well_by_id(
     summary="Get water well details payload",
     status_code=HTTP_200_OK,
 )
-async def get_well_details(
+def get_well_details(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
     request: Request,
+    field_event_limit: int = Query(default=25, ge=1, le=100),
 ) -> WellDetailsResponse:
     """
     Retrieve the consolidated payload needed to render the well details page.
@@ -211,6 +210,7 @@ async def get_well_details(
         session=session,
         request=request,
         thing_id=thing_id,
+        field_event_limit=field_event_limit,
     )
 
 
@@ -219,7 +219,7 @@ async def get_well_details(
     summary="Get water well export payload",
     status_code=HTTP_200_OK,
 )
-async def get_well_export(
+def get_well_export(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -240,7 +240,7 @@ async def get_well_export(
     summary="Get well screens by water well ID",
     status_code=HTTP_200_OK,
 )
-async def get_well_screens_by_well_id(
+def get_well_screens_by_well_id(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -258,7 +258,7 @@ async def get_well_screens_by_well_id(
     "/well-screen",
     summary="Get well screens",
 )
-async def get_well_screens(
+def get_well_screens(
     user: viewer_dependency,
     session: session_dependency,
     thing_id: int = None,
@@ -277,7 +277,7 @@ async def get_well_screens(
     "/well-screen/{wellscreen_id}",
     summary="Get well screen by ID",
 )
-async def get_well_screen_by_id(
+def get_well_screen_by_id(
     user: viewer_dependency,
     session: session_dependency,
     wellscreen_id: int,
@@ -290,24 +290,34 @@ async def get_well_screen_by_id(
 
 
 @router.get("/spring", summary="Get all springs")
-async def get_springs(
+def get_springs(
     user: viewer_dependency,
     session: session_dependency,
     request: Request,
     sort: str = None,
     order: str = None,
-    filter_: str = Query(alias="filter", default=None),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: str = None,
+    name_contains: Optional[str] = None,
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
+    return get_db_things(
+        None,
+        order,
+        query,
+        session,
+        sort,
+        thing_type=thing_type,
+        filters=filter_params,
+        name_contains=name_contains,
+    )
 
 
 @router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK)
-async def get_spring_by_id(
+def get_spring_by_id(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -323,7 +333,7 @@ async def get_spring_by_id(
     "/id-link",
     summary="Get all thing links",
 )
-async def get_thing_id_links(
+def get_thing_id_links(
     user: viewer_dependency,
     session: session_dependency,
     filter_: str = Query(alias="filter", default=None),
@@ -341,7 +351,7 @@ async def get_thing_id_links(
 
 @public_route
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
-async def get_thing_id_links(
+def get_thing_id_links(
     user: viewer_dependency,
     link_id: int,
     session: session_dependency,
@@ -354,7 +364,7 @@ async def get_thing_id_links(
 
 @public_route
 @router.get("", summary="Get all things", status_code=HTTP_200_OK)
-async def get_things(
+def get_things(
     user: viewer_dependency,
     session: session_dependency,
     within: Optional[str] = None,
@@ -362,28 +372,28 @@ async def get_things(
     sort: Optional[str] = None,
     order: Optional[str] = None,
     include_contacts: bool = False,
-    filter_: str = Query(
-        default=None,
-        alias="filter",
-    ),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
+    name_contains: Optional[str] = None,
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
     """
 
     return get_db_things(
-        filter_,
+        None,
         order,
         query,
         session,
         sort,
         within=within,
         include_contacts=include_contacts,
+        filters=filter_params,
+        name_contains=name_contains,
     )
 
 
 @router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK)
-async def get_thing_by_id(
+def get_thing_by_id(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -397,7 +407,7 @@ async def get_thing_by_id(
 
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
-async def get_thing_id_links(
+def get_thing_id_links(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -411,7 +421,7 @@ async def get_thing_id_links(
 
 
 @router.get("/{thing_id}/deployment", summary="Get deployments by thing ID")
-async def get_thing_deployments(
+def get_thing_deployments(
     user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
@@ -431,7 +441,7 @@ async def get_thing_deployments(
 @router.post(
     "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link"
 )
-async def create_thing_id_link(
+def create_thing_id_link(
     link_data: CreateThingIdLink,
     session: session_dependency,
     user: admin_dependency,
@@ -441,7 +451,7 @@ async def create_thing_id_link(
     """
     try:
         return model_adder(session, ThingIdLink, link_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(link_data, e)
 
 
@@ -450,7 +460,7 @@ async def create_thing_id_link(
     summary="Create a water well",
     status_code=HTTP_201_CREATED,
 )
-async def create_well(
+def create_well(
     thing_data: CreateWell,
     session: session_dependency,
     request: Request,
@@ -463,7 +473,7 @@ async def create_well(
         thing = add_thing(session=session, data=thing_data, request=request, user=user)
         modify_well_descriptor_tables(session, thing, thing_data, user)
         return thing
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(thing_data, e)
 
 
@@ -472,7 +482,7 @@ async def create_well(
     summary="Create a new spring",
     status_code=HTTP_201_CREATED,
 )
-async def create_spring(
+def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     request: Request,
@@ -483,7 +493,7 @@ async def create_spring(
     """
     try:
         return add_thing(session=session, data=thing_data, request=request, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(thing_data, e)
 
 
@@ -492,7 +502,7 @@ async def create_spring(
     summary="Create a new well screen",
     status_code=HTTP_201_CREATED,
 )
-async def create_wellscreen(
+def create_wellscreen(
     session: session_dependency,
     user: admin_dependency,
     well_screen_data: CreateWellScreen,
@@ -502,7 +512,7 @@ async def create_wellscreen(
     """
     try:
         return add_well_screen(session, well_screen_data, user=user)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(well_screen_data, e)
     except PydanticStyleException as e:
         raise e
@@ -516,7 +526,7 @@ async def create_wellscreen(
     summary="Update well by parent thing ID",
     status_code=HTTP_200_OK,
 )
-async def update_water_well(
+def update_water_well(
     thing_id: int,
     thing_data: UpdateWell,
     session: session_dependency,
@@ -545,7 +555,7 @@ async def update_water_well(
     summary="Update spring by parent thing ID",
     status_code=HTTP_200_OK,
 )
-async def update_spring(
+def update_spring(
     thing_id: int,
     thing_data: UpdateSpring,
     session: session_dependency,
@@ -561,7 +571,7 @@ async def update_spring(
 @router.patch(
     "/id-link/{link_id}", summary="Update thing link by ID", status_code=HTTP_200_OK
 )
-async def update_thing_id_link(
+def update_thing_id_link(
     link_id: int,
     link_data: UpdateThingIdLink,
     session: session_dependency,
@@ -575,7 +585,7 @@ async def update_thing_id_link(
     summary="Update Well Screen by ID",
     status_code=HTTP_200_OK,
 )
-async def update_well_screen(
+def update_well_screen(
     well_screen_id: int,
     well_screen_data: UpdateWellScreen,
     session: session_dependency,
@@ -594,7 +604,7 @@ async def update_well_screen(
 @router.delete(
     "/{thing_id}", summary="Delete thing by ID", status_code=HTTP_204_NO_CONTENT
 )
-async def delete_thing(
+def delete_thing(
     thing_id: int,
     session: session_dependency,
     user: admin_dependency,
@@ -610,7 +620,7 @@ async def delete_thing(
     summary="Delete well screen by ID",
     status_code=HTTP_204_NO_CONTENT,
 )
-async def delete_well_screen(
+def delete_well_screen(
     well_screen_id: int,
     session: session_dependency,
     user: admin_dependency,
@@ -626,7 +636,7 @@ async def delete_well_screen(
     summary="Delete thing link by ID",
     status_code=HTTP_204_NO_CONTENT,
 )
-async def delete_thing_id_link(
+def delete_thing_id_link(
     link_id: int,
     session: session_dependency,
     user: admin_dependency,

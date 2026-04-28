@@ -160,26 +160,20 @@ def test_well_inventory_db_contents_no_waterlevels():
             assert thing.formation_completion_code is None
 
             assert thing.notes is not None
-            assert sorted(c.content for c in thing._get_notes("Access")) == sorted(
-                [file_content["specific_location_of_well"]]
-            )
-            assert sorted(c.content for c in thing._get_notes("General")) == sorted(
-                [file_content["contact_special_requests_notes"]]
-            )
-            assert sorted(
-                c.content for c in thing._get_notes("Sampling Procedure")
-            ) == sorted(
-                [
-                    file_content["well_measuring_notes"],
-                    file_content["sampling_scenario_notes"],
-                    f"Sample possible: {file_content['sample_possible']}",
-                ]
-            )
-            assert sorted(c.content for c in thing._get_notes("Historical")) == sorted(
-                [
-                    f"historic depth to water: {float(file_content['historic_depth_to_water_ft'])} ft - source: {file_content['depth_source'].lower()}"
-                ]
-            )
+            assert [c.content for c in thing._get_notes("Access")] == [
+                file_content["specific_location_of_well"]
+            ]
+            assert [c.content for c in thing._get_notes("General")] == [
+                file_content["contact_special_requests_notes"]
+            ]
+            assert [c.content for c in thing._get_notes("Sampling Procedure")] == [
+                file_content["well_measuring_notes"],
+                file_content["sampling_scenario_notes"],
+                f"Sample possible: {file_content['sample_possible']}",
+            ]
+            assert [c.content for c in thing._get_notes("Historical")] == [
+                f"historic depth to water: {float(file_content['historic_depth_to_water_ft'])} ft - source: {file_content['depth_source'].lower()}"
+            ]
 
             assert (
                 thing.measuring_point_description
@@ -243,9 +237,9 @@ def test_well_inventory_db_contents_no_waterlevels():
                 else "Datalogger cannot be installed"
             )
             assert (
-                thing.open_status == "Open"
+                thing.open_status is True
                 if file_content["is_open"].lower() == "true"
-                else "Closed"
+                else thing.open_status is False
             )
 
             # LOCATION AND RELATED RECORDS
@@ -661,7 +655,10 @@ def test_conflicting_mp_heights_raises_error(tmp_path):
 
 
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
-    """Blank depth-to-water is treated as missing while preserving the attempted measurement."""
+    """
+    Blank depth-to-water is treated as missing while preserving the attempted measurement.
+    Naive CSV datetimes are interpreted as America/Denver local time and stored as UTC.
+    """
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
@@ -683,16 +680,16 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
     result = well_inventory_csv(file_path)
     assert result.exit_code == 0, result.stderr
 
+    expected_utc = datetime.fromisoformat("2025-02-15T17:30:00+00:00")
+
     with session_ctx() as session:
         samples = session.query(Sample).all()
         observations = session.query(Observation).all()
 
         assert len(samples) == 1
         assert len(observations) == 1
-        assert samples[0].sample_date == datetime.fromisoformat("2025-02-15T10:30:00Z")
-        assert observations[0].observation_datetime == datetime.fromisoformat(
-            "2025-02-15T10:30:00Z"
-        )
+        assert samples[0].sample_date == expected_utc
+        assert observations[0].observation_datetime == expected_utc
         assert observations[0].value is None
         assert observations[0].measuring_point_height == 3.5
 
@@ -1404,11 +1401,28 @@ class TestWellInventoryRowAliases:
 
         assert model.sampler == "Tech 1"
         assert model.measurement_date_time == datetime.fromisoformat(
-            "2025-02-15T10:30:00"
+            "2025-02-15T17:30:00+00:00"
         )
         assert model.mp_height == 2.5
         assert model.depth_to_water_ft == 11.2
         assert model.water_level_notes == "Initial reading"
+
+    def test_timezone_aware_datetimes_are_normalized_to_utc(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "date_time": "2025-02-15T10:30:00-07:00",
+                "water_level_date_time": "2025-02-15T11:45:00-07:00",
+                "depth_to_water_ft": 11.2,
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.date_time == datetime.fromisoformat("2025-02-15T17:30:00+00:00")
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T18:45:00+00:00"
+        )
 
     def test_blank_depth_to_water_is_treated_as_none(self):
         row = _minimal_valid_well_inventory_row()
@@ -1422,7 +1436,7 @@ class TestWellInventoryRowAliases:
         model = WellInventoryRow(**row)
 
         assert model.measurement_date_time == datetime.fromisoformat(
-            "2025-02-15T10:30:00"
+            "2025-02-15T17:30:00+00:00"
         )
         assert model.depth_to_water_ft is None
 

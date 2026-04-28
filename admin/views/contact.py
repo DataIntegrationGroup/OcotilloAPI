@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-ContactAdmin view for NMSampleLocations.
+ContactAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Contact (Owners) model.
 """

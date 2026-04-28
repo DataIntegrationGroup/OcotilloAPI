@@ -121,6 +121,8 @@ def get_db_things(
     within: Optional[str] = None,
     name: Optional[str] = None,
     include_contacts: bool = False,
+    filters: Optional[list[str]] = None,
+    name_contains: Optional[str] = None,
 ) -> list:
 
     if query:
@@ -151,6 +153,9 @@ def get_db_things(
     if name:
         sql = sql.where(Thing.name == name)
 
+    if name_contains and name_contains.strip():
+        sql = sql.where(Thing.name.ilike(f"%{name_contains.strip()}%"))
+
     if within:
         latest_assoc = (
             select(
@@ -173,7 +178,13 @@ def get_db_things(
         )
         sql = make_within_wkt(sql, within)
 
-    sql = order_sort_filter(sql, Thing, sort, order, filter_)
+    merged_filters: list[str] | None = None
+    if filters:
+        merged_filters = list(filters)
+    elif filter_:
+        merged_filters = [filter_]
+
+    sql = order_sort_filter(sql, Thing, sort, order, filters=merged_filters)
 
     return paginate(query=sql, conn=session)
 

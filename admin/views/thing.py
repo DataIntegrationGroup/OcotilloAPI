@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-ThingAdmin view for NMSampleLocations.
+ThingAdmin view for OcotilloAPI.
 
 Provides MS Access-like interface for CRUD operations on Thing (Wells/Springs) model.
 """

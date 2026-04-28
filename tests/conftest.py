@@ -5,7 +5,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy import inspect as sa_inspect
 
 from core.initializers import init_lexicon, init_parameter
@@ -174,6 +174,10 @@ def second_location():
 @pytest.fixture()
 def water_well_thing(location):
     with session_ctx() as session:
+        # Some importer tests create participant contacts as a side effect. Keep
+        # a baseline so teardown can remove only the contacts introduced while
+        # this fixture-owned well existed.
+        existing_contact_ids = set(session.scalars(select(Contact.id)).all())
         water_well = Thing(
             name="Test Well",
             first_visit_date="2023-03-03",
@@ -209,9 +213,22 @@ def water_well_thing(location):
         session.refresh(water_well)
         session.refresh(assoc)
         yield water_well
+        # Capture participant contacts before deleting the well, because the
+        # field event rows cascade away with the well and would no longer be
+        # queryable afterward.
+        imported_contact_ids = set(
+            session.scalars(
+                select(FieldEventParticipant.contact_id)
+                .join(FieldEvent)
+                .where(FieldEvent.thing_id == water_well.id)
+            ).all()
+        )
         session.delete(water_well)
         session.delete(assoc)
         session.delete(measuring_point_history)
+        session.commit()
+        for contact_id in imported_contact_ids - existing_contact_ids:
+            _delete_if_present(session, session.get(Contact, contact_id))
         session.commit()
 
 

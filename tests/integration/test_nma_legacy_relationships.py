@@ -212,11 +212,11 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             record = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id="ORPHAN-CHEM",
+                nma_sample_point_id="ORPHAN",
                 # No thing_id - should fail on commit
             )
             session.add(record)
-            # pg8000 raises ProgrammingError for NOT NULL violations (error code 23502)
+            # Driver may surface NOT NULL violations as ProgrammingError (code 23502)
             with pytest.raises((IntegrityError, ProgrammingError, ValueError)):
                 session.commit()
             session.rollback()

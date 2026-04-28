@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-SurfaceWaterDataAdmin view for NMSampleLocations.
+SurfaceWaterDataAdmin view for OcotilloAPI.
 """
 
 from admin.views.base import OcotilloModelView
