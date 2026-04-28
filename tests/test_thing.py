@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
+
 import pytest
 from core.dependencies import (
     admin_function,
@@ -931,6 +933,136 @@ def test_get_water_wells_includes_contact_summary(
             "role": contact.role,
         }
     ]
+
+
+def test_get_water_wells_filter_contacts_contains(water_well_thing, contact):
+    fl = json.dumps({"field": "contacts", "operator": "contains", "value": "Test"})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_filter_contacts_contains_no_match(water_well_thing, contact):
+    fl = json.dumps(
+        {
+            "field": "contacts",
+            "operator": "contains",
+            "value": "ZyxyzNoMatch999",
+        }
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id not in ids
+
+
+def test_get_water_wells_filter_contacts_ncontains(water_well_thing, contact):
+    fl = json.dumps(
+        {
+            "field": "contacts",
+            "operator": "ncontains",
+            "value": "ZyxyzNoMatch999",
+        }
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_filter_contacts_nnull(water_well_thing, contact):
+    fl = json.dumps(
+        {"field": "contacts", "operator": "nnull", "value": True},
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_sort_monitoring_status_desc(water_well_thing):
+    """Derived status columns are Python properties; sort uses StatusHistory SQL."""
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "monitoring_status",
+            "order": "desc",
+            "page": 1,
+            "size": 50,
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_well_status_asc(water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "well_status",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_site_name_asc(water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "site_name",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_contacts_asc(water_well_thing, contact):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "contacts",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_open_status_asc(water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "open_status",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_measuring_point_height_asc(water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "measuring_point_height",
+            "order": "desc",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_get_water_wells_sort_aquifers_asc(water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "aquifers",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
 
 
 def test_get_water_well_by_id_404_not_found(water_well_thing):

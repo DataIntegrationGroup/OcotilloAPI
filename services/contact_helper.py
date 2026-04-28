@@ -29,8 +29,19 @@ def get_db_contacts(
     thing_id: int | None = None,
     sort: str | None = None,
     order: str | None = None,
-    filter_: str | None = None,
+    *,
+    filters: list[str] | None = None,
 ):
+    """Paginated contacts with eager loads and Refine-compatible ``filters``.
+
+    Pass ``filters`` from ``GET /contact`` (repeated ``filter`` query keys). The
+    ``things`` virtual field searches linked site names via
+    ``_apply_contact_things_filter``. Background:
+    docs/refine-json-filters-and-virtual-fields.md.
+
+    ``thing_id`` restricts to contacts tied to one site (join on the
+    association table).
+    """
     sql = session.query(Contact).options(
         # eagerly load related tables to avoid N+1 problems
         joinedload(Contact.emails),
@@ -46,12 +57,15 @@ def get_db_contacts(
         sql = sql.join(ThingContactAssociation)
         sql = sql.where(ThingContactAssociation.thing_id == thing_id)
 
-    sql = order_sort_filter(sql, Contact, sort, order, filter_)
+    sql = order_sort_filter(sql, Contact, sort, order, filters=filters)
     return paginate(sql)
 
 
 def add_contact(
-    session: Session, data: CreateContact | dict, user: dict, commit: bool = True
+    session: Session,
+    data: CreateContact | dict,
+    user: dict,
+    commit: bool = True,
 ) -> Contact:
     """
     Add a new contact to the database.

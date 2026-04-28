@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Annotated
+
 from fastapi import APIRouter, Query
 from sqlalchemy import select
 from starlette import status
@@ -469,15 +471,23 @@ def get_contacts(
     user: amp_viewer_dependency,
     sort: str = None,
     order: str = None,
-    filter_: str = Query(alias="filter", default=None),
+    filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     thing_id: int | None = None,
 ) -> CustomPage[ContactResponse]:
+    """Paginated contacts.
+
+    **Filtering.** ``filter_params`` collects every ``filter=`` query parameter.
+    Refine sends one JSON object per active DataGrid column (AND semantics).
+    Virtual field ``things`` filters by linked monitoring site ``Thing.name``.
+    See docs/refine-json-filters-and-virtual-fields.md and ``get_db_contacts``.
     """
-    Retrieve all contacts from the database.
-    :param session:
-    :return:
-    """
-    return get_db_contacts(session, thing_id, sort, order, filter_)
+    return get_db_contacts(
+        session,
+        thing_id,
+        sort,
+        order,
+        filters=filter_params,
+    )
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")
