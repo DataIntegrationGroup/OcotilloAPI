@@ -24,10 +24,12 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from shapely import wkb
 from shapely.geometry import mapping
-from sqlalchemy import select, func
+from sqlalchemy import select, func, cast, Text, or_
+from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.orm import Session, aliased, selectinload
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
+from api.pagination import CustomPage
 from db import (
     LocationThingAssociation,
     Thing,
@@ -43,8 +45,9 @@ from db import (
     ThingIdLink,
     MonitoringFrequencyHistory,
     StatusHistory,
-    search,
+    Contact
 )
+from schemas.thing import WellResponse
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
@@ -122,15 +125,37 @@ def get_db_things(
     name: Optional[str] = None,
     include_contacts: bool = False,
     filters: Optional[list[str]] = None,
-    name_contains: Optional[str] = None,
-) -> list:
+) -> CustomPage[WellResponse]:
 
-    if query:
-        sql = search(
-            select(Thing),
-            query,
-            vector=Thing.search_vector,
-        )
+    if query and query.strip():
+        search_term = f"%{query.strip()}%"
+        sql = select(Thing)
+
+        if include_contacts:
+            sql = sql.options(
+                selectinload(Thing.contact_associations).selectinload(
+                    ThingContactAssociation.contact
+                )
+            )
+
+        sql = (
+                sql.outerjoin(Thing.contact_associations)
+                .outerjoin(ThingContactAssociation.contact)
+                .where(
+                    or_(
+                        Thing.search_vector.op("@@")(
+                            func.parse_websearch(
+                                cast("english", REGCONFIG),
+                                cast(query, Text),
+                            )
+                        ),
+                        Thing.name.ilike(search_term),
+                        Thing.thing_type.ilike(search_term),
+                        Contact.name.ilike(search_term),
+                    )
+                )
+                .distinct(Thing.id)
+            )
     else:
         sql = select(Thing)
 
@@ -152,9 +177,6 @@ def get_db_things(
 
     if name:
         sql = sql.where(Thing.name == name)
-
-    if name_contains and name_contains.strip():
-        sql = sql.where(Thing.name.ilike(f"%{name_contains.strip()}%"))
 
     if within:
         latest_assoc = (

@@ -154,7 +154,6 @@ def get_water_wells(
     filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: Optional[str] = None,
     name: Optional[str] = None,
-    name_contains: Optional[str] = None,
     include_contacts: bool = False,
 ) -> CustomPage[WellResponse]:
     """
@@ -171,7 +170,6 @@ def get_water_wells(
         thing_type=thing_type,
         include_contacts=include_contacts,
         filters=filter_params,
-        name_contains=name_contains,
     )
 
 
