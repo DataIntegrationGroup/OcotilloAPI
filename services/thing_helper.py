@@ -16,7 +16,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, Request
@@ -125,7 +125,8 @@ def get_db_things(
     name: Optional[str] = None,
     include_contacts: bool = False,
     filters: Optional[list[str]] = None,
-) -> list:
+) -> CustomPage[Any]:
+    sql = select(Thing)
 
     # Querying logic
     #
@@ -187,9 +188,6 @@ def get_db_things(
                     ThingContactAssociation.contact
                 )
             )
-    else:
-        # No search query → return base query (no filtering)
-        sql = select(Thing)
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)

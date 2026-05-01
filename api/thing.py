@@ -297,7 +297,6 @@ def get_springs(
     order: str = None,
     filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
     query: str = None,
-    name_contains: Optional[str] = None,
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
@@ -311,7 +310,6 @@ def get_springs(
         sort,
         thing_type=thing_type,
         filters=filter_params,
-        name_contains=name_contains,
     )
 
 
