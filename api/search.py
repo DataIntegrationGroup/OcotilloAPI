@@ -67,7 +67,7 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     contacts = session.scalars(query).all()
     results = [
         {
-            "label": c.name,
+            "label": c.name or c.organization,
             "group": "Contacts",
             "properties": {
                 "email": [e.email for e in c.emails],
