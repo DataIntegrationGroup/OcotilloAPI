@@ -125,7 +125,7 @@ def get_db_things(
     name: Optional[str] = None,
     include_contacts: bool = False,
     filters: Optional[list[str]] = None,
-) -> CustomPage[WellResponse]:
+) -> list:
 
     # Querying logic
     #
@@ -180,14 +180,6 @@ def get_db_things(
             .order_by(desc(func.greatest(*rank_expressions)))
             .distinct(Thing.id)
         )
-
-        if thing_type:
-            sql = sql.where(Thing.thing_type == thing_type)
-
-            if thing_type == WATER_WELL_THING_TYPE:
-                sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
-        else:
-            sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
 
         if include_contacts:
             sql = sql.options(

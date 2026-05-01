@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from typing import Annotated, Optional
+
 from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
@@ -29,47 +30,47 @@ from starlette.status import (
 from api.pagination import CustomPage
 from core.app import public_route
 from core.dependencies import (
-    session_dependency,
     admin_dependency,
     editor_dependency,
+    session_dependency,
     viewer_dependency,
 )
 from db.deployment import Deployment
 from db.thing import Thing, ThingIdLink, WellScreen
 from schemas.deployment import DeploymentResponse
 from schemas.thing import (
+    CreateSpring,
     CreateThingIdLink,
     CreateWell,
     CreateWellScreen,
+    SpringResponse,
+    ThingIdLinkResponse,
     ThingResponse,
+    UpdateSpring,
+    UpdateThingIdLink,
+    UpdateWell,
+    UpdateWellScreen,
     WellResponse,
     WellScreenResponse,
-    UpdateSpring,
-    UpdateWell,
-    SpringResponse,
-    CreateSpring,
-    ThingIdLinkResponse,
-    UpdateThingIdLink,
-    UpdateWellScreen,
 )
 from schemas.well_details import WellDetailsResponse
 from schemas.well_export import WellExportResponse
-from services.crud_helper import model_patcher, model_adder, model_deleter
+from services.crud_helper import model_adder, model_deleter, model_patcher
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
-    simple_get_by_id,
-    paginated_all_getter,
     order_sort_filter,
+    paginated_all_getter,
+    simple_get_by_id,
 )
 from services.thing_helper import (
+    WELL_DESCRIPTOR_MODEL_MAP,
     add_thing,
-    patch_thing,
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
     modify_well_descriptor_tables,
-    WELL_DESCRIPTOR_MODEL_MAP,
+    patch_thing,
 )
 from services.well_details_helper import (
     get_well_details_payload,
