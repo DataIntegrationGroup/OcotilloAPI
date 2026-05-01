@@ -370,7 +370,6 @@ def get_things(
     order: Optional[str] = None,
     include_contacts: bool = False,
     filter_params: Annotated[list[str] | None, Query(alias="filter")] = None,
-    name_contains: Optional[str] = None,
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
@@ -385,7 +384,6 @@ def get_things(
         within=within,
         include_contacts=include_contacts,
         filters=filter_params,
-        name_contains=name_contains,
     )
 
 
