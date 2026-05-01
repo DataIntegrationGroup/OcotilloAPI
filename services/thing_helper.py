@@ -16,44 +16,44 @@
 import logging
 import time
 from datetime import datetime
-from typing import Sequence, Optional
+from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from shapely import wkb
 from shapely.geometry import mapping
-from sqlalchemy import select, func, cast, Text, or_
+from sqlalchemy import Text, cast, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.orm import Session, aliased, selectinload
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from api.pagination import CustomPage
 from db import (
-    LocationThingAssociation,
-    Thing,
-    ThingContactAssociation,
-    Location,
-    WellScreen,
-    WellPurpose,
-    WellCasingMaterial,
-    ThingAquiferAssociation,
-    GroupThingAssociation,
-    MeasuringPointHistory,
+    Contact,
     DataProvenance,
-    ThingIdLink,
+    GroupThingAssociation,
+    Location,
+    LocationThingAssociation,
+    MeasuringPointHistory,
     MonitoringFrequencyHistory,
     StatusHistory,
-    Contact
+    Thing,
+    ThingAquiferAssociation,
+    ThingContactAssociation,
+    ThingIdLink,
+    WellCasingMaterial,
+    WellPurpose,
+    WellScreen,
 )
 from schemas.thing import WellResponse
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
-from services.exceptions_helper import PydanticStyleException
 from services.env import get_bool_env
+from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter, simple_get_by_id
+from services.query_helper import order_sort_filter, simple_get_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +127,67 @@ def get_db_things(
     filters: Optional[list[str]] = None,
 ) -> CustomPage[WellResponse]:
 
+    # Querying logic
+    #
+    # We combine multiple search strategies:
+    #
+    # 1. Full-text search (tsvector)
+    #    - Good for word-based and multi-word searches
+    #    - Uses indexed search_vector column
+    #
+    # 2. Trigram fuzzy matching (% operator from pg_trgm)
+    #    - Handles typos (e.g. "Aron" vs "Aaron")
+    #
+    # OR is used so any matching strategy can return a result.
     if query and query.strip():
-        search_term = f"%{query.strip()}%"
-        sql = select(Thing)
+        clean_query = query.strip()
+
+        # Similarity scores (used ONLY for ranking, not filtering)
+        #
+        # These use pg_trgm's similarity() to compute how close each field
+        # is to the search query. Higher = more similar.
+        name_sim = func.similarity(Thing.name, clean_query)
+        type_sim = func.similarity(Thing.thing_type, clean_query)
+
+        search_conditions = [
+            Thing.search_vector.op("@@")(
+                func.parse_websearch(
+                    cast("english", REGCONFIG),
+                    cast(clean_query, Text),
+                )
+            ),
+            Thing.name.op("%")(clean_query),
+            Thing.thing_type.op("%")(clean_query),
+        ]
+
+        rank_expressions = [
+            name_sim,
+            type_sim,
+        ]
+
+        if include_contacts:
+            contact_sim = func.coalesce(func.similarity(Contact.name, clean_query), 0)
+
+            sql = sql.outerjoin(Thing.contact_associations).outerjoin(
+                ThingContactAssociation.contact
+            )
+
+            search_conditions.append(Contact.name.op("%")(clean_query))
+            rank_expressions.append(contact_sim)
+
+        sql = (
+            sql.where(or_(*search_conditions))
+            .order_by(desc(func.greatest(*rank_expressions)))
+            .distinct(Thing.id)
+        )
+
+        if thing_type:
+            sql = sql.where(Thing.thing_type == thing_type)
+
+            if thing_type == WATER_WELL_THING_TYPE:
+                sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
+        else:
+            sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
 
         if include_contacts:
             sql = sql.options(
@@ -137,26 +195,8 @@ def get_db_things(
                     ThingContactAssociation.contact
                 )
             )
-
-        sql = (
-                sql.outerjoin(Thing.contact_associations)
-                .outerjoin(ThingContactAssociation.contact)
-                .where(
-                    or_(
-                        Thing.search_vector.op("@@")(
-                            func.parse_websearch(
-                                cast("english", REGCONFIG),
-                                cast(query, Text),
-                            )
-                        ),
-                        Thing.name.ilike(search_term),
-                        Thing.thing_type.ilike(search_term),
-                        Contact.name.ilike(search_term),
-                    )
-                )
-                .distinct(Thing.id)
-            )
     else:
+        # No search query → return base query (no filtering)
         sql = select(Thing)
 
     if thing_type:
@@ -361,7 +401,6 @@ def add_thing(
         # ----------
 
         if thing_type == WATER_WELL_THING_TYPE:
-
             # Create MeasuringPointHistory record if measuring_point_height provided
             if measuring_point_height is not None:
                 measuring_point_history = MeasuringPointHistory(
