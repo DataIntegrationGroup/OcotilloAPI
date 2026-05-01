@@ -130,25 +130,36 @@ def get_db_things(
 
     # Querying logic
     #
-    # We combine multiple search strategies:
+    # Combines multiple search strategies so the global search supports:
     #
-    # 1. Full-text search (tsvector)
-    #    - Good for word-based and multi-word searches
-    #    - Uses indexed search_vector column
+    # 1. Full-text search using Thing.search_vector
+    #    - Best for normal word-based and multi-word searches.
     #
-    # 2. Trigram fuzzy matching (% operator from pg_trgm)
-    #    - Handles typos (e.g. "Aron" vs "Aaron")
+    # 2. Trigram fuzzy search using pg_trgm operators
+    #    - "%" compares similarity across the full string.
+    #    - "<%" compares similarity against a word/substring extent,
+    #      which helps with names like "cary" matching "john carry".
+    #
+    # 3. Partial substring search using ILIKE
+    #    - Handles very short partial inputs like "ty" matching "tyler".
+    #    - This is useful because trigram matching is less effective for
+    #      short queries under 3 characters.
     #
     # OR is used so any matching strategy can return a result.
     if query and query.strip():
         clean_query = query.strip()
+        partial_query = f"%{clean_query}%"
 
-        # Similarity scores (used ONLY for ranking, not filtering)
+        # Ranking scores
         #
-        # These use pg_trgm's similarity() to compute how close each field
-        # is to the search query. Higher = more similar.
-        name_sim = func.similarity(Thing.name, clean_query)
-        type_sim = func.similarity(Thing.thing_type, clean_query)
+        # These are used only for ordering results, not for filtering.
+        # similarity() ranks whole-string similarity.
+        # word_similarity() ranks best word/span similarity.
+        name_sim = func.coalesce(func.similarity(Thing.name, clean_query), 0)
+        type_sim = func.coalesce(func.similarity(Thing.thing_type, clean_query), 0)
+
+        name_word_sim = func.coalesce(func.word_similarity(Thing.name, clean_query), 0)
+        type_word_sim = func.coalesce(func.word_similarity(Thing.thing_type, clean_query), 0)
 
         search_conditions = [
             Thing.search_vector.op("@@")(
@@ -159,27 +170,46 @@ def get_db_things(
             ),
             Thing.name.op("%")(clean_query),
             Thing.thing_type.op("%")(clean_query),
+            Thing.name.op("<%")(clean_query),
+            Thing.thing_type.op("<%")(clean_query),
+            Thing.name.ilike(partial_query),
+            Thing.thing_type.ilike(partial_query),
         ]
 
         rank_expressions = [
             name_sim,
             type_sim,
+            name_word_sim,
+            type_word_sim,
         ]
 
         if include_contacts:
             contact_sim = func.coalesce(func.similarity(Contact.name, clean_query), 0)
+            contact_word_sim = func.coalesce(
+                func.word_similarity(clean_query, Contact.name), 0
+            )
 
             sql = sql.outerjoin(Thing.contact_associations).outerjoin(
                 ThingContactAssociation.contact
             )
 
-            search_conditions.append(Contact.name.op("%")(clean_query))
-            rank_expressions.append(contact_sim)
+            search_conditions.extend(
+                [
+                    Contact.name.op("%")(clean_query),
+                    Contact.name.op("<%")(clean_query),
+                    Contact.name.ilike(partial_query),
+                ]
+            )
+           
+            rank_expressions.extend(
+                [
+                    contact_sim,
+                    contact_word_sim,
+                ]
+            )
 
-        sql = (
-            sql.where(or_(*search_conditions))
-            .order_by(desc(func.greatest(*rank_expressions)))
-            .distinct(Thing.id)
+        sql = sql.where(or_(*search_conditions)).order_by(
+            desc(func.greatest(*rank_expressions))
         )
 
         if include_contacts:
@@ -238,7 +268,7 @@ def get_db_things(
 
     sql = order_sort_filter(sql, Thing, sort, order, filters=merged_filters)
 
-    return paginate(query=sql, conn=session)
+    return paginate(query=sql, conn=session, unique=True)
 
 
 def get_thing_type_from_request(request: Request) -> str:

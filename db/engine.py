@@ -179,7 +179,7 @@ if driver == "cloudsql":
 
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
-                "pg8000",
+                "psycopg",
                 **connect_kwargs,
             )
             return conn
@@ -190,7 +190,7 @@ if driver == "cloudsql":
         pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
 
         engine = create_engine(
-            "postgresql+pg8000://",
+            "postgresql+psycopg://",
             creator=getconn,
             echo=False,
             pool_size=pool_size,
@@ -220,7 +220,7 @@ else:
 
     auth = f"{user}:{password}@" if user and password else ""
     port_part = f":{port}" if port else ""
-    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
+    url = f"postgresql+psycopg://{auth}{host}{port_part}/{name}"
     # else:
     #     url = "sqlite:///./development.db"
 
@@ -243,7 +243,7 @@ else:
     _install_pool_logging(engine)
 
     async_engine = create_async_engine(
-        url.replace("postgresql+pg8000", "postgresql+asyncpg"),
+        url.replace("postgresql+psycopg", "postgresql+asyncpg"),
         plugins=["geoalchemy2"],
     )
     # if "postgresql" not in url:
