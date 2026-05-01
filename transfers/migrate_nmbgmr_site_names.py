@@ -81,9 +81,7 @@ def run():
                     ThingIdLink.thing_id,
                     ThingIdLink.alternate_organization,
                     ThingIdLink.alternate_id,
-                ).where(
-                    ThingIdLink.alternate_organization == ALTERNATE_ORGANIZATION
-                )
+                ).where(ThingIdLink.alternate_organization == ALTERNATE_ORGANIZATION)
             ).all()
         )
         logger.info(
