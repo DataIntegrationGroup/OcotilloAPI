@@ -34,7 +34,7 @@ def run():
     csv_path = get_transfers_data_path("nma_csv_cache/Location.csv")
     logger.info("Reading %s", csv_path)
 
-    df = pd.read_csv(csv_path, dtype=str, usecols=["PointID", "SiteNames"])
+    df = pd.read_csv(csv_path, dtype=str, usecols=["LocationId", "SiteNames"])
     df = df[
         df["SiteNames"].notna()
         & (df["SiteNames"] != "NULL")
@@ -44,24 +44,29 @@ def run():
     logger.info("%d rows with a non-empty SiteNames value", len(df))
 
     with session_ctx() as session:
-        # Build a PointID -> thing_id map for all matching wells in one query.
-        point_ids = df["PointID"].tolist()
-        thing_id_by_pointid: dict[str, int] = {
-            name: thing_id
-            for name, thing_id in session.execute(
-                select(Thing.name, Thing.id).where(Thing.name.in_(point_ids))
+        # Match on LocationId -> nma_pk_location rather than PointID -> name.
+        # PointID is not unique across all Location rows; LocationId (the UUID
+        # primary key from NM_Aquifer) has higher fidelity. Suggested by
+        # jacob-a-brown in PR #668.
+        location_ids = df["LocationId"].tolist()
+        thing_id_by_location_id: dict[str, int] = {
+            location_id: thing_id
+            for location_id, thing_id in session.execute(
+                select(Thing.nma_pk_location, Thing.id).where(
+                    Thing.nma_pk_location.in_(location_ids)
+                )
             ).all()
         }
         logger.info(
-            "%d / %d PointIDs matched a Thing in the database",
-            len(thing_id_by_pointid),
+            "%d / %d LocationIds matched a Thing in the database",
+            len(thing_id_by_location_id),
             len(df),
         )
 
         # Build candidate rows.
         candidates: list[dict] = []
         for row in df.itertuples(index=False):
-            thing_id = thing_id_by_pointid.get(row.PointID)
+            thing_id = thing_id_by_location_id.get(row.LocationId)
             if thing_id is None:
                 continue
             candidates.append(
