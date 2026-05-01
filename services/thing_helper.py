@@ -159,7 +159,9 @@ def get_db_things(
         type_sim = func.coalesce(func.similarity(Thing.thing_type, clean_query), 0)
 
         name_word_sim = func.coalesce(func.word_similarity(Thing.name, clean_query), 0)
-        type_word_sim = func.coalesce(func.word_similarity(Thing.thing_type, clean_query), 0)
+        type_word_sim = func.coalesce(
+            func.word_similarity(Thing.thing_type, clean_query), 0
+        )
 
         search_conditions = [
             Thing.search_vector.op("@@")(
@@ -200,7 +202,7 @@ def get_db_things(
                     Contact.name.ilike(partial_query),
                 ]
             )
-           
+
             rank_expressions.extend(
                 [
                     contact_sim,
