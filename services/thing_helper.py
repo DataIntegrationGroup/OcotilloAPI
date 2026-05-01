@@ -24,7 +24,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from shapely import wkb
 from shapely.geometry import mapping
-from sqlalchemy import Text, cast, desc, func, or_, select
+from sqlalchemy import Text, case, cast, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.orm import Session, aliased, selectinload
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
@@ -163,6 +163,19 @@ def get_db_things(
             func.word_similarity(Thing.thing_type, clean_query), 0
         )
 
+        exact_or_partial_rank = case(
+            # Exact matches rank highest
+            (func.lower(Thing.name) == clean_query.lower(), 3.0),
+            (func.lower(Thing.thing_type) == clean_query.lower(), 3.0),
+            # Prefix matches rank next
+            (Thing.name.ilike(f"{clean_query}%"), 2.0),
+            (Thing.thing_type.ilike(f"{clean_query}%"), 2.0),
+            # Partial substring matches rank after prefix matches
+            (Thing.name.ilike(partial_query), 1.5),
+            (Thing.thing_type.ilike(partial_query), 1.5),
+            else_=0.0,
+        )
+
         search_conditions = [
             Thing.search_vector.op("@@")(
                 func.parse_websearch(
@@ -179,6 +192,7 @@ def get_db_things(
         ]
 
         rank_expressions = [
+            exact_or_partial_rank,
             name_sim,
             type_sim,
             name_word_sim,
@@ -195,6 +209,13 @@ def get_db_things(
                 ThingContactAssociation.contact
             )
 
+            contact_exact_or_partial_rank = case(
+                (func.lower(Contact.name) == clean_query.lower(), 3.0),
+                (Contact.name.ilike(f"{clean_query}%"), 2.0),
+                (Contact.name.ilike(partial_query), 1.5),
+                else_=0.0,
+            )
+
             search_conditions.extend(
                 [
                     Contact.name.op("%")(clean_query),
@@ -205,6 +226,7 @@ def get_db_things(
 
             rank_expressions.extend(
                 [
+                    contact_exact_or_partial_rank,
                     contact_sim,
                     contact_word_sim,
                 ]
