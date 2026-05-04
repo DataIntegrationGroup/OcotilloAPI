@@ -24,7 +24,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from shapely import wkb
 from shapely.geometry import mapping
-from sqlalchemy import Text, case, cast, desc, func, or_, select
+from sqlalchemy import Text, case, cast, desc, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.orm import Session, aliased, selectinload
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
@@ -165,11 +165,11 @@ def get_db_things(
 
         exact_or_partial_rank = case(
             # Exact matches rank highest
-            (func.lower(Thing.name) == clean_query.lower(), 3.0),
-            (func.lower(Thing.thing_type) == clean_query.lower(), 3.0),
+            (func.lower(Thing.name) == clean_query.lower(), 2.0),
+            (func.lower(Thing.thing_type) == clean_query.lower(), 2.0),
             # Prefix matches rank next
-            (Thing.name.ilike(f"{clean_query}%"), 2.0),
-            (Thing.thing_type.ilike(f"{clean_query}%"), 2.0),
+            (Thing.name.ilike(f"{clean_query}%"), 1.75),
+            (Thing.thing_type.ilike(f"{clean_query}%"), 1.75),
             # Partial substring matches rank after prefix matches
             (Thing.name.ilike(partial_query), 1.5),
             (Thing.thing_type.ilike(partial_query), 1.5),
@@ -185,8 +185,10 @@ def get_db_things(
             ),
             Thing.name.op("%")(clean_query),
             Thing.thing_type.op("%")(clean_query),
-            Thing.name.op("<%")(clean_query),
-            Thing.thing_type.op("<%")(clean_query),
+            literal(clean_query).op("<%")(Thing.name),
+            literal(clean_query).op("<<%")(Thing.name),
+            literal(clean_query).op("<%")(Thing.thing_type),
+            literal(clean_query).op("<<%")(Thing.thing_type),
             Thing.name.ilike(partial_query),
             Thing.thing_type.ilike(partial_query),
         ]
@@ -202,7 +204,7 @@ def get_db_things(
         if include_contacts:
             contact_sim = func.coalesce(func.similarity(Contact.name, clean_query), 0)
             contact_word_sim = func.coalesce(
-                func.word_similarity(clean_query, Contact.name), 0
+                func.word_similarity(Contact.name, clean_query), 0
             )
 
             sql = sql.outerjoin(Thing.contact_associations).outerjoin(
@@ -210,8 +212,8 @@ def get_db_things(
             )
 
             contact_exact_or_partial_rank = case(
-                (func.lower(Contact.name) == clean_query.lower(), 3.0),
-                (Contact.name.ilike(f"{clean_query}%"), 2.0),
+                (func.lower(Contact.name) == clean_query.lower(), 2.0),
+                (Contact.name.ilike(f"{clean_query}%"), 1.75),
                 (Contact.name.ilike(partial_query), 1.5),
                 else_=0.0,
             )
@@ -219,7 +221,8 @@ def get_db_things(
             search_conditions.extend(
                 [
                     Contact.name.op("%")(clean_query),
-                    Contact.name.op("<%")(clean_query),
+                    literal(clean_query).op("<%")(Contact.name),
+                    literal(clean_query).op("<<%")(Contact.name),
                     Contact.name.ilike(partial_query),
                 ]
             )
