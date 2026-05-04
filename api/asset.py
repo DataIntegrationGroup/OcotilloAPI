@@ -17,7 +17,7 @@
 import logging
 import time
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
@@ -173,6 +173,20 @@ async def add_asset(
             assoc = AssetThingAssociation()
             audit_add(user, assoc)
             thing = session.get(Thing, thing_id)
+
+            if not thing:
+                raise HTTPException(
+                    status_code=409,
+                    detail=[
+                        {
+                            "loc": ["body", "thing_id"],
+                            "msg": f"Thing with ID {thing_id} not found.",
+                            "type": "value_error",
+                            "input": {"thing_id": thing_id},
+                        }
+                    ],
+                )
+
             assoc.thing = thing
             assoc.asset = asset
             session.add(assoc)
