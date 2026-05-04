@@ -4,7 +4,6 @@ This guide is for the Ocotillo Data Services team. It covers how to plan, execut
 
 The geothermal migration is the immediate context for this guide, but the process described here applies to any future dataset migration into Ocotillo.
 
----
 
 ## Table of Contents
 
@@ -20,7 +19,6 @@ The geothermal migration is the immediate context for this guide, but the proces
 10. [Geothermal-specific guidance](#10-geothermal-specific-guidance)
 11. [Future tooling](#11-future-tooling)
 
----
 
 ## 1. What a migration is
 
@@ -30,7 +28,6 @@ Migrations also require significant upfront work before any code is written. Som
 
 The goal of this guide is to make that process repeatable, transparent, and trustworthy so that any team member can understand the state of a migration without having to ask the person who wrote the code.
 
----
 
 ## 2. What we were doing and what we are changing
 
@@ -40,7 +37,7 @@ The NM_Aquifer migration taught the team a lot. The following problems were docu
 
 The team maintained a spreadsheet to track migration progress. In review sessions, team members would see rows listed as incomplete for work that had already been done. The sheet was updated separately from the code, so it was always running behind.
 
-**What changes:** The field mapping tracker is committed to the repo as a CSV file and updated in the same pull request as the transfer script. If the code is merged, the tracker is current. There is no separate update step.
+**What changes:** The field mapping tracker stays in Google Sheets, but updating it becomes part of the definition of done for a migration task. The PR description must include a direct link to the relevant rows in the tracker showing them updated. Reviewers check this as part of approving the PR. If the PR is merged, the tracker is current. There is no separate step.
 
 ### Problem 2: There was no clear place to look for outstanding work
 
@@ -60,7 +57,6 @@ After a transfer script ran, confirming that all expected rows came over require
 
 **What changes:** `oco transfer-results` is run after every staging and production migration and the output is committed to the repo at `transfers/metrics/transfer_results_summary.md`. Row counts are verifiable by anyone from a single file.
 
----
 
 ## 3. The two types of work
 
@@ -96,7 +92,6 @@ set -a; source .env; set +a
 python -m transfers.my_dataset_transfer
 ```
 
----
 
 ## 4. Schema mapping: understanding where the data fits
 
@@ -295,13 +290,12 @@ Two schema decisions must be documented as Architecture Decision Records and clo
 ### Tools for schema mapping work
 
 - **[dbdiagram.io](https://dbdiagram.io):** Free browser tool that accepts DBML syntax. The existing Postgres schema can be exported as DBML using the `pg_dump` utility or a short script. The NM_Wells schema comes from the database backup. Both can be loaded into dbdiagram.io and shared as a URL for async review before writing any code.
-- **The field mapping tracker CSV:** One row per source field, populated during the discovery phase. This is the decision record: where does the field go, what is the migration path, is it being migrated at all. No script is written until the relevant rows are filled in.
+- **The field mapping tracker (Google Sheets):** One row per source field, populated during the discovery phase. This is the decision record: where does the field go, what is the migration path, is it being migrated at all. No script is written until the relevant rows are filled in.
 - **`alembic revision --autogenerate --sql`:** After proposing ORM model changes, this command previews the exact SQL that would run without applying it. Use it to validate that a schema design matches intent before touching any database.
 - **Mermaid diagrams in ADRs:** Include a diagram in each ADR that shows the specific tables and relationships being decided on. The diagrams in this guide (above) can be used as a starting point.
 
 **The rule:** no transfer script is written until the relevant field mapping tracker rows are populated and the ADRs for that dataset are closed.
 
----
 
 ## 5. Three tools, three jobs
 
@@ -313,11 +307,11 @@ Every migration scope item lives as a JIRA ticket. This is where outstanding wor
 
 JIRA is what you open when you want to know what to work on next.
 
-### The field mapping tracker CSV — "How does each source field map to the new schema"
+### The field mapping tracker — "How does each source field map to the new schema"
 
-This is a field-level reference document committed to the `transfers/` directory alongside the code. It records: where does `tbl_well_headers.WellName` go? What is the migration path? Was it completed?
+This is a field-level reference document maintained in Google Sheets. It records: where does `tbl_well_headers.WellName` go? What is the migration path? Was it completed?
 
-It is not a task queue. It records decisions and confirms they were carried out. It is updated in the same pull request as the transfer script — no separate step.
+It is not a task queue. It records decisions and confirms they were carried out. The tracker rows for a given dataset are updated before the PR is merged, and the PR description must include a direct link to the relevant rows. This makes the tracker update part of code review rather than a follow-up task that gets skipped.
 
 **Transfer Status values:**
 
@@ -353,12 +347,12 @@ It is the receipts. When someone asks "did everything come over?", you open this
 
 ```
 1. Create JIRA ticket for the dataset or scope     → work is visible and assigned
-2. Run discovery, populate field mapping tracker   → decisions are documented
+2. Run discovery, populate tracker in Sheets       → decisions are documented
 3. Get ADRs approved for schema decisions          → approach is confirmed
 4. Write Alembic migration (if schema changed)     → structure exists in DB
 5. Write transfer script                           → code exists
 6. Update tracker rows to "staging transfer        → mapping is recorded
-   complete" in the same PR
+   complete"; link rows in PR description
 7. Merge PR, run on staging                        → data is in staging
 8. Run oco transfer-results                        → numbers are verified
 9. Data owner reviews records in the UI            → sign-off from subject expert
@@ -368,9 +362,8 @@ It is the receipts. When someone asks "did everything come over?", you open this
 13. Close the JIRA ticket                          → nothing is open
 ```
 
-When these three sources agree (no open JIRA ticket, CSV shows `final transfer complete`, `Missing Agreed` = 0 in the summary), anyone on the team can verify the migration is complete without asking the developer who wrote the script.
+When these three sources agree (no open JIRA ticket, tracker in Sheets shows `final transfer complete`, `Missing Agreed` = 0 in the summary), anyone on the team can verify the migration is complete without asking the developer who wrote the script.
 
----
 
 ## 6. Migration phases
 
@@ -378,14 +371,13 @@ Each dataset migration moves through the following phases in order. Work in a la
 
 | Phase | Name | Work done |
 |-------|------|-----------|
-| 0 | Discovery | Understand the source schema. Document field-level mappings in the tracker CSV. Identify data quality issues. Determine which tables are in scope. |
+| 0 | Discovery | Understand the source schema. Document field-level mappings in the tracker (Google Sheets). Identify data quality issues. Determine which tables are in scope. |
 | 1 | Schema design | Write ADRs for significant decisions. Write Alembic migrations for any new tables or columns. Apply migrations to local and staging databases. |
 | 2 | Script development | Write the transfer script. Implement idempotency, logging, and error handling. Test locally. Update tracker rows to `incomplete` while in progress. |
-| 3 | Staging run | Run the script on staging. Run `oco transfer-results`. Confirm zero `Missing Agreed`. Update tracker to `staging transfer complete` in the same PR. |
+| 3 | Staging run | Run the script on staging. Run `oco transfer-results`. Confirm zero `Missing Agreed`. Update tracker rows to `staging transfer complete` and link them in the PR description before merging. |
 | 4 | Sign-off | Data owner opens the relevant list and detail pages in Ocotillo staging and confirms the data looks correct. Document sign-off in the JIRA ticket. |
 | 5 | Production run | Run the script on production. Run `oco transfer-results`. Confirm zero `Missing Agreed`. Update tracker to `final transfer complete`. Commit the summary. Close the ticket. |
 
----
 
 ## 7. Transfer script conventions
 
@@ -541,7 +533,6 @@ if __name__ == "__main__":
     run()
 ```
 
----
 
 ## 8. The audit CLI
 
@@ -588,7 +579,6 @@ git commit -m "Update transfer results summary after <dataset> migration"
 
 This makes the reconciliation results auditable in git history.
 
----
 
 ## 9. Running on staging and production
 
@@ -596,7 +586,7 @@ Follow this checklist for every migration. Do not skip steps, even if the migrat
 
 ### Before running
 
-- [ ] PR is merged (schema migration + transfer script + tracker update in the same PR)
+- [ ] PR is merged (schema migration + transfer script); tracker rows linked in PR description and updated in Sheets
 - [ ] ADRs for this dataset are closed and linked in the JIRA ticket
 - [ ] Data owner has been notified and knows to review after the staging run
 
@@ -621,7 +611,7 @@ oco transfer-results --summary-path transfers/metrics/transfer_results_summary.m
 - [ ] `Missing Agreed` = 0 for all affected tables
 - [ ] Data owner has reviewed the relevant pages in staging and confirmed the data looks correct
 - [ ] Transfer results summary committed to the repo
-- [ ] Tracker CSV rows updated to `staging transfer complete` (should already be in the merged PR)
+- [ ] Tracker rows updated to `staging transfer complete` in Google Sheets (linked in the merged PR description)
 
 ### Production
 
@@ -638,7 +628,6 @@ oco transfer-results --summary-path transfers/metrics/transfer_results_summary.m
 - [ ] Tracker CSV rows updated to `final transfer complete` in a follow-up commit or PR
 - [ ] JIRA ticket closed
 
----
 
 ## 10. Geothermal-specific guidance
 
@@ -707,7 +696,6 @@ This file contains fully commented-out stubs for geothermal-specific ORM models 
 
 Before reviving these models, the team must decide (via ADR) whether dedicated geothermal tables are needed or whether the existing `Sample → Observation → Parameter` path is sufficient. If dedicated tables are chosen, the stubs in `db/geothermal.py` should be rewritten from scratch against the current schema rather than adapted from the commented code.
 
----
 
 ## 11. Future tooling
 
