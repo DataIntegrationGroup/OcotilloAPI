@@ -248,3 +248,4 @@ GitHub Actions workflows (`.github/workflows/`):
 - **OGC API**: `http://localhost:8000/ogcapi` for OGC API - Features endpoints
 - **CLI**: `oco --help` for Ocotillo CLI commands
 - **Sentry**: Error tracking and performance monitoring integrated
+- **Data Migration Guide**: `docs/data-migration-guide.md` — process, field mapping, script conventions, audit CLI, and geothermal-specific guidance
