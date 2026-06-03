@@ -18,7 +18,9 @@ from sqlalchemy.orm import DeclarativeBase
 
 def audit_add(user: dict, obj: DeclarativeBase) -> None:
     # see note in "AuditMixin"
-    if user:
+    # Guard against non-dict values: when AUTHENTIK_DISABLE_AUTHENTICATION=1
+    # the auth dependency returns True instead of a claims dict.
+    if user and isinstance(user, dict):
         obj.created_by_id = user["sub"]
         obj.created_by_name = user["name"]
 

@@ -384,4 +384,139 @@ def test_remove_asset(second_asset):
     assert response.status_code == 204
 
 
+# UPLOAD-AND-RECORD tests ====================================================
+
+
+def test_upload_and_record_asset(water_well_thing):
+    """
+    Happy path — valid image uploaded with a known thing_id.
+
+    Expects a 201 response with a fully populated AssetResponse that links
+    the new Asset to the given Thing.  Cleans up the created record after
+    the assertion so the database is left in the same state.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id, "label": "Well photo"},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+
+    assert "id" in data
+    assert "uri" in data
+    assert "storage_path" in data
+    assert data["name"] == "riochama.png"
+    assert data["label"] == "Well photo"
+    assert data["mime_type"] == "image/png"
+    assert data["storage_service"] == "gcs"
+    assert data["size"] > 0
+
+    cleanup_post_test(Asset, data["id"])
+
+
+def test_upload_and_record_asset_duplicate_returns_existing(water_well_thing):
+    """
+    Uploading the same file to the same Thing twice must not create a duplicate.
+
+    The second call should return the asset created by the first call (same id)
+    and respond with 201 rather than an error.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        first = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert first.status_code == 201
+    first_id = first.json()["id"]
+
+    with open(path, "rb") as f:
+        second = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert second.status_code == 201
+    assert second.json()["id"] == first_id
+
+    cleanup_post_test(Asset, first_id)
+
+
+def test_upload_and_record_asset_bad_thing_id():
+    """
+    Providing a thing_id that does not exist must return 409 Conflict.
+
+    The error payload must identify the offending field and echo back the
+    supplied value so the caller can surface a meaningful error message.
+    """
+    bad_thing_id = 99999
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": bad_thing_id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+
+
+def test_upload_and_record_asset_invalid_file_type(water_well_thing):
+    """
+    Files whose MIME type is not in ALLOWED_MIME_TYPES must be rejected
+    with 400 Bad Request before any GCS or database work is attempted.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "video/mp4")},
+        )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["file"]
+    assert "video/mp4" in data["detail"][0]["msg"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"content_type": "video/mp4"}
+
+
+def test_upload_and_record_asset_file_too_large(water_well_thing):
+    """
+    Files whose size exceeds MAX_UPLOAD_SIZE_BYTES must be rejected with
+    400 Bad Request.  The constant is patched to 5 bytes so any real file
+    triggers the limit without requiring an actual 250 MB payload.
+    """
+    path = "tests/data/riochama.png"
+
+    with patch("api.asset.MAX_UPLOAD_SIZE_BYTES", 5):
+        with open(path, "rb") as f:
+            response = client.post(
+                "/asset/upload-and-record",
+                data={"thing_id": water_well_thing.id},
+                files={"file": ("riochama.png", f, "image/png")},
+            )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["file"]
+    assert "exceeds" in data["detail"][0]["msg"]
+    assert data["detail"][0]["type"] == "value_error"
+
+
 # ============= EOF =============================================
