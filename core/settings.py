@@ -14,10 +14,21 @@
 # limitations under the License.
 # ===============================================================================
 import os
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+
+def _resolve_version() -> str:
+    env = os.getenv("APP_VERSION")
+    if env:
+        return env.removeprefix("v")
+    try:
+        return _pkg_version("OcotilloAPI")
+    except PackageNotFoundError:
+        return "0.0.0"
 
 
 class Settings:
-    version = "0.0.1"
+    version = _resolve_version()
 
     def __init__(self):
         self.mode = os.getenv("MODE", "")  # Default mode

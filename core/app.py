@@ -114,7 +114,7 @@ def create_base_app() -> FastAPI:
     def public_openapi():
         schema = get_openapi(
             title="Ocotillo API (Public)",
-            version="0.0.1",
+            version=settings.version,
             description="Public API schema (anonymous users)",
             routes=app.routes,
         )
@@ -217,6 +217,11 @@ def create_base_app() -> FastAPI:
     @app.get("/_ah/warmup", include_in_schema=False)
     async def warmup():
         return {"status": "ok"}
+
+    @app.get("/health", tags=["meta"])
+    @public_route
+    async def health():
+        return {"status": "ok", "version": settings.version}
 
     return app
 
