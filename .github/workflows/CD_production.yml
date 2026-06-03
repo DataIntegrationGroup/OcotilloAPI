@@ -2,7 +2,10 @@ name: CD (Production)
 
 on:
   push:
-    tags: ['v*.*.*']
+    tags:
+      - 'v*.*.*'        # GA releases: v1.0.0, v1.4.2
+      - 'v*.*.*-*'      # SemVer pre-releases: v1.0.0-rc.1
+      - 'v*.*.*[a-z]*'  # PEP 440 pre-releases: v1.0.0rc1, v1.0.0b2 (release-please-python form)
 
 permissions:
   contents: read
