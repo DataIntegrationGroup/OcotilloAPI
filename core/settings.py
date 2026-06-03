@@ -20,7 +20,7 @@ from importlib.metadata import PackageNotFoundError, version as _pkg_version
 def _resolve_version() -> str:
     env = os.getenv("APP_VERSION")
     if env:
-        return env.lstrip("v")
+        return env.removeprefix("v")
     try:
         return _pkg_version("OcotilloAPI")
     except PackageNotFoundError:
