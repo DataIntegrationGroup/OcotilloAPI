@@ -55,6 +55,8 @@ from db.initialization import recreate_public_schema, sync_search_vector_trigger
 from services.env import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
+from transfers.reference_lexicon_transfer import transfer_reference_tables
+from transfers.nmw_mirror_transfer import transfer_nmw_mirror
 from transfers.permissions_transfer import transfer_permissions
 from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
@@ -360,11 +362,12 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
     else:
         message("PHASE 1: FOUNDATIONAL TRANSFERS (PARALLEL)")
         foundational_tasks = [
+            ("ReferenceLexicon", transfer_reference_tables),
             ("AquiferSystems", transfer_aquifer_systems),
             ("GeologicFormations", transfer_geologic_formations),
         ]
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=len(foundational_tasks)) as executor:
             futures = {
                 executor.submit(
                     _execute_foundational_transfer_with_timing, name, func, limit
@@ -382,6 +385,13 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
                 except Exception as e:
                     logger.critical(f"Foundational transfer {name} failed: {e}")
                     raise  # Fail fast - foundational transfers must succeed
+
+        # NM_Wells 1:1 staging mirror (separate source DB). Off by default so it
+        # does not run during the standard NM_Aquifer -> Ocotillo transfer.
+        if get_bool_env("TRANSFER_NMW_MIRROR", False):
+            message("NM_WELLS 1:1 STAGING MIRROR LOAD")
+            with session_ctx() as session:
+                transfer_nmw_mirror(session, limit=limit)
 
         message("TRANSFERRING WELLS")
         use_parallel_wells = get_bool_env("TRANSFER_PARALLEL_WELLS", True)
