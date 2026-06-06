@@ -132,8 +132,12 @@ def _coerce(value, col_type):
         except (ValueError, TypeError):
             return None
     if isinstance(col_type, DateTime):
-        # pandas Timestamp -> python datetime; anything else passed through.
-        return value.to_pydatetime() if hasattr(value, "to_pydatetime") else value
+        # read_csv does not parse_dates, so values are typically raw strings.
+        # Parse explicitly to avoid driver-dependent insert failures.
+        if hasattr(value, "to_pydatetime"):
+            return value.to_pydatetime()
+        ts = pd.to_datetime(value, errors="coerce")
+        return None if pd.isna(ts) else ts.to_pydatetime()
     if isinstance(col_type, String):
         s = str(value)
         return s[: col_type.length] if col_type.length else s

@@ -146,7 +146,7 @@ class NMW_WellLocations(Base):
     long_deg = mapped_column("Long_deg", SmallInteger)  # Drop (mostly empty)
     long_min = mapped_column("Long_min", SmallInteger)  # Drop (mostly empty)
     long_sec = mapped_column("Long_sec", Float)  # Drop (mostly empty)
-    lat_dd27 = mapped_column("Lat_dd27", Float)  # -> NMW_Location.latitutde_dd27
+    lat_dd27 = mapped_column("Lat_dd27", Float)  # -> NMW_Location.latitude_dd27
     long_dd27 = mapped_column("Long_dd27", Float)  # -> NMW_Location.longitude_dd27
     lat_dd83 = mapped_column("Lat_dd83", Float)  # -> location.point
     long_dd83 = mapped_column("Long_dd83", Float)  # -> location.point
@@ -523,7 +523,7 @@ class NMW_WsDstHeaders(Base):
         "SamplSetID", UUID(as_uuid=True), index=True
     )  # FK -> well_samples.SamplSetID
     test_type = mapped_column("TestType", String(50))
-    dst_oprator = mapped_column("DSTOprator", String(50))
+    dst_operator = mapped_column("DSTOprator", String(50))
     press_units = mapped_column("PressUnits", String(8))
     temp_unit = mapped_column("TempUnit", String(1))
     pipe_dia_unt = mapped_column("PipeDiaUnt", String(8))
@@ -573,7 +573,7 @@ class NMW_WsDstFlowHistory(Base):
     duration = mapped_column("Duration", Float)
     pressure = mapped_column("Pressure", Float)
     temp = mapped_column("Temp", Float)
-    recov_colmn = mapped_column("RecovColmn", Float)
+    recov_column = mapped_column("RecovColmn", Float)
     recov_type = mapped_column("RecovType", String(255))
     notes = mapped_column("Notes", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
@@ -590,7 +590,7 @@ class NMW_WsDstFluidProperties(Base):
         "DSTInterval", UUID(as_uuid=True), index=True
     )  # FK -> ws_dst_intervals.DSTInterval
     source_loc = mapped_column("SourceLoc", String(255))
-    resistivty = mapped_column("Resistivty", Float)
+    resistivity = mapped_column("Resistivty", Float)
     temp = mapped_column("Temp", Float)
     chlorides = mapped_column("Chlorides", Float)
     notes = mapped_column("Notes", String(255))

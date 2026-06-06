@@ -100,8 +100,8 @@ def _spec(table: str) -> RefTableSpec:
 
 
 # All ref_* tables marked "Add to lexicon" in the workbook (sheet 1).
-# ref_nm_quads (Review) and ref_date_drilled-style oddities are intentionally
-# excluded; add/remove specs here as the mapping is refined.
+# ref_nm_quads (Review, ~2k rows) is intentionally excluded; add/remove specs
+# here as the mapping is refined.
 REFERENCE_TABLE_SPECS: list[RefTableSpec] = [
     _spec(t)
     for t in (
