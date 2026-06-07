@@ -10,9 +10,11 @@ Two point layers over the NM_Wells staging mirror (db/nmw_legacy.py):
         One feature per geothermal well that has bottom-hole-temperature data
         (NMW_GtBhtData), with aggregate BHT stats.
 
-    ogc_geothermal_wells_temperature_profile
+    ogc_geothermal_wells_temperature_profile  (MATERIALIZED)
         One feature per geothermal well that has a downhole temperature-vs-depth
-        series (NMW_GtTempDepths), with the ordered series as a JSON array.
+        series (NMW_GtTempDepths, ~370k source rows), with the ordered series as
+        a JSON array. Materialized + indexed (unique well_data_id, GiST geom);
+        REFRESH MATERIALIZED VIEW after a data reload.
 
 Well geometry is built from NMW_WellLocations Lat/Long_dd83 (WGS84). Geothermal
 data links to a well via:
@@ -81,8 +83,12 @@ def _create_bht_view() -> str:
 
 
 def _create_profile_view() -> str:
+    # Materialized: the source NMW_GtTempDepths is large (~370k source rows) and
+    # this groups + builds a JSON series per well, too heavy to recompute per
+    # pygeoapi request. Staging data loads once, so staleness is a non-issue;
+    # REFRESH MATERIALIZED VIEW after a reload.
     return """
-        CREATE VIEW ogc_geothermal_wells_temperature_profile AS
+        CREATE MATERIALIZED VIEW ogc_geothermal_wells_temperature_profile AS
         SELECT
             r."WellDataID"                                       AS well_data_id,
             hdr."CurWellNam"                                     AS well_name,
@@ -138,16 +144,30 @@ def upgrade() -> None:
         )
     )
 
+    op.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {_PROFILE_VIEW}"))
     op.execute(text(f"DROP VIEW IF EXISTS {_PROFILE_VIEW}"))
     op.execute(text(_create_profile_view()))
     op.execute(
         text(
-            f"COMMENT ON VIEW {_PROFILE_VIEW} IS "
+            f"COMMENT ON MATERIALIZED VIEW {_PROFILE_VIEW} IS "
             "'Geothermal wells with downhole temperature-vs-depth series.'"
+        )
+    )
+    # Unique index on the feature id enables REFRESH ... CONCURRENTLY; GiST on
+    # the geometry for fast pygeoapi bbox queries.
+    op.execute(
+        text(
+            f"CREATE UNIQUE INDEX ux_{_PROFILE_VIEW}_well_data_id "
+            f"ON {_PROFILE_VIEW} (well_data_id)"
+        )
+    )
+    op.execute(
+        text(
+            f"CREATE INDEX ix_{_PROFILE_VIEW}_geom ON {_PROFILE_VIEW} USING gist (geom)"
         )
     )
 
 
 def downgrade() -> None:
-    op.execute(text(f"DROP VIEW IF EXISTS {_PROFILE_VIEW}"))
+    op.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {_PROFILE_VIEW}"))
     op.execute(text(f"DROP VIEW IF EXISTS {_BHT_VIEW}"))
