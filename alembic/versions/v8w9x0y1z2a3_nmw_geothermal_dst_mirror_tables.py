@@ -56,7 +56,6 @@ def upgrade() -> None:
         sa.Column("FldViscsty", sa.Float(), nullable=True),
         sa.Column("FluidLoss", sa.String(length=50), nullable=True),
         sa.Column("Notes", sa.String(length=255), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("BHTGUID"),
     )
     op.create_index(
@@ -74,7 +73,6 @@ def upgrade() -> None:
         sa.Column("DateMeasrd", sa.DateTime(), nullable=True),
         sa.Column("Comments", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index("ix_NMW_GtBhtData_BHTGUID", "NMW_GtBhtData", ["BHTGUID"])
@@ -92,7 +90,6 @@ def upgrade() -> None:
         sa.Column("From_Elev", sa.Float(), nullable=True),
         sa.Column("To_Elev", sa.Float(), nullable=True),
         sa.Column("Intv_Notes", sa.String(length=255), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("IntrvlGUID"),
     )
     op.create_index("ix_NMW_WsIntervals_SamplSetID", "NMW_WsIntervals", ["SamplSetID"])
@@ -105,7 +102,6 @@ def upgrade() -> None:
         sa.Column("CnductUnit", sa.String(length=3), nullable=True),
         sa.Column("Comments", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(
@@ -126,7 +122,6 @@ def upgrade() -> None:
         sa.Column("Q_unit", sa.String(length=3), nullable=True),
         sa.Column("Comments", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index("ix_NMW_GtHeatFlow_IntrvlGUID", "NMW_GtHeatFlow", ["IntrvlGUID"])
@@ -162,7 +157,6 @@ def upgrade() -> None:
         sa.Column("Quality", sa.String(length=50), nullable=True),
         sa.Column("Comments", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(
@@ -182,7 +176,6 @@ def upgrade() -> None:
         sa.Column("IntrvlGrad", sa.Float(), nullable=True),
         sa.Column("Comments", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(
@@ -226,7 +219,6 @@ def upgrade() -> None:
         sa.Column("PipeDia", sa.Float(), nullable=True),
         sa.Column("PipeLength", sa.Float(), nullable=True),
         sa.Column("Notes", sa.String(length=255), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("DSTInterval"),
     )
     op.create_index("ix_NMW_WsDstIntervals_DSTGUID", "NMW_WsDstIntervals", ["DSTGUID"])
@@ -245,7 +237,6 @@ def upgrade() -> None:
         sa.Column("RecovType", sa.String(length=255), nullable=True),
         sa.Column("Notes", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(
@@ -262,7 +253,6 @@ def upgrade() -> None:
         sa.Column("Chlorides", sa.Float(), nullable=True),
         sa.Column("Notes", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(
@@ -300,7 +290,6 @@ def upgrade() -> None:
         sa.Column("TempUnit", sa.String(length=5), nullable=True),
         sa.Column("Notes", sa.String(length=255), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index(

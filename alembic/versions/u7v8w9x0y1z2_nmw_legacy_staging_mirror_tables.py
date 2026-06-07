@@ -71,7 +71,6 @@ def upgrade() -> None:
         sa.Column("Exclude", sa.SmallInteger(), nullable=True),
         sa.Column("Comments", sa.String(), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.Column("API", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("OBJECTID"),
     )
@@ -115,7 +114,6 @@ def upgrade() -> None:
         sa.Column("Comments", sa.String(), nullable=True),
         sa.Column("Import_ID", sa.String(), nullable=True),
         sa.Column("Import_DB", sa.String(), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("WellDataID"),
     )
 
@@ -156,7 +154,6 @@ def upgrade() -> None:
         sa.Column("ElvAccVal", sa.Float(), nullable=True),
         sa.Column("Comments", sa.String(), nullable=True),
         sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("GlobalID"),
     )
     op.create_index("ix_NMW_WellZDatum_RecrdsetID", "NMW_WellZDatum", ["RecrdsetID"])
@@ -192,7 +189,6 @@ def upgrade() -> None:
         sa.Column("EnteredBy", sa.String(), nullable=True),
         sa.Column("EntryDate", sa.DateTime(), nullable=True),
         sa.Column("Notes", sa.String(), nullable=True),
-        sa.Column("SSMA_TimeStamp", sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint("SamplSetID"),
     )
     op.create_index("ix_NMW_WellSamples_RecrdsetID", "NMW_WellSamples", ["RecrdsetID"])

@@ -90,7 +90,7 @@ TYPE MAPPING (SQL Server -> SQLAlchemy)
     real / float     -> Float
     nvarchar         -> String      (source lengths not in the sheet; widened)
     datetime2        -> DateTime
-    timestamp        -> LargeBinary (SQL Server rowversion; staging only)
+    timestamp        -> dropped (SQL Server rowversion; no value as staging data)
 
 TODO(verify): primary keys below are inferred from the mapping sheet /
 relationship notes, not from source DDL. Confirm against the dump.
@@ -100,7 +100,6 @@ from sqlalchemy import (
     DateTime,
     Float,
     Integer,
-    LargeBinary,
     SmallInteger,
     String,
 )
@@ -160,7 +159,6 @@ class NMW_WellLocations(Base):
     exclude = mapped_column("Exclude", SmallInteger)  # Drop
     comments = mapped_column("Comments", String)  # (unmapped)
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
     api = mapped_column("API", String)  # Drop
 
 
@@ -214,7 +212,6 @@ class NMW_WellHeaders(Base):
     comments = mapped_column("Comments", String)  # -> well_detail.comments
     import_id = mapped_column("Import_ID", String)  # Drop
     import_db = mapped_column("Import_DB", String)  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WellRecords(Base):
@@ -291,7 +288,6 @@ class NMW_WellZDatum(Base):
     comments = mapped_column("Comments", String)  # Drop
     # TODO(verify PK): GlobalID assumed PK.
     global_id = mapped_column("GlobalID", UUID(as_uuid=True), primary_key=True)  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WellSamples(Base):
@@ -337,7 +333,6 @@ class NMW_WellSamples(Base):
     entered_by = mapped_column("EnteredBy", String)  # -> sample.created_by_name
     entry_date = mapped_column("EntryDate", DateTime)  # -> sample.created_at
     notes = mapped_column("Notes", String)  # -> sample.notes
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 # =============================================================================
@@ -367,7 +362,6 @@ class NMW_GtBhtHeaders(Base):
     fld_viscsty = mapped_column("FldViscsty", Float)
     fluid_loss = mapped_column("FluidLoss", String(50))
     notes = mapped_column("Notes", String(255))
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_GtBhtData(Base):
@@ -386,7 +380,6 @@ class NMW_GtBhtData(Base):
     date_measrd = mapped_column("DateMeasrd", DateTime)
     comments = mapped_column("Comments", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WsIntervals(Base):
@@ -407,7 +400,6 @@ class NMW_WsIntervals(Base):
     from_elev = mapped_column("From_Elev", Float)
     to_elev = mapped_column("To_Elev", Float)
     intv_notes = mapped_column("Intv_Notes", String(255))
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_GtConductivity(Base):
@@ -423,7 +415,6 @@ class NMW_GtConductivity(Base):
     cnduct_unit = mapped_column("CnductUnit", String(3))
     comments = mapped_column("Comments", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_GtHeatFlow(Base):
@@ -445,7 +436,6 @@ class NMW_GtHeatFlow(Base):
     q_unit = mapped_column("Q_unit", String(3))
     comments = mapped_column("Comments", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_GtSumHeatFlow(Base):
@@ -486,7 +476,6 @@ class NMW_GtSumHeatFlow(Base):
     quality = mapped_column("Quality", String(50))
     comments = mapped_column("Comments", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_GtTempDepths(Base):
@@ -504,7 +493,6 @@ class NMW_GtTempDepths(Base):
     intrvl_grad = mapped_column("IntrvlGrad", Float)
     comments = mapped_column("Comments", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 # =============================================================================
@@ -555,7 +543,6 @@ class NMW_WsDstIntervals(Base):
     pipe_dia = mapped_column("PipeDia", Float)
     pipe_length = mapped_column("PipeLength", Float)
     notes = mapped_column("Notes", String(255))
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WsDstFlowHistory(Base):
@@ -577,7 +564,6 @@ class NMW_WsDstFlowHistory(Base):
     recov_type = mapped_column("RecovType", String(255))
     notes = mapped_column("Notes", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WsDstFluidProperties(Base):
@@ -595,7 +581,6 @@ class NMW_WsDstFluidProperties(Base):
     chlorides = mapped_column("Chlorides", Float)
     notes = mapped_column("Notes", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 class NMW_WsDstPressure(Base):
@@ -632,7 +617,6 @@ class NMW_WsDstPressure(Base):
     temp_unit = mapped_column("TempUnit", String(5))
     notes = mapped_column("Notes", String(255))
     global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
-    ssma_timestamp = mapped_column("SSMA_TimeStamp", LargeBinary)  # Drop (rowversion)
 
 
 # =============================================================================
