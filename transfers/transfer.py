@@ -13,8 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+"""DEPRECATED: legacy NM_Aquifer -> Ocotillo transfer orchestrator.
+
+This module (the original AMPAPI / NM_Aquifer migration driver) is deprecated.
+Do not add new migrations here. New migrations get their own standalone
+orchestrator script; e.g. the NM_Wells geothermal migration lives in
+``transfers/transfer_geothermal.py``.
+"""
 import os
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -55,8 +63,6 @@ from db.initialization import recreate_public_schema, sync_search_vector_trigger
 from services.env import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
-from transfers.reference_lexicon_transfer import transfer_reference_tables
-from transfers.nmw_mirror_transfer import transfer_nmw_mirror
 from transfers.permissions_transfer import transfer_permissions
 from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
@@ -326,6 +332,12 @@ def _drop_and_rebuild_db() -> None:
 
 @timeit
 def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
+    warnings.warn(
+        "transfers.transfer is deprecated; new migrations get their own "
+        "orchestrator (e.g. transfers/transfer_geothermal.py).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     message("STARTING TRANSFER", new_line_at_top=False)
     if get_bool_env("DROP_AND_REBUILD_DB", False):
         logger.info("Dropping schema and rebuilding database from migrations")
@@ -362,12 +374,11 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
     else:
         message("PHASE 1: FOUNDATIONAL TRANSFERS (PARALLEL)")
         foundational_tasks = [
-            ("ReferenceLexicon", transfer_reference_tables),
             ("AquiferSystems", transfer_aquifer_systems),
             ("GeologicFormations", transfer_geologic_formations),
         ]
 
-        with ThreadPoolExecutor(max_workers=len(foundational_tasks)) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
                 executor.submit(
                     _execute_foundational_transfer_with_timing, name, func, limit
@@ -385,13 +396,6 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
                 except Exception as e:
                     logger.critical(f"Foundational transfer {name} failed: {e}")
                     raise  # Fail fast - foundational transfers must succeed
-
-        # NM_Wells 1:1 staging mirror (separate source DB). Off by default so it
-        # does not run during the standard NM_Aquifer -> Ocotillo transfer.
-        if get_bool_env("TRANSFER_NMW_MIRROR", False):
-            message("NM_WELLS 1:1 STAGING MIRROR LOAD")
-            with session_ctx() as session:
-                transfer_nmw_mirror(session, limit=limit)
 
         message("TRANSFERRING WELLS")
         use_parallel_wells = get_bool_env("TRANSFER_PARALLEL_WELLS", True)
