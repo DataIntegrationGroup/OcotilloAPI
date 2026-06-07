@@ -4,7 +4,7 @@ Revision ID: w9x0y1z2a3b4
 Revises: v8w9x0y1z2a3
 Create Date: 2026-06-07 00:00:00.000000
 
-Two pygeoapi point layers over the NM_Wells staging mirror (db/nmw_legacy.py):
+Two point layers over the NM_Wells staging mirror (db/nmw_legacy.py):
 
     ogc_geothermal_wells_bht
         One feature per geothermal well that has bottom-hole-temperature data
@@ -134,7 +134,7 @@ def upgrade() -> None:
     op.execute(
         text(
             f"COMMENT ON VIEW {_BHT_VIEW} IS "
-            "'Geothermal wells with bottom-hole-temperature data (pygeoapi).'"
+            "'Geothermal wells with bottom-hole-temperature data.'"
         )
     )
 
@@ -143,8 +143,7 @@ def upgrade() -> None:
     op.execute(
         text(
             f"COMMENT ON VIEW {_PROFILE_VIEW} IS "
-            "'Geothermal wells with downhole temperature-vs-depth series "
-            "(pygeoapi).'"
+            "'Geothermal wells with downhole temperature-vs-depth series.'"
         )
     )
 
