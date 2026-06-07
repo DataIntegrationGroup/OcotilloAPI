@@ -4,9 +4,10 @@ Revision ID: x0y1z2a3b4c5
 Revises: w9x0y1z2a3b4
 Create Date: 2026-06-07 00:00:01.000000
 
-pygeoapi point layer of geothermal wells with summary heat-flow determinations
-(NMW_GtSumHeatFlow), one feature per well with aggregate heat-flow / gradient /
-conductivity stats. Geometry from NMW_WellLocations Lat/Long_dd83.
+pygeoapi point layer ogc_geothermal_wells_summary_heat_flow: geothermal wells
+with summary heat-flow determinations (NMW_GtSumHeatFlow), one feature per well
+with aggregate stats plus a `measurements` JSON series (one element per
+determination, ordered by depth). Geometry from NMW_WellLocations Lat/Long_dd83.
 
 Link: NMW_GtSumHeatFlow.RecrdSetID -> NMW_WellRecords.RecrdSetID ->
 NMW_WellLocations/Headers.WellDataID.
@@ -23,7 +24,7 @@ down_revision: Union[str, Sequence[str], None] = "w9x0y1z2a3b4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-_VIEW = "ogc_geothermal_wells_heat_flow"
+_VIEW = "ogc_geothermal_wells_summary_heat_flow"
 
 _REQUIRED_TABLES = (
     "NMW_WellLocations",
@@ -35,7 +36,7 @@ _REQUIRED_TABLES = (
 
 def _create_view() -> str:
     return """
-        CREATE VIEW ogc_geothermal_wells_heat_flow AS
+        CREATE VIEW ogc_geothermal_wells_summary_heat_flow AS
         SELECT
             r."WellDataID"                                       AS well_data_id,
             hdr."CurWellNam"                                     AS well_name,
@@ -49,6 +50,22 @@ def _create_view() -> str:
             max(shf."ThermlCond")                                AS max_thermal_conductivity,
             max(shf."TCondUnit")                                 AS conductivity_unit,
             max(shf."Quality")                                   AS quality,
+            json_agg(
+                json_build_object(
+                    'from_depth', shf."FromDepth",
+                    'to_depth', shf."ToDepth",
+                    'depth_unit', shf."DepthUnit",
+                    'heat_flow', shf."HeatFlow",
+                    'heat_flow_error', shf."HtFlowErr",
+                    'heat_flow_unit', shf."HtFlowUnit",
+                    'thermal_gradient', shf."ThermlGrad",
+                    'gradient_unit', shf."GradUnit",
+                    'thermal_conductivity', shf."ThermlCond",
+                    'conductivity_unit', shf."TCondUnit",
+                    'quality', shf."Quality"
+                )
+                ORDER BY shf."FromDepth"
+            )                                                    AS measurements,
             ST_SetSRID(
                 ST_MakePoint(loc."Long_dd83", loc."Lat_dd83"), 4326
             )                                                    AS geom
