@@ -21,18 +21,27 @@ export is read and its rows are inserted into the matching ``NMW_*`` mirror
 model with NO transformation beyond type coercion. The Phase 2 transform into
 the Ocotillo model is separate.
 
-Generic + data-driven: one ``MirrorSpec`` per (model, source CSV). Column
+Generic + data-driven: one ``MirrorSpec`` per (model, source table). Column
 handling is derived from each model's ``__table__`` metadata, so adding a new
 mirror table requires only a model + a spec entry (no per-table code).
 
-Source CSVs are read with ``transfers.util.read_csv`` (looks in
-``transfers/data/nma_csv_cache/<table>.csv`` then GCS ``nma_csv/<table>.csv``).
-CSV headers are expected to be the original SQL Server column names (OBJECTID,
-WellDataID, GlobalID, ...), which match the mirror columns' DB names exactly.
+Two row sources, selected at runtime:
+
+1. **SQL Server data dump** (preferred): set ``NMW_SQL_DUMP`` to a ``.sql`` file
+   containing ``INSERT [dbo].[tbl_*] (...) VALUES (...)`` statements. Rows are
+   streamed and parsed by ``transfers.nmw_sql_dump.iter_table_rows``.
+2. **CSV exports** (fallback when ``NMW_SQL_DUMP`` is unset): per-table CSVs read
+   with ``transfers.util.read_csv`` (``transfers/data/nma_csv_cache/<table>.csv``
+   then GCS ``nma_csv/<table>.csv``).
+
+In both cases the source column names are the original SQL Server names
+(OBJECTID, WellDataID, ...), which match the mirror columns' DB names exactly.
 
 Idempotent: rows upsert via ``INSERT ... ON CONFLICT (<pk>) DO NOTHING``.
 """
 
+import itertools
+import os
 import uuid
 from dataclasses import dataclass
 
@@ -62,8 +71,12 @@ from db.nmw_legacy import (
     NMW_WsIntervals,
 )
 from transfers.logger import logger
+from transfers.nmw_sql_dump import iter_table_rows
 from transfers.util import read_csv
 
+# Path to a SQL Server data-dump .sql file. When set, rows are parsed from it;
+# otherwise the loader falls back to per-table CSV exports.
+_SQL_DUMP_ENV = "NMW_SQL_DUMP"
 _CHUNK_SIZE = 2000
 
 
@@ -145,70 +158,78 @@ def _coerce(value, col_type):
     return value
 
 
+def _row_source(spec: MirrorSpec):
+    """Return ``(iterator_of_raw_dicts, source_label)`` for a spec.
+
+    SQL dump if ``NMW_SQL_DUMP`` is set, otherwise CSV. Raises on a hard read
+    error so the caller can record/skip the table.
+    """
+    dump = os.getenv(_SQL_DUMP_ENV)
+    if dump:
+        return iter_table_rows(dump, spec.source_table), f"sql:{os.path.basename(dump)}"
+    df = read_csv(spec.source_table)
+    return (rec for rec in df.to_dict("records")), "csv"
+
+
+def _flush(session: Session, model, rows: list[dict], pk_cols: list[str]) -> int:
+    """Upsert a batch; return inserted row count."""
+    if not rows:
+        return 0
+    stmt = pg_insert(model).values(rows).on_conflict_do_nothing(index_elements=pk_cols)
+    result = session.execute(stmt)
+    session.commit()
+    return result.rowcount if result.rowcount and result.rowcount > 0 else 0
+
+
 def _load_table(session: Session, spec: MirrorSpec, limit: int = 0) -> dict:
-    """Load one source CSV into its mirror table. Returns a stats dict."""
+    """Load one source table (SQL dump or CSV) into its mirror. Stats dict."""
     table = spec.model.__table__
     name = spec.source_table
+    # Loadable columns from the model (rowversion/LargeBinary excluded defensively).
+    cols = {c.name: c for c in table.columns if not isinstance(c.type, LargeBinary)}
+    pk_cols = [c.name for c in table.primary_key]
 
     try:
-        df = read_csv(name)
-    except Exception as e:  # noqa: BLE001 - missing CSV / GCS miss must not abort
-        logger.warning("Skipping %s (could not read CSV): %s", name, e)
+        rows_iter, src = _row_source(spec)
+    except Exception as e:  # noqa: BLE001 - missing source must not abort the run
+        logger.warning("Skipping %s (could not read source): %s", name, e)
         return {"table": name, "skipped": True, "reason": str(e)}
 
     if limit and limit > 0:
-        df = df.head(limit)
-    if df.empty:
-        logger.warning("Skipping %s (empty)", name)
-        return {"table": name, "skipped": True, "reason": "empty"}
+        rows_iter = itertools.islice(rows_iter, limit)
 
-    # Columns to load = mirror columns present in the CSV, excluding rowversion
-    # (LargeBinary) which is a SQL Server artifact with no meaningful CSV value.
-    cols = {c.name: c for c in table.columns if not isinstance(c.type, LargeBinary)}
-    present = [n for n in df.columns if n in cols]
-    missing_csv = [n for n in cols if n not in df.columns]
-    extra_csv = [n for n in df.columns if n not in cols]
-    if not present:
-        logger.warning(
-            "Skipping %s: no overlapping columns (csv has %s)", name, list(df.columns)
-        )
-        return {"table": name, "skipped": True, "reason": "no matching columns"}
-    if missing_csv:
-        logger.warning("%s: mirror columns absent from CSV: %s", name, missing_csv)
-    if extra_csv:
-        logger.info("%s: ignoring %d unmapped CSV column(s)", name, len(extra_csv))
-
-    pk_cols = [c.name for c in table.primary_key]
-    # NaN/NaT are normalized to None inside _coerce (pandas keeps them in typed
-    # columns), so the raw dict records are fine here.
-    records = df[present].to_dict("records")
-    total = len(records)
+    total = 0
     inserted = 0
+    batch: list[dict] = []
+    warned_cols = False
+    for rec in rows_iter:
+        total += 1
+        if not warned_cols:
+            missing = [n for n in cols if n not in rec]
+            if missing:
+                logger.warning(
+                    "%s: mirror columns absent from source: %s", name, missing
+                )
+            warned_cols = True
+        # NaN/NaT (CSV) and NULL (SQL) normalize to None inside _coerce.
+        row = {n: _coerce(rec.get(n), cols[n].type) for n in cols if n in rec}
+        if any(row.get(pk) is None for pk in pk_cols):
+            continue  # cannot upsert without a PK value
+        batch.append(row)
+        if len(batch) >= _CHUNK_SIZE:
+            inserted += _flush(session, spec.model, batch, pk_cols)
+            batch = []
+    inserted += _flush(session, spec.model, batch, pk_cols)
 
-    for start in range(0, total, _CHUNK_SIZE):
-        chunk = records[start : start + _CHUNK_SIZE]
-        rows = []
-        for rec in chunk:
-            row = {n: _coerce(rec.get(n), cols[n].type) for n in present}
-            # Drop rows missing a PK value (cannot upsert).
-            if any(row.get(pk) is None for pk in pk_cols):
-                continue
-            rows.append(row)
-        if not rows:
-            continue
-        stmt = (
-            pg_insert(spec.model)
-            .values(rows)
-            .on_conflict_do_nothing(index_elements=pk_cols)
-        )
-        result = session.execute(stmt)
-        session.commit()
-        inserted += result.rowcount if result.rowcount and result.rowcount > 0 else 0
+    if total == 0:
+        logger.warning("Skipping %s (no source rows from %s)", name, src)
+        return {"table": name, "skipped": True, "reason": "no rows", "source": src}
 
     logger.info(
-        "Mirror %s -> %s: %d source rows, %d inserted",
+        "Mirror %s -> %s [%s]: %d source rows, %d inserted",
         name,
         table.name,
+        src,
         total,
         inserted,
     )
@@ -217,16 +238,26 @@ def _load_table(session: Session, spec: MirrorSpec, limit: int = 0) -> dict:
         "skipped": False,
         "rows": total,
         "inserted": inserted,
+        "source": src,
     }
 
 
 def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
-    """Load all NM_Wells source CSVs into the ``NMW_*`` staging mirror.
+    """Load all NM_Wells source tables into the ``NMW_*`` staging mirror.
 
-    Same ``(session, limit)`` signature as the other session-based transfers.
-    Returns ``(num_tables_loaded, total_rows_inserted, errors)``.
+    Source is a SQL dump (``NMW_SQL_DUMP``) when set, else per-table CSVs. Same
+    ``(session, limit)`` signature as the other session-based transfers. Returns
+    ``(num_tables_loaded, total_rows_inserted, errors)``.
     """
     limit = int(limit or 0)
+    dump = os.getenv(_SQL_DUMP_ENV)
+    if dump:
+        if not os.path.exists(dump):
+            raise FileNotFoundError(f"{_SQL_DUMP_ENV} set but file not found: {dump}")
+        logger.info("NMW mirror source: SQL dump %s", dump)
+    else:
+        logger.info("NMW mirror source: CSV exports (set %s for a dump)", _SQL_DUMP_ENV)
+
     results = []
     errors = []
     for spec in NMW_MIRROR_SPECS:
