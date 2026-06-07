@@ -92,8 +92,14 @@ TYPE MAPPING (SQL Server -> SQLAlchemy)
     datetime2        -> DateTime
     timestamp        -> dropped (SQL Server rowversion; no value as staging data)
 
-TODO(verify): primary keys below are inferred from the mapping sheet /
-relationship notes, not from source DDL. Confirm against the dump.
+PRIMARY KEYS (verified against the NM_Wells SQL dump DDL)
+--------------------------------------------------------
+- NMW_WellHeaders -> WellDataID, NMW_WellRecords -> RecrdSetID,
+  NMW_WellSamples -> SamplSetID: declared PRIMARY KEY constraints in source.
+- NMW_WellLocations, NMW_WellZDatum: source declares no PK, only unique indexes
+  on OBJECTID and GlobalID; OBJECTID (identity, never NULL) is used.
+- Geothermal/DST: declared PKs where present (BHTGUID, IntrvlGUID, DSTGUID,
+  DSTInterval); the rest are heaps keyed on the OBJECTID identity column.
 """
 
 from sqlalchemy import (
@@ -118,7 +124,8 @@ class NMW_WellLocations(Base):
 
     __tablename__ = "NMW_WellLocations"
 
-    # TODO(verify PK): tbl has no clear GUID PK; OBJECTID is the identity col.
+    # No declared PK in source; OBJECTID (identity, unique index, always
+    # non-null) chosen over the also-unique GlobalID, which permits a NULL.
     object_id = mapped_column("OBJECTID", Integer, primary_key=True)  # Drop
     well_data_id = mapped_column(
         "WellDataID", UUID(as_uuid=True), index=True
@@ -254,7 +261,9 @@ class NMW_WellZDatum(Base):
 
     __tablename__ = "NMW_WellZDatum"
 
-    object_id = mapped_column("OBJECTID", Integer)  # Drop
+    # No declared PK in source; OBJECTID (identity, unique index, always
+    # non-null) chosen over the also-unique GlobalID, which permits a NULL.
+    object_id = mapped_column("OBJECTID", Integer, primary_key=True)  # Drop
     recrdset_id = mapped_column(
         "RecrdsetID", UUID(as_uuid=True), index=True
     )  # FK -> records
@@ -286,8 +295,7 @@ class NMW_WellZDatum(Base):
     elv_acc_meas = mapped_column("ElvAccMeas", String)  # Drop
     elv_acc_val = mapped_column("ElvAccVal", Float)  # Drop
     comments = mapped_column("Comments", String)  # Drop
-    # TODO(verify PK): GlobalID assumed PK.
-    global_id = mapped_column("GlobalID", UUID(as_uuid=True), primary_key=True)  # Drop
+    global_id = mapped_column("GlobalID", UUID(as_uuid=True))  # Drop
 
 
 class NMW_WellSamples(Base):

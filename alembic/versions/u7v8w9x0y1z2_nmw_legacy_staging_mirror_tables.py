@@ -137,7 +137,7 @@ def upgrade() -> None:
 
     op.create_table(
         "NMW_WellZDatum",
-        sa.Column("OBJECTID", sa.Integer(), nullable=True),
+        sa.Column("OBJECTID", sa.Integer(), nullable=False),
         sa.Column("RecrdsetID", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("Elev_GL", sa.Float(), nullable=True),
         sa.Column("Elev_DF", sa.Float(), nullable=True),
@@ -153,8 +153,8 @@ def upgrade() -> None:
         sa.Column("ElvAccMeas", sa.String(), nullable=True),
         sa.Column("ElvAccVal", sa.Float(), nullable=True),
         sa.Column("Comments", sa.String(), nullable=True),
-        sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.PrimaryKeyConstraint("GlobalID"),
+        sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.PrimaryKeyConstraint("OBJECTID"),
     )
     op.create_index("ix_NMW_WellZDatum_RecrdsetID", "NMW_WellZDatum", ["RecrdsetID"])
 
