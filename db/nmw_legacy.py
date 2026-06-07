@@ -100,6 +100,20 @@ PRIMARY KEYS (verified against the NM_Wells SQL dump DDL)
   on OBJECTID and GlobalID; OBJECTID (identity, never NULL) is used.
 - Geothermal/DST: declared PKs where present (BHTGUID, IntrvlGUID, DSTGUID,
   DSTInterval); the rest are heaps keyed on the OBJECTID identity column.
+
+LEXICON FLAGGING (Phase 2)
+--------------------------
+Every ``ref_*`` table is loaded as a ``LexiconCategory`` whose rows become
+``LexiconTerm``s (see transfers/reference_lexicon_transfer.py). The mirror
+columns that hold those coded values will, in the Phase-2 Ocotillo model,
+become ``lexicon_term`` foreign keys / enums.
+
+``LEXICON_REF_BY_COLUMN`` below flags every such attribute, mapping
+``{tablename: {source_column: ref_source_table}}``. The lexicon *category* for
+each ref table is assigned by ``transfers/reference_lexicon_transfer.py`` (one
+category per ref table), so this map records the stable ref-table name rather
+than the derived category string. ``LEXICON_CANDIDATES_NO_REF`` lists coded
+columns that have no ``ref_*`` table and will need a NEW category / enum.
 """
 
 from sqlalchemy import (
@@ -113,6 +127,89 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column
 
 from db.base import Base
+
+
+# Attributes that will become lexicon_term FKs / enums in the Phase-2 transform.
+# {tablename: {source_column: ref_source_table}}. The lexicon category per ref
+# table is assigned by transfers/reference_lexicon_transfer.py.
+LEXICON_REF_BY_COLUMN: dict[str, dict[str, str]] = {
+    "NMW_WellLocations": {
+        "UnitLetter": "ref_unit_letters",
+        "State": "ref_states",
+        "County": "ref_county",
+        "Basin": "ref_basins",
+        "SourceDatum": "ref_coordinate_datum",
+        "SourceUnits": "ref_xy_units",
+        "LocAccType": "ref_coordinate_accuracy",
+        "LocAccMeas": "ref_coordinate_method",
+    },
+    "NMW_WellHeaders": {
+        "WellClass": "ref_well_class",
+        "WellType": "ref_well_types",
+        "WellOrient": "ref_well_orientations",
+        "CurStatus": "ref_well_status",
+    },
+    "NMW_WellRecords": {
+        "RecrdClass": "ref_well_record_class",
+    },
+    "NMW_WellZDatum": {
+        "DepthDatum": "ref_ground_levels",
+        "DepthUnits": "ref_unit_depths",
+        "Z_datum": "ref_altitude_datums",
+        "Z_units": "ref_unit_depths",
+        "ElevSource": "ref_altitude_methods",
+    },
+    "NMW_WellSamples": {
+        "SamplClass": "ref_sample_class",
+        "SampleType": "ref_sample_types",
+        "SmpDpUnt": "ref_unit_depths",
+    },
+    "NMW_GtBhtHeaders": {
+        "BoreUnits": "ref_length_units",
+        "TempUnit": "ref_unit_temps",
+    },
+    "NMW_GtBhtData": {
+        "TempUnit": "ref_unit_temps",
+    },
+    "NMW_GtConductivity": {
+        "CnductUnit": "ref_unit_conductivity",
+    },
+    "NMW_GtHeatFlow": {
+        "Kpr_unit": "ref_unit_conductivity",
+        "Q_unit": "ref_unit_heat_flow",
+    },
+    "NMW_GtSumHeatFlow": {
+        "LithClass": "ref_lith_class",
+        "UnitBasis": "ref_unit_basis",
+        "DepthUnit": "ref_unit_depths",
+        "GradUnit": "ref_unit_gradients",
+        "SampleType": "ref_sample_types",
+        "TCondUnit": "ref_unit_conductivity",
+        "HtFlowUnit": "ref_unit_heat_flow",
+    },
+    "NMW_GtTempDepths": {
+        "TempUnit": "ref_unit_temps",
+    },
+    "NMW_WsDstHeaders": {
+        "PressUnits": "ref_pres_units",
+        "TempUnit": "ref_unit_temps",
+        "PipeDiaUnt": "ref_length_units",
+        "PipeLenUnt": "ref_length_units",
+        "ChokeSizUn": "ref_length_units",
+    },
+}
+
+# Coded/categorical columns with NO existing ref_* table; Phase 2 must create a
+# new lexicon category or enum for these. {tablename: [source_column, ...]}.
+LEXICON_CANDIDATES_NO_REF: dict[str, list[str]] = {
+    "NMW_GtBhtHeaders": ["DrillFluid"],
+    "NMW_GtHeatFlow": ["Ka_unit"],
+    "NMW_GtSumHeatFlow": ["Quality"],
+    "NMW_WsDstHeaders": ["TestType"],
+    "NMW_WsDstIntervals": ["Status"],
+    "NMW_WsDstFlowHistory": ["Operation", "RecovType"],
+    "NMW_WsDstPressure": ["DSTFluid"],
+}
 
 
 class NMW_WellLocations(Base):
