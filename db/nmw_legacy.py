@@ -128,7 +128,6 @@ from sqlalchemy.orm import mapped_column
 
 from db.base import Base
 
-
 # Attributes that will become lexicon_term FKs / enums in the Phase-2 transform.
 # {tablename: {source_column: ref_source_table}}. The lexicon category per ref
 # table is assigned by transfers/reference_lexicon_transfer.py.
