@@ -25,8 +25,9 @@ upsert via ``ON CONFLICT DO NOTHING`` (both ``name``/``term`` are unique);
 term<->category associations are inserted only when missing (no unique
 constraint exists on that table).
 
-Source CSVs are read with ``transfers.util.read_csv`` (looks in
-``transfers/data/nma_csv_cache/<table>.csv`` then GCS ``nma_csv/<table>.csv``).
+Row source is the same as the mirror loader: a SQL Server data dump when
+``NMW_SQL_DUMP`` is set (parsed by ``transfers.nmw_sql_dump.iter_table_rows``),
+otherwise per-table CSV exports via ``transfers.util.read_csv``.
 
 NOTE(columns): the ref tables' actual column names are not in the workbook, so
 term/definition columns are AUTO-DETECTED per table (see ``_pick_columns``). If
@@ -38,6 +39,8 @@ LU_Status, LU_Type_Wellheader, LU_WorkType) are also "Add to lexicon"; add them
 to ``REFERENCE_TABLE_SPECS`` once their CSVs are available.
 """
 
+import itertools
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -52,8 +55,12 @@ from db import (
     LexiconTermCategoryAssociation,
 )
 from transfers.logger import logger
+from transfers.nmw_sql_dump import iter_table_rows
 from transfers.util import read_csv
 
+# Same source selector as the mirror loader: a SQL Server data dump when
+# NMW_SQL_DUMP is set, otherwise per-table CSV exports.
+_SQL_DUMP_ENV = "NMW_SQL_DUMP"
 # lexicon_term.term (and its FK targets) is String(100).
 _TERM_MAX_LEN = 100
 
@@ -158,15 +165,15 @@ REFERENCE_TABLE_SPECS: list[RefTableSpec] = [
 ]
 
 
-def _pick_columns(df: pd.DataFrame, spec: RefTableSpec) -> tuple[str, str]:
+def _pick_columns(columns: list[str], spec: RefTableSpec) -> tuple[str, str]:
     """Resolve (term_col, definition_col) for a ref table.
 
-    Honors explicit overrides on the spec, else auto-detects from the header
-    using name hints, ignoring meta columns (OBJECTID, GlobalID, ...).
+    Honors explicit overrides on the spec, else auto-detects from the column
+    names using name hints, ignoring meta columns (OBJECTID, GlobalID, ...).
     """
-    cols = [c for c in df.columns if str(c).strip().lower() not in _META_COLS]
+    cols = [c for c in columns if str(c).strip().lower() not in _META_COLS]
     if not cols:
-        cols = list(df.columns)
+        cols = list(columns)
     low = {c: str(c).strip().lower() for c in cols}
 
     term_col = spec.term_col
@@ -213,29 +220,53 @@ def _get_or_create_category(session: Session, spec: RefTableSpec) -> int:
     ).scalar_one()
 
 
+def _iter_source_rows(table: str, limit: int = 0):
+    """Yield raw ``{column: value}`` dicts for a ref table.
+
+    SQL dump when NMW_SQL_DUMP is set (same source as the mirror loader),
+    otherwise per-table CSV. Mirrors transfers.nmw_mirror_transfer._row_source.
+    """
+    dump = os.getenv(_SQL_DUMP_ENV)
+    if dump:
+        it = iter_table_rows(dump, table)
+    else:
+        df = read_csv(table)
+        it = (rec for rec in df.to_dict("records"))
+    if limit and limit > 0:
+        it = itertools.islice(it, limit)
+    return it
+
+
 def _transfer_one(session: Session, spec: RefTableSpec, limit: int = 0) -> dict:
     """Load a single ref table into the lexicon. Returns a stats dict."""
     try:
-        df = read_csv(spec.source_table)
-    except Exception as e:  # noqa: BLE001 - missing CSV / GCS miss should not abort
-        logger.warning("Skipping %s (could not read CSV): %s", spec.source_table, e)
+        rows = list(_iter_source_rows(spec.source_table, limit))
+    except Exception as e:  # noqa: BLE001 - missing source should not abort the run
+        logger.warning("Skipping %s (could not read source): %s", spec.source_table, e)
         return {"table": spec.source_table, "skipped": True, "reason": str(e)}
 
-    if limit and limit > 0:
-        df = df.head(limit)
-
-    if df.empty or not list(df.columns):
+    if not rows:
         logger.warning("Skipping %s (empty)", spec.source_table)
         return {"table": spec.source_table, "skipped": True, "reason": "empty"}
 
-    term_col, def_col = _pick_columns(df, spec)
+    # Column names from the union of row keys (CSV rows and SSMS INSERTs are
+    # column-consistent, but be defensive).
+    columns: list[str] = []
+    seen = set()
+    for rec in rows:
+        for k in rec:
+            if k not in seen:
+                seen.add(k)
+                columns.append(k)
+
+    term_col, def_col = _pick_columns(columns, spec)
     logger.info(
         "%s -> category=%s term_col=%s definition_col=%s (%d rows)",
         spec.source_table,
         spec.category,
         term_col,
         def_col,
-        len(df),
+        len(rows),
     )
 
     category_id = _get_or_create_category(session, spec)
@@ -243,14 +274,14 @@ def _transfer_one(session: Session, spec: RefTableSpec, limit: int = 0) -> dict:
     # Build unique (term -> definition) map, dropping empties and overlong terms.
     term_defs: dict[str, str] = {}
     truncated = 0
-    for row in df.itertuples(index=False):
-        term = _clean(getattr(row, term_col, None))
+    for rec in rows:
+        term = _clean(rec.get(term_col))
         if term is None:
             continue
         if len(term) > _TERM_MAX_LEN:
             term = term[:_TERM_MAX_LEN]
             truncated += 1
-        definition = _clean(getattr(row, def_col, None)) or term
+        definition = _clean(rec.get(def_col)) or term
         term_defs.setdefault(term, definition)
 
     if not term_defs:
@@ -316,7 +347,7 @@ def _transfer_one(session: Session, spec: RefTableSpec, limit: int = 0) -> dict:
     return {
         "table": spec.source_table,
         "skipped": False,
-        "rows": len(df),
+        "rows": len(rows),
         "terms": len(term_defs),
         "created_terms": len(new_rows),
         "linked": len(assoc_rows),
@@ -331,6 +362,16 @@ def transfer_reference_tables(session: Session, limit: int = None) -> tuple:
     ``(num_tables, total_created_terms, errors)``.
     """
     limit = int(limit or 0)
+    dump = os.getenv(_SQL_DUMP_ENV)
+    if dump:
+        if not os.path.exists(dump):
+            raise FileNotFoundError(f"{_SQL_DUMP_ENV} set but file not found: {dump}")
+        logger.info("Reference lexicon source: SQL dump %s", dump)
+    else:
+        logger.info(
+            "Reference lexicon source: CSV exports (set %s for a dump)", _SQL_DUMP_ENV
+        )
+
     results = []
     errors = []
     for spec in REFERENCE_TABLE_SPECS:
