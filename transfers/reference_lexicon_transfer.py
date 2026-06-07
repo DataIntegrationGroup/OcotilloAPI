@@ -97,11 +97,10 @@ class RefTableSpec:
 
 
 def _spec(table: str) -> RefTableSpec:
-    """Build a spec with category = table name minus the ``ref_`` prefix."""
-    category = table[4:] if table.startswith("ref_") else table
+    """Build a spec with category ``nmw_<table>`` (e.g. ``nmw_ref_states``)."""
     return RefTableSpec(
         source_table=table,
-        category=category,
+        category=f"nmw_{table}",
         description=f"Imported from NM_Wells {table}",
     )
 
