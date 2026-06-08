@@ -1,11 +1,8 @@
 name: CD (Production)
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'        # GA releases: v1.0.0, v1.4.2
-      - 'v*.*.*-*'      # SemVer pre-releases: v1.0.0-rc.1
-      - 'v*.*.*[a-z]*'  # PEP 440 pre-releases: v1.0.0rc1, v1.0.0b2 (release-please-python form)
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -13,14 +10,31 @@ permissions:
 jobs:
     production-deploy:
 
+        # Safety rail: only deploy when the release tag is version-shaped
+        # (v*.*.*, v*.*.*-*, v*.*.*[a-z]*). startsWith() is a cheap pre-filter;
+        # the "Validate release tag" step enforces the strict regex.
+        if: startsWith(github.event.release.tag_name, 'v')
+
         runs-on: ubuntu-latest
         environment: production
 
         steps:
+        - name: Validate release tag matches version pattern
+          env:
+            TAG: ${{ github.event.release.tag_name }}
+          run: |
+            if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+|[a-z].*)?$ ]]; then
+              echo "Release tag '$TAG' does not match the v*.*.* pattern. Refusing to deploy."
+              exit 1
+            fi
+
         - name: Check out source repository
           uses: actions/checkout@v6.0.3
           with:
             fetch-depth: 0
+            # Fully-qualified tag ref avoids ambiguity if a branch is ever
+            # created with the same name as the release tag.
+            ref: refs/tags/${{ github.event.release.tag_name }}
 
         - name: Install uv in container
           uses: astral-sh/setup-uv@v8.2.0
@@ -69,7 +83,7 @@ jobs:
 
         - name: Render App Engine configs
           env:
-            APP_VERSION: ${{ github.ref_name }}
+            APP_VERSION: ${{ github.event.release.tag_name }}
             ENVIRONMENT: "production"
             CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
             CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
