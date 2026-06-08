@@ -61,7 +61,7 @@ jobs:
           CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
           CLOUD_SQL_IAM_AUTH: true
         run: |
-          uv run alembic upgrade head
+          uv run --no-dev alembic upgrade head
 
       - name: Refresh materialized views on production database
         env:
@@ -71,7 +71,7 @@ jobs:
           CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
           CLOUD_SQL_IAM_AUTH: true
         run: |
-          uv run python -m cli.cli refresh-pygeoapi-materialized-views
+          uv run --no-dev python -m cli.cli refresh-pygeoapi-materialized-views
 
       - name: Ensure envsubst is available
         run: |
