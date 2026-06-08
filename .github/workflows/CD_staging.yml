@@ -148,7 +148,7 @@ jobs:
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
-      # ":" are not alloed in git tags, so replace with "-"
+      # ":" are not allowed in git tags, so replace with "-"
       - name: Tag commit
         run: |
           git tag -a "staging-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "staging gcloud deployment: $(date -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
