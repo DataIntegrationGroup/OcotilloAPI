@@ -239,15 +239,7 @@ async def upload_and_record_asset(
             ],
         )
 
-    # ── 3. Upload file to GCS (blocking I/O — run in thread pool) ────────────
-    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
-
-    # ── 4. Return existing record for duplicate file + thing combinations ─────
-    existing = check_asset_exists(session, blob_name, thing_id=thing_id)
-    if existing:
-        return existing
-
-    # ── 5. Validate the Thing exists ─────────────────────────────────────────
+    # ── 3. Validate the Thing exists (before upload to avoid orphaned blobs) ─
     thing = session.get(Thing, thing_id)
     if thing is None:
         raise PydanticStyleException(
@@ -261,6 +253,14 @@ async def upload_and_record_asset(
                 }
             ],
         )
+
+    # ── 4. Upload file to GCS (blocking I/O — run in thread pool) ────────────
+    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
+
+    # ── 5. Return existing record for duplicate file + thing combinations ─────
+    existing = check_asset_exists(session, blob_name, thing_id=thing_id)
+    if existing:
+        return existing
 
     # ── 6. Persist the Asset record ───────────────────────────────────────────
     asset = Asset(
