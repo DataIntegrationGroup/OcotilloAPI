@@ -32,7 +32,9 @@ jobs:
           uses: actions/checkout@v6.0.3
           with:
             fetch-depth: 0
-            ref: ${{ github.event.release.tag_name }}
+            # Fully-qualified tag ref avoids ambiguity if a branch is ever
+            # created with the same name as the release tag.
+            ref: refs/tags/${{ github.event.release.tag_name }}
 
         - name: Install uv in container
           uses: astral-sh/setup-uv@v8.2.0
