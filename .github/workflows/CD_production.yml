@@ -8,154 +8,153 @@ permissions:
   contents: read
 
 jobs:
-    production-deploy:
+  production-deploy:
+    # Safety rail: only deploy when the release tag is version-shaped
+    # (v*.*.*, v*.*.*-*, v*.*.*[a-z]*). startsWith() is a cheap pre-filter;
+    # the "Validate release tag" step enforces the strict regex.
+    if: startsWith(github.event.release.tag_name, 'v')
 
-        # Safety rail: only deploy when the release tag is version-shaped
-        # (v*.*.*, v*.*.*-*, v*.*.*[a-z]*). startsWith() is a cheap pre-filter;
-        # the "Validate release tag" step enforces the strict regex.
-        if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    environment: production
 
-        runs-on: ubuntu-latest
-        environment: production
+    steps:
+      - name: Validate release tag matches version pattern
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+|[a-z].*)?$ ]]; then
+            echo "Release tag '$TAG' does not match the v*.*.* pattern. Refusing to deploy."
+            exit 1
+          fi
 
-        steps:
-        - name: Validate release tag matches version pattern
-          env:
-            TAG: ${{ github.event.release.tag_name }}
-          run: |
-            if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+|[a-z].*)?$ ]]; then
-              echo "Release tag '$TAG' does not match the v*.*.* pattern. Refusing to deploy."
-              exit 1
-            fi
+      - name: Check out source repository
+        uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+          # Fully-qualified tag ref avoids ambiguity if a branch is ever
+          # created with the same name as the release tag.
+          ref: refs/tags/${{ github.event.release.tag_name }}
 
-        - name: Check out source repository
-          uses: actions/checkout@v6.0.3
-          with:
-            fetch-depth: 0
-            # Fully-qualified tag ref avoids ambiguity if a branch is ever
-            # created with the same name as the release tag.
-            ref: refs/tags/${{ github.event.release.tag_name }}
+      - name: Install uv in container
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          version: "latest"
 
-        - name: Install uv in container
-          uses: astral-sh/setup-uv@v8.2.0
-          with:
-            version: "latest"
+      - name: Generate requirements.txt
+        run: |
+          uv export \
+            --format requirements-txt \
+            --no-emit-project \
+            --no-dev \
+            --output-file requirements.txt
 
-        - name: Generate requirements.txt
-          run: |
-            uv export \
-              --format requirements-txt \
-              --no-emit-project \
-              --no-dev \
-              --output-file requirements.txt
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v3'
+        with:
+          credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
-        - name: Authenticate to Google Cloud
-          uses: 'google-github-actions/auth@v3'
-          with:
-            credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
+      - name: Run Alembic migrations on production database
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: |
+          uv run alembic upgrade head
 
-        - name: Run Alembic migrations on production database
-          env:
-            DB_DRIVER: "cloudsql"
-            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-            CLOUD_SQL_IAM_AUTH: true
-          run: |
-            uv run alembic upgrade head
+      - name: Refresh materialized views on production database
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: |
+          uv run python -m cli.cli refresh-pygeoapi-materialized-views
 
-        - name: Refresh materialized views on production database
-          env:
-            DB_DRIVER: "cloudsql"
-            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-            CLOUD_SQL_IAM_AUTH: true
-          run: |
-            uv run python -m cli.cli refresh-pygeoapi-materialized-views
+      - name: Ensure envsubst is available
+        run: |
+          if ! command -v envsubst >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y gettext-base
+          fi
 
-        - name: Ensure envsubst is available
-          run: |
-            if ! command -v envsubst >/dev/null 2>&1; then
-              sudo apt-get update
-              sudo apt-get install -y gettext-base
-            fi
+      - name: Render App Engine configs
+        env:
+          APP_VERSION: ${{ github.event.release.tag_name }}
+          ENVIRONMENT: "production"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
+          PYGEOAPI_POSTGRES_USER: "${{ secrets.PYGEOAPI_POSTGRES_USER }}"
+          PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
+          PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
+          PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.PYGEOAPI_POSTGRES_PASSWORD }}"
+          PYGEOAPI_SERVER_URL: "${{ vars.PYGEOAPI_SERVER_URL }}"
+          CLOUD_SQL_IAM_AUTH: "true"
+          GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+          GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
+          AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
+          AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
+          AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
+          AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
+          SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
+          APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
+        run: |
+          export MAX_INSTANCES="10"
+          export SERVICE_NAME="ocotillo-api"
+          export ENTRYPOINT="gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app"
+          export MIN_INSTANCES="0"
+          envsubst < .github/app.template.yaml > app.yaml
 
-        - name: Render App Engine configs
-          env:
-            APP_VERSION: ${{ github.event.release.tag_name }}
-            ENVIRONMENT: "production"
-            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-            PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
-            PYGEOAPI_POSTGRES_USER: "${{ secrets.PYGEOAPI_POSTGRES_USER }}"
-            PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
-            PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
-            PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.PYGEOAPI_POSTGRES_PASSWORD }}"
-            PYGEOAPI_SERVER_URL: "${{ vars.PYGEOAPI_SERVER_URL }}"
-            CLOUD_SQL_IAM_AUTH: "true"
-            GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
-            GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
-            AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
-            AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
-            AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
-            AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
-            SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
-            APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
-          run: |
-            export MAX_INSTANCES="10"
-            export SERVICE_NAME="ocotillo-api"
-            export ENTRYPOINT="gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app"
-            export MIN_INSTANCES="0"
-            envsubst < .github/app.template.yaml > app.yaml
+      - name: Deploy to Google Cloud
+        run: |
+          gcloud app deploy \
+            app.yaml \
+            --quiet \
+            --project ${{ vars.GCP_PROJECT_ID }}
 
-        - name: Deploy to Google Cloud
-          run: |
-            gcloud app deploy \
-              app.yaml \
-              --quiet \
-              --project ${{ vars.GCP_PROJECT_ID }}
+      - name: Clean up oldest versions
+        run: |
+          SERVICE="ocotillo-api"
+          VERSIONS_JSON="$(gcloud app versions list --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --format=json --sort-by="version.createTime" 2>/dev/null || printf '[]')"
+          export VERSIONS_JSON
+          DELETE_VERSION="$(python - <<'PY'
+          import json
+          import os
 
-        - name: Clean up oldest versions
-          run: |
-            SERVICE="ocotillo-api"
-            VERSIONS_JSON="$(gcloud app versions list --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --format=json --sort-by="version.createTime" 2>/dev/null || printf '[]')"
-            export VERSIONS_JSON
-            DELETE_VERSION="$(python - <<'PY'
-            import json
-            import os
+          versions = json.loads(os.environ.get("VERSIONS_JSON", "[]") or "[]")
+          if len(versions) <= 1:
+              print("")
+              raise SystemExit(0)
 
-            versions = json.loads(os.environ.get("VERSIONS_JSON", "[]") or "[]")
-            if len(versions) <= 1:
-                print("")
-                raise SystemExit(0)
+          def traffic_split(version):
+              for key in ("traffic_split", "trafficSplit"):
+                  value = version.get(key)
+                  if value is not None:
+                      try:
+                          return float(value)
+                      except (TypeError, ValueError):
+                          return 0.0
+              return 0.0
 
-            def traffic_split(version):
-                for key in ("traffic_split", "trafficSplit"):
-                    value = version.get(key)
-                    if value is not None:
-                        try:
-                            return float(value)
-                        except (TypeError, ValueError):
-                            return 0.0
-                return 0.0
+          for version in versions:
+              if traffic_split(version) == 0.0:
+                  print(version.get("id", ""))
+                  break
+          else:
+              print("")
+          PY
+          )"
+          if [ -n "$DELETE_VERSION" ]; then
+            echo "Deleting old non-serving version for $SERVICE: $DELETE_VERSION"
+            gcloud app versions delete "$DELETE_VERSION" --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --quiet
+          else
+            echo "No old non-serving versions to delete for $SERVICE"
+          fi
 
-            for version in versions:
-                if traffic_split(version) == 0.0:
-                    print(version.get("id", ""))
-                    break
-            else:
-                print("")
-            PY
-            )"
-            if [ -n "$DELETE_VERSION" ]; then
-              echo "Deleting old non-serving version for $SERVICE: $DELETE_VERSION"
-              gcloud app versions delete "$DELETE_VERSION" --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --quiet
-            else
-              echo "No old non-serving versions to delete for $SERVICE"
-            fi
-
-        - name: Remove rendered configs
-          run: |
-            rm app.yaml
+      - name: Remove rendered configs
+        run: |
+          rm app.yaml
