@@ -297,11 +297,30 @@ async def upload_and_record_asset(
         session.add(assoc)
         session.commit()
     except Exception:
-        session.rollback()
+        # Best-effort rollback. If rollback itself raises, log and continue
+        # so the original DB exception still propagates as the request error.
+        try:
+            session.rollback()
+        except Exception:
+            logger.exception(
+                "session.rollback() failed after asset commit failure; "
+                "original exception will still be re-raised"
+            )
         if blob_created_by_request:
-            still_referenced = session.scalars(
-                select(Asset).where(Asset.storage_path == blob_name)
-            ).first()
+            # Reference check is itself best-effort: if it raises, do NOT
+            # delete the blob (we cannot confirm it is unreferenced), just
+            # log and leave it in place.
+            try:
+                still_referenced = session.scalars(
+                    select(Asset).where(Asset.storage_path == blob_name)
+                ).first()
+            except Exception:
+                logger.warning(
+                    "Could not verify blob references; skipping cleanup for %s",
+                    blob_name,
+                    exc_info=True,
+                )
+                still_referenced = object()  # sentinel: assume referenced
             if still_referenced is None:
                 try:
                     await run_in_threadpool(bucket.blob(blob_name).delete)
