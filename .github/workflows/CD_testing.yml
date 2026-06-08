@@ -142,7 +142,7 @@ jobs:
         run: |
           rm app.yaml
 
-      # Use PR author's username as git user name
+      # Use the workflow actor's username as git user name
       - name: Set up git user
         run: |
           git config --global user.name "${{ github.actor }}"
