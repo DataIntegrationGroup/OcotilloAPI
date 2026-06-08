@@ -141,6 +141,7 @@ def gcs_upload(file: UploadFile, bucket=None):
         blob_exists=eblob is not None,
     )
 
+    created = False
     if not eblob:
         blob = bucket.blob(blob_name)
         file.file.seek(0)
@@ -150,6 +151,7 @@ def gcs_upload(file: UploadFile, bucket=None):
             content_type=file.content_type,
             timeout=GCS_UPLOAD_TIMEOUT_SECS,
         )
+        created = True
         _log_stage(
             "upload_blob",
             upload_blob_started_at,
@@ -162,7 +164,7 @@ def gcs_upload(file: UploadFile, bucket=None):
         filename=file.filename,
         blob_name=blob_name,
     )
-    return uri, blob_name
+    return uri, blob_name, created
 
 
 def gcs_remove(uri: str, bucket):

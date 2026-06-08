@@ -138,7 +138,7 @@ async def upload_asset(
 
     # GCS client calls are synchronous and can block for large uploads.
     request_started_at = time.perf_counter()
-    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
+    uri, blob_name, _created = await run_in_threadpool(gcs_upload, file, bucket)
     if is_debug_timing_enabled():
         logger.info(
             "asset upload request completed",
@@ -239,15 +239,7 @@ async def upload_and_record_asset(
             ],
         )
 
-    # ── 3. Upload file to GCS (blocking I/O — run in thread pool) ────────────
-    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
-
-    # ── 4. Return existing record for duplicate file + thing combinations ─────
-    existing = check_asset_exists(session, blob_name, thing_id=thing_id)
-    if existing:
-        return existing
-
-    # ── 5. Validate the Thing exists ─────────────────────────────────────────
+    # ── 3. Validate the Thing exists (before upload to avoid orphaned blobs) ─
     thing = session.get(Thing, thing_id)
     if thing is None:
         raise PydanticStyleException(
@@ -261,6 +253,19 @@ async def upload_and_record_asset(
                 }
             ],
         )
+
+    # ── 4. Upload file to GCS (blocking I/O — run in thread pool) ────────────
+    # `created` is True only when this request actually wrote the blob — when
+    # gcs_upload deduplicates against an existing hash-named object it is
+    # False, meaning the blob is potentially shared by other Assets.
+    uri, blob_name, blob_created_by_request = await run_in_threadpool(
+        gcs_upload, file, bucket
+    )
+
+    # ── 5. Return existing record for duplicate file + thing combinations ─────
+    existing = check_asset_exists(session, blob_name, thing_id=thing_id)
+    if existing:
+        return existing
 
     # ── 6. Persist the Asset record ───────────────────────────────────────────
     asset = Asset(
@@ -280,11 +285,66 @@ async def upload_and_record_asset(
     assoc.thing = thing
     assoc.asset = asset
 
-    session.add(asset)
-    session.add(assoc)
-    session.commit()
-    session.refresh(asset)
+    # If the write fails BEFORE commit, roll back. Only delete the blob if
+    # this request actually created it AND no Asset row references it after
+    # rollback; otherwise we would orphan another Thing's Asset that shares
+    # the same hash-named blob (gcs_upload deduplicates by content hash).
+    # session.refresh() is intentionally outside the cleanup block: it runs
+    # AFTER the commit succeeded, so a refresh failure must not delete the
+    # blob — the committed Asset row would then point at a missing object.
+    try:
+        session.add(asset)
+        session.add(assoc)
+        session.commit()
+    except Exception:
+        # Entire cleanup path is wrapped in one outer try/except so NOTHING
+        # in here (rollback, reference query, bucket.blob(), delete) can
+        # mask the original commit exception. Per-step try/excepts below
+        # produce finer-grained log messages.
+        try:
+            try:
+                session.rollback()
+            except Exception:
+                logger.exception(
+                    "session.rollback() failed after asset commit failure; "
+                    "original exception will still be re-raised"
+                )
+            if blob_created_by_request:
+                # Reference check is best-effort: if it raises, do NOT
+                # delete the blob (we cannot confirm it is unreferenced).
+                try:
+                    still_referenced = session.scalars(
+                        select(Asset).where(Asset.storage_path == blob_name)
+                    ).first()
+                except Exception:
+                    logger.warning(
+                        "Could not verify blob references; skipping cleanup for %s",
+                        blob_name,
+                        exc_info=True,
+                    )
+                    still_referenced = object()  # sentinel: assume referenced
+                if still_referenced is None:
+                    try:
+                        await run_in_threadpool(bucket.blob(blob_name).delete)
+                    except Exception:
+                        logger.warning(
+                            "Failed to clean up uploaded blob after DB failure: %s",
+                            blob_name,
+                            exc_info=True,
+                        )
+                else:
+                    logger.info(
+                        "Skipping blob cleanup; another Asset still references %s",
+                        blob_name,
+                    )
+        except Exception:
+            logger.exception(
+                "Unexpected error during asset upload cleanup; original "
+                "commit exception will still be re-raised"
+            )
+        raise
 
+    session.refresh(asset)
     return asset
 
 

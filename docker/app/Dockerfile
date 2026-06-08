@@ -30,7 +30,7 @@ RUN if [ "$INSTALL_DEV" = "true" ]; then \
       uv sync --locked --all-groups; \
     else \
       echo "Installing only production dependencies..." && \
-      uv sync --locked; \
+      uv sync --locked --no-dev; \
     fi
 
 # expose FastAPI's default dev port
