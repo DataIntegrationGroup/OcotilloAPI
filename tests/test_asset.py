@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import asyncio
 import io
 import logging
 import os
 from datetime import timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -122,13 +123,14 @@ def test_gcs_upload_logs_stage_timings(caplog):
 
     with patch.dict(os.environ, {"API_DEBUG_TIMING": "true"}):
         with caplog.at_level(logging.INFO, logger="services.gcs_helper"):
-            uri, blob_name = gcs_helper.gcs_upload(upload, bucket)
+            uri, blob_name, created = gcs_helper.gcs_upload(upload, bucket)
 
     stage_logs = [
         record for record in caplog.records if record.msg == "gcs stage timing"
     ]
 
     assert uri.endswith(blob_name)
+    assert created is True
     assert {record.stage for record in stage_logs} >= {
         "hash_file",
         "lookup_blob",
@@ -150,9 +152,10 @@ def test_gcs_upload_skips_existing_blob():
         },
     )()
 
-    gcs_helper.gcs_upload(upload, bucket)
+    _uri, _blob_name, created = gcs_helper.gcs_upload(upload, bucket)
 
     assert bucket._blob.upload_calls == 0
+    assert created is False
 
 
 def test_make_blob_name_and_uri_rewinds_file_after_hashing():
@@ -382,6 +385,270 @@ def test_delete_asset_404_not_found(second_asset):
 def test_remove_asset(second_asset):
     response = client.delete(f"/asset/{second_asset.id}/remove")
     assert response.status_code == 204
+
+
+# UPLOAD-AND-RECORD tests ====================================================
+
+
+def test_upload_and_record_asset(water_well_thing):
+    """
+    Happy path — valid image uploaded with a known thing_id.
+
+    Expects a 201 response with a fully populated AssetResponse that links
+    the new Asset to the given Thing.  Cleans up the created record after
+    the assertion so the database is left in the same state.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id, "label": "Well photo"},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+
+    assert "id" in data
+    assert "uri" in data
+    assert "storage_path" in data
+    assert data["name"] == "riochama.png"
+    assert data["label"] == "Well photo"
+    assert data["mime_type"] == "image/png"
+    assert data["storage_service"] == "gcs"
+    assert data["size"] > 0
+
+    cleanup_post_test(Asset, data["id"])
+
+
+def test_upload_and_record_asset_duplicate_returns_existing(water_well_thing):
+    """
+    Uploading the same file to the same Thing twice must not create a duplicate.
+
+    The second call should return the asset created by the first call (same id)
+    and respond with 201 rather than an error.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        first = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert first.status_code == 201
+    first_id = first.json()["id"]
+
+    with open(path, "rb") as f:
+        second = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert second.status_code == 201
+    assert second.json()["id"] == first_id
+
+    cleanup_post_test(Asset, first_id)
+
+
+def test_upload_and_record_asset_bad_thing_id():
+    """
+    Providing a thing_id that does not exist must return 409 Conflict.
+
+    The error payload must identify the offending field and echo back the
+    supplied value so the caller can surface a meaningful error message.
+    """
+    bad_thing_id = 99999
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": bad_thing_id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+
+
+def test_upload_and_record_asset_invalid_file_type(water_well_thing):
+    """
+    Files whose MIME type is not in ALLOWED_MIME_TYPES must be rejected
+    with 400 Bad Request before any GCS or database work is attempted.
+    """
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "video/mp4")},
+        )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["file"]
+    assert "video/mp4" in data["detail"][0]["msg"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"content_type": "video/mp4"}
+
+
+def test_upload_and_record_asset_file_too_large(water_well_thing):
+    """
+    Files whose size exceeds MAX_UPLOAD_SIZE_BYTES must be rejected with
+    400 Bad Request.  The constant is patched to 5 bytes so any real file
+    triggers the limit without requiring an actual 250 MB payload.
+    """
+    path = "tests/data/riochama.png"
+
+    with patch("api.asset.MAX_UPLOAD_SIZE_BYTES", 5):
+        with open(path, "rb") as f:
+            response = client.post(
+                "/asset/upload-and-record",
+                data={"thing_id": water_well_thing.id},
+                files={"file": ("riochama.png", f, "image/png")},
+            )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["file"]
+    assert "exceeds" in data["detail"][0]["msg"]
+    assert data["detail"][0]["type"] == "value_error"
+
+
+def _run_upload_and_record_with_failing_commit(blob_created_by_request):
+    """
+    Drive upload_and_record_asset with a mocked session whose commit() raises.
+    Returns (raised_exc, session_mock, bucket_mock, blob_mock).
+    """
+    from api.asset import upload_and_record_asset
+
+    commit_error = RuntimeError("simulated commit failure")
+
+    session_mock = MagicMock()
+    session_mock.get.return_value = MagicMock(id=1)  # Thing exists
+    session_mock.commit.side_effect = commit_error
+    # No Asset row references blob_name after rollback.
+    scalar_result = MagicMock()
+    scalar_result.first.return_value = None
+    session_mock.scalars.return_value = scalar_result
+
+    blob_mock = MagicMock()
+    bucket_mock = MagicMock()
+    bucket_mock.blob.return_value = blob_mock
+
+    file_mock = MagicMock()
+    file_mock.content_type = "image/png"
+    file_mock.filename = "x.png"
+    file_mock.size = 10
+
+    with (
+        patch(
+            "services.gcs_helper.gcs_upload",
+            return_value=("uri://blob", "x_hash.png", blob_created_by_request),
+        ),
+        patch("services.gcs_helper.check_asset_exists", return_value=None),
+    ):
+        try:
+            asyncio.run(
+                upload_and_record_asset(
+                    user={"name": "test", "sub": "1"},
+                    session=session_mock,
+                    bucket=bucket_mock,
+                    file=file_mock,
+                    thing_id=1,
+                    label=None,
+                    name=None,
+                )
+            )
+            raised = None
+        except Exception as e:
+            raised = e
+
+    return raised, commit_error, session_mock, bucket_mock, blob_mock
+
+
+def test_upload_and_record_cleans_blob_when_created_and_db_fails():
+    """
+    DB commit failure path: rollback runs, blob.delete is called, original
+    commit exception is re-raised (cleanup must not mask it).
+    """
+    raised, commit_error, session, bucket, blob = (
+        _run_upload_and_record_with_failing_commit(blob_created_by_request=True)
+    )
+
+    assert raised is commit_error
+    session.rollback.assert_called_once()
+    bucket.blob.assert_called_with("x_hash.png")
+    blob.delete.assert_called_once()
+
+
+def test_upload_and_record_skips_blob_delete_when_blob_was_preexisting():
+    """
+    When gcs_upload reports created=False (hash dedup hit a pre-existing
+    blob possibly shared with other Things' Assets), the cleanup path must
+    NOT delete the blob even though the DB write failed.
+    """
+    raised, commit_error, session, bucket, blob = (
+        _run_upload_and_record_with_failing_commit(blob_created_by_request=False)
+    )
+
+    assert raised is commit_error
+    session.rollback.assert_called_once()
+    blob.delete.assert_not_called()
+
+
+def test_upload_and_record_reraises_original_exception_when_rollback_fails():
+    """
+    A rollback failure inside the cleanup handler must not replace the
+    original commit exception that the caller cares about.
+    """
+    from api.asset import upload_and_record_asset
+
+    commit_error = RuntimeError("simulated commit failure")
+    rollback_error = RuntimeError("rollback also failed")
+
+    session_mock = MagicMock()
+    session_mock.get.return_value = MagicMock(id=1)
+    session_mock.commit.side_effect = commit_error
+    session_mock.rollback.side_effect = rollback_error
+    scalar_result = MagicMock()
+    scalar_result.first.return_value = None
+    session_mock.scalars.return_value = scalar_result
+
+    bucket_mock = MagicMock()
+    file_mock = MagicMock()
+    file_mock.content_type = "image/png"
+    file_mock.filename = "x.png"
+    file_mock.size = 10
+
+    with (
+        patch(
+            "services.gcs_helper.gcs_upload",
+            return_value=("uri://blob", "x_hash.png", True),
+        ),
+        patch("services.gcs_helper.check_asset_exists", return_value=None),
+    ):
+        with pytest.raises(RuntimeError) as exc_info:
+            asyncio.run(
+                upload_and_record_asset(
+                    user={"name": "test", "sub": "1"},
+                    session=session_mock,
+                    bucket=bucket_mock,
+                    file=file_mock,
+                    thing_id=1,
+                    label=None,
+                    name=None,
+                )
+            )
+
+    assert exc_info.value is commit_error
 
 
 # ============= EOF =============================================

@@ -17,7 +17,7 @@
 import logging
 import time
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, Form, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
@@ -25,6 +25,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.status import (
     HTTP_201_CREATED,
     HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
     HTTP_409_CONFLICT,
 )
 
@@ -46,6 +47,24 @@ from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# File upload constraints
+# ---------------------------------------------------------------------------
+
+ALLOWED_MIME_TYPES = frozenset(
+    {
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/tiff",
+        "application/pdf",
+        "text/plain",
+    }
+)
+
+MAX_UPLOAD_SIZE_BYTES = 250 * 1024 * 1024  # 250 MB
 
 
 def is_debug_timing_enabled() -> bool:
@@ -119,7 +138,7 @@ async def upload_asset(
 
     # GCS client calls are synchronous and can block for large uploads.
     request_started_at = time.perf_counter()
-    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
+    uri, blob_name, _created = await run_in_threadpool(gcs_upload, file, bucket)
     if is_debug_timing_enabled():
         logger.info(
             "asset upload request completed",
@@ -137,6 +156,196 @@ async def upload_asset(
         "uri": uri,
         "storage_path": blob_name,
     }
+
+
+@router.post("/upload-and-record", status_code=HTTP_201_CREATED)
+async def upload_and_record_asset(
+    user: admin_dependency,
+    session: session_dependency,
+    bucket=Depends(get_storage_bucket),
+    file: UploadFile = File(...),
+    thing_id: int = Form(...),
+    label: str | None = Form(None),
+    name: str | None = Form(None),
+) -> AssetResponse:
+    """
+    Upload a digital asset to GCS and record it in the database in one step.
+
+    Accepts a multipart/form-data request containing the file and optional
+    metadata. Validates the file type and size before uploading. If the same
+    file has already been uploaded for the same Thing, the existing record is
+    returned instead of creating a duplicate.
+
+    Args:
+        user: Authenticated admin user performing the upload.
+        session: Active database session.
+        bucket: GCS storage bucket resolved via dependency injection.
+        file: The file to upload. Accepted MIME types: JPEG, PNG, GIF, WebP,
+            TIFF (images); PDF (documents); plain text. Max size: 250 MB.
+        thing_id: ID of the Thing (e.g. a well) this asset belongs to.
+        label: Optional human-readable label for the asset.
+        name: Optional asset name. Defaults to the uploaded filename.
+
+    Returns:
+        AssetResponse: The newly created (or pre-existing duplicate) asset
+            record, including its database ID, GCS URI, and storage path.
+
+    Raises:
+        400 Bad Request: File MIME type is not in the allowed set, or the
+            file size exceeds 250 MB.
+        409 Conflict: No Thing with the given thing_id exists.
+    """
+    from services.gcs_helper import gcs_upload, check_asset_exists
+
+    # ── 1. Validate file type ────────────────────────────────────────────────
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise PydanticStyleException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": ["file"],
+                    "msg": (
+                        f"Unsupported file type '{file.content_type}'. "
+                        f"Allowed types: {', '.join(sorted(ALLOWED_MIME_TYPES))}."
+                    ),
+                    "type": "value_error",
+                    "input": {"content_type": file.content_type},
+                }
+            ],
+        )
+
+    # ── 2. Validate file size ────────────────────────────────────────────────
+    # file.size is set by FastAPI during multipart parsing.
+    # Fall back to seeking when unavailable (e.g. streaming clients).
+    file_size = file.size
+    if file_size is None:
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+
+    if file_size > MAX_UPLOAD_SIZE_BYTES:
+        raise PydanticStyleException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": ["file"],
+                    "msg": (
+                        f"File size {file_size} bytes exceeds the maximum "
+                        f"upload size of {MAX_UPLOAD_SIZE_BYTES} bytes (250 MB)."
+                    ),
+                    "type": "value_error",
+                    "input": {"size": file_size},
+                }
+            ],
+        )
+
+    # ── 3. Validate the Thing exists (before upload to avoid orphaned blobs) ─
+    thing = session.get(Thing, thing_id)
+    if thing is None:
+        raise PydanticStyleException(
+            status_code=HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "thing_id"],
+                    "msg": f"Thing with ID {thing_id} not found.",
+                    "type": "value_error",
+                    "input": {"thing_id": thing_id},
+                }
+            ],
+        )
+
+    # ── 4. Upload file to GCS (blocking I/O — run in thread pool) ────────────
+    # `created` is True only when this request actually wrote the blob — when
+    # gcs_upload deduplicates against an existing hash-named object it is
+    # False, meaning the blob is potentially shared by other Assets.
+    uri, blob_name, blob_created_by_request = await run_in_threadpool(
+        gcs_upload, file, bucket
+    )
+
+    # ── 5. Return existing record for duplicate file + thing combinations ─────
+    existing = check_asset_exists(session, blob_name, thing_id=thing_id)
+    if existing:
+        return existing
+
+    # ── 6. Persist the Asset record ───────────────────────────────────────────
+    asset = Asset(
+        name=name or file.filename,
+        label=label,
+        storage_path=blob_name,
+        storage_service="gcs",
+        mime_type=file.content_type,
+        size=file_size,
+        uri=uri,
+    )
+    audit_add(user, asset)
+
+    # ── 7. Link the Asset to the Thing ───────────────────────────────────────
+    assoc = AssetThingAssociation()
+    audit_add(user, assoc)
+    assoc.thing = thing
+    assoc.asset = asset
+
+    # If the write fails BEFORE commit, roll back. Only delete the blob if
+    # this request actually created it AND no Asset row references it after
+    # rollback; otherwise we would orphan another Thing's Asset that shares
+    # the same hash-named blob (gcs_upload deduplicates by content hash).
+    # session.refresh() is intentionally outside the cleanup block: it runs
+    # AFTER the commit succeeded, so a refresh failure must not delete the
+    # blob — the committed Asset row would then point at a missing object.
+    try:
+        session.add(asset)
+        session.add(assoc)
+        session.commit()
+    except Exception:
+        # Entire cleanup path is wrapped in one outer try/except so NOTHING
+        # in here (rollback, reference query, bucket.blob(), delete) can
+        # mask the original commit exception. Per-step try/excepts below
+        # produce finer-grained log messages.
+        try:
+            try:
+                session.rollback()
+            except Exception:
+                logger.exception(
+                    "session.rollback() failed after asset commit failure; "
+                    "original exception will still be re-raised"
+                )
+            if blob_created_by_request:
+                # Reference check is best-effort: if it raises, do NOT
+                # delete the blob (we cannot confirm it is unreferenced).
+                try:
+                    still_referenced = session.scalars(
+                        select(Asset).where(Asset.storage_path == blob_name)
+                    ).first()
+                except Exception:
+                    logger.warning(
+                        "Could not verify blob references; skipping cleanup for %s",
+                        blob_name,
+                        exc_info=True,
+                    )
+                    still_referenced = object()  # sentinel: assume referenced
+                if still_referenced is None:
+                    try:
+                        await run_in_threadpool(bucket.blob(blob_name).delete)
+                    except Exception:
+                        logger.warning(
+                            "Failed to clean up uploaded blob after DB failure: %s",
+                            blob_name,
+                            exc_info=True,
+                        )
+                else:
+                    logger.info(
+                        "Skipping blob cleanup; another Asset still references %s",
+                        blob_name,
+                    )
+        except Exception:
+            logger.exception(
+                "Unexpected error during asset upload cleanup; original "
+                "commit exception will still be re-raised"
+            )
+        raise
+
+    session.refresh(asset)
+    return asset
 
 
 @router.post("", status_code=HTTP_201_CREATED)

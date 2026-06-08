@@ -24,7 +24,7 @@ def upload_and_associate(
     name: str,
     **asset_args,
 ) -> tuple[str, str]:
-    uri, blob_name = gcs_upload(ff, bucket)
+    uri, blob_name, _created = gcs_upload(ff, bucket)
     asset = Asset(
         name=name,
         storage_path=blob_name,
