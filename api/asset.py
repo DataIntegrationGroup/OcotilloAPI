@@ -285,15 +285,17 @@ async def upload_and_record_asset(
     assoc.thing = thing
     assoc.asset = asset
 
-    # If the DB write fails, roll back. Only delete the blob if this request
-    # actually created it AND no Asset row references it after rollback;
-    # otherwise we would orphan another Thing's Asset that shares the same
-    # hash-named blob (gcs_upload deduplicates by content hash).
+    # If the write fails BEFORE commit, roll back. Only delete the blob if
+    # this request actually created it AND no Asset row references it after
+    # rollback; otherwise we would orphan another Thing's Asset that shares
+    # the same hash-named blob (gcs_upload deduplicates by content hash).
+    # session.refresh() is intentionally outside the cleanup block: it runs
+    # AFTER the commit succeeded, so a refresh failure must not delete the
+    # blob — the committed Asset row would then point at a missing object.
     try:
         session.add(asset)
         session.add(assoc)
         session.commit()
-        session.refresh(asset)
     except Exception:
         session.rollback()
         if blob_created_by_request:
@@ -316,6 +318,7 @@ async def upload_and_record_asset(
                 )
         raise
 
+    session.refresh(asset)
     return asset
 
 
