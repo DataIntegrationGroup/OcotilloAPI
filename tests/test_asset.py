@@ -122,13 +122,14 @@ def test_gcs_upload_logs_stage_timings(caplog):
 
     with patch.dict(os.environ, {"API_DEBUG_TIMING": "true"}):
         with caplog.at_level(logging.INFO, logger="services.gcs_helper"):
-            uri, blob_name = gcs_helper.gcs_upload(upload, bucket)
+            uri, blob_name, created = gcs_helper.gcs_upload(upload, bucket)
 
     stage_logs = [
         record for record in caplog.records if record.msg == "gcs stage timing"
     ]
 
     assert uri.endswith(blob_name)
+    assert created is True
     assert {record.stage for record in stage_logs} >= {
         "hash_file",
         "lookup_blob",
@@ -150,9 +151,10 @@ def test_gcs_upload_skips_existing_blob():
         },
     )()
 
-    gcs_helper.gcs_upload(upload, bucket)
+    _uri, _blob_name, created = gcs_helper.gcs_upload(upload, bucket)
 
     assert bucket._blob.upload_calls == 0
+    assert created is False
 
 
 def test_make_blob_name_and_uri_rewinds_file_after_hashing():
