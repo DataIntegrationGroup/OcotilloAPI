@@ -1035,6 +1035,10 @@ jinja2==3.1.6 \
     #   ocotilloapi
     #   pygeoapi
     #   starlette-admin
+joserfc==1.7.1 \
+    --hash=sha256:77d0b76514879c68c6f433bc5b7357a4ab72008ff1e33d8379fd11d72bd8ca81 \
+    --hash=sha256:b3e3d655612e2e1ef67b2600f2f420e12e537b020208fab1761fad647319c164
+    # via authlib
 jsonschema==4.26.0 \
     --hash=sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326 \
     --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
