@@ -13,12 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Stream rows out of a SQL Server data-dump ``.sql`` file.
+"""Parse a SQL Server data-dump ``.sql`` file into per-table CSVs.
 
-Parses ``INSERT [dbo].[<table>] (<cols>) VALUES (<vals>)[, (<vals>) ...]``
-statements (the format produced by SSMS "Generate Scripts -> data" / ``bcp``
-INSERT mode) for one target table at a time, yielding ``{column: value}``
-dicts. Values are decoded to plain Python:
+``INSERT [dbo].[<table>] (<cols>) VALUES (<vals>)[, (<vals>) ...]`` statements
+(SSMS "Generate Scripts -> data" / bcp INSERT mode) are split with ``sqlparse``
+and decoded to plain Python values:
 
     NULL                -> None
     N'...' / '...'      -> str  (doubled '' unescaped)
@@ -26,19 +25,20 @@ dicts. Values are decoded to plain Python:
     CAST(expr AS type)  -> the inner expr, recursively
     0x....              -> None (binary / rowversion; not mirrored)
 
-Type coercion to the target column type happens in nmw_mirror_transfer._coerce,
-so this module keeps values loosely typed.
-
-Streaming: the file is read line by line (constant memory), accumulating across
-lines only when a statement's parentheses are unbalanced (strings containing
-newlines). The file is scanned once per table.
+``iter_table_rows`` yields ``{column: value}`` dicts; ``write_table_csv`` writes
+one table to a CSV suitable for a Postgres ``COPY ... FROM`` bulk load (NULL ->
+empty field, so load with ``NULL ''``).
 
 Encoding is auto-detected from the BOM (SSMS writes UTF-16 LE); falls back to
 utf-8.
 """
 
+import csv
+import itertools
 import re
 from typing import Iterator, Optional
+
+import sqlparse
 
 
 def _detect_encoding(path: str) -> str:
@@ -150,74 +150,77 @@ def _parse_value(tok: str):
 
 
 _INSERT_RE = re.compile(
-    r"(?is)INSERT\s+(?:\[dbo\]\.)?\[?(?P<table>\w+)\]?\s*\((?P<cols>.*?)\)\s*VALUES\s*(?P<vals>.*)$"
+    r"(?is)INSERT\s+(?:\[dbo\]\.)?\[?(?P<table>\w+)\]?\s*"
+    r"\((?P<cols>.*?)\)\s*VALUES\s*(?P<vals>.*)$"
 )
 
 
-def _balanced(stmt: str) -> bool:
-    """True if parens are balanced outside single-quoted strings."""
-    depth = 0
-    in_quote = False
-    i = 0
-    n = len(stmt)
-    while i < n:
-        c = stmt[i]
-        if in_quote:
-            if c == "'":
-                if i + 1 < n and stmt[i + 1] == "'":
-                    i += 2
-                    continue
-                in_quote = False
-        elif c == "'":
-            in_quote = True
-        elif c == "(":
-            depth += 1
-        elif c == ")":
-            depth -= 1
-        i += 1
-    return depth <= 0 and not in_quote
+def _iter_insert_statements(path: str, table: str) -> Iterator[str]:
+    """Yield raw INSERT statement strings for ``table`` using sqlparse."""
+    enc = _detect_encoding(path)
+    target = table.lower()
+    with open(path, encoding=enc, errors="ignore") as f:
+        # parsestream splits the dump into statements lazily.
+        for statement in sqlparse.parsestream(f):
+            s = str(statement).strip()
+            if not s:
+                continue
+            low = s.lower()
+            if "insert" not in low or target not in low:
+                continue
+            yield s
 
 
 def iter_table_rows(path: str, table: str) -> Iterator[dict]:
     """Yield ``{column: value}`` dicts for every INSERT into ``table``."""
-    enc = _detect_encoding(path)
-    target = f"[{table}]".lower()
-    target_plain = table.lower()
-    pending: Optional[str] = None
+    for stmt in _iter_insert_statements(path, table):
+        m = _INSERT_RE.search(stmt)
+        if not m or m.group("table").lower() != table.lower():
+            continue
+        cols = [c.strip().strip("[]") for c in _split_top_level(m.group("cols"))]
+        vals_part = m.group("vals").strip().rstrip(";")
+        for group in _iter_value_groups(vals_part):
+            vals = [_parse_value(v) for v in _split_top_level(group)]
+            if len(vals) != len(cols):
+                continue  # malformed row; skip
+            yield dict(zip(cols, vals))
 
-    with open(path, encoding=enc, errors="ignore") as f:
-        for line in f:
-            if pending is None:
-                low = line.lower()
-                if "insert" not in low:
-                    continue
-                # cheap table filter before the heavier regex
-                if (
-                    target not in low
-                    and f"].[{target_plain}]" not in low
-                    and f" {target_plain} " not in low
-                ):
-                    if target_plain not in low:
-                        continue
-                pending = line
-            else:
-                pending += line
 
-            if not _balanced(pending):
-                continue  # statement spans more lines
+def _csv_cell(value) -> str:
+    """Render a parsed value for a COPY-friendly CSV (None -> empty field)."""
+    return "" if value is None else str(value)
 
-            stmt = pending
-            pending = None
-            m = _INSERT_RE.search(stmt)
-            if not m or m.group("table").lower() != target_plain:
-                continue
-            cols = [c.strip().strip("[]") for c in _split_top_level(m.group("cols"))]
-            vals_part = m.group("vals").strip().rstrip(";")
-            for group in _iter_value_groups(vals_part):
-                vals = [_parse_value(v) for v in _split_top_level(group)]
-                if len(vals) != len(cols):
-                    continue  # malformed row; skip
-                yield dict(zip(cols, vals))
+
+def write_table_csv(
+    path: str,
+    table: str,
+    out_csv: str,
+    columns: Optional[list[str]] = None,
+    limit: int = 0,
+) -> tuple[int, list[str]]:
+    """Write one source table's rows to ``out_csv``. Returns (n_rows, header).
+
+    ``columns`` restricts/orders the output columns (e.g. the target model's
+    columns); missing source values become empty fields. If omitted, the first
+    row's keys define the header. None -> empty so Postgres COPY ``NULL ''``
+    treats it as NULL.
+    """
+    rows = iter_table_rows(path, table)
+    if limit and limit > 0:
+        rows = itertools.islice(rows, limit)
+
+    header: Optional[list[str]] = None
+    writer = None
+    n = 0
+    with open(out_csv, "w", newline="", encoding="utf-8") as fo:
+        for rec in rows:
+            if header is None:
+                header = list(columns) if columns else list(rec.keys())
+                writer = csv.writer(fo)
+                writer.writerow(header)
+            writer.writerow([_csv_cell(rec.get(c)) for c in header])
+            n += 1
+    return n, (header or list(columns or []))
 
 
 # ============= EOF =============================================

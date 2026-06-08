@@ -28,11 +28,14 @@ mirror table requires only a model + a spec entry (no per-table code).
 Two row sources, selected at runtime:
 
 1. **SQL Server data dump** (preferred): set ``NMW_SQL_DUMP`` to a ``.sql`` file
-   containing ``INSERT [dbo].[tbl_*] (...) VALUES (...)`` statements. Rows are
-   streamed and parsed by ``transfers.nmw_sql_dump.iter_table_rows``.
+   of ``INSERT [dbo].[tbl_*] (...) VALUES (...)`` statements. Each table is
+   written to a CSV by ``transfers.nmw_sql_dump.write_table_csv`` (sqlparse) and
+   bulk-loaded with Postgres ``COPY ... FROM STDIN`` (truncate + COPY; Postgres
+   casts text -> column types). CSV output dir defaults to a temp dir, override
+   with ``NMW_CSV_DIR``.
 2. **CSV exports** (fallback when ``NMW_SQL_DUMP`` is unset): per-table CSVs read
    with ``transfers.util.read_csv`` (``transfers/data/nma_csv_cache/<table>.csv``
-   then GCS ``nma_csv/<table>.csv``).
+   then GCS ``nma_csv/<table>.csv``), inserted row-by-row with type coercion.
 
 In both cases the source column names are the original SQL Server names
 (OBJECTID, WellDataID, ...), which match the mirror columns' DB names exactly.
@@ -42,11 +45,12 @@ Idempotent: rows upsert via ``INSERT ... ON CONFLICT (<pk>) DO NOTHING``.
 
 import itertools
 import os
+import tempfile
 import uuid
 from dataclasses import dataclass
 
 import pandas as pd
-from sqlalchemy import DateTime, Float, Integer, LargeBinary, SmallInteger, String
+from sqlalchemy import DateTime, Float, Integer, LargeBinary, SmallInteger, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
@@ -71,12 +75,15 @@ from db.nmw_legacy import (
     NMW_WsIntervals,
 )
 from transfers.logger import logger
-from transfers.nmw_sql_dump import iter_table_rows
+from transfers.nmw_sql_dump import iter_table_rows, write_table_csv
 from transfers.util import read_csv
 
 # Path to a SQL Server data-dump .sql file. When set, rows are parsed from it;
 # otherwise the loader falls back to per-table CSV exports.
 _SQL_DUMP_ENV = "NMW_SQL_DUMP"
+# Optional output dir for the per-table CSVs written from the dump (COPY path).
+# Defaults to a fresh temp dir.
+_CSV_DIR_ENV = "NMW_CSV_DIR"
 _CHUNK_SIZE = 2000
 
 
@@ -181,6 +188,45 @@ def _flush(session: Session, model, rows: list[dict], pk_cols: list[str]) -> int
     return result.rowcount if result.rowcount and result.rowcount > 0 else 0
 
 
+def _copy_csv_into_table(
+    session: Session, table_name: str, header: list[str], csv_path: str
+) -> None:
+    """Bulk-load a CSV into ``table_name`` via Postgres COPY (pg8000 stream)."""
+    collist = ", ".join(f'"{c}"' for c in header)
+    sql = (
+        f'COPY "{table_name}" ({collist}) FROM STDIN '
+        "WITH (FORMAT CSV, HEADER true, NULL '')"
+    )
+    raw = session.connection().connection  # underlying pg8000 DBAPI connection
+    cursor = raw.cursor()
+    with open(csv_path, "rb") as f:
+        cursor.execute(sql, stream=f)
+
+
+def _copy_load_table(
+    session: Session, spec: MirrorSpec, dump: str, out_dir: str, limit: int = 0
+) -> dict:
+    """Dump -> per-table CSV (sqlparse) -> COPY into the mirror table."""
+    table = spec.model.__table__
+    name = spec.source_table
+    # Load only model columns (rowversion/LargeBinary excluded). COPY relies on
+    # Postgres to cast text -> column types, so no Python coercion is needed.
+    columns = [c.name for c in table.columns if not isinstance(c.type, LargeBinary)]
+    out_csv = os.path.join(out_dir, f"{name}.csv")
+
+    n, header = write_table_csv(dump, name, out_csv, columns=columns, limit=limit)
+    if n == 0:
+        logger.warning("Skipping %s (no rows in dump)", name)
+        return {"table": name, "skipped": True, "reason": "no rows", "source": "sql"}
+
+    # Staging reload: truncate then COPY (no upsert; tables are a 1:1 snapshot).
+    session.execute(text(f'TRUNCATE TABLE "{table.name}"'))
+    _copy_csv_into_table(session, table.name, header, out_csv)
+    session.commit()
+    logger.info("COPY %s -> %s: %d rows (%s)", name, table.name, n, out_csv)
+    return {"table": name, "skipped": False, "rows": n, "inserted": n, "source": "sql"}
+
+
 def _load_table(session: Session, spec: MirrorSpec, limit: int = 0) -> dict:
     """Load one source table (SQL dump or CSV) into its mirror. Stats dict."""
     table = spec.model.__table__
@@ -251,10 +297,13 @@ def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
     """
     limit = int(limit or 0)
     dump = os.getenv(_SQL_DUMP_ENV)
+    out_dir = None
     if dump:
         if not os.path.exists(dump):
             raise FileNotFoundError(f"{_SQL_DUMP_ENV} set but file not found: {dump}")
-        logger.info("NMW mirror source: SQL dump %s", dump)
+        out_dir = os.getenv(_CSV_DIR_ENV) or tempfile.mkdtemp(prefix="nmw_csv_")
+        os.makedirs(out_dir, exist_ok=True)
+        logger.info("NMW mirror source: SQL dump %s -> CSV %s -> COPY", dump, out_dir)
     else:
         logger.info("NMW mirror source: CSV exports (set %s for a dump)", _SQL_DUMP_ENV)
 
@@ -262,7 +311,10 @@ def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
     errors = []
     for spec in NMW_MIRROR_SPECS:
         try:
-            results.append(_load_table(session, spec, limit))
+            if dump:
+                results.append(_copy_load_table(session, spec, dump, out_dir, limit))
+            else:
+                results.append(_load_table(session, spec, limit))
         except Exception as e:  # noqa: BLE001 - isolate per-table failures
             logger.critical("NMW mirror load failed for %s: %s", spec.source_table, e)
             session.rollback()
