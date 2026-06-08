@@ -254,7 +254,7 @@ def test_initialize_lexicon_invokes_initializer(monkeypatch):
     assert called["count"] == 1
 
 
-def test_associate_assets_command_calls_service(monkeypatch):
+def test_associate_assets_command_calls_service(monkeypatch, tmp_path):
     captured = {}
 
     def fake_associate(source_directory):
@@ -263,13 +263,11 @@ def test_associate_assets_command_calls_service(monkeypatch):
 
     monkeypatch.setattr("cli.service_adapter.associate_assets", fake_associate)
 
-    runner = CliRunner()
-    with runner.isolated_filesystem():
-        workdir = Path.cwd()
-        asset_dir = workdir / "asset_import_batch"
-        asset_dir.mkdir()
+    asset_dir = tmp_path / "asset_import_batch"
+    asset_dir.mkdir()
 
-        result = runner.invoke(cli, ["associate-assets", str(asset_dir)])
+    runner = CliRunner()
+    result = runner.invoke(cli, ["associate-assets", str(asset_dir)])
 
     assert result.exit_code == 0, result.output
     assert captured["path"] == asset_dir
