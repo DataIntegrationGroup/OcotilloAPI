@@ -280,10 +280,24 @@ async def upload_and_record_asset(
     assoc.thing = thing
     assoc.asset = asset
 
-    session.add(asset)
-    session.add(assoc)
-    session.commit()
-    session.refresh(asset)
+    # If the DB write fails, roll back and best-effort delete the GCS blob so
+    # the bucket does not retain an object with no Asset row pointing at it.
+    try:
+        session.add(asset)
+        session.add(assoc)
+        session.commit()
+        session.refresh(asset)
+    except Exception:
+        session.rollback()
+        try:
+            await run_in_threadpool(bucket.blob(blob_name).delete)
+        except Exception:
+            logger.warning(
+                "Failed to clean up uploaded blob after DB failure: %s",
+                blob_name,
+                exc_info=True,
+            )
+        raise
 
     return asset
 
