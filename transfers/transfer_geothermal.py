@@ -54,7 +54,10 @@ if (
 from db.engine import session_ctx  # noqa: E402
 from services.env import get_bool_env  # noqa: E402
 from transfers.logger import logger  # noqa: E402
-from transfers.nmw_mirror_transfer import transfer_nmw_mirror  # noqa: E402
+from transfers.nmw_mirror_transfer import (  # noqa: E402
+    refresh_materialized_views,
+    transfer_nmw_mirror,
+)
 from transfers.reference_lexicon_transfer import transfer_reference_tables  # noqa: E402
 
 
@@ -87,6 +90,9 @@ def run_geothermal_transfer(limit: int = None) -> dict:
             "rows_inserted": inserted,
             "errors": len(errors),
         }
+        logger.info("---- Refresh materialized OGC views ----")
+        with session_ctx() as session:
+            summary["refreshed_views"] = refresh_materialized_views(session)
     else:
         logger.info("Skipping NM_Wells mirror (TRANSFER_NMW_MIRROR=0)")
 

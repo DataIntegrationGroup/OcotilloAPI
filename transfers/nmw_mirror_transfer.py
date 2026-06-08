@@ -86,6 +86,10 @@ _SQL_DUMP_ENV = "NMW_SQL_DUMP"
 _CSV_DIR_ENV = "NMW_CSV_DIR"
 _CHUNK_SIZE = 2000
 
+# Materialized OGC views over the geothermal mirror that need a REFRESH after a
+# (re)load. Regular views reflect the tables live and need no refresh.
+_MATERIALIZED_VIEWS = ("ogc_geothermal_wells_temperature_profile",)
+
 
 @dataclass
 class MirrorSpec:
@@ -332,6 +336,27 @@ def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
         len(errors),
     )
     return len(loaded), inserted, errors
+
+
+def refresh_materialized_views(session: Session) -> list[str]:
+    """REFRESH the geothermal materialized OGC views (skip any not present).
+
+    Call after a mirror (re)load so the materialized views reflect new data.
+    Plain (non-concurrent) REFRESH — runs inside the session transaction.
+    """
+    refreshed = []
+    for view in _MATERIALIZED_VIEWS:
+        exists = session.execute(
+            text("SELECT to_regclass(:n)"), {"n": f"public.{view}"}
+        ).scalar()
+        if not exists:
+            logger.warning("Skip refresh; materialized view missing: %s", view)
+            continue
+        logger.info("REFRESH MATERIALIZED VIEW %s", view)
+        session.execute(text(f'REFRESH MATERIALIZED VIEW "{view}"'))
+        session.commit()
+        refreshed.append(view)
+    return refreshed
 
 
 # ============= EOF =============================================
