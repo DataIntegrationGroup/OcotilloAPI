@@ -81,7 +81,7 @@ jobs:
               echo "git checkout -b $BRANCH origin/staging"
               echo "git merge origin/production   # resolve conflicts"
               echo "git push origin $BRANCH"
-              echo "gh pr create --base staging --head $BRANCH"
+              echo "gh pr create --base staging --head $BRANCH --title 'chore: merge production ${TAG} into staging'"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
@@ -97,10 +97,17 @@ jobs:
             git commit -m "chore: sync staging release-please manifest to ${TAG}"
           fi
 
+      # Retry-safe: skip if a PR is already open for this merge; force-with-lease
+      # handles a branch left behind by a previous partial run.
       - name: Push branch and open PR
         run: |
           BRANCH="${{ steps.merge.outputs.branch }}"
-          git push origin "$BRANCH"
+          EXISTING="$(gh pr list --base staging --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$EXISTING" ]; then
+            echo "Back-merge PR #$EXISTING already open for $BRANCH; nothing to do."
+            exit 0
+          fi
+          git push --force-with-lease origin "$BRANCH"
           {
             echo "Automated back-merge after release \`${TAG}\`."
             echo ""
@@ -112,7 +119,7 @@ jobs:
           gh pr create \
             --base staging \
             --head "$BRANCH" \
-            --title "merge: production ${TAG} into staging" \
+            --title "chore: merge production ${TAG} into staging" \
             --body-file pr-body.md
 
   forward-merge-to-production:
@@ -125,8 +132,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.3
 
+      # Retry-safe: skip if a PR is already open from this hotfix branch.
       - name: Open PR hotfix -> production
         run: |
+          EXISTING="$(gh pr list --base production --head "$SOURCE" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$EXISTING" ]; then
+            echo "Forward-merge PR #$EXISTING already open for $SOURCE; nothing to do."
+            exit 0
+          fi
           {
             echo "Automated forward-merge of hotfix release \`${TAG}\`."
             echo ""
@@ -137,5 +150,5 @@ jobs:
           gh pr create \
             --base production \
             --head "$SOURCE" \
-            --title "merge: ${SOURCE} (${TAG}) into production" \
+            --title "chore: merge ${SOURCE} (${TAG}) into production" \
             --body-file pr-body.md
