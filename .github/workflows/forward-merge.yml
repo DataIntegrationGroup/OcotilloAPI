@@ -1,0 +1,141 @@
+name: forward-merge
+
+# Keeps the release branches converged automatically:
+#   - source_branch = production   -> open a back-merge PR production -> staging,
+#     syncing .release-please-manifest.staging.json to the released stable
+#     version so the next staging RC computes from the new baseline.
+#   - source_branch = hotfix/vX.Y.Z -> open a forward-merge PR into production.
+#     (After that PR merges, run this workflow manually with
+#     source_branch=production to propagate the hotfix on to staging — no
+#     release is cut on production by the hotfix merge, so the automatic
+#     trigger doesn't fire.)
+#
+# Invoked via workflow_call from release-please.yml after a release is cut, or
+# manually via workflow_dispatch.
+#
+# NOTE: PRs created with the default GITHUB_TOKEN do not trigger
+# `pull_request` workflows (tests will not run on the PR). Set the
+# FORWARD_MERGE_TOKEN secret (fine-grained PAT or GitHub App token with
+# contents:write + pull-requests:write) to get CI on these PRs; without it the
+# workflow falls back to GITHUB_TOKEN and you can close/reopen the PR to kick
+# CI.
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        description: Release tag that was just cut (e.g. v1.2.0)
+        required: true
+        type: string
+      source_branch:
+        description: Branch the release was cut on (production or hotfix/vX.Y.Z)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag driving the merge (e.g. v1.2.0)
+        required: true
+        type: string
+      source_branch:
+        description: Branch to merge from (production or hotfix/vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  back-merge-to-staging:
+    if: ${{ inputs.source_branch == 'production' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
+      TAG: ${{ inputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
+
+      - name: Set up git user
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create merge branch off staging and merge production
+        id: merge
+        run: |
+          VERSION="${TAG#v}"
+          BRANCH="merge/production-into-staging-${VERSION}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH" origin/staging
+          if ! git merge --no-ff "origin/production" -m "merge: production ${TAG} into staging"; then
+            {
+              echo "### Back-merge conflict"
+              echo ""
+              echo "Merging \`production\` (${TAG}) into \`staging\` conflicts."
+              echo "Resolve manually:"
+              echo '```'
+              echo "git checkout -b $BRANCH origin/staging"
+              echo "git merge origin/production   # resolve conflicts"
+              echo "git push origin $BRANCH"
+              echo "gh pr create --base staging --head $BRANCH"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Sync staging release-please manifest to released version
+        run: |
+          VERSION="${TAG#v}"
+          jq --arg v "$VERSION" '."." = $v' .release-please-manifest.staging.json > manifest.tmp
+          mv manifest.tmp .release-please-manifest.staging.json
+          if ! git diff --quiet -- .release-please-manifest.staging.json; then
+            git add .release-please-manifest.staging.json
+            git commit -m "chore: sync staging release-please manifest to ${TAG}"
+          fi
+
+      - name: Push branch and open PR
+        run: |
+          BRANCH="${{ steps.merge.outputs.branch }}"
+          git push origin "$BRANCH"
+          {
+            echo "Automated back-merge after release \`${TAG}\`."
+            echo ""
+            echo "- Brings the release commit and tag history into \`staging\`."
+            echo "- Syncs \`.release-please-manifest.staging.json\` to \`${TAG#v}\` so the next staging RC versions from the new stable baseline."
+            echo ""
+            echo "If version files conflict with in-flight staging work, accept either side — release-please rewrites them on the next Release PR."
+          } > pr-body.md
+          gh pr create \
+            --base staging \
+            --head "$BRANCH" \
+            --title "merge: production ${TAG} into staging" \
+            --body-file pr-body.md
+
+  forward-merge-to-production:
+    if: ${{ startsWith(inputs.source_branch, 'hotfix/') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
+      TAG: ${{ inputs.tag_name }}
+      SOURCE: ${{ inputs.source_branch }}
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - name: Open PR hotfix -> production
+        run: |
+          {
+            echo "Automated forward-merge of hotfix release \`${TAG}\`."
+            echo ""
+            echo "- Brings the hotfix commits and release bookkeeping into \`production\`."
+            echo "- No new release is cut by this merge (the \`${TAG}\` release commit is already included)."
+            echo "- After merging, run the \`forward-merge\` workflow manually with \`source_branch=production\` and \`tag_name=${TAG}\` to propagate the hotfix on to \`staging\`."
+          } > pr-body.md
+          gh pr create \
+            --base production \
+            --head "$SOURCE" \
+            --title "merge: ${SOURCE} (${TAG}) into production" \
+            --body-file pr-body.md
