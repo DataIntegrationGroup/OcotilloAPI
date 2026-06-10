@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - production
+      - staging
       - 'hotfix/v*'
 
 permissions:
@@ -17,23 +18,40 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      # staging uses its own config/manifest pair: prerelease (rc) versioning,
+      # separate changelog, and its own version state so the rc line never
+      # collides with the stable line tracked in .release-please-manifest.json.
       - id: release
         uses: googleapis/release-please-action@v5
         with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: ${{ github.ref_name == 'staging' && 'release-please-config.staging.json' || 'release-please-config.json' }}
+          manifest-file: ${{ github.ref_name == 'staging' && '.release-please-manifest.staging.json' || '.release-please-manifest.json' }}
           target-branch: ${{ github.ref_name }}
 
-  # When release-please actually cuts a release, deploy it. The release is
-  # created with GITHUB_TOKEN, whose events don't trigger other workflows, so we
-  # invoke the production deploy inline (same run) instead of relying on the
+  # When release-please cuts a stable or hotfix release, deploy it. RC releases
+  # on staging never deploy production. The release is created with
+  # GITHUB_TOKEN, whose events don't trigger other workflows, so we invoke the
+  # production deploy inline (same run) instead of relying on the
   # `release: published` event reaching CD_production.
   deploy-production:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    if: ${{ needs.release-please.outputs.release_created == 'true' && github.ref_name != 'staging' }}
     permissions:
       contents: read
     uses: ./.github/workflows/CD_production.yml
     with:
       tag_name: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit
+
+  # Keep branches converged after a release:
+  #   - stable release on production  -> open PR production -> staging
+  #     (carries the release commit/tag history and syncs the staging manifest)
+  #   - hotfix release on hotfix/v*   -> open PR hotfix/vX.Y.Z -> production
+  forward-merge:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' && github.ref_name != 'staging' }}
+    uses: ./.github/workflows/forward-merge.yml
+    with:
+      tag_name: ${{ needs.release-please.outputs.tag_name }}
+      source_branch: ${{ github.ref_name }}
     secrets: inherit
