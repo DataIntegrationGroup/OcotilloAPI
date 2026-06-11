@@ -39,7 +39,7 @@ def make_xml_response(db, sql, point_id, func):
 def make_lithology_response(point_id, db):
     sql = (
         'select "PointID", "StratTop", "StratBottom", "TERM" '
-        'from "NMA_view_NGWMN_Lithology" where "PointID"=:point_id'
+        'from "view_NGWMN_Lithology" where "PointID"=:point_id'
     )
     return make_xml_response(db, sql, point_id, lithology_xml)
 
@@ -48,14 +48,14 @@ def make_well_construction_response(point_id, db):
     sql = (
         'select "PointID", "CasingTop", "CasingBottom", "CasingDepthUnits", '
         '"ScreenTop", "ScreenBottom", "ScreenBottomUnit", "ScreenDescription", "CasingDescription" '
-        'from "NMA_view_NGWMN_WellConstruction" where "PointID"=:point_id'
+        'from "view_NGWMN_WellConstruction" where "PointID"=:point_id'
     )
     return make_xml_response(db, sql, point_id, well_construction_xml)
 
 
 def make_waterlevels_response(point_id, db):
     sql = (
-        'select * from "NMA_view_NGWMN_WaterLevels" where "PointID"=:point_id '
+        'select * from "view_NGWMN_WaterLevels" where "PointID"=:point_id '
         'order by "DateMeasured"'
     )
     sql2 = (
