@@ -23,16 +23,19 @@ copy tables.
 from xml.etree import ElementTree as etree
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 
 from db import (
+    Deployment,
     FieldActivity,
     FieldEvent,
     GeologicFormation,
     Observation,
     Sample,
+    Sensor,
     Thing,
     ThingGeologicFormationAssociation,
+    TransducerObservation,
     WellCasingMaterial,
     WellScreen,
 )
@@ -40,6 +43,7 @@ from db.engine import session_ctx
 from tests import client, get_parameter_id
 
 POINT_ID = "NGWMN-TEST-0001"
+MERGED_POINT_ID = "NGWMN-TEST-0002"
 
 
 @pytest.fixture(scope="module")
@@ -179,6 +183,118 @@ def ngwmn_well():
         session.commit()
 
 
+@pytest.fixture(scope="module")
+def ngwmn_merged_well():
+    """A well with both manual water levels and daily transducer aggregates."""
+    with session_ctx() as session:
+        thing = Thing(
+            name=MERGED_POINT_ID, thing_type="water well", release_status="public"
+        )
+        session.add(thing)
+        session.flush()
+
+        parameter_id = get_parameter_id("groundwater level", "Field Parameter")
+
+        event = FieldEvent(
+            thing_id=thing.id,
+            event_date="2024-03-15T19:00:00Z",
+            release_status="public",
+        )
+        session.add(event)
+        session.flush()
+        activity = FieldActivity(
+            field_event_id=event.id,
+            activity_type="groundwater level",
+            release_status="public",
+        )
+        session.add(activity)
+        session.flush()
+
+        manual_levels = [
+            # 2024-03-15 local date, BGS = 50.0 - 2.5 = 47.50
+            ("2024-03-15T19:00:00Z", 50.0, 2.5),
+            # 2024-04-01 (midnight UTC kept as-is), BGS = 33.00
+            ("2024-04-01T00:00:00Z", 33.0, None),
+        ]
+        for i, (dt, value, mph) in enumerate(manual_levels):
+            sample = Sample(
+                field_activity_id=activity.id,
+                sample_date=dt,
+                sample_name=f"{MERGED_POINT_ID}-wl-{i}",
+                sample_matrix="water",
+                sample_method="Steel-tape measurement",
+                qc_type="Normal",
+                release_status="public",
+            )
+            session.add(sample)
+            session.flush()
+            session.add(
+                Observation(
+                    sample_id=sample.id,
+                    parameter_id=parameter_id,
+                    observation_datetime=dt,
+                    value=value,
+                    unit="ft",
+                    measuring_point_height=mph,
+                    nma_data_quality=None,
+                    release_status="public",
+                )
+            )
+
+        sensor = Sensor(
+            name=f"{MERGED_POINT_ID}-transducer",
+            sensor_type="Pressure Transducer",
+            release_status="public",
+        )
+        session.add(sensor)
+        session.flush()
+        deployment = Deployment(
+            thing_id=thing.id,
+            sensor_id=sensor.id,
+            installation_date="2024-01-01",
+            release_status="public",
+        )
+        session.add(deployment)
+        session.flush()
+
+        transducer_readings = [
+            # 2024-03-15 daily avg 50.0: manual 47.50 is shallower and wins.
+            ("2024-03-15T06:00:00Z", 49.0),
+            ("2024-03-15T18:00:00Z", 51.0),
+            # 2024-03-20 daily avg 30.0: transducer-only date.
+            ("2024-03-20T06:00:00Z", 29.0),
+            ("2024-03-20T18:00:00Z", 31.0),
+            # 2024-04-01 daily avg 20.0: manual 33.00 is deeper and loses.
+            ("2024-04-01T06:00:00Z", 19.0),
+            ("2024-04-01T18:00:00Z", 21.0),
+        ]
+        for dt, value in transducer_readings:
+            session.add(
+                TransducerObservation(
+                    deployment_id=deployment.id,
+                    parameter_id=parameter_id,
+                    observation_datetime=dt,
+                    value=value,
+                    release_status="public",
+                )
+            )
+        session.commit()
+        thing_id = thing.id
+        sensor_id = sensor.id
+
+        session.execute(text("REFRESH MATERIALIZED VIEW transducer_daily_data"))
+        session.commit()
+
+    yield MERGED_POINT_ID
+
+    with session_ctx() as session:
+        session.execute(delete(Thing).where(Thing.id == thing_id))
+        session.execute(delete(Sensor).where(Sensor.id == sensor_id))
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW transducer_daily_data"))
+        session.commit()
+
+
 def test_ngwmn_waterlevels(ngwmn_well):
     response = client.get(f"/ngwmn/waterlevels/{ngwmn_well}")
     assert response.status_code == 200
@@ -239,6 +355,40 @@ def test_ngwmn_lithology(ngwmn_well):
     assert float(lithology.findtext("BottomDepth")) == 60.0
     assert lithology.findtext("Units") == "feet"
     assert lithology.findtext("Description") == "Sandstone"
+
+
+def test_ngwmn_waterlevels_merges_manual_and_transducer(ngwmn_merged_well):
+    response = client.get(f"/ngwmn/waterlevels/{ngwmn_merged_well}")
+    assert response.status_code == 200
+
+    root = etree.fromstring(response.content)
+    assert root.tag == "WaterLevels"
+    levels = root.findall("WaterLevel")
+    assert len(levels) == 3
+
+    first, second, third = levels
+
+    # Same-date overlap where the manual reading is shallower: manual wins.
+    assert first.findtext("PointID") == ngwmn_merged_well
+    assert first.findtext("DepthFromLandSurfaceData") == "47.50"
+    assert first.findtext("MeasuringMethod") == "Steel tape"
+    assert first.findtext("MeasurementMonth") == "3"
+    assert first.findtext("MeasurementDay") == "15"
+
+    # Transducer-only date: daily average is emitted.
+    assert second.findtext("DepthFromLandSurfaceData") == "30.00"
+    assert second.findtext("MeasuringMethod") == "Pressure Transducer"
+    assert second.findtext("WaterLevelUnits") == "ft bgs"
+    assert second.findtext("WaterLevelAccuracy") == "0.02 ft"
+    assert second.findtext("MeasurementMonth") == "3"
+    assert second.findtext("MeasurementDay") == "20"
+
+    # Same-date overlap where the manual reading is deeper: transducer wins
+    # and the manual record is dropped.
+    assert third.findtext("DepthFromLandSurfaceData") == "20.00"
+    assert third.findtext("MeasuringMethod") == "Pressure Transducer"
+    assert third.findtext("MeasurementMonth") == "4"
+    assert third.findtext("MeasurementDay") == "1"
 
 
 def test_ngwmn_unknown_pointid_returns_empty():

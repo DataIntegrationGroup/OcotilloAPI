@@ -59,8 +59,11 @@ def make_waterlevels_response(point_id, db):
         'order by "DateMeasured"'
     )
     sql2 = (
-        'select * from "NMA_WaterLevelsContinuous_Pressure_Daily" where "PointID"=:point_id and "QCed" is true '
-        'order by "DateMeasured"'
+        "select point_id, date_measured, depth_to_water_bgs "
+        "from transducer_daily_data "
+        "where point_id=:point_id and qced is true "
+        "and parameter_name='groundwater level' "
+        "order by date_measured"
     )
 
     return make_xml_response(db, (sql, sql2), point_id, water_levels_xml2)
@@ -76,59 +79,43 @@ def water_levels_xml(records):
 
 
 def water_levels_xml2(manual, pressure):
+    """
+    Merge manual measurements (view_NGWMN_WaterLevels rows) with daily
+    transducer aggregates (transducer_daily_data rows). Both row types carry
+    (PointID, date, depth to water bgs, ...) in their first three columns.
+
+    When both sources have a measurement on the same date, the manual reading
+    wins if it is shallower; either way only one record is emitted per date.
+    """
     if not pressure:
         return make_xml("WaterLevels", manual, make_water_level)
-    else:
-        root = etree.Element("WaterLevels")
-        # doc = etree.ElementTree(root)
 
-        columns = [
-            "GlobalID",
-            "OBJECTID",
-            "WellID",
-            "PointID",
-            "DateMeasured",
-            "TemperatureWater",
-            "WaterHead",
-            "WaterHeadAdjusted",
-            "DepthToWaterBGS",
-            "MeasurementMethod",
-            "DataSource",
-            "MeasuringAgency",
-            "QCed",
-            "Notes",
-            "Created",
-            "Updated",
-            "ProcessedBy",
-            "CheckedBy",
-            "CONDDL (mS/cm)",
-        ]
+    root = etree.Element("WaterLevels")
 
-        manual_dates = [r[1] for r in manual]
-        records = []
-        for r in pressure:
-            dm = r[columns.index("DateMeasured")]
-            tag = "pressure"
-            if dm.date() in manual_dates:
-                ri = next((ri for ri in manual if ri[1] == dm.date()))
-                if ri[2] < r[columns.index("DepthToWaterBGS")]:
-                    r = ri
-                    tag = "manual"
-                manual.remove(ri)
+    manual = list(manual)
+    manual_dates = [r[1] for r in manual]
+    records = []
+    for r in pressure:
+        dm = r[1]
+        tag = "pressure"
+        if dm in manual_dates:
+            ri = next(ri for ri in manual if ri[1] == dm)
+            if ri[2] is not None and r[2] is not None and ri[2] < r[2]:
+                r = ri
+                tag = "manual"
+            manual.remove(ri)
 
-            records.append((tag, r))
+        records.append((tag, r))
 
-        for mi in manual:
-            records.append(("manual", mi))
+    for mi in manual:
+        records.append(("manual", mi))
 
-        for k, record in sorted(
-            records, key=lambda r: r[1][4].date() if r[0] == "pressure" else r[1][1]
-        ):
-            if k == "pressure":
-                make_continuous_water_level(root, record)
-            else:
-                make_water_level(root, record)
-        return etree.tostring(root)
+    for k, record in sorted(records, key=lambda r: r[1][1]):
+        if k == "pressure":
+            make_continuous_water_level(root, record)
+        else:
+            make_water_level(root, record)
+    return etree.tostring(root)
 
 
 def well_construction_xml(records):
@@ -153,39 +140,16 @@ def make_xml(name, records, make_record):
 
 # ==================== make records =======================
 def make_continuous_water_level(root, r):
+    """
+    r is a transducer_daily_data row: (point_id, date_measured, depth_to_water_bgs)
+    """
     elem = etree.SubElement(root, "WaterLevel")
-    make_point_id(elem, r, idx=3)
+    make_point_id(elem, r)
 
-    columns = [
-        "GlobalID",
-        "OBJECTID",
-        "WellID",
-        "PointID",
-        "DateMeasured",
-        "TemperatureWater",
-        "WaterHead",
-        "WaterHeadAdjusted",
-        "DepthToWaterBGS",
-        "MeasurementMethod",
-        "DataSource",
-        "MeasuringAgency",
-        "QCed",
-        "Notes",
-        "Created",
-        "Updated",
-        "ProcessedBy",
-        "CheckedBy",
-        "CONDDL (mS/cm)",
-    ]
+    m = r[1]
 
-    m = r[columns.index("DateMeasured")]
-
-    # m = datetime.strptime(m, '%Y-%m-%d')
     for attr, val in (
-        (
-            "DepthFromLandSurfaceData",
-            "{:0.2f}".format(r[columns.index("DepthToWaterBGS")]),
-        ),
+        ("DepthFromLandSurfaceData", "{:0.2f}".format(r[2])),
         ("WaterLevelUnits", "ft bgs"),
         ("MeasuringMethod", "Pressure Transducer"),
         ("MeasurementMonth", m.month),
