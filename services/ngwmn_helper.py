@@ -39,7 +39,7 @@ def make_xml_response(db, sql, point_id, func):
 def make_lithology_response(point_id, db):
     sql = (
         'select "PointID", "StratTop", "StratBottom", "TERM" '
-        'from "view_NGWMN_Lithology" where "PointID"=:point_id'
+        'from "NGWMN_Lithology" where "PointID"=:point_id'
     )
     return make_xml_response(db, sql, point_id, lithology_xml)
 
@@ -48,14 +48,14 @@ def make_well_construction_response(point_id, db):
     sql = (
         'select "PointID", "CasingTop", "CasingBottom", "CasingDepthUnits", '
         '"ScreenTop", "ScreenBottom", "ScreenBottomUnit", "ScreenDescription", "CasingDescription" '
-        'from "view_NGWMN_WellConstruction" where "PointID"=:point_id'
+        'from "NGWMN_WellConstruction" where "PointID"=:point_id'
     )
     return make_xml_response(db, sql, point_id, well_construction_xml)
 
 
 def make_waterlevels_response(point_id, db):
     sql = (
-        'select * from "view_NGWMN_WaterLevels" where "PointID"=:point_id '
+        'select * from "NGWMN_WaterLevels" where "PointID"=:point_id '
         'order by "DateMeasured"'
     )
     sql2 = (
@@ -80,7 +80,7 @@ def water_levels_xml(records):
 
 def water_levels_xml2(manual, pressure):
     """
-    Merge manual measurements (view_NGWMN_WaterLevels rows) with daily
+    Merge manual measurements (NGWMN_WaterLevels rows) with daily
     transducer aggregates (transducer_daily_data rows). Both row types carry
     (PointID, date, depth to water bgs, ...) in their first three columns.
 

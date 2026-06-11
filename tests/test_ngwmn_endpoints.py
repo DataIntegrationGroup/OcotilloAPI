@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-Tests for the /ngwmn endpoints backed by the view_NGWMN_* views, which are
+Tests for the /ngwmn endpoints backed by the NGWMN_* views, which are
 sourced from the new Ocotillo data model (thing/well_screen/observation/
 thing_geologic_formation_association) rather than the legacy NMA_view_NGWMN_*
 copy tables.

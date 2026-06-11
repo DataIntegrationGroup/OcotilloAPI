@@ -4,9 +4,9 @@ Replaces the legacy NMA_view_NGWMN_* copy tables as the source for NGWMN
 exports. These views reproduce the original AMPAPI (SQL Server) view
 definitions but read from the new Ocotillo tables:
 
-- view_NGWMN_WaterLevels:      observation/sample/field_activity/field_event/thing
-- view_NGWMN_WellConstruction: thing/well_screen/well_casing_material
-- view_NGWMN_Lithology:        thing_geologic_formation_association/geologic_formation
+- NGWMN_WaterLevels:      observation/sample/field_activity/field_event/thing
+- NGWMN_WellConstruction: thing/well_screen/well_casing_material
+- NGWMN_Lithology:        thing_geologic_formation_association/geologic_formation
 
 Revision ID: u8v9w0x1y2z3
 Revises: t6u7v8w9x0y1
@@ -37,9 +37,9 @@ REQUIRED_TABLES = {
     "geologic_formation",
 }
 
-DROP_WATERLEVELS_SQL = 'DROP VIEW IF EXISTS "view_NGWMN_WaterLevels"'
-DROP_WELLCONSTRUCTION_SQL = 'DROP VIEW IF EXISTS "view_NGWMN_WellConstruction"'
-DROP_LITHOLOGY_SQL = 'DROP VIEW IF EXISTS "view_NGWMN_Lithology"'
+DROP_WATERLEVELS_SQL = 'DROP VIEW IF EXISTS "NGWMN_WaterLevels"'
+DROP_WELLCONSTRUCTION_SQL = 'DROP VIEW IF EXISTS "NGWMN_WellConstruction"'
+DROP_LITHOLOGY_SQL = 'DROP VIEW IF EXISTS "NGWMN_Lithology"'
 
 
 def _create_waterlevels_view() -> str:
@@ -63,7 +63,7 @@ def _create_waterlevels_view() -> str:
     # and LU_DataQuality), including the legacy quirk mapping code O
     # ("Observed...") to 'Acoustic Sounder'.
     return """
-        CREATE VIEW "view_NGWMN_WaterLevels" AS
+        CREATE VIEW "NGWMN_WaterLevels" AS
         SELECT
             t.name AS "PointID",
             CASE
@@ -109,7 +109,7 @@ def _create_wellconstruction_view() -> str:
     # to controlled material terms during transfer, so it is rebuilt here as
     # a comma-separated list of well_casing_material terms.
     return """
-        CREATE VIEW "view_NGWMN_WellConstruction" AS
+        CREATE VIEW "NGWMN_WellConstruction" AS
         SELECT
             t.name AS "PointID",
             CASE WHEN t.well_casing_depth IS NOT NULL THEN 0::double precision END AS "CasingTop",
@@ -139,7 +139,7 @@ def _create_lithology_view() -> str:
     # Lithology and TERM columns. The inner join is reproduced by requiring
     # a non-null lithology. StratSource was not migrated and is NULL.
     return """
-        CREATE VIEW "view_NGWMN_Lithology" AS
+        CREATE VIEW "NGWMN_Lithology" AS
         SELECT
             tgfa.id AS "OBJECTID",
             t.name AS "PointID",
@@ -172,7 +172,7 @@ def upgrade() -> None:
     op.execute(text(_create_waterlevels_view()))
     op.execute(
         text(
-            'COMMENT ON VIEW "view_NGWMN_WaterLevels" IS '
+            'COMMENT ON VIEW "NGWMN_WaterLevels" IS '
             "'Public manual groundwater level measurements in the NGWMN "
             "exchange format, sourced from the Ocotillo observation model.'"
         )
@@ -182,7 +182,7 @@ def upgrade() -> None:
     op.execute(text(_create_wellconstruction_view()))
     op.execute(
         text(
-            'COMMENT ON VIEW "view_NGWMN_WellConstruction" IS '
+            'COMMENT ON VIEW "NGWMN_WellConstruction" IS '
             "'Well casing and screen intervals in the NGWMN exchange format, "
             "sourced from the Ocotillo thing/well_screen model.'"
         )
@@ -192,7 +192,7 @@ def upgrade() -> None:
     op.execute(text(_create_lithology_view()))
     op.execute(
         text(
-            'COMMENT ON VIEW "view_NGWMN_Lithology" IS '
+            'COMMENT ON VIEW "NGWMN_Lithology" IS '
             "'Lithology intervals in the NGWMN exchange format, sourced from "
             "the Ocotillo geologic formation associations.'"
         )
