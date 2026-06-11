@@ -151,9 +151,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.3
         with:
+          fetch-depth: 0
           ref: ${{ inputs.source_branch }}
           token: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
-
       - name: Set up git user
         run: |
           git config user.name  "github-actions[bot]"
