@@ -61,9 +61,10 @@ def ngwmn_well():
         session.add(thing)
         session.flush()
 
-        # Screen, casing material, and lithology rows are deliberately left at
-        # the 'draft' default: transfers never set release_status on these
-        # child tables, and the export is gated on the thing's status alone.
+        # Screen, casing material, and lithology rows are explicitly set to
+        # 'draft' to mirror transferred data, where these child tables never
+        # get a release_status. The export is gated on the thing's status
+        # alone, so these rows must still appear in the NGWMN responses.
         session.add(
             WellScreen(
                 thing_id=thing.id,
