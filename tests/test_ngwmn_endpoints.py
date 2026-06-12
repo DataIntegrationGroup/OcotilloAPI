@@ -61,25 +61,28 @@ def ngwmn_well():
         session.add(thing)
         session.flush()
 
+        # Screen, casing material, and lithology rows are deliberately left at
+        # the 'draft' default: transfers never set release_status on these
+        # child tables, and the export is gated on the thing's status alone.
         session.add(
             WellScreen(
                 thing_id=thing.id,
                 screen_depth_top=80.0,
                 screen_depth_bottom=120.0,
                 screen_description="4in slotted",
-                release_status="public",
+                release_status="draft",
             )
         )
         session.add(
             WellCasingMaterial(
-                thing_id=thing.id, material="Steel", release_status="public"
+                thing_id=thing.id, material="Steel", release_status="draft"
             )
         )
 
         formation = GeologicFormation(
             formation_code=None,
             lithology="Sandstone",
-            release_status="public",
+            release_status="draft",
         )
         session.add(formation)
         session.flush()
@@ -89,7 +92,7 @@ def ngwmn_well():
                 geologic_formation_id=formation.id,
                 top_depth=0.0,
                 bottom_depth=60.0,
-                release_status="public",
+                release_status="draft",
             )
         )
 
