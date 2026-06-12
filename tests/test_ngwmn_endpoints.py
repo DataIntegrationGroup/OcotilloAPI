@@ -44,6 +44,7 @@ from tests import client, get_parameter_id
 
 POINT_ID = "NGWMN-TEST-0001"
 MERGED_POINT_ID = "NGWMN-TEST-0002"
+PRIVATE_POINT_ID = "NGWMN-TEST-0003"
 
 
 @pytest.fixture(scope="module")
@@ -389,6 +390,135 @@ def test_ngwmn_waterlevels_merges_manual_and_transducer(ngwmn_merged_well):
     assert third.findtext("MeasuringMethod") == "Pressure Transducer"
     assert third.findtext("MeasurementMonth") == "4"
     assert third.findtext("MeasurementDay") == "1"
+
+
+@pytest.fixture(scope="module")
+def ngwmn_private_well():
+    """A private well whose child rows are public; nothing may be exported."""
+    with session_ctx() as session:
+        thing = Thing(
+            name=PRIVATE_POINT_ID,
+            thing_type="water well",
+            release_status="private",
+            well_casing_depth=100.0,
+        )
+        session.add(thing)
+        session.flush()
+
+        session.add(
+            WellScreen(
+                thing_id=thing.id,
+                screen_depth_top=10.0,
+                screen_depth_bottom=50.0,
+                release_status="public",
+            )
+        )
+
+        formation = GeologicFormation(
+            formation_code=None, lithology="Sandstone", release_status="public"
+        )
+        session.add(formation)
+        session.flush()
+        session.add(
+            ThingGeologicFormationAssociation(
+                thing_id=thing.id,
+                geologic_formation_id=formation.id,
+                top_depth=0.0,
+                bottom_depth=50.0,
+                release_status="public",
+            )
+        )
+
+        parameter_id = get_parameter_id("groundwater level", "Field Parameter")
+
+        event = FieldEvent(
+            thing_id=thing.id,
+            event_date="2024-03-15T19:00:00Z",
+            release_status="public",
+        )
+        session.add(event)
+        session.flush()
+        activity = FieldActivity(
+            field_event_id=event.id,
+            activity_type="groundwater level",
+            release_status="public",
+        )
+        session.add(activity)
+        session.flush()
+        sample = Sample(
+            field_activity_id=activity.id,
+            sample_date="2024-03-15T19:00:00Z",
+            sample_name=f"{PRIVATE_POINT_ID}-wl-0",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+            release_status="public",
+        )
+        session.add(sample)
+        session.flush()
+        session.add(
+            Observation(
+                sample_id=sample.id,
+                parameter_id=parameter_id,
+                observation_datetime="2024-03-15T19:00:00Z",
+                value=50.0,
+                unit="ft",
+                release_status="public",
+            )
+        )
+
+        sensor = Sensor(
+            name=f"{PRIVATE_POINT_ID}-transducer",
+            sensor_type="Pressure Transducer",
+            release_status="public",
+        )
+        session.add(sensor)
+        session.flush()
+        deployment = Deployment(
+            thing_id=thing.id,
+            sensor_id=sensor.id,
+            installation_date="2024-01-01",
+            release_status="public",
+        )
+        session.add(deployment)
+        session.flush()
+        session.add(
+            TransducerObservation(
+                deployment_id=deployment.id,
+                parameter_id=parameter_id,
+                observation_datetime="2024-03-20T12:00:00Z",
+                value=30.0,
+                release_status="public",
+            )
+        )
+        session.commit()
+        thing_id = thing.id
+        sensor_id = sensor.id
+
+        session.execute(text("REFRESH MATERIALIZED VIEW transducer_daily_data"))
+        session.commit()
+
+    yield PRIVATE_POINT_ID
+
+    with session_ctx() as session:
+        session.execute(delete(Thing).where(Thing.id == thing_id))
+        session.execute(delete(Sensor).where(Sensor.id == sensor_id))
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW transducer_daily_data"))
+        session.commit()
+
+
+def test_ngwmn_private_thing_exports_nothing(ngwmn_private_well):
+    for endpoint, root_tag, record_tag in (
+        ("waterlevels", "WaterLevels", "WaterLevel"),
+        ("wellconstruction", "Casings", "Casing"),
+        ("lithology", "Lithologies", "Lithology"),
+    ):
+        response = client.get(f"/ngwmn/{endpoint}/{ngwmn_private_well}")
+        assert response.status_code == 200
+        root = etree.fromstring(response.content)
+        assert root.tag == root_tag
+        assert len(root.findall(record_tag)) == 0, endpoint
 
 
 def test_ngwmn_unknown_pointid_returns_empty():

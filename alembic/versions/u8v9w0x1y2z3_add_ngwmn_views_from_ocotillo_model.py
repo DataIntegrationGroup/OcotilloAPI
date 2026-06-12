@@ -98,6 +98,10 @@ def _create_waterlevels_view() -> str:
         JOIN parameter AS p ON p.id = o.parameter_id
         WHERE p.parameter_name = 'groundwater level'
           AND o.release_status = 'public'
+          AND s.release_status = 'public'
+          AND fa.release_status = 'public'
+          AND fe.release_status = 'public'
+          AND t.release_status = 'public'
     """
 
 
@@ -121,13 +125,15 @@ def _create_wellconstruction_view() -> str:
             ws.screen_description AS "ScreenDescription",
             cm.materials AS "CasingDescription"
         FROM thing AS t
-        LEFT JOIN well_screen AS ws ON ws.thing_id = t.id
+        LEFT JOIN well_screen AS ws
+            ON ws.thing_id = t.id AND ws.release_status = 'public'
         LEFT JOIN LATERAL (
             SELECT string_agg(wcm.material, ', ' ORDER BY wcm.material) AS materials
             FROM well_casing_material AS wcm
-            WHERE wcm.thing_id = t.id
+            WHERE wcm.thing_id = t.id AND wcm.release_status = 'public'
         ) AS cm ON TRUE
         WHERE t.thing_type = 'water well'
+          AND t.release_status = 'public'
     """
 
 
@@ -154,6 +160,8 @@ def _create_lithology_view() -> str:
         JOIN thing AS t ON t.id = tgfa.thing_id
         JOIN geologic_formation AS gf ON gf.id = tgfa.geologic_formation_id
         WHERE gf.lithology IS NOT NULL
+          AND tgfa.release_status = 'public'
+          AND t.release_status = 'public'
     """
 
 

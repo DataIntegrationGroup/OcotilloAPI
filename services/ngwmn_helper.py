@@ -15,6 +15,7 @@
 # ===============================================================================
 from xml.etree import ElementTree as etree
 
+from db import Thing
 from db.ngwmn_views import (
     NGWMNLithology,
     NGWMNWaterLevels,
@@ -84,10 +85,12 @@ def make_waterlevels_response(point_id, db):
             TransducerDailyData.date_measured,
             TransducerDailyData.depth_to_water_bgs,
         )
+        .join(Thing, Thing.id == TransducerDailyData.thing_id)
         .filter(
             TransducerDailyData.point_id == point_id,
             TransducerDailyData.qced.is_(True),
             TransducerDailyData.parameter_name == "groundwater level",
+            Thing.release_status == "public",
         )
         .order_by(TransducerDailyData.date_measured)
         .all()
