@@ -79,11 +79,15 @@ def make_waterlevels_response(point_id, db):
         .order_by(NGWMNWaterLevels.date_measured)
         .all()
     )
+    # The daily *minimum* depth matches the legacy
+    # NMA_WaterLevelsContinuous_Pressure_Daily values (AMP's nightly job
+    # published the shallowest reading of each day), keeping the NGWMN
+    # record consistent with what was historically harvested.
     pressure = (
         db.query(
             TransducerDailyData.point_id,
             TransducerDailyData.date_measured,
-            TransducerDailyData.depth_to_water_bgs,
+            TransducerDailyData.depth_to_water_bgs_min,
         )
         .join(Thing, Thing.id == TransducerDailyData.thing_id)
         .filter(

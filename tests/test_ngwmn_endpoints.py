@@ -263,13 +263,13 @@ def ngwmn_merged_well():
         session.flush()
 
         transducer_readings = [
-            # 2024-03-15 daily avg 50.0: manual 47.50 is shallower and wins.
+            # 2024-03-15 daily min 49.0: manual 47.50 is shallower and wins.
             ("2024-03-15T06:00:00Z", 49.0),
             ("2024-03-15T18:00:00Z", 51.0),
-            # 2024-03-20 daily avg 30.0: transducer-only date.
+            # 2024-03-20 daily min 29.0: transducer-only date.
             ("2024-03-20T06:00:00Z", 29.0),
             ("2024-03-20T18:00:00Z", 31.0),
-            # 2024-04-01 daily avg 20.0: manual 33.00 is deeper and loses.
+            # 2024-04-01 daily min 19.0: manual 33.00 is deeper and loses.
             ("2024-04-01T06:00:00Z", 19.0),
             ("2024-04-01T18:00:00Z", 21.0),
         ]
@@ -380,8 +380,9 @@ def test_ngwmn_waterlevels_merges_manual_and_transducer(ngwmn_merged_well):
     assert first.findtext("MeasurementMonth") == "3"
     assert first.findtext("MeasurementDay") == "15"
 
-    # Transducer-only date: daily average is emitted.
-    assert second.findtext("DepthFromLandSurfaceData") == "30.00"
+    # Transducer-only date: the daily minimum is emitted, matching the
+    # legacy NMA_WaterLevelsContinuous_Pressure_Daily statistic.
+    assert second.findtext("DepthFromLandSurfaceData") == "29.00"
     assert second.findtext("MeasuringMethod") == "Pressure Transducer"
     assert second.findtext("WaterLevelUnits") == "ft bgs"
     assert second.findtext("WaterLevelAccuracy") == "0.02 ft"
@@ -390,7 +391,7 @@ def test_ngwmn_waterlevels_merges_manual_and_transducer(ngwmn_merged_well):
 
     # Same-date overlap where the manual reading is deeper: transducer wins
     # and the manual record is dropped.
-    assert third.findtext("DepthFromLandSurfaceData") == "20.00"
+    assert third.findtext("DepthFromLandSurfaceData") == "19.00"
     assert third.findtext("MeasuringMethod") == "Pressure Transducer"
     assert third.findtext("MeasurementMonth") == "4"
     assert third.findtext("MeasurementDay") == "1"
