@@ -84,6 +84,9 @@ _SQL_DUMP_ENV = "NMW_SQL_DUMP"
 # Optional output dir for the per-table CSVs written from the dump (COPY path).
 # Defaults to a fresh temp dir.
 _CSV_DIR_ENV = "NMW_CSV_DIR"
+# pg8000 encodes the parameter count as an unsigned short (max 65535).
+# Keep chunk size below that ceiling based on actual column count per table.
+_MAX_PG8000_PARAMS = 65535
 _CHUNK_SIZE = 2000
 
 # Materialized OGC views over the geothermal mirror that need a REFRESH after a
@@ -248,6 +251,7 @@ def _load_table(session: Session, spec: MirrorSpec, limit: int = 0) -> dict:
     if limit and limit > 0:
         rows_iter = itertools.islice(rows_iter, limit)
 
+    chunk_size = min(_CHUNK_SIZE, _MAX_PG8000_PARAMS // max(len(cols), 1))
     total = 0
     inserted = 0
     batch: list[dict] = []
@@ -266,7 +270,7 @@ def _load_table(session: Session, spec: MirrorSpec, limit: int = 0) -> dict:
         if any(row.get(pk) is None for pk in pk_cols):
             continue  # cannot upsert without a PK value
         batch.append(row)
-        if len(batch) >= _CHUNK_SIZE:
+        if len(batch) >= chunk_size:
             inserted += _flush(session, spec.model, batch, pk_cols)
             batch = []
     inserted += _flush(session, spec.model, batch, pk_cols)
@@ -347,7 +351,12 @@ def refresh_materialized_views(session: Session) -> list[str]:
     refreshed = []
     for view in _MATERIALIZED_VIEWS:
         exists = session.execute(
-            text("SELECT to_regclass(:n)"), {"n": f"public.{view}"}
+            text(
+                "SELECT EXISTS("
+                "SELECT 1 FROM pg_matviews WHERE schemaname='public' AND matviewname=:n"
+                ")"
+            ),
+            {"n": view},
         ).scalar()
         if not exists:
             logger.warning("Skip refresh; materialized view missing: %s", view)

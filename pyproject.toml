@@ -101,6 +101,7 @@ dependencies = [
   "utm==0.8.1",
   "uvicorn==0.49.0",
   "yarl==1.24.2",
+  "pymssql>=2.3.13",
 ]
 
 [tool.uv]
