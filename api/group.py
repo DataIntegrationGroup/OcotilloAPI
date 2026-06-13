@@ -27,10 +27,12 @@ from core.dependencies import (
 from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
 from services.crud_helper import model_patcher, model_deleter, model_adder
-from services.query_helper import (
-    simple_get_by_id,
-    paginated_all_getter,
+from services.group_helper import (
+    get_well_counts_by_group_id,
+    group_to_response,
+    paginated_groups_getter,
 )
+from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/group", tags=["group"])
 
@@ -74,7 +76,7 @@ def get_groups(
     """
     Retrieve all groups from the database.
     """
-    return paginated_all_getter(session, Group, filter_=filter_)
+    return paginated_groups_getter(session, filter_=filter_)
 
 
 @router.get("/{group_id}", summary="Get group by ID")
@@ -84,7 +86,9 @@ def get_group_by_id(
     """
     Retrieve a group by ID from the database.
     """
-    return simple_get_by_id(session, Group, group_id)
+    group = simple_get_by_id(session, Group, group_id)
+    counts = get_well_counts_by_group_id(session, [group.id])
+    return group_to_response(group, counts.get(group.id, 0))
 
 
 # @router.get(

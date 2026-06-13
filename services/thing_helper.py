@@ -71,6 +71,7 @@ WATER_WELL_LOADER_OPTIONS = [
     selectinload(Thing.contact_associations).selectinload(
         ThingContactAssociation.contact
     ),
+    selectinload(Thing.group_associations).selectinload(GroupThingAssociation.group),
     selectinload(Thing.well_purposes),
     selectinload(Thing.well_casing_materials),
     selectinload(Thing.links),

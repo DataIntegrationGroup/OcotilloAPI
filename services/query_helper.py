@@ -343,6 +343,25 @@ def _thing_contacts_min_name_sort_scalar(thing_table: type):
     )
 
 
+def _thing_groups_min_name_sort_scalar(thing_table: type):
+    """Minimum ``lower(Group.name)`` across linked projects (stable proxy for display order)."""
+    from db.group import Group, GroupThingAssociation
+
+    gta = GroupThingAssociation
+    g = Group
+    return (
+        select(func.min(func.lower(g.name)))
+        .select_from(gta)
+        .join(g, gta.group_id == g.id)
+        .where(
+            gta.thing_id == thing_table.id,
+            g.name.isnot(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
 def _thing_aquifers_min_name_sort_scalar(thing_table: type):
     """Minimum ``lower(AquiferSystem.name)`` across linked aquifers."""
     from db.aquifer_system import AquiferSystem
@@ -417,6 +436,7 @@ THING_VIRTUAL_SORT_FIELDS = frozenset(
         "datalogger_suitability_status",
         "site_name",
         "contacts",
+        "groups",
         "aquifers",
         "open_status",
         "measuring_point_height",
@@ -485,6 +505,9 @@ def _apply_thing_virtual_sort(
 
     if sort == "contacts":
         return str_order(_thing_contacts_min_name_sort_scalar(thing_table))
+
+    if sort == "groups":
+        return str_order(_thing_groups_min_name_sort_scalar(thing_table))
 
     if sort == "aquifers":
         return str_order(_thing_aquifers_min_name_sort_scalar(thing_table))
@@ -608,6 +631,91 @@ def _apply_thing_contacts_filter(
         )
 
     return sql.where(exists(_linked_contact_select(pred)))
+
+
+def _apply_thing_groups_filter(
+    sql: Select[Any],
+    thing_table: type,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter ``Thing`` rows using linked groups / projects (many-to-many).
+
+    Refine sends ``field=groups`` from the wells list when filtering by project.
+    Match **any** linked ``Group`` by id (numeric ``eq``) or by ``Group.name``.
+    """
+    from db.group import Group, GroupThingAssociation
+
+    gta = GroupThingAssociation
+    g = Group
+
+    def _linked_group_select(predicate):
+        return (
+            select(1)
+            .select_from(gta)
+            .join(g, gta.group_id == g.id)
+            .where(
+                gta.thing_id == thing_table.id,
+                predicate,
+            )
+        )
+
+    any_linked_group = (
+        select(1)
+        .select_from(gta)
+        .join(g, gta.group_id == g.id)
+        .where(gta.thing_id == thing_table.id)
+    )
+
+    if operator == "nnull":
+        return sql.where(exists(any_linked_group))
+
+    if operator == "null":
+        return sql.where(~exists(any_linked_group))
+
+    if operator == "eq":
+
+        def _eq_predicate():
+            try:
+                group_id = int(value)
+                return g.id == group_id
+            except (TypeError, ValueError):
+                return g.name == str(value)
+
+        return sql.where(exists(_linked_group_select(_eq_predicate())))
+
+    if operator == "ne":
+
+        def _ne_predicate():
+            try:
+                group_id = int(value)
+                return g.id == group_id
+            except (TypeError, ValueError):
+                return g.name == str(value)
+
+        return sql.where(~exists(_linked_group_select(_ne_predicate())))
+
+    if operator == "ncontains":
+        nlg = _linked_group_select(g.name.ilike(f"%{value}%"))
+        return sql.where(~exists(nlg))
+
+    if operator == "contains":
+        pred = g.name.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = g.name.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = g.name.ilike(f"%{value}")
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for groups "
+                "filters (contains, ncontains, eq, ne, startswith, endswith, "
+                "null, nnull)"
+            ),
+        )
+
+    return sql.where(exists(_linked_group_select(pred)))
 
 
 def _apply_contact_things_filter(
@@ -738,6 +846,9 @@ def _apply_json_filter_clause(
 
     if getattr(table, "__name__", None) == "Thing" and field == "contacts":
         return _apply_thing_contacts_filter(sql, table, operator, value)
+
+    if getattr(table, "__name__", None) == "Thing" and field == "groups":
+        return _apply_thing_groups_filter(sql, table, operator, value)
 
     try:
         column = getattr(table, field)
