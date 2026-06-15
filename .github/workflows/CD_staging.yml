@@ -41,7 +41,7 @@ jobs:
       # roles/secretmanager.secretAccessor on these secrets.
       - name: Fetch feedback secrets from Secret Manager
         id: feedback-secrets
-        uses: 'google-github-actions/get-secretmanager-secrets@v2'
+        uses: 'google-github-actions/get-secretmanager-secrets@v3'
         with:
           secrets: |-
             jira_email:${{ vars.GCP_PROJECT_ID }}/jira-email
