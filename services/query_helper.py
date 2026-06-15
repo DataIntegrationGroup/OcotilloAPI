@@ -550,6 +550,37 @@ def _apply_contact_virtual_sort(
     )
 
 
+def _build_assoc_exists(
+    assoc_table,
+    target_table,
+    assoc_join_col,
+    assoc_owner_col,
+    owner_pk,
+    predicate=None,
+    extra: list | None = None,
+):
+    """Correlated EXISTS subquery for many-to-many association filters.
+
+    Builds ``SELECT 1 FROM assoc JOIN target ON assoc_join_col = target.id
+    WHERE assoc_owner_col = owner_pk [AND extra...] [AND predicate]``.
+
+    Shared by _apply_thing_contacts_filter, _apply_thing_groups_filter, and
+    _apply_contact_things_filter to avoid repeating the same subquery shape.
+    Omit ``predicate`` to get an unconditional existence check (null/nnull).
+    """
+    where_clauses = [assoc_owner_col == owner_pk]
+    if extra:
+        where_clauses.extend(extra)
+    if predicate is not None:
+        where_clauses.append(predicate)
+    return (
+        select(1)
+        .select_from(assoc_table)
+        .join(target_table, assoc_join_col == target_table.id)
+        .where(*where_clauses)
+    )
+
+
 def _apply_thing_contacts_filter(
     sql: Select[Any],
     thing_table: type,
@@ -580,22 +611,18 @@ def _apply_thing_contacts_filter(
     c = Contact
 
     def _linked_contact_select(predicate):
-        return (
-            select(1)
-            .select_from(tca)
-            .join(c, tca.contact_id == c.id)
-            .where(
-                tca.thing_id == thing_table.id,
-                c.name.isnot(None),
-                predicate,
-            )
+        return _build_assoc_exists(
+            tca,
+            c,
+            tca.contact_id,
+            tca.thing_id,
+            thing_table.id,
+            predicate,
+            extra=[c.name.isnot(None)],
         )
 
-    any_linked_contact = (
-        select(1)
-        .select_from(tca)
-        .join(c, tca.contact_id == c.id)
-        .where(tca.thing_id == thing_table.id)
+    any_linked_contact = _build_assoc_exists(
+        tca, c, tca.contact_id, tca.thing_id, thing_table.id
     )
 
     if operator == "nnull":
@@ -650,21 +677,12 @@ def _apply_thing_groups_filter(
     g = Group
 
     def _linked_group_select(predicate):
-        return (
-            select(1)
-            .select_from(gta)
-            .join(g, gta.group_id == g.id)
-            .where(
-                gta.thing_id == thing_table.id,
-                predicate,
-            )
+        return _build_assoc_exists(
+            gta, g, gta.group_id, gta.thing_id, thing_table.id, predicate
         )
 
-    any_linked_group = (
-        select(1)
-        .select_from(gta)
-        .join(g, gta.group_id == g.id)
-        .where(gta.thing_id == thing_table.id)
+    any_linked_group = _build_assoc_exists(
+        gta, g, gta.group_id, gta.thing_id, thing_table.id
     )
 
     if operator == "nnull":
@@ -750,22 +768,18 @@ def _apply_contact_things_filter(
     t = Thing
 
     def _linked_thing_select(predicate):
-        return (
-            select(1)
-            .select_from(tca)
-            .join(t, tca.thing_id == t.id)
-            .where(
-                tca.contact_id == contact_table.id,
-                t.name.isnot(None),
-                predicate,
-            )
+        return _build_assoc_exists(
+            tca,
+            t,
+            tca.thing_id,
+            tca.contact_id,
+            contact_table.id,
+            predicate,
+            extra=[t.name.isnot(None)],
         )
 
-    any_linked_thing = (
-        select(1)
-        .select_from(tca)
-        .join(t, tca.thing_id == t.id)
-        .where(tca.contact_id == contact_table.id)
+    any_linked_thing = _build_assoc_exists(
+        tca, t, tca.thing_id, tca.contact_id, contact_table.id
     )
 
     if operator == "nnull":
