@@ -36,6 +36,18 @@ jobs:
         with:
           credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
+      # Feedback endpoint credentials live in Google Secret Manager, not
+      # GitHub secrets. The deploy service account needs
+      # roles/secretmanager.secretAccessor on these secrets.
+      - name: Fetch feedback secrets from Secret Manager
+        id: feedback-secrets
+        uses: 'google-github-actions/get-secretmanager-secrets@v3'
+        with:
+          secrets: |-
+            jira_email:${{ vars.GCP_PROJECT_ID }}/jira-email
+            jira_api_token:${{ vars.GCP_PROJECT_ID }}/jira-api-token
+            slack_feedback_webhook_url:${{ vars.GCP_PROJECT_ID }}/slack-feedback-webhook-url
+
       - name: Run Alembic migrations on staging database
         env:
           DB_DRIVER: "cloudsql"
@@ -85,6 +97,11 @@ jobs:
           AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
           SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
           APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
+          JIRA_BASE_URL: "${{ vars.JIRA_BASE_URL || 'https://nmbgmr.atlassian.net' }}"
+          JIRA_EMAIL: "${{ steps.feedback-secrets.outputs.jira_email }}"
+          JIRA_API_TOKEN: "${{ steps.feedback-secrets.outputs.jira_api_token }}"
+          JIRA_DEFAULT_PROJECT: "${{ vars.JIRA_DEFAULT_PROJECT || 'BDMS' }}"
+          SLACK_FEEDBACK_WEBHOOK_URL: "${{ steps.feedback-secrets.outputs.slack_feedback_webhook_url }}"
         run: |
           export MAX_INSTANCES="10"
           export SERVICE_NAME="ocotillo-api-staging"

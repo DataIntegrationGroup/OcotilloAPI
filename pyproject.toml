@@ -1,6 +1,6 @@
 [project]
 name = "OcotilloAPI"
-version = "1.0.0"
+version = "1.1.0"
 description = "FastAPI backend and CLI for managing Ocotillo groundwater locations, wells, assets, and bulk water-level data transfers."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -91,7 +91,7 @@ dependencies = [
   "sqlalchemy-searchable==2.1.0",
   "sqlalchemy-utils==0.42.1",
   "sqlparse>=0.5.5",
-  "starlette==0.52.1",
+  "starlette==1.0.1",
   "starlette-admin[i18n]==0.16.1",
   "typer==0.26.7",
   "typing-extensions==4.15.0",

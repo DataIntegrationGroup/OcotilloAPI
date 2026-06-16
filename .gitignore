@@ -53,3 +53,6 @@ docs/
 
 #Codex
 .codex
+# Claude Code
+.claude/settings.local.json
+.claude/worktrees/

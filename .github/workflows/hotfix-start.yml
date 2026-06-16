@@ -5,8 +5,9 @@ name: hotfix-start
 #   1. Run this workflow (optionally pin base_tag; default = latest v*.*.*).
 #   2. Push fix commit(s) to the new hotfix/vX.Y.(Z+1) branch via PR.
 #   3. release-please opens a Release PR on the hotfix branch.
-#   4. Merge it -> tag vX.Y.(Z+1) -> CD (Production) deploys.
-#   5. Open a forward-merge PR from hotfix/vX.Y.(Z+1) back into production.
+#   4. Merge it -> tag vX.Y.(Z+1) -> CD (Production) deploys, and a
+#      forward-merge PR into production is opened automatically
+#      (forward-merge.yml).
 
 on:
   workflow_dispatch:
@@ -85,6 +86,6 @@ jobs:
             echo "Next steps:"
             echo "1. Open a fix PR targeting \`${{ steps.next.outputs.branch }}\` (Conventional Commit title, \`fix:\` prefix)."
             echo "2. After merge, release-please will open a Release PR on the hotfix branch."
-            echo "3. Merge the Release PR -> tag \`v${{ steps.next.outputs.version }}\` -> CD (Production) deploys."
-            echo "4. Open a forward-merge PR \`${{ steps.next.outputs.branch }}\` -> \`production\`."
+            echo "3. Merge the Release PR -> tag \`v${{ steps.next.outputs.version }}\` -> CD (Production) deploys and a forward-merge PR \`${{ steps.next.outputs.branch }}\` -> \`production\` opens automatically."
+            echo "4. After merging that PR, run the \`forward-merge\` workflow (source_branch=production) to propagate the hotfix to \`staging\`."
           } >> "$GITHUB_STEP_SUMMARY"
