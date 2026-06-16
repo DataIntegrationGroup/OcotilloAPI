@@ -343,6 +343,25 @@ def _thing_contacts_min_name_sort_scalar(thing_table: type):
     )
 
 
+def _thing_groups_min_name_sort_scalar(thing_table: type):
+    """Minimum ``lower(Group.name)`` across linked projects (stable proxy for display order)."""
+    from db.group import Group, GroupThingAssociation
+
+    gta = GroupThingAssociation
+    g = Group
+    return (
+        select(func.min(func.lower(g.name)))
+        .select_from(gta)
+        .join(g, gta.group_id == g.id)
+        .where(
+            gta.thing_id == thing_table.id,
+            g.name.isnot(None),
+        )
+        .correlate(thing_table)
+        .scalar_subquery()
+    )
+
+
 def _thing_aquifers_min_name_sort_scalar(thing_table: type):
     """Minimum ``lower(AquiferSystem.name)`` across linked aquifers."""
     from db.aquifer_system import AquiferSystem
@@ -417,6 +436,7 @@ THING_VIRTUAL_SORT_FIELDS = frozenset(
         "datalogger_suitability_status",
         "site_name",
         "contacts",
+        "groups",
         "aquifers",
         "open_status",
         "measuring_point_height",
@@ -486,6 +506,9 @@ def _apply_thing_virtual_sort(
     if sort == "contacts":
         return str_order(_thing_contacts_min_name_sort_scalar(thing_table))
 
+    if sort == "groups":
+        return str_order(_thing_groups_min_name_sort_scalar(thing_table))
+
     if sort == "aquifers":
         return str_order(_thing_aquifers_min_name_sort_scalar(thing_table))
 
@@ -527,6 +550,37 @@ def _apply_contact_virtual_sort(
     )
 
 
+def _build_assoc_exists(
+    assoc_table,
+    target_table,
+    assoc_join_col,
+    assoc_owner_col,
+    owner_pk,
+    predicate=None,
+    extra: list | None = None,
+):
+    """Correlated EXISTS subquery for many-to-many association filters.
+
+    Builds ``SELECT 1 FROM assoc JOIN target ON assoc_join_col = target.id
+    WHERE assoc_owner_col = owner_pk [AND extra...] [AND predicate]``.
+
+    Shared by _apply_thing_contacts_filter, _apply_thing_groups_filter, and
+    _apply_contact_things_filter to avoid repeating the same subquery shape.
+    Omit ``predicate`` to get an unconditional existence check (null/nnull).
+    """
+    where_clauses = [assoc_owner_col == owner_pk]
+    if extra:
+        where_clauses.extend(extra)
+    if predicate is not None:
+        where_clauses.append(predicate)
+    return (
+        select(1)
+        .select_from(assoc_table)
+        .join(target_table, assoc_join_col == target_table.id)
+        .where(*where_clauses)
+    )
+
+
 def _apply_thing_contacts_filter(
     sql: Select[Any],
     thing_table: type,
@@ -557,22 +611,18 @@ def _apply_thing_contacts_filter(
     c = Contact
 
     def _linked_contact_select(predicate):
-        return (
-            select(1)
-            .select_from(tca)
-            .join(c, tca.contact_id == c.id)
-            .where(
-                tca.thing_id == thing_table.id,
-                c.name.isnot(None),
-                predicate,
-            )
+        return _build_assoc_exists(
+            tca,
+            c,
+            tca.contact_id,
+            tca.thing_id,
+            thing_table.id,
+            predicate,
+            extra=[c.name.isnot(None)],
         )
 
-    any_linked_contact = (
-        select(1)
-        .select_from(tca)
-        .join(c, tca.contact_id == c.id)
-        .where(tca.thing_id == thing_table.id)
+    any_linked_contact = _build_assoc_exists(
+        tca, c, tca.contact_id, tca.thing_id, thing_table.id
     )
 
     if operator == "nnull":
@@ -610,6 +660,82 @@ def _apply_thing_contacts_filter(
     return sql.where(exists(_linked_contact_select(pred)))
 
 
+def _apply_thing_groups_filter(
+    sql: Select[Any],
+    thing_table: type,
+    operator: str,
+    value: Any,
+) -> Select[Any]:
+    """Filter ``Thing`` rows using linked groups / projects (many-to-many).
+
+    Refine sends ``field=groups`` from the wells list when filtering by project.
+    Match **any** linked ``Group`` by id (numeric ``eq``) or by ``Group.name``.
+    """
+    from db.group import Group, GroupThingAssociation
+
+    gta = GroupThingAssociation
+    g = Group
+
+    def _linked_group_select(predicate):
+        return _build_assoc_exists(
+            gta, g, gta.group_id, gta.thing_id, thing_table.id, predicate
+        )
+
+    any_linked_group = _build_assoc_exists(
+        gta, g, gta.group_id, gta.thing_id, thing_table.id
+    )
+
+    if operator == "nnull":
+        return sql.where(exists(any_linked_group))
+
+    if operator == "null":
+        return sql.where(~exists(any_linked_group))
+
+    if operator == "eq":
+
+        def _eq_predicate():
+            try:
+                group_id = int(value)
+                return g.id == group_id
+            except (TypeError, ValueError):
+                return g.name == str(value)
+
+        return sql.where(exists(_linked_group_select(_eq_predicate())))
+
+    if operator == "ne":
+
+        def _ne_predicate():
+            try:
+                group_id = int(value)
+                return g.id == group_id
+            except (TypeError, ValueError):
+                return g.name == str(value)
+
+        return sql.where(~exists(_linked_group_select(_ne_predicate())))
+
+    if operator == "ncontains":
+        nlg = _linked_group_select(g.name.ilike(f"%{value}%"))
+        return sql.where(~exists(nlg))
+
+    if operator == "contains":
+        pred = g.name.ilike(f"%{value}%")
+    elif operator == "startswith":
+        pred = g.name.ilike(f"{value}%")
+    elif operator == "endswith":
+        pred = g.name.ilike(f"%{value}")
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Operator {operator!r} is not supported for groups "
+                "filters (contains, ncontains, eq, ne, startswith, endswith, "
+                "null, nnull)"
+            ),
+        )
+
+    return sql.where(exists(_linked_group_select(pred)))
+
+
 def _apply_contact_things_filter(
     sql: Select[Any],
     contact_table: type,
@@ -642,22 +768,18 @@ def _apply_contact_things_filter(
     t = Thing
 
     def _linked_thing_select(predicate):
-        return (
-            select(1)
-            .select_from(tca)
-            .join(t, tca.thing_id == t.id)
-            .where(
-                tca.contact_id == contact_table.id,
-                t.name.isnot(None),
-                predicate,
-            )
+        return _build_assoc_exists(
+            tca,
+            t,
+            tca.thing_id,
+            tca.contact_id,
+            contact_table.id,
+            predicate,
+            extra=[t.name.isnot(None)],
         )
 
-    any_linked_thing = (
-        select(1)
-        .select_from(tca)
-        .join(t, tca.thing_id == t.id)
-        .where(tca.contact_id == contact_table.id)
+    any_linked_thing = _build_assoc_exists(
+        tca, t, tca.thing_id, tca.contact_id, contact_table.id
     )
 
     if operator == "nnull":
@@ -738,6 +860,9 @@ def _apply_json_filter_clause(
 
     if getattr(table, "__name__", None) == "Thing" and field == "contacts":
         return _apply_thing_contacts_filter(sql, table, operator, value)
+
+    if getattr(table, "__name__", None) == "Thing" and field == "groups":
+        return _apply_thing_groups_filter(sql, table, operator, value)
 
     try:
         column = getattr(table, field)

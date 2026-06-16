@@ -5,7 +5,8 @@ from geoalchemy2.shape import to_shape
 from pydantic import ValidationError
 
 from core.dependencies import admin_function, viewer_function, editor_function
-from db import Group
+from db import Group, GroupThingAssociation, Thing
+from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
 from schemas.group import ValidateGroup
@@ -103,6 +104,55 @@ def test_get_groups(group):
     assert data["items"][0]["project_area"] == to_shape(group.project_area).wkt
     assert data["items"][0]["description"] == group.description
     assert data["items"][0]["parent_group_id"] == group.parent_group_id
+    assert data["items"][0]["well_count"] == 1
+
+
+def test_get_groups_well_count_excludes_non_water_wells(
+    group, water_well_thing, location, spring_thing
+):
+    with session_ctx() as session:
+        second_well = Thing(
+            name="Second Test Well",
+            first_visit_date="2023-03-03",
+            thing_type="water well",
+            release_status="draft",
+            well_depth=10,
+            hole_depth=10,
+            well_casing_diameter=5.0,
+            well_casing_depth=10.0,
+        )
+        session.add(second_well)
+        session.commit()
+        session.refresh(second_well)
+
+        for thing_id in (second_well.id, spring_thing.id):
+            session.add(GroupThingAssociation(group_id=group.id, thing_id=thing_id))
+        session.commit()
+
+    response = client.get("/group")
+    assert response.status_code == 200
+    data = response.json()
+    item = next(item for item in data["items"] if item["id"] == group.id)
+    assert item["well_count"] == 2
+
+
+def test_get_groups_well_count_zero_without_associations():
+    payload = {
+        "release_status": "private",
+        "name": "Empty Project Group",
+        "description": "No associated wells.",
+    }
+    create_response = client.post("/group", json=payload)
+    assert create_response.status_code == 201
+    group_id = create_response.json()["id"]
+
+    response = client.get("/group")
+    assert response.status_code == 200
+    data = response.json()
+    item = next(item for item in data["items"] if item["id"] == group_id)
+    assert item["well_count"] == 0
+
+    cleanup_post_test(Group, group_id)
 
 
 def test_get_group_by_id(group):
@@ -118,6 +168,7 @@ def test_get_group_by_id(group):
     assert data["description"] == group.description
     assert data["parent_group_id"] == group.parent_group_id
     assert data["release_status"] == group.release_status
+    assert data["well_count"] == 1
 
 
 def test_get_group_by_id_404_not_found(group):
