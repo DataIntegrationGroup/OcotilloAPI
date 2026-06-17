@@ -36,11 +36,13 @@ Postgres image (`postgis/postgis:17-3.5`) does not do. Running
 
 So the migration is a **no-op unless `ENABLE_PG_CRON` is truthy**:
 
-- Development, test, CI: `ENABLE_PG_CRON` unset → migration prints a skip
-  message and records itself as applied. `alembic upgrade head` works on the
-  stock dev image with nothing extra installed.
+- Development, test, CI, **and staging**: `ENABLE_PG_CRON` unset → migration
+  prints a skip message and records itself as applied. `alembic upgrade head`
+  works on the stock dev image with nothing extra installed. Staging refreshes
+  the views on each deploy instead (the "Refresh materialized views" CD step),
+  so it does not need the nightly job.
 - Production: `ENABLE_PG_CRON=1` → migration creates the extension, the helper
-  function, and the cron job.
+  function, and the cron job. Only `CD_production.yml` sets this.
 
 ## Production setup
 

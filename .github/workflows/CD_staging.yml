@@ -55,11 +55,6 @@ jobs:
           CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
           CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
           CLOUD_SQL_IAM_AUTH: true
-          # Register the nightly pg_cron materialized-view refresh job.
-          # Requires the Cloud SQL instance flag cloudsql.enable_pg_cron=on and
-          # cron.database_name set to CLOUD_SQL_DATABASE. See
-          # docs/pg_cron-nightly-refresh.md.
-          ENABLE_PG_CRON: "1"
         run: |
           uv run --no-dev alembic upgrade head
 
