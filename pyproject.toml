@@ -78,7 +78,7 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   "python-jose>=3.5.0",
   "python-multipart==0.0.31",
-  "pytz==2025.2",
+  "pytz==2026.2",
   "requests==2.34.2",
   "rsa==4.9.1",
   "scramp==1.4.8",
