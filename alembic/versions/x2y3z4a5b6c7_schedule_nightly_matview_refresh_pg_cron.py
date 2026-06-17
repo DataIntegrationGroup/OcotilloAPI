@@ -2,10 +2,14 @@
 
 Registers a pg_cron job that refreshes the materialized views once a
 night. The job calls a SQL helper function,
-``public.refresh_pygeoapi_materialized_views()``, which discovers every
+``public.refresh_materialized_views()``, which discovers every
 materialized view in the public schema from the catalog at run time -- so
 this migration stays immutable and self-contained, and views added by
 later migrations are refreshed without any rescheduling.
+
+This also drops the legacy ``refresh_pygeoapi_materialized_views`` helper
+(created by ``d5e6f7a8b9c0``) on databases that already ran that revision,
+folding it into the generically named function.
 
 pg_cron is a *production-only* dependency. It requires the extension to be
 loaded via ``shared_preload_libraries`` on the database server, which the
@@ -34,7 +38,10 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 # Name of the pg_cron job. Used to (re)register and to unschedule.
-CRON_JOB_NAME = "refresh-pygeoapi-materialized-views"
+CRON_JOB_NAME = "refresh-materialized-views"
+
+# Legacy helper created by d5e6f7a8b9c0, superseded by refresh_materialized_views.
+LEGACY_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
 
 # Nightly schedule in standard cron syntax. pg_cron interprets this in the
 # database server's timezone (UTC on Cloud SQL / the docker image), so 09:00
@@ -52,7 +59,7 @@ CRON_SCHEDULE = "0 9 * * *"
 # cannot run inside the implicit transaction of a PL/pgSQL function, and the
 # nightly window tolerates the brief exclusive lock.
 _REFRESH_FUNCTION_SQL = r"""
-CREATE OR REPLACE FUNCTION public.refresh_pygeoapi_materialized_views()
+CREATE OR REPLACE FUNCTION public.refresh_materialized_views()
 RETURNS void
 LANGUAGE plpgsql
 AS $func$
@@ -94,6 +101,9 @@ def upgrade() -> None:
     # (Re)create the refresh helper.
     op.execute(text(_REFRESH_FUNCTION_SQL))
 
+    # Remove the legacy helper on databases that already ran d5e6f7a8b9c0.
+    op.execute(text(f"DROP FUNCTION IF EXISTS public.{LEGACY_FUNCTION_NAME}()"))
+
     # Drop any previously registered job with the same name so re-running this
     # migration (or a re-deploy) does not accumulate duplicate schedules.
     op.execute(
@@ -106,7 +116,7 @@ def upgrade() -> None:
         text("SELECT cron.schedule(:name, :sched, :cmd)").bindparams(
             name=CRON_JOB_NAME,
             sched=CRON_SCHEDULE,
-            cmd="SELECT public.refresh_pygeoapi_materialized_views();",
+            cmd="SELECT public.refresh_materialized_views();",
         )
     )
 
@@ -127,7 +137,7 @@ def downgrade() -> None:
         ).bindparams(name=CRON_JOB_NAME)
     )
     op.execute(
-        text("DROP FUNCTION IF EXISTS public.refresh_pygeoapi_materialized_views()")
+        text("DROP FUNCTION IF EXISTS public.refresh_materialized_views()")
     )
     # The pg_cron extension itself is left installed: it is a server-level
     # capability that other jobs may depend on, and dropping it is not the

@@ -16,7 +16,7 @@ revision: str = "d5e6f7a8b9c0"
 down_revision: Union[str, Sequence[str], None] = "c4d5e6f7a8b9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-REFRESH_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
+REFRESH_FUNCTION_NAME = "refresh_materialized_views"
 
 THING_COLLECTIONS = [
     ("water_wells", "water well"),

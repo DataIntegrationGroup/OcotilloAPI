@@ -1,6 +1,6 @@
 """Curated materialized-view list for the CLI refresh command.
 
-``oco refresh-pygeoapi-materialized-views`` refreshes these views (in order)
+``oco refresh-materialized-views`` refreshes these views (in order)
 by default. The nightly pg_cron job does NOT use this list -- its SQL helper
 discovers every materialized view from the catalog at run time (see alembic
 migration ``x2y3z4a5b6c7``) to stay immutable and self-contained.

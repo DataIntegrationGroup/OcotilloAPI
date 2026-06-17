@@ -38,7 +38,7 @@ from db import (
 from db.engine import session_ctx
 
 
-def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
+def test_refresh_materialized_views_defaults(monkeypatch):
     executed_sql: list[str] = []
     commit_called = {"value": False}
 
@@ -59,7 +59,7 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
     monkeypatch.setattr("db.engine.session_ctx", lambda: _FakeCtx())
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["refresh-pygeoapi-materialized-views"])
+    result = runner.invoke(cli, ["refresh-materialized-views"])
 
     assert result.exit_code == 0, result.output
     assert executed_sql == [
@@ -76,7 +76,7 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
     assert "Refreshed 8 materialized view(s)." in result.output
 
 
-def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(
+def test_refresh_materialized_views_custom_and_concurrently(
     monkeypatch,
 ):
     executed_sql: list[str] = []
@@ -106,7 +106,7 @@ def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(
     result = runner.invoke(
         cli,
         [
-            "refresh-pygeoapi-materialized-views",
+            "refresh-materialized-views",
             "--view",
             "ogc_avg_tds_wells",
             "--concurrently",
@@ -120,12 +120,12 @@ def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(
     ]
 
 
-def test_refresh_pygeoapi_materialized_views_rejects_invalid_identifier():
+def test_refresh_materialized_views_rejects_invalid_identifier():
     runner = CliRunner()
     result = runner.invoke(
         cli,
         [
-            "refresh-pygeoapi-materialized-views",
+            "refresh-materialized-views",
             "--view",
             "ogc_avg_tds_wells;drop table thing",
         ],
