@@ -7,6 +7,7 @@ on:
 
 permissions:
   pull-requests: write      # needed to comment, label, and close
+  issues: read              # actions/stale enumerates PR candidates via the issues API
 
 jobs:
   stale:
