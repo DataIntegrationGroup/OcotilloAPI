@@ -12,20 +12,21 @@ Alembic migration
 [`x2y3z4a5b6c7_schedule_nightly_matview_refresh_pg_cron.py`](../alembic/versions/x2y3z4a5b6c7_schedule_nightly_matview_refresh_pg_cron.py)
 registers everything, so the schedule is traceable in version control:
 
-- A SQL helper, `public.refresh_pygeoapi_materialized_views()`, that runs
-  `REFRESH MATERIALIZED VIEW` for each view (plain, non-concurrent — see note).
+- A SQL helper, `public.refresh_pygeoapi_materialized_views()`, that discovers
+  the `ogc_*` materialized views from the catalog at run time and runs
+  `REFRESH MATERIALIZED VIEW` for each (plain, non-concurrent — see note).
 - A pg_cron job named `refresh-pygeoapi-materialized-views` that runs
   `SELECT public.refresh_pygeoapi_materialized_views();` on the schedule
   `0 9 * * *` (09:00 in the **server timezone**, UTC on Cloud SQL and the
   production image — roughly 02:00–03:00 US Mountain).
 
-The view set comes from
-[`services/materialized_views.py`](../services/materialized_views.py)
-(`PYGEOAPI_MATERIALIZED_VIEWS`) — the single source of truth shared with the
-`oco refresh-pygeoapi-materialized-views` CLI command. To change which views are
-refreshed, edit that tuple. To change the schedule, edit the migration (or add a
-new one). Do not edit the job in the database by hand, or it will drift from the
-repo.
+The helper refreshes whatever `ogc_*` materialized views exist, so a view added
+by a later migration is picked up automatically — there is nothing to keep in
+sync and no need to reschedule. (The `oco refresh-pygeoapi-materialized-views`
+CLI command, used for manual/on-deploy refreshes, keeps an explicit curated
+list in [`services/materialized_views.py`](../services/materialized_views.py).)
+To change the schedule, edit the migration (or add a new one). Do not edit the
+job in the database by hand, or it will drift from the repo.
 
 ## Why it is gated by `ENABLE_PG_CRON`
 
@@ -52,7 +53,9 @@ Use the production database image, which installs pg_cron and preloads it:
 
 - [`docker/db/Dockerfile`](../docker/db/Dockerfile) installs
   `postgresql-17-cron` and starts Postgres with
-  `-c shared_preload_libraries=pg_cron -c cron.database_name=ocotilloapi`.
+  `-c shared_preload_libraries=pg_cron -c cron.database_name=$POSTGRES_DB`
+  (via [`start-postgres.sh`](../docker/db/start-postgres.sh), so overriding
+  `POSTGRES_DB` keeps the scheduler pointed at the same database).
 
 `cron.database_name` must match the application database so the alembic
 migration (which connects to that database) can `CREATE EXTENSION pg_cron` and

@@ -23,7 +23,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Load pg_cron at server start and point its scheduler at the application
-# database. POSTGRES_DB defaults to ocotilloapi here but can be overridden at
-# run time; keep cron.database_name aligned with the database the API uses.
+# database. cron.database_name is derived from POSTGRES_DB at start time (see
+# start-postgres.sh) so it stays aligned even when POSTGRES_DB is overridden.
 ENV POSTGRES_DB=ocotilloapi
-CMD ["postgres", "-c", "shared_preload_libraries=pg_cron", "-c", "cron.database_name=ocotilloapi"]
+COPY docker/db/start-postgres.sh /usr/local/bin/start-postgres.sh
+RUN chmod +x /usr/local/bin/start-postgres.sh
+ENTRYPOINT ["start-postgres.sh"]

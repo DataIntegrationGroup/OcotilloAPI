@@ -1,8 +1,9 @@
-"""Single source of truth for the pygeoapi materialized views.
+"""Curated pygeoapi materialized-view list for the CLI refresh command.
 
-Both the ``oco refresh-pygeoapi-materialized-views`` CLI command and the
-pg_cron nightly-refresh alembic migration import this tuple so the view set is
-defined in exactly one place. Add or remove a view here and both stay in sync.
+``oco refresh-pygeoapi-materialized-views`` refreshes these views (in order)
+by default. The nightly pg_cron job does NOT use this list -- its SQL helper
+discovers the ``ogc_*`` materialized views from the catalog at run time (see
+alembic migration ``x2y3z4a5b6c7``) to stay immutable and self-contained.
 """
 
 # Order is the order views are refreshed in.

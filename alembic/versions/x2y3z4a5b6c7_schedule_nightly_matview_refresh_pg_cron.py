@@ -1,9 +1,11 @@
 """schedule nightly materialized-view refresh via pg_cron
 
 Registers a pg_cron job that refreshes the pygeoapi materialized views
-once a night. The job is created through a SQL helper function,
-``public.refresh_pygeoapi_materialized_views()``, so the list of views and
-the refresh logic live in the database and version control together.
+once a night. The job calls a SQL helper function,
+``public.refresh_pygeoapi_materialized_views()``, which discovers the
+``ogc_*`` materialized views from the catalog at run time -- so this
+migration stays immutable and self-contained, and views added by later
+migrations are refreshed without any rescheduling.
 
 pg_cron is a *production-only* dependency. It requires the extension to be
 loaded via ``shared_preload_libraries`` on the database server, which the
@@ -18,14 +20,12 @@ Revises: w1x2y3z4a5b6
 Create Date: 2026-06-17 00:00:00.000000
 """
 
-import re
 from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import text
 
 from services.env import get_bool_env
-from services.materialized_views import PYGEOAPI_MATERIALIZED_VIEWS
 
 # revision identifiers, used by Alembic.
 revision: str = "x2y3z4a5b6c7"
@@ -42,40 +42,31 @@ CRON_JOB_NAME = "refresh-pygeoapi-materialized-views"
 CRON_SCHEDULE = "0 9 * * *"
 
 
-def _build_refresh_function_sql() -> str:
-    """Build the helper function body from the shared view list.
-
-    The view set is owned by ``services.materialized_views`` (the single source
-    of truth shared with the CLI). Plain (non-concurrent) REFRESH is used
-    deliberately: REFRESH ... CONCURRENTLY cannot run inside the implicit
-    transaction of a PL/pgSQL function, and the nightly window tolerates the
-    brief exclusive lock. Each view is guarded by an existence check so a
-    missing view never aborts the whole run.
-    """
-    for name in PYGEOAPI_MATERIALIZED_VIEWS:
-        # These names are baked into a SQL literal array below; validate them
-        # rather than trust the constant blindly.
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
-            raise ValueError(f"Invalid materialized view name: {name!r}")
-
-    array_literal = ",\n        ".join(
-        f"'{name}'" for name in PYGEOAPI_MATERIALIZED_VIEWS
-    )
-    return f"""
+# Helper function the cron job calls. It discovers the pygeoapi materialized
+# views (the ``ogc_*`` views in the public schema) from the catalog at run time
+# rather than from a baked-in list. This keeps the migration immutable and
+# self-contained -- it does not depend on mutable application code, and views
+# added by later migrations are picked up automatically without rescheduling.
+#
+# Plain (non-concurrent) REFRESH is used deliberately: REFRESH ... CONCURRENTLY
+# cannot run inside the implicit transaction of a PL/pgSQL function, and the
+# nightly window tolerates the brief exclusive lock.
+_REFRESH_FUNCTION_SQL = r"""
 CREATE OR REPLACE FUNCTION public.refresh_pygeoapi_materialized_views()
 RETURNS void
 LANGUAGE plpgsql
 AS $func$
 DECLARE
-    v text;
-    views text[] := ARRAY[
-        {array_literal}
-    ];
+    r record;
 BEGIN
-    FOREACH v IN ARRAY views LOOP
-        IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = v) THEN
-            EXECUTE format('REFRESH MATERIALIZED VIEW %I', v);
-        END IF;
+    FOR r IN
+        SELECT matviewname
+        FROM pg_matviews
+        WHERE schemaname = 'public'
+          AND matviewname LIKE 'ogc\_%' ESCAPE '\'
+        ORDER BY matviewname
+    LOOP
+        EXECUTE format('REFRESH MATERIALIZED VIEW %I', r.matviewname);
     END LOOP;
 END;
 $func$;
@@ -102,7 +93,7 @@ def upgrade() -> None:
     op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
 
     # (Re)create the refresh helper.
-    op.execute(text(_build_refresh_function_sql()))
+    op.execute(text(_REFRESH_FUNCTION_SQL))
 
     # Drop any previously registered job with the same name so re-running this
     # migration (or a re-deploy) does not accumulate duplicate schedules.
