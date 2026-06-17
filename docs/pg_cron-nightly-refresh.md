@@ -15,8 +15,8 @@ registers everything, so the schedule is traceable in version control:
   runs `REFRESH MATERIALIZED VIEW` for each (plain, non-concurrent — see note).
 - A pg_cron job named `refresh-materialized-views` that runs
   `SELECT public.refresh_materialized_views();` on the schedule
-  `0 9 * * *` (09:00 in the **server timezone**, UTC on Cloud SQL and the
-  production image — roughly 02:00–03:00 US Mountain).
+  `0 9 * * *` (09:00 in the **server timezone**, UTC on Cloud SQL —
+  roughly 02:00–03:00 US Mountain).
 
 The helper refreshes whatever materialized views exist, so a view added by a
 later migration is picked up automatically — there is nothing to keep in sync
@@ -43,30 +43,19 @@ So the migration is a **no-op unless `ENABLE_PG_CRON` is truthy**:
 - Production: `ENABLE_PG_CRON=1` → migration creates the extension, the helper
   function, and the cron job. Only `CD_production.yml` sets this.
 
-## Production setup
+## Production setup (Google Cloud SQL)
 
-### Self-hosted / Docker
-
-Use the production database image, which installs pg_cron and preloads it:
-
-- [`docker/db/Dockerfile`](../docker/db/Dockerfile) installs
-  `postgresql-17-cron` and starts Postgres with
-  `-c shared_preload_libraries=pg_cron -c cron.database_name=$POSTGRES_DB`
-  (via [`start-postgres.sh`](../docker/db/start-postgres.sh), so overriding
-  `POSTGRES_DB` keeps the scheduler pointed at the same database).
-
-`cron.database_name` must match the application database so the alembic
-migration (which connects to that database) can `CREATE EXTENSION pg_cron` and
-`cron.schedule(...)` locally. Then deploy with `ENABLE_PG_CRON=1` set for the
-app container that runs migrations.
-
-### Google Cloud SQL
-
-Do not use the Docker image; enable pg_cron with the instance flag instead:
+Production runs on Cloud SQL, where pg_cron is enabled with an instance flag
+(the `docker/db/Dockerfile` image is development-only and does not load pg_cron):
 
 1. Set the flag `cloudsql.enable_pg_cron=on` and
    `cron.database_name=<application database>`, then restart the instance.
-2. Deploy the app with `ENABLE_PG_CRON=1` so the migration registers the job.
+2. Deploy with `ENABLE_PG_CRON=1` (already set on the migration step in
+   `CD_production.yml`) so the migration registers the job.
+
+`cron.database_name` must match the application database so the alembic
+migration (which connects to that database) can `CREATE EXTENSION pg_cron` and
+`cron.schedule(...)` locally.
 
 ## Verifying
 

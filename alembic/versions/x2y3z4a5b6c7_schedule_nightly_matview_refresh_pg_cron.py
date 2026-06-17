@@ -44,8 +44,8 @@ CRON_JOB_NAME = "refresh-materialized-views"
 LEGACY_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
 
 # Nightly schedule in standard cron syntax. pg_cron interprets this in the
-# database server's timezone (UTC on Cloud SQL / the docker image), so 09:00
-# UTC is roughly 02:00-03:00 in US Mountain time -- comfortably off-peak.
+# database server's timezone (UTC on Cloud SQL), so 09:00 UTC is roughly
+# 02:00-03:00 in US Mountain time -- comfortably off-peak.
 CRON_SCHEDULE = "0 9 * * *"
 
 
