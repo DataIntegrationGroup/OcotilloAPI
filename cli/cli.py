@@ -24,6 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
+from services.materialized_views import PYGEOAPI_MATERIALIZED_VIEWS
+
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
 load_dotenv(override=False)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
@@ -48,17 +50,6 @@ class ThemeMode(str, Enum):
 class SmokePopulation(str, Enum):
     all = "all"
     agreed = "agreed"
-
-
-PYGEOAPI_MATERIALIZED_VIEWS = (
-    "ogc_latest_depth_to_water_wells",
-    "ogc_water_elevation_wells",
-    "ogc_avg_tds_wells",
-    "ogc_depth_to_water_trend_wells",
-    "ogc_water_well_summary",
-    "ogc_major_chemistry_results",
-    "ogc_minor_chemistry_wells",
-)
 
 
 def _resolve_theme(theme: ThemeMode) -> ThemeMode:

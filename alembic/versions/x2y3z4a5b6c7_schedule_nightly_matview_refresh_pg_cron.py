@@ -1,0 +1,144 @@
+"""schedule nightly materialized-view refresh via pg_cron
+
+Registers a pg_cron job that refreshes the pygeoapi materialized views
+once a night. The job is created through a SQL helper function,
+``public.refresh_pygeoapi_materialized_views()``, so the list of views and
+the refresh logic live in the database and version control together.
+
+pg_cron is a *production-only* dependency. It requires the extension to be
+loaded via ``shared_preload_libraries`` on the database server, which the
+development docker-compose Postgres image does not do. To avoid breaking
+``alembic upgrade head`` in development (and in test/CI), this migration is a
+no-op unless ``ENABLE_PG_CRON`` is truthy in the environment. Production sets
+``ENABLE_PG_CRON=1``; everywhere else the migration records itself as applied
+without touching pg_cron. See ``docs/pg_cron-nightly-refresh.md``.
+
+Revision ID: x2y3z4a5b6c7
+Revises: w1x2y3z4a5b6
+Create Date: 2026-06-17 00:00:00.000000
+"""
+
+import re
+from typing import Sequence, Union
+
+from alembic import op
+from sqlalchemy import text
+
+from services.env import get_bool_env
+from services.materialized_views import PYGEOAPI_MATERIALIZED_VIEWS
+
+# revision identifiers, used by Alembic.
+revision: str = "x2y3z4a5b6c7"
+down_revision: Union[str, Sequence[str], None] = "w1x2y3z4a5b6"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+# Name of the pg_cron job. Used to (re)register and to unschedule.
+CRON_JOB_NAME = "refresh-pygeoapi-materialized-views"
+
+# Nightly schedule in standard cron syntax. pg_cron interprets this in the
+# database server's timezone (UTC on Cloud SQL / the docker image), so 09:00
+# UTC is roughly 02:00-03:00 in US Mountain time -- comfortably off-peak.
+CRON_SCHEDULE = "0 9 * * *"
+
+
+def _build_refresh_function_sql() -> str:
+    """Build the helper function body from the shared view list.
+
+    The view set is owned by ``services.materialized_views`` (the single source
+    of truth shared with the CLI). Plain (non-concurrent) REFRESH is used
+    deliberately: REFRESH ... CONCURRENTLY cannot run inside the implicit
+    transaction of a PL/pgSQL function, and the nightly window tolerates the
+    brief exclusive lock. Each view is guarded by an existence check so a
+    missing view never aborts the whole run.
+    """
+    for name in PYGEOAPI_MATERIALIZED_VIEWS:
+        # These names are baked into a SQL literal array below; validate them
+        # rather than trust the constant blindly.
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ValueError(f"Invalid materialized view name: {name!r}")
+
+    array_literal = ",\n        ".join(f"'{name}'" for name in PYGEOAPI_MATERIALIZED_VIEWS)
+    return f"""
+CREATE OR REPLACE FUNCTION public.refresh_pygeoapi_materialized_views()
+RETURNS void
+LANGUAGE plpgsql
+AS $func$
+DECLARE
+    v text;
+    views text[] := ARRAY[
+        {array_literal}
+    ];
+BEGIN
+    FOREACH v IN ARRAY views LOOP
+        IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = v) THEN
+            EXECUTE format('REFRESH MATERIALIZED VIEW %I', v);
+        END IF;
+    END LOOP;
+END;
+$func$;
+"""
+
+
+def _pg_cron_enabled() -> bool:
+    """pg_cron is only wired up where the server explicitly enables it."""
+    return get_bool_env("ENABLE_PG_CRON", False) is True
+
+
+def upgrade() -> None:
+    if not _pg_cron_enabled():
+        print(
+            "ENABLE_PG_CRON is not set; skipping pg_cron job registration "
+            "(expected in development, test, and CI)."
+        )
+        return
+
+    bind = op.get_bind()
+
+    # Requires shared_preload_libraries to include 'pg_cron' and the extension
+    # to be creatable in this database (cron.database_name = this DB). See docs.
+    op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
+
+    # (Re)create the refresh helper.
+    op.execute(text(_build_refresh_function_sql()))
+
+    # Drop any previously registered job with the same name so re-running this
+    # migration (or a re-deploy) does not accumulate duplicate schedules.
+    op.execute(
+        text(
+            "SELECT cron.unschedule(jobid) FROM cron.job "
+            "WHERE jobname = :name"
+        ).bindparams(name=CRON_JOB_NAME)
+    )
+
+    bind.execute(
+        text("SELECT cron.schedule(:name, :sched, :cmd)").bindparams(
+            name=CRON_JOB_NAME,
+            sched=CRON_SCHEDULE,
+            cmd="SELECT public.refresh_pygeoapi_materialized_views();",
+        )
+    )
+
+    print(
+        f"Registered pg_cron job '{CRON_JOB_NAME}' "
+        f"(schedule '{CRON_SCHEDULE}', server timezone)."
+    )
+
+
+def downgrade() -> None:
+    if not _pg_cron_enabled():
+        print("ENABLE_PG_CRON is not set; nothing to unschedule.")
+        return
+
+    op.execute(
+        text(
+            "SELECT cron.unschedule(jobid) FROM cron.job "
+            "WHERE jobname = :name"
+        ).bindparams(name=CRON_JOB_NAME)
+    )
+    op.execute(
+        text("DROP FUNCTION IF EXISTS public.refresh_pygeoapi_materialized_views()")
+    )
+    # The pg_cron extension itself is left installed: it is a server-level
+    # capability that other jobs may depend on, and dropping it is not the
+    # inverse of "schedule a job".
