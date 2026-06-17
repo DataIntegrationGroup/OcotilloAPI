@@ -1,11 +1,11 @@
 """schedule nightly materialized-view refresh via pg_cron
 
-Registers a pg_cron job that refreshes the pygeoapi materialized views
-once a night. The job calls a SQL helper function,
-``public.refresh_pygeoapi_materialized_views()``, which discovers the
-``ogc_*`` materialized views from the catalog at run time -- so this
-migration stays immutable and self-contained, and views added by later
-migrations are refreshed without any rescheduling.
+Registers a pg_cron job that refreshes the materialized views once a
+night. The job calls a SQL helper function,
+``public.refresh_pygeoapi_materialized_views()``, which discovers every
+materialized view in the public schema from the catalog at run time -- so
+this migration stays immutable and self-contained, and views added by
+later migrations are refreshed without any rescheduling.
 
 pg_cron is a *production-only* dependency. It requires the extension to be
 loaded via ``shared_preload_libraries`` on the database server, which the
@@ -42,11 +42,11 @@ CRON_JOB_NAME = "refresh-pygeoapi-materialized-views"
 CRON_SCHEDULE = "0 9 * * *"
 
 
-# Helper function the cron job calls. It discovers the pygeoapi materialized
-# views (the ``ogc_*`` views in the public schema) from the catalog at run time
-# rather than from a baked-in list. This keeps the migration immutable and
-# self-contained -- it does not depend on mutable application code, and views
-# added by later migrations are picked up automatically without rescheduling.
+# Helper function the cron job calls. It discovers every materialized view in
+# the public schema from the catalog at run time rather than from a baked-in
+# list. This keeps the migration immutable and self-contained -- it does not
+# depend on mutable application code, and views added by later migrations are
+# picked up automatically without rescheduling.
 #
 # Plain (non-concurrent) REFRESH is used deliberately: REFRESH ... CONCURRENTLY
 # cannot run inside the implicit transaction of a PL/pgSQL function, and the
@@ -63,7 +63,6 @@ BEGIN
         SELECT matviewname
         FROM pg_matviews
         WHERE schemaname = 'public'
-          AND matviewname LIKE 'ogc\_%' ESCAPE '\'
         ORDER BY matviewname
     LOOP
         EXECUTE format('REFRESH MATERIALIZED VIEW %I', r.matviewname);

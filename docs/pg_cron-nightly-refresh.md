@@ -1,10 +1,8 @@
 # Nightly materialized-view refresh with pg_cron
 
-The pygeoapi materialized views (`ogc_latest_depth_to_water_wells`,
-`ogc_water_elevation_wells`, `ogc_avg_tds_wells`,
-`ogc_depth_to_water_trend_wells`, `ogc_water_well_summary`,
-`ogc_major_chemistry_results`, `ogc_minor_chemistry_wells`) are refreshed once
-a night in production by a [pg_cron](https://github.com/citusdata/pg_cron) job.
+Every materialized view in the database (the `ogc_*` pygeoapi views and
+`transducer_daily_data`) is refreshed once a night in production by a
+[pg_cron](https://github.com/citusdata/pg_cron) job.
 
 ## What is registered, and where
 
@@ -13,18 +11,18 @@ Alembic migration
 registers everything, so the schedule is traceable in version control:
 
 - A SQL helper, `public.refresh_pygeoapi_materialized_views()`, that discovers
-  the `ogc_*` materialized views from the catalog at run time and runs
-  `REFRESH MATERIALIZED VIEW` for each (plain, non-concurrent — see note).
+  every materialized view in the public schema from the catalog at run time and
+  runs `REFRESH MATERIALIZED VIEW` for each (plain, non-concurrent — see note).
 - A pg_cron job named `refresh-pygeoapi-materialized-views` that runs
   `SELECT public.refresh_pygeoapi_materialized_views();` on the schedule
   `0 9 * * *` (09:00 in the **server timezone**, UTC on Cloud SQL and the
   production image — roughly 02:00–03:00 US Mountain).
 
-The helper refreshes whatever `ogc_*` materialized views exist, so a view added
-by a later migration is picked up automatically — there is nothing to keep in
-sync and no need to reschedule. (The `oco refresh-pygeoapi-materialized-views`
-CLI command, used for manual/on-deploy refreshes, keeps an explicit curated
-list in [`services/materialized_views.py`](../services/materialized_views.py).)
+The helper refreshes whatever materialized views exist, so a view added by a
+later migration is picked up automatically — there is nothing to keep in sync
+and no need to reschedule. (The `oco refresh-pygeoapi-materialized-views` CLI
+command, used for manual/on-deploy refreshes, keeps an explicit list in
+[`services/materialized_views.py`](../services/materialized_views.py).)
 To change the schedule, edit the migration (or add a new one). Do not edit the
 job in the database by hand, or it will drift from the repo.
 

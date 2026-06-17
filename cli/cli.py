@@ -24,7 +24,7 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
-from services.materialized_views import PYGEOAPI_MATERIALIZED_VIEWS
+from services.materialized_views import MATERIALIZED_VIEWS
 
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
 load_dotenv(override=False)
@@ -1106,7 +1106,7 @@ def refresh_pygeoapi_materialized_views(
 
     from db.engine import engine, session_ctx
 
-    target_views = tuple(view) if view else PYGEOAPI_MATERIALIZED_VIEWS
+    target_views = tuple(view) if view else MATERIALIZED_VIEWS
     # Validate all view names before opening any DB connections or sessions.
     safe_views = tuple(_validate_sql_identifier(v) for v in target_views)
 
