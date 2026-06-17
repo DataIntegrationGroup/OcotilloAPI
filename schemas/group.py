@@ -58,6 +58,7 @@ class GroupResponse(BaseResponseModel):
     project_area: str | None
     group_type: GroupType | None
     parent_group_id: int | None
+    well_count: int = 0
 
     @model_validator(mode="before")
     def project_area_to_wkt(self: Self) -> Self:

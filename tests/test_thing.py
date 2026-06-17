@@ -985,6 +985,67 @@ def test_get_water_wells_filter_contacts_nnull(water_well_thing, contact):
     assert water_well_thing.id in ids
 
 
+def test_get_water_wells_filter_groups_eq_by_id(group, water_well_thing):
+    fl = json.dumps(
+        {"field": "groups", "operator": "eq", "value": str(group.id)},
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_filter_groups_eq_by_id_no_match(group, water_well_thing):
+    fl = json.dumps(
+        {"field": "groups", "operator": "eq", "value": "999999"},
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id not in ids
+
+
+def test_get_water_wells_filter_groups_eq_by_name(group, water_well_thing):
+    fl = json.dumps(
+        {"field": "groups", "operator": "eq", "value": group.name},
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 200
+    data = response.json()
+    ids = [item["id"] for item in data["items"]]
+    assert water_well_thing.id in ids
+
+
+def test_get_water_wells_filter_groups_unsupported_operator(group):
+    fl = json.dumps(
+        {"field": "groups", "operator": "gt", "value": group.id},
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+    assert response.status_code == 400
+
+
+def test_get_water_wells_list_includes_groups(group, water_well_thing):
+    response = client.get("/thing/water-well", params={"page": 1, "size": 50})
+    assert response.status_code == 200
+    data = response.json()
+    well = next(item for item in data["items"] if item["id"] == water_well_thing.id)
+    assert len(well["groups"]) >= 1
+    assert well["groups"][0]["name"] == group.name
+
+
+def test_get_water_wells_sort_groups_asc(group, water_well_thing):
+    response = client.get(
+        "/thing/water-well",
+        params={
+            "sort": "groups",
+            "order": "asc",
+        },
+    )
+    assert response.status_code == 200
+
+
 def test_get_water_wells_sort_monitoring_status_desc(water_well_thing):
     """Derived status columns are Python properties; sort uses StatusHistory SQL."""
     response = client.get(
