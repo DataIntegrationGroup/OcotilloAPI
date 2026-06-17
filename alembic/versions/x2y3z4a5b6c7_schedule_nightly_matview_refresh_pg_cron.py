@@ -7,10 +7,6 @@ materialized view in the public schema from the catalog at run time -- so
 this migration stays immutable and self-contained, and views added by
 later migrations are refreshed without any rescheduling.
 
-This also drops the legacy ``refresh_pygeoapi_materialized_views`` helper
-(created by ``d5e6f7a8b9c0``) on databases that already ran that revision,
-folding it into the generically named function.
-
 pg_cron is a *production-only* dependency. It requires the extension to be
 loaded via ``shared_preload_libraries`` on the database server, which the
 development docker-compose Postgres image does not do. To avoid breaking
@@ -39,9 +35,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 # Name of the pg_cron job. Used to (re)register and to unschedule.
 CRON_JOB_NAME = "refresh-materialized-views"
-
-# Legacy helper created by d5e6f7a8b9c0, superseded by refresh_materialized_views.
-LEGACY_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
 
 # Nightly schedule in standard cron syntax. pg_cron interprets this in the
 # database server's timezone (UTC on Cloud SQL), so 09:00 UTC is roughly
@@ -100,9 +93,6 @@ def upgrade() -> None:
 
     # (Re)create the refresh helper.
     op.execute(text(_REFRESH_FUNCTION_SQL))
-
-    # Remove the legacy helper on databases that already ran d5e6f7a8b9c0.
-    op.execute(text(f"DROP FUNCTION IF EXISTS public.{LEGACY_FUNCTION_NAME}()"))
 
     # Drop any previously registered job with the same name so re-running this
     # migration (or a re-deploy) does not accumulate duplicate schedules.
