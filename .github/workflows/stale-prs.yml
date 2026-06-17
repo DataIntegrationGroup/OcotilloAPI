@@ -1,0 +1,24 @@
+name: Close stale PRs
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # daily at 09:00 UTC
+  workflow_dispatch:        # lets you trigger it manually too
+
+permissions:
+  pull-requests: write      # needed to comment, label, and close
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          days-before-pr-stale: 14
+          days-before-pr-close: 0
+          stale-pr-message: 'Closing this PR due to 2 weeks of inactivity. Reopen or comment if it is still relevant.'
+          stale-pr-label: 'stale'
+          # leave issues untouched
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          exempt-pr-labels: 'pinned,security,wip'
