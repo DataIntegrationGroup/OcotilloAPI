@@ -136,9 +136,7 @@ def downgrade() -> None:
             "SELECT cron.unschedule(jobid) FROM cron.job " "WHERE jobname = :name"
         ).bindparams(name=CRON_JOB_NAME)
     )
-    op.execute(
-        text("DROP FUNCTION IF EXISTS public.refresh_materialized_views()")
-    )
+    op.execute(text("DROP FUNCTION IF EXISTS public.refresh_materialized_views()"))
     # The pg_cron extension itself is left installed: it is a server-level
     # capability that other jobs may depend on, and dropping it is not the
     # inverse of "schedule a job".
