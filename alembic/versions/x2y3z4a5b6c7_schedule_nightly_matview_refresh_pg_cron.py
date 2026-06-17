@@ -58,7 +58,9 @@ def _build_refresh_function_sql() -> str:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
             raise ValueError(f"Invalid materialized view name: {name!r}")
 
-    array_literal = ",\n        ".join(f"'{name}'" for name in PYGEOAPI_MATERIALIZED_VIEWS)
+    array_literal = ",\n        ".join(
+        f"'{name}'" for name in PYGEOAPI_MATERIALIZED_VIEWS
+    )
     return f"""
 CREATE OR REPLACE FUNCTION public.refresh_pygeoapi_materialized_views()
 RETURNS void
@@ -106,8 +108,7 @@ def upgrade() -> None:
     # migration (or a re-deploy) does not accumulate duplicate schedules.
     op.execute(
         text(
-            "SELECT cron.unschedule(jobid) FROM cron.job "
-            "WHERE jobname = :name"
+            "SELECT cron.unschedule(jobid) FROM cron.job " "WHERE jobname = :name"
         ).bindparams(name=CRON_JOB_NAME)
     )
 
@@ -132,8 +133,7 @@ def downgrade() -> None:
 
     op.execute(
         text(
-            "SELECT cron.unschedule(jobid) FROM cron.job "
-            "WHERE jobname = :name"
+            "SELECT cron.unschedule(jobid) FROM cron.job " "WHERE jobname = :name"
         ).bindparams(name=CRON_JOB_NAME)
     )
     op.execute(
