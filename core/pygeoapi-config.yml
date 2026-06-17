@@ -334,3 +334,26 @@ resources:
         id_field: id
         table: ogc_geothermal_wells_temperature_profile
         geom_field: geom
+
+  bht_measurements:
+    type: collection
+    title: BHT Measurements
+    description: Individual bottom-hole temperature measurements with well header and location data from the NM_Wells database.
+    keywords: [geothermal, bht, bottom-hole-temperature, measurements]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_bht_measurements
+        geom_field: geom
