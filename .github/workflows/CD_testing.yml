@@ -47,6 +47,7 @@ jobs:
             jira_email:${{ vars.GCP_PROJECT_ID }}/jira-email
             jira_api_token:${{ vars.GCP_PROJECT_ID }}/jira-api-token
             slack_feedback_webhook_url:${{ vars.GCP_PROJECT_ID }}/slack-feedback-webhook-url
+            slack_edits_webhook_url:${{ vars.GCP_PROJECT_ID }}/slack-edits-webhook-url
 
       - name: Run Alembic migrations on staging database
         env:
@@ -102,6 +103,8 @@ jobs:
           JIRA_API_TOKEN: "${{ steps.feedback-secrets.outputs.jira_api_token }}"
           JIRA_DEFAULT_PROJECT: "${{ vars.JIRA_DEFAULT_PROJECT || 'BDMS' }}"
           SLACK_FEEDBACK_WEBHOOK_URL: "${{ steps.feedback-secrets.outputs.slack_feedback_webhook_url }}"
+          SLACK_EDITS_WEBHOOK_URL: "${{ steps.feedback-secrets.outputs.slack_edits_webhook_url }}"
+          OCOTILLO_UI_BASE_URL: "${{ vars.OCOTILLO_UI_BASE_URL || 'https://ocotillo-staging.newmexicowaterdata.org' }}"
         run: |
           export MAX_INSTANCES="10"
           export SERVICE_NAME="ocotillo-api-testing"
