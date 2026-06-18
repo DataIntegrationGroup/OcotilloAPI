@@ -41,6 +41,11 @@ from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
+from services.edit_notification_helper import (
+    EditEvent,
+    format_file_size,
+    notify_edit_event,
+)
 from services.env import get_bool_env
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id
@@ -345,6 +350,29 @@ async def upload_and_record_asset(
         raise
 
     session.refresh(asset)
+
+    thing_label = thing.name or f"Thing {thing_id}"
+    file_name = asset.name or file.filename or "attachment"
+
+    notify_edit_event(
+        user,
+        EditEvent(
+            action="attachment_uploaded",
+            resource_type="well" if thing.thing_type == "water well" else "thing",
+            resource_id=thing_id,
+            resource_label=thing_label,
+            summary=(
+                f"Uploaded {file_name} ({asset.mime_type}, "
+                f"{format_file_size(asset.size or file_size)}) to {thing_label}"
+            ),
+            metadata={
+                "file_name": file_name,
+                "mime_type": asset.mime_type,
+                "size": asset.size or file_size,
+                "asset_id": asset.id,
+            },
+        ),
+    )
     return asset
 
 
