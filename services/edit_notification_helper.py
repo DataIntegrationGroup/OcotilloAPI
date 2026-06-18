@@ -134,9 +134,7 @@ def build_slack_payload(
     heading_action = ACTION_HEADINGS.get(event.action, event.action)
     header = f"[{env_label}] {heading_action} — {event.resource_label}"
 
-    actor_name = (
-        user.get("name") or user.get("preferred_username") or "Unknown"
-    )
+    actor_name = user.get("name") or user.get("preferred_username") or "Unknown"
     actor_email = user.get("email")
     who = actor_name if not actor_email else f"{actor_name} ({actor_email})"
     when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")

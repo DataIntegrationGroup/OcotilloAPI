@@ -126,9 +126,7 @@ def model_patcher(
         resource_type = _resource_type_for_item(model, item)
         if resource_type:
             label = _resource_label(item)
-            field_changes = _compute_field_changes(
-                before, item, updates.keys()
-            )
+            field_changes = _compute_field_changes(before, item, updates.keys())
             summary = f"Updated {resource_type} {label}"
             notify_edit_event(
                 user,
@@ -197,9 +195,7 @@ def _resource_label(item: Any) -> str:
 
 
 def _snapshot_field_values(item: Any, keys: Any) -> dict[str, Any]:
-    return {
-        key: _serialize_field_value(getattr(item, key, None)) for key in keys
-    }
+    return {key: _serialize_field_value(getattr(item, key, None)) for key in keys}
 
 
 def _compute_field_changes(
