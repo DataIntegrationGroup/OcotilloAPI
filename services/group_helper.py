@@ -25,7 +25,16 @@ from db.group import Group, GroupThingAssociation
 from db.thing import Thing
 from schemas.group import GroupResponse
 from services.audit_helper import audit_add
+from services.edit_notification_helper import EditEvent, notify_edit_event
 from services.query_helper import order_sort_filter
+
+
+def _thing_resource_type(thing: Thing) -> str:
+    if thing.thing_type == "water well":
+        return "well"
+    if thing.thing_type == "spring":
+        return "spring"
+    return "thing"
 
 
 def get_well_counts_by_group_id(
@@ -85,6 +94,20 @@ def add_thing_to_group(
     session.add(assoc)
     session.commit()
     session.refresh(assoc)
+
+    thing_label = thing.name or f"Thing {thing_id}"
+    group_name = group.name or f"Group {group_id}"
+    notify_edit_event(
+        user,
+        EditEvent(
+            action="project_added",
+            resource_type=_thing_resource_type(thing),
+            resource_id=thing_id,
+            resource_label=thing_label,
+            summary=f'Added {thing_label} to project "{group_name}"',
+            metadata={"group_id": group_id, "group_name": group_name},
+        ),
+    )
     return assoc
 
 
@@ -92,7 +115,11 @@ def remove_thing_from_group(
     session: Session,
     group_id: int,
     thing_id: int,
+    user: dict | None = None,
 ) -> None:
+    group = session.get(Group, group_id)
+    thing = session.get(Thing, thing_id)
+
     assoc = session.execute(
         select(GroupThingAssociation).where(
             GroupThingAssociation.group_id == group_id,
@@ -111,6 +138,21 @@ def remove_thing_from_group(
 
     session.delete(assoc)
     session.commit()
+
+    if user and thing is not None:
+        thing_label = thing.name or f"Thing {thing_id}"
+        group_name = (group.name if group else None) or f"Group {group_id}"
+        notify_edit_event(
+            user,
+            EditEvent(
+                action="project_removed",
+                resource_type=_thing_resource_type(thing),
+                resource_id=thing_id,
+                resource_label=thing_label,
+                summary=f'Removed {thing_label} from project "{group_name}"',
+                metadata={"group_id": group_id, "group_name": group_name},
+            ),
+        )
 
 
 def paginated_groups_getter(
