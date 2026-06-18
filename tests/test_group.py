@@ -230,3 +230,99 @@ def test_delete_group_404_not_found(second_group):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Group with ID {bad_id} not found."
+
+
+# GROUP-THING association tests ================================================
+
+
+def test_add_thing_to_group_route(spring_thing):
+    payload = {
+        "release_status": "private",
+        "name": "Slack Notify Test Group",
+        "description": "Temporary group for association test.",
+    }
+    create_response = client.post("/group", json=payload)
+    assert create_response.status_code == 201
+    group_id = create_response.json()["id"]
+
+    response = client.post(f"/group/{group_id}/things/{spring_thing.id}")
+    assert response.status_code == 201
+    data = response.json()
+    assert data["group_id"] == group_id
+    assert data["thing_id"] == spring_thing.id
+
+    cleanup_post_test(GroupThingAssociation, data["id"])
+    cleanup_post_test(Group, group_id)
+
+
+def test_add_thing_to_group_route_409_duplicate(group, water_well_thing):
+    response = client.post(f"/group/{group.id}/things/{water_well_thing.id}")
+    assert response.status_code == 409
+
+
+def test_remove_thing_from_group_route(group, water_well_thing):
+    response = client.delete(f"/group/{group.id}/things/{water_well_thing.id}")
+    assert response.status_code == 204
+
+    # restore association for other tests using this fixture
+    with session_ctx() as session:
+        session.add(
+            GroupThingAssociation(group_id=group.id, thing_id=water_well_thing.id)
+        )
+        session.commit()
+
+
+def test_add_thing_to_group_notifies_slack(spring_thing, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    payload = {
+        "release_status": "private",
+        "name": "Slack Association Group",
+        "description": "Temporary group for Slack test.",
+    }
+    create_response = client.post("/group", json=payload)
+    group_id = create_response.json()["id"]
+
+    response = client.post(f"/group/{group_id}/things/{spring_thing.id}")
+    assert response.status_code == 201
+    assoc_id = response.json()["id"]
+
+    project_calls = [call for call in calls if "Project added" in call[1]["text"]]
+    assert len(project_calls) == 1
+    assert spring_thing.name in project_calls[0][1]["text"]
+
+    cleanup_post_test(GroupThingAssociation, assoc_id)
+    cleanup_post_test(Group, group_id)
+
+
+def test_remove_thing_from_group_notifies_slack(group, water_well_thing, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    response = client.delete(f"/group/{group.id}/things/{water_well_thing.id}")
+    assert response.status_code == 204
+    assert len(calls) == 1
+    assert water_well_thing.name in calls[0][1]["text"]
+
+    with session_ctx() as session:
+        session.add(
+            GroupThingAssociation(group_id=group.id, thing_id=water_well_thing.id)
+        )
+        session.commit()
