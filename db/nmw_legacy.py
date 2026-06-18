@@ -724,9 +724,37 @@ class NMW_WsDstPressure(Base):
 
 
 # =============================================================================
+# PUBLICATIONS
+# =============================================================================
+
+
+class NMW_Sources(Base):
+    """1:1 mirror of NM_Wells ``tbl_sources`` (publication / data source registry).
+
+    Transform target: ``publication``. Each row is a citable source keyed by
+    the free-text ``SourceID`` string that appears in ``NMW_WellRecords.SourceID``.
+    """
+
+    __tablename__ = "NMW_Sources"
+
+    object_id = mapped_column("OBJECTID", Integer, primary_key=True)  # identity PK
+    source_id = mapped_column("SourceID", String, index=True)  # join key (text FK)
+    first_auth = mapped_column("FirstAuth", String)
+    pub_year = mapped_column("PubYear", String)
+    title = mapped_column("Title", String)
+    journal = mapped_column("Journal", String)
+    volume = mapped_column("Volume", String)
+    page_no = mapped_column("PageNo", String)
+    report_no = mapped_column("ReportNo", String)
+    publisher = mapped_column("Publisher", String)
+    city = mapped_column("City", String)
+    url = mapped_column("URL", String)
+    comments = mapped_column("Comments", String)
+
+
+# =============================================================================
 # TODO(remaining "Migrate First" tables, no DDL/mapping yet)
 # -----------------------------------------------------------------------------
-#   Publications:  tbl_sources
 #   Subsurface Library:  dst_scan, log_scanned, Well_Header, well_operators
 # See docs/nm_wells-migration.md for the full inventory + recommendations.
 # =============================================================================

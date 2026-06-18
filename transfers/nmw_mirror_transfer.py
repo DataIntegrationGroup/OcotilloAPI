@@ -62,6 +62,7 @@ from db.nmw_legacy import (
     NMW_GtHeatFlow,
     NMW_GtSumHeatFlow,
     NMW_GtTempDepths,
+    NMW_Sources,
     NMW_WellHeaders,
     NMW_WellLocations,
     NMW_WellRecords,
@@ -111,6 +112,8 @@ NMW_MIRROR_SPECS: list[MirrorSpec] = [
     MirrorSpec(NMW_WellRecords, "tbl_well_records"),
     MirrorSpec(NMW_WellZDatum, "tbl_well_z_datum"),
     MirrorSpec(NMW_WellSamples, "tbl_well_samples"),
+    # Publications
+    MirrorSpec(NMW_Sources, "tbl_sources"),
     # Geothermal
     MirrorSpec(NMW_GtBhtHeaders, "tbl_gt_bht_headers"),
     MirrorSpec(NMW_GtBhtData, "tbl_gt_bht_data"),
