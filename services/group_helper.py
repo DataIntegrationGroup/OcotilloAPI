@@ -24,7 +24,7 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db.group import Group, GroupThingAssociation
 from db.thing import Thing
 from schemas.group import GroupResponse
-from services.audit_helper import audit_add
+from services.audit_helper import audit_add, audit_update
 from services.query_helper import order_sort_filter
 
 
@@ -92,6 +92,7 @@ def remove_thing_from_group(
     session: Session,
     group_id: int,
     thing_id: int,
+    user: dict,
 ) -> None:
     assoc = session.execute(
         select(GroupThingAssociation).where(
@@ -109,6 +110,7 @@ def remove_thing_from_group(
             ),
         )
 
+    audit_update(user, assoc)
     session.delete(assoc)
     session.commit()
 
