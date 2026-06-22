@@ -206,55 +206,39 @@ def _thing_collections_block(
 
 
 def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
-    from dotenv import dotenv_values
-
-    # Read .env directly so stale shell vars (e.g. from conda) can't override
-    # PYGEOAPI_POSTGRES_* values.  Shell env takes precedence only for the
-    # PYGEOAPI_-prefixed keys (explicit per-service override), while the
-    # generic POSTGRES_* fallback always comes from the file.
-    env_file = Path(__file__).resolve().parents[1] / ".env"
-    dotenv = dotenv_values(env_file) if env_file.exists() else {}
-
-    def _resolve(pygeoapi_key: str, fallback_key: str, default: str = "") -> str:
-        # Priority: .env PYGEOAPI_* > shell PYGEOAPI_* > .env POSTGRES_* >
-        #           shell POSTGRES_* > hard default.
-        # Shell PYGEOAPI_* comes before .env POSTGRES_* so that explicit
-        # per-service overrides in Docker (e.g. PYGEOAPI_POSTGRES_HOST=db)
-        # beat the generic localhost values in .env.
-        return (
-            (dotenv.get(pygeoapi_key) or "").strip()
-            or (os.environ.get(pygeoapi_key) or "").strip()
-            or (dotenv.get(fallback_key) or "").strip()
-            or (os.environ.get(fallback_key) or "").strip()
-            or default
-        )
-
-    host = _resolve("PYGEOAPI_POSTGRES_HOST", "POSTGRES_HOST", "127.0.0.1")
-    port = _resolve("PYGEOAPI_POSTGRES_PORT", "POSTGRES_PORT", "5432")
-    dbname = _resolve("PYGEOAPI_POSTGRES_DB", "POSTGRES_DB", "postgres")
-    user = _resolve("PYGEOAPI_POSTGRES_USER", "POSTGRES_USER")
+    host = (
+        (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip()
+        or (os.environ.get("POSTGRES_HOST") or "").strip()
+        or "127.0.0.1"
+    )
+    port = (
+        (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip()
+        or (os.environ.get("POSTGRES_PORT") or "").strip()
+        or "5432"
+    )
+    dbname = (
+        (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip()
+        or (os.environ.get("POSTGRES_DB") or "").strip()
+        or "postgres"
+    )
+    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip() or (
+        os.environ.get("POSTGRES_USER") or ""
+    ).strip()
     if not user:
         raise RuntimeError(
             "PYGEOAPI_POSTGRES_USER or POSTGRES_USER must be set and "
-            "non-empty in the environment or .env file."
+            "non-empty to generate the pygeoapi configuration."
         )
-    # Resolve the actual password at config-write time and embed it directly
-    # in the generated config file (which is already chmod 0600).  This avoids
-    # stale shell env vars corrupting the ${VAR} expansion that pygeoapi's
-    # yaml_load would otherwise perform at request time.
-    password = _resolve("PYGEOAPI_POSTGRES_PASSWORD", "POSTGRES_PASSWORD")
-    if not password:
+    if os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is None:
         raise RuntimeError(
-            "PYGEOAPI_POSTGRES_PASSWORD or POSTGRES_PASSWORD must be set "
-            "and non-empty in the environment or .env file."
+            "PYGEOAPI_POSTGRES_PASSWORD must be set to "
+            "generate the pygeoapi configuration."
         )
-    return host, port, dbname, user, password
+    return host, port, dbname, user, "${PYGEOAPI_POSTGRES_PASSWORD}"
 
 
 def _write_config(path: Path) -> None:
-    host, port, dbname, user, password = _pygeoapi_db_settings()
-    # Escape braces so str.format() doesn't misinterpret them in the password.
-    password_for_format = password.replace("{", "{{").replace("}", "}}")
+    host, port, dbname, user, password_placeholder = _pygeoapi_db_settings()
     template = _template_path().read_text(encoding="utf-8")
     config = template.format(
         server_url=_server_url(),
@@ -262,19 +246,24 @@ def _write_config(path: Path) -> None:
         postgres_port=port,
         postgres_db=dbname,
         postgres_user=user,
-        postgres_password_env=password_for_format,
+        postgres_password_env=password_placeholder,
         thing_collections_block=_thing_collections_block(
             host=host,
             port=port,
             dbname=dbname,
             user=user,
-            password_placeholder=password,
+            password_placeholder=password_placeholder,
         ),
     )
-    # NOTE: The generated runtime config file contains database credentials
-    # including the plaintext password.  It is protected by chmod 0600.
+    # NOTE: The generated runtime config file at
+    # `${PYGEOAPI_RUNTIME_DIR}/pygeoapi-config.yml` (default:
+    # `/tmp/pygeoapi/pygeoapi-config.yml`) contains database connection details
+    # (host, port, dbname, user). Although the password is expected to be
+    # provided via environment variables at runtime by pygeoapi, this file
+    # should still be treated as sensitive configuration:
     #   * Do not commit it to version control.
     #   * Do not expose it in logs, error messages, or diagnostics.
+    #   * Ensure filesystem permissions restrict access appropriately.
     path.write_text(config, encoding="utf-8")
     path.chmod(0o600)
 
