@@ -4,7 +4,12 @@ import pytest
 from geoalchemy2.shape import to_shape
 from pydantic import ValidationError
 
-from core.dependencies import admin_function, viewer_function, editor_function
+from core.dependencies import (
+    admin_function,
+    amp_admin_function,
+    viewer_function,
+    editor_function,
+)
 from db import Group, GroupThingAssociation, Thing
 from db.engine import session_ctx
 from main import app
@@ -22,6 +27,9 @@ from tests import (
 def override_authentication_dependency_fixture():
 
     app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[editor_function] = override_authentication(

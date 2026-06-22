@@ -21,6 +21,7 @@ from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     admin_dependency,
+    amp_admin_dependency,
     editor_dependency,
     viewer_dependency,
 )
@@ -60,7 +61,7 @@ def add_thing_to_group_route(
     group_id: int,
     thing_id: int,
     session: session_dependency,
-    user: admin_dependency,
+    user: amp_admin_dependency,
 ):
     """
     Associate a thing (e.g. a water well) with a group (project).
@@ -118,7 +119,7 @@ def remove_thing_from_group_route(
     group_id: int,
     thing_id: int,
     session: session_dependency,
-    user: admin_dependency,
+    user: amp_admin_dependency,
 ):
     """
     Remove the association between a thing and a group.
