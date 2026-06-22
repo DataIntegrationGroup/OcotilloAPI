@@ -106,28 +106,35 @@ class MirrorSpec:
 # All NMW_* mirror tables. Order is irrelevant (no enforced cross-table FKs in
 # the staging layer), but parents are listed before children for readability.
 NMW_MIRROR_SPECS: list[MirrorSpec] = [
-    # Main
-    MirrorSpec(NMW_WellLocations, "tbl_well_locations"),
+    # Parents before children (FK constraints enforced on insert)
+    # Root
     MirrorSpec(NMW_WellHeaders, "tbl_well_headers"),
+    # -> WellHeaders
+    MirrorSpec(NMW_WellLocations, "tbl_well_locations"),
     MirrorSpec(NMW_WellRecords, "tbl_well_records"),
+    # -> WellRecords
     MirrorSpec(NMW_WellZDatum, "tbl_well_z_datum"),
     MirrorSpec(NMW_WellSamples, "tbl_well_samples"),
-    # Publications
+    # Publications (standalone, no FK)
     MirrorSpec(NMW_Sources, "tbl_sources"),
-    # Geothermal
+    # Geothermal -> WellSamples
     MirrorSpec(NMW_GtBhtHeaders, "tbl_gt_bht_headers"),
-    MirrorSpec(NMW_GtBhtData, "tbl_gt_bht_data"),
+    MirrorSpec(NMW_GtBhtData, "tbl_gt_bht_data"),  # -> GtBhtHeaders
     MirrorSpec(NMW_WsIntervals, "tbl_ws_intervals"),
-    MirrorSpec(NMW_GtConductivity, "tbl_gt_conductivity"),
-    MirrorSpec(NMW_GtHeatFlow, "tbl_gt_heat_flow"),
-    MirrorSpec(NMW_GtSumHeatFlow, "tbl_gt_sum_heat_flow"),
-    MirrorSpec(NMW_GtTempDepths, "tbl_gt_temp_depths"),
-    # Drill Stem Tests
+    MirrorSpec(NMW_GtConductivity, "tbl_gt_conductivity"),  # -> WsIntervals
+    MirrorSpec(NMW_GtHeatFlow, "tbl_gt_heat_flow"),  # -> WsIntervals
+    MirrorSpec(
+        NMW_GtSumHeatFlow, "tbl_gt_sum_heat_flow"
+    ),  # -> WellRecords + WellSamples
+    MirrorSpec(NMW_GtTempDepths, "tbl_gt_temp_depths"),  # -> WellSamples
+    # Drill Stem Tests -> WellSamples
     MirrorSpec(NMW_WsDstHeaders, "tbl_ws_dst_headers"),
-    MirrorSpec(NMW_WsDstIntervals, "tbl_ws_dst_intervals"),
-    MirrorSpec(NMW_WsDstFlowHistory, "tbl_ws_dst_flow_history"),
-    MirrorSpec(NMW_WsDstFluidProperties, "tbl_ws_dst_fluid_properties"),
-    MirrorSpec(NMW_WsDstPressure, "tbl_ws_dst_pressure"),
+    MirrorSpec(NMW_WsDstIntervals, "tbl_ws_dst_intervals"),  # -> WsDstHeaders
+    MirrorSpec(NMW_WsDstFlowHistory, "tbl_ws_dst_flow_history"),  # -> WsDstIntervals
+    MirrorSpec(
+        NMW_WsDstFluidProperties, "tbl_ws_dst_fluid_properties"
+    ),  # -> WsDstIntervals
+    MirrorSpec(NMW_WsDstPressure, "tbl_ws_dst_pressure"),  # -> WsDstIntervals
 ]
 
 
