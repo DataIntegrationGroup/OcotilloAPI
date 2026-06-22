@@ -124,7 +124,7 @@ def remove_thing_from_group_route(
     Remove the association between a thing and a group.
     Returns 404 if the association does not exist.
     """
-    remove_thing_from_group(session, group_id, thing_id, user=user)
+    remove_thing_from_group(session, group_id, thing_id, user)
 
 
 @router.delete(

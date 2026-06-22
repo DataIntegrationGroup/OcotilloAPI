@@ -238,7 +238,7 @@ def test_delete_group_404_not_found(second_group):
 def test_add_thing_to_group_route(spring_thing):
     payload = {
         "release_status": "private",
-        "name": "Slack Notify Test Group",
+        "name": "Association Test Group",
         "description": "Temporary group for association test.",
     }
     create_response = client.post("/group", json=payload)
@@ -250,6 +250,8 @@ def test_add_thing_to_group_route(spring_thing):
     data = response.json()
     assert data["group_id"] == group_id
     assert data["thing_id"] == spring_thing.id
+    assert data["created_by_id"] == "1234567890"
+    assert data["created_by_name"] == "foobar"
 
     cleanup_post_test(GroupThingAssociation, data["id"])
     cleanup_post_test(Group, group_id)
