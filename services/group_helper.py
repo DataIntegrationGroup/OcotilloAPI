@@ -15,13 +15,16 @@
 # ===============================================================================
 from typing import Any
 
+from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from db.group import Group, GroupThingAssociation
 from db.thing import Thing
 from schemas.group import GroupResponse
+from services.audit_helper import audit_add, audit_update
 from services.query_helper import order_sort_filter
 
 
@@ -47,6 +50,69 @@ def get_well_counts_by_group_id(
 def group_to_response(group: Group, well_count: int = 0) -> GroupResponse:
     response = GroupResponse.model_validate(group)
     return response.model_copy(update={"well_count": well_count})
+
+
+def add_thing_to_group(
+    session: Session, group_id: int, thing_id: int, user: dict
+) -> GroupThingAssociation:
+    group = session.get(Group, group_id)
+    if group is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Group with ID {group_id} not found.",
+        )
+
+    thing = session.get(Thing, thing_id)
+    if thing is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Thing with ID {thing_id} not found.",
+        )
+
+    existing = session.execute(
+        select(GroupThingAssociation).where(
+            GroupThingAssociation.group_id == group_id,
+            GroupThingAssociation.thing_id == thing_id,
+        )
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        msg = f"Thing {thing_id} is already a member of group {group_id}."
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail=msg)
+
+    assoc = GroupThingAssociation(group_id=group_id, thing_id=thing_id)
+    audit_add(user, assoc)
+    session.add(assoc)
+    session.commit()
+    session.refresh(assoc)
+    return assoc
+
+
+def remove_thing_from_group(
+    session: Session,
+    group_id: int,
+    thing_id: int,
+    user: dict,
+) -> None:
+    assoc = session.execute(
+        select(GroupThingAssociation).where(
+            GroupThingAssociation.group_id == group_id,
+            GroupThingAssociation.thing_id == thing_id,
+        )
+    ).scalar_one_or_none()
+
+    if assoc is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=(
+                f"No association found between group {group_id} "
+                f"and thing {thing_id}."
+            ),
+        )
+
+    audit_update(user, assoc)
+    session.delete(assoc)
+    session.commit()
 
 
 def paginated_groups_getter(

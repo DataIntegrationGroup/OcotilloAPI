@@ -28,9 +28,11 @@ from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.group_helper import (
+    add_thing_to_group,
     get_well_counts_by_group_id,
     group_to_response,
     paginated_groups_getter,
+    remove_thing_from_group,
 )
 from services.query_helper import simple_get_by_id
 
@@ -49,21 +51,22 @@ def create_group(
     return model_adder(session, Group, group_data, user=user)
 
 
-# @router.post(
-#     "/association",
-#     summary="Create a new group-thing association",
-#     status_code=status.HTTP_201_CREATED,
-# )
-# def create_group_thing(
-#     group_location_data: CreateGroupThing,
-#     session: session_dependency,
-#     user: admin_dependency,
-# ):
-#     """
-#     Create a new group location association in the database.
-#     """
-#     return adder(session, GroupThingAssociation, group_location_data, user=user)
-#
+@router.post(
+    "/{group_id}/things/{thing_id}",
+    summary="Add a thing to a group",
+    status_code=HTTP_201_CREATED,
+)
+def add_thing_to_group_route(
+    group_id: int,
+    thing_id: int,
+    session: session_dependency,
+    user: admin_dependency,
+):
+    """
+    Associate a thing (e.g. a water well) with a group (project).
+    Returns 409 if the association already exists.
+    """
+    return add_thing_to_group(session, group_id, thing_id, user)
 
 
 # ============= Get =============================================
@@ -91,17 +94,6 @@ def get_group_by_id(
     return group_to_response(group, counts.get(group.id, 0))
 
 
-# @router.get(
-#     "/association/{association_id}",
-#     summary="Get group-thing association by ID",
-# )
-# async def get_group_thing_by_id(association_id: int, session: session_dependency):
-#     """
-#     Retrieve a group-thing association by ID from the database.
-#     """
-#     return simple_get_by_id(session, GroupThingAssociation, association_id)
-
-
 # ============= Patch =============================================
 @router.patch("/{group_id}", summary="Update a group by ID")
 def update_group(
@@ -117,6 +109,24 @@ def update_group(
 
 
 # DELETE =======================================================================
+@router.delete(
+    "/{group_id}/things/{thing_id}",
+    summary="Remove a thing from a group",
+    status_code=HTTP_204_NO_CONTENT,
+)
+def remove_thing_from_group_route(
+    group_id: int,
+    thing_id: int,
+    session: session_dependency,
+    user: admin_dependency,
+):
+    """
+    Remove the association between a thing and a group.
+    Returns 404 if the association does not exist.
+    """
+    remove_thing_from_group(session, group_id, thing_id, user)
+
+
 @router.delete(
     "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT
 )
