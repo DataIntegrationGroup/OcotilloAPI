@@ -48,9 +48,7 @@ _INT_HF_VIEW = "ogc_geothermal_wells_interval_heat_flow"
 def upgrade() -> None:
     # ogc_geothermal_wells_bht
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_BHT_VIEW}" AS
         SELECT
             row_number() OVER ()                                 AS id,
@@ -81,15 +79,11 @@ def upgrade() -> None:
             hdr."CurWellNam",
             hdr."API",
             hdr."TotalDepth"
-        """
-        )
-    )
+        """))
 
     # ogc_geothermal_wells_temperature_profile (materialized)
     op.execute(text(f'DROP MATERIALIZED VIEW IF EXISTS "{_PROFILE_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE MATERIALIZED VIEW "{_PROFILE_VIEW}" AS
         WITH loc AS (
             SELECT DISTINCT ON ("WellDataID")
@@ -130,9 +124,7 @@ def upgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """
-        )
-    )
+        """))
     op.execute(
         text(f'CREATE UNIQUE INDEX ux_{_PROFILE_VIEW}_id ON "{_PROFILE_VIEW}" (id)')
     )
@@ -144,9 +136,7 @@ def upgrade() -> None:
 
     # ogc_geothermal_wells_summary_heat_flow
     op.execute(text(f'DROP VIEW IF EXISTS "{_SUM_HF_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_SUM_HF_VIEW}" AS
         SELECT
             row_number() OVER ()                                 AS id,
@@ -193,15 +183,11 @@ def upgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """
-        )
-    )
+        """))
 
     # ogc_geothermal_wells_interval_heat_flow
     op.execute(text(f'DROP VIEW IF EXISTS "{_INT_HF_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_INT_HF_VIEW}" AS
         SELECT
             row_number() OVER ()                                 AS id,
@@ -248,9 +234,7 @@ def upgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """
-        )
-    )
+        """))
 
 
 def downgrade() -> None:

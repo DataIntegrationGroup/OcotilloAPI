@@ -50,9 +50,7 @@ _DST_VIEW = "ogc_dst"
 def upgrade() -> None:
     # ogc_bht_measurements
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_MEAS_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_BHT_MEAS_VIEW}" AS
         SELECT
             d."OBJECTID"                                         AS id,
@@ -84,15 +82,11 @@ def upgrade() -> None:
         JOIN "NMW_WellLocations" AS loc ON loc."WellDataID" = r."WellDataID"
         WHERE loc."Lat_dd83"  IS NOT NULL
           AND loc."Long_dd83" IS NOT NULL
-        """
-        )
-    )
+        """))
 
     # ogc_temp_depth_measurements
     op.execute(text(f'DROP VIEW IF EXISTS "{_TEMP_DEPTH_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_TEMP_DEPTH_VIEW}" AS
         SELECT
             td."OBJECTID"                                        AS id,
@@ -130,15 +124,11 @@ def upgrade() -> None:
         WHERE loc."Exclude" = 0
           AND loc."Lat_dd83"  IS NOT NULL
           AND loc."Long_dd83" IS NOT NULL
-        """
-        )
-    )
+        """))
 
     # ogc_heat_flow
     op.execute(text(f'DROP VIEW IF EXISTS "{_HEAT_FLOW_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_HEAT_FLOW_VIEW}" AS
         SELECT
             shf."OBJECTID"                                           AS id,
@@ -212,15 +202,11 @@ def upgrade() -> None:
         WHERE loc."Exclude" = 0
           AND loc."Lat_dd83"  IS NOT NULL
           AND loc."Long_dd83" IS NOT NULL
-        """
-        )
-    )
+        """))
 
     # ogc_dst
     op.execute(text(f'DROP VIEW IF EXISTS "{_DST_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_DST_VIEW}" AS
         WITH flow_history AS (
             SELECT
@@ -283,9 +269,7 @@ def upgrade() -> None:
         LEFT JOIN flow_history     AS fh  ON fh."DSTInterval" = i."DSTInterval"
         WHERE loc."Lat_dd83"  IS NOT NULL
           AND loc."Long_dd83" IS NOT NULL
-        """
-        )
-    )
+        """))
 
 
 def downgrade() -> None:
