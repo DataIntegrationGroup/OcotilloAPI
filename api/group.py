@@ -131,7 +131,7 @@ def remove_thing_from_group_route(
     "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT
 )
 def delete_group(user: admin_dependency, group_id: int, session: session_dependency):
-    return model_deleter(session, Group, group_id)
+    return model_deleter(session, Group, group_id, user=user)
 
 
 # ============= EOF =============================================
