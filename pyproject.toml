@@ -137,7 +137,7 @@ dev = [
   "pre-commit>=4.6.0",
   "pyhamcrest>=2.0.3",
   "pytest>=9.1.1",
-  "pytest-cov>=6.2.1",
+  "pytest-cov>=7.1.0",
   "python-dotenv>=1.1.1",
   "requests>=2.34.2",
 ]
