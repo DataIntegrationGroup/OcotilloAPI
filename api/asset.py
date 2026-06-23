@@ -19,7 +19,7 @@ import time
 
 from fastapi import APIRouter, Depends, Form, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import ProgrammingError
 from starlette.concurrency import run_in_threadpool
 from starlette.status import (
@@ -38,7 +38,13 @@ from core.dependencies import (
 )
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
-from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
+from schemas.asset import (
+    AssetAssociationResponse,
+    AssetAssociationUpdate,
+    AssetResponse,
+    CreateAsset,
+    UpdateAsset,
+)
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
 from services.edit_notification_helper import (
@@ -481,6 +487,53 @@ async def get_asset(
 
 
 # PATCH ======================================================================
+@router.patch("/{asset_id}/association")
+async def update_asset_thing_association(
+    asset_id: int,
+    association_data: AssetAssociationUpdate,
+    session: session_dependency,
+    user: editor_dependency,
+) -> AssetAssociationResponse:
+    """
+    Move an asset to another Thing or remove its Thing association.
+
+    Passing a `thing_id` replaces any existing Thing links for the asset with
+    that one Thing. Passing `thing_id: null` leaves the Asset record in place
+    and removes all Thing links.
+    """
+    simple_get_by_id(session, Asset, asset_id)
+
+    thing_id = association_data.thing_id
+    thing = None
+    if thing_id is not None:
+        thing = session.get(Thing, thing_id)
+        if thing is None:
+            raise PydanticStyleException(
+                status_code=HTTP_409_CONFLICT,
+                detail=[
+                    {
+                        "loc": ["body", "thing_id"],
+                        "msg": f"Thing with ID {thing_id} not found.",
+                        "type": "value_error",
+                        "input": {"thing_id": thing_id},
+                    }
+                ],
+            )
+
+    association_delete = delete(AssetThingAssociation).where(
+        AssetThingAssociation.asset_id == asset_id
+    )
+    session.execute(association_delete)
+
+    if thing is not None:
+        assoc = AssetThingAssociation(asset_id=asset_id, thing_id=thing.id)
+        audit_add(user, assoc)
+        session.add(assoc)
+
+    session.commit()
+    return AssetAssociationResponse(asset_id=asset_id, thing_id=thing_id)
+
+
 @router.patch("/{asset_id}")
 async def update_asset(
     asset_id: int,
