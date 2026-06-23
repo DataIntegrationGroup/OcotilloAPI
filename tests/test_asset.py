@@ -21,11 +21,13 @@ from datetime import timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from api.asset import get_storage_bucket
 from main import app
 from core.dependencies import viewer_function, admin_function, editor_function
-from db import Asset
+from db.engine import session_ctx
+from db import Asset, AssetThingAssociation, Thing
 from schemas import DT_FMT
 from services import gcs_helper
 from tests import (
@@ -332,6 +334,105 @@ def test_get_asset_by_id_404_not_found(asset):
 
 
 # PATCH tests ================================================================
+
+
+def test_patch_asset_association_moves_asset_to_another_thing(
+    asset_with_associated_thing, water_well_thing
+):
+    with session_ctx() as session:
+        other_thing = Thing(
+            name="Other Test Well",
+            thing_type="water well",
+            release_status="draft",
+        )
+        session.add(other_thing)
+        session.commit()
+        session.refresh(other_thing)
+        other_thing_id = other_thing.id
+
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": other_thing_id},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "asset_id": asset_with_associated_thing.id,
+        "thing_id": other_thing_id,
+    }
+
+    with session_ctx() as session:
+        asset_association_matches = (
+            AssetThingAssociation.asset_id == asset_with_associated_thing.id
+        )
+        thing_id_query = select(AssetThingAssociation.thing_id).where(
+            asset_association_matches
+        )
+        thing_ids = session.scalars(thing_id_query).all()
+        assert thing_ids == [other_thing_id]
+        assert water_well_thing.id not in thing_ids
+
+        session.delete(session.get(Thing, other_thing_id))
+        session.commit()
+
+
+def test_patch_asset_association_disassociates_asset(
+    asset_with_associated_thing,
+):
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": None},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "asset_id": asset_with_associated_thing.id,
+        "thing_id": None,
+    }
+
+    with session_ctx() as session:
+        asset = session.get(Asset, asset_with_associated_thing.id)
+        asset_association_matches = (
+            AssetThingAssociation.asset_id == asset_with_associated_thing.id
+        )
+        association = session.scalars(
+            select(AssetThingAssociation).where(asset_association_matches)
+        ).one_or_none()
+
+    assert asset is not None
+    assert association is None
+
+
+def test_patch_asset_association_bad_thing_id(asset_with_associated_thing):
+    bad_thing_id = 99999
+
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": bad_thing_id},
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    expected_message = f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["msg"] == expected_message
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+
+
+def test_patch_asset_association_bad_asset_id():
+    bad_asset_id = 99999
+
+    response = client.patch(
+        f"/asset/{bad_asset_id}/association",
+        json={"thing_id": None},
+    )
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_asset_id} not found."
 
 
 def test_patch_asset(asset):
