@@ -23,9 +23,11 @@ services:
       retries: 20
 
   app:
-    build: 
+    build:
       context: .
       dockerfile: ./docker/app/Dockerfile
+      args:
+        INSTALL_DEV: "true"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

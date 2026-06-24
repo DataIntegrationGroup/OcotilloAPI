@@ -13,8 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+"""DEPRECATED: legacy NM_Aquifer -> Ocotillo transfer orchestrator.
+
+This module (the original AMPAPI / NM_Aquifer migration driver) is deprecated.
+Do not add new migrations here. New migrations get their own standalone
+orchestrator script; e.g. the NM_Wells geothermal migration lives in
+``transfers/transfer_geothermal.py``.
+"""
+
 import os
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -324,6 +333,12 @@ def _drop_and_rebuild_db() -> None:
 
 @timeit
 def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
+    warnings.warn(
+        "transfers.transfer is deprecated; new migrations get their own "
+        "orchestrator (e.g. transfers/transfer_geothermal.py).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     message("STARTING TRANSFER", new_line_at_top=False)
     if get_bool_env("DROP_AND_REBUILD_DB", False):
         logger.info("Dropping schema and rebuilding database from migrations")
