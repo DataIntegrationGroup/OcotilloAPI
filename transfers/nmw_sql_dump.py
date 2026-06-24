@@ -122,7 +122,9 @@ def _iter_value_groups(s: str) -> Iterator[str]:
         i += 1
 
 
-_CAST_RE = re.compile(r"(?is)^CAST\s*\((.*)\s+AS\s+[^)]+\)$")
+# The AS-target type may itself be parameterised, e.g. CAST(1.50 AS Decimal(18, 2))
+# or CAST(N'x' AS nvarchar(10)); allow one level of parens in the type name.
+_CAST_RE = re.compile(r"(?is)^CAST\s*\((.*)\s+AS\s+[^()]+(?:\([^)]*\))?\s*\)$")
 
 
 def _parse_value(tok: str):
