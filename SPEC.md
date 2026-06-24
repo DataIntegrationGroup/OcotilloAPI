@@ -44,6 +44,8 @@ Plus geothermal OGC API layers over mirror data. Phase-1 only: faithful copy, no
 - V10. ORM `NMW_*` models declare index only (`index=True`, no ORM `ForeignKey`); FK enforcement lives in migration `c0d1e2f3a4b5` (`op.create_foreign_key`). Keep both in sync.
 - V11. SQL-dump parser unwraps `CAST(expr AS <type>)` for parameterised types too (`Decimal(18,2)`, `nvarchar(10)`); never store the literal `CAST(...)` string in a mirror column.
 - V12. Every "Migrate First" table in the NM_Wells inventory (planning workbook) has a `NMW_*` mirror in `NMW_MIRROR_SPECS`. Verified 18/18 (2026-06-23). Subsurface Library is a separate source DB — NOT covered by this invariant (see T24).
+- V13. Mirror dump-reload truncates with `CASCADE` (mirror tables carry FK constraints; bare TRUNCATE of a referenced parent is rejected). Safe because parents load before children (V2).
+- V14. Per-well OGC views dedup `NMW_WellLocations` by `WellDataID` (`DISTINCT ON ... ORDER BY "WellDataID","OBJECTID"`); one feature per well, counts not multiplied by duplicate location rows. Applies to all 4 per-well geothermal views.
 
 ## §T — tasks
 
@@ -81,3 +83,5 @@ T23|~|BDMS-848 Geothermal Migration Technical Implementation Plan (Jira In Progr
 
 id|date|cause|fix
 B1|2026-06-23|_CAST_RE in transfers/nmw_sql_dump.py matched AS-type without parens only; parenthesised types (nvarchar(10), Decimal(18,2)) left value as literal "CAST(...)" string|V11; widened regex to allow one paren level
+B2|2026-06-23|dump-load reload used bare TRUNCATE; FK from NMW_WellLocations/NMW_WellRecords to NMW_WellHeaders makes Postgres reject it, aborting load before COPY (PR#740 P1)|V13; TRUNCATE ... CASCADE
+B3|2026-06-23|per-well geothermal OGC views (bht, summary_heat_flow, interval_heat_flow) joined NMW_WellLocations directly; multiple OBJECTID rows per WellDataID multiplied counts / emitted >1 feature per well (PR#740 P2)|V14; DISTINCT ON loc CTE in all 4 views

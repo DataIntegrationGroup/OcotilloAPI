@@ -240,4 +240,90 @@ def test_iter_table_rows_parses_inserts(tmp_path):
     ]
 
 
+# ------------------------------------------------------ regression: FK truncate
+def test_truncate_referenced_parent_needs_cascade():
+    """A bare TRUNCATE of an FK-referenced mirror parent is rejected; the loader
+    must use CASCADE (V13 / B2). Guards the dump-load reload path."""
+    import sqlalchemy.exc
+
+    # Bare truncate of the FK-referenced parent should error...
+    with session_ctx() as session:
+        with pytest.raises(sqlalchemy.exc.DBAPIError):
+            session.execute(text('TRUNCATE TABLE "NMW_WellHeaders"'))
+    # ...while CASCADE (what the loader does) succeeds.
+    with session_ctx() as session:
+        session.execute(text('TRUNCATE TABLE "NMW_WellHeaders" CASCADE'))
+        session.commit()
+
+
+# --------------------------------------------- regression: one feature per well
+def test_bht_view_one_feature_per_well_with_duplicate_locations():
+    """Two location rows for one WellDataID must not multiply BHT features or
+    inflate bht_count; the view dedups locations via DISTINCT ON (V14 / B3)."""
+    wid = "11111111-1111-1111-1111-111111111111"
+    rsid = "22222222-2222-2222-2222-222222222222"
+    ssid = "33333333-3333-3333-3333-333333333333"
+    bht = "44444444-4444-4444-4444-444444444444"
+    with session_ctx() as session:
+        session.execute(
+            text('INSERT INTO "NMW_WellHeaders" ("WellDataID") VALUES (:w)'),
+            {"w": wid},
+        )
+        # TWO location rows, same WellDataID, valid coords (the bug trigger).
+        session.execute(
+            text(
+                'INSERT INTO "NMW_WellLocations" '
+                '("OBJECTID","WellDataID","Lat_dd83","Long_dd83") VALUES '
+                "(901,:w,33.0,-107.0),(902,:w,33.0,-107.0)"
+            ),
+            {"w": wid},
+        )
+        session.execute(
+            text(
+                'INSERT INTO "NMW_WellRecords" ("RecrdSetID","WellDataID") '
+                "VALUES (:r,:w)"
+            ),
+            {"r": rsid, "w": wid},
+        )
+        session.execute(
+            text(
+                'INSERT INTO "NMW_WellSamples" ("SamplSetID","RecrdsetID") '
+                "VALUES (:s,:r)"
+            ),
+            {"s": ssid, "r": rsid},
+        )
+        session.execute(
+            text(
+                'INSERT INTO "NMW_GtBhtHeaders" ("BHTGUID","SamplSetID") '
+                "VALUES (:b,:s)"
+            ),
+            {"b": bht, "s": ssid},
+        )
+        session.execute(
+            text(
+                'INSERT INTO "NMW_GtBhtData" ("OBJECTID","BHTGUID","BHT","Depth") '
+                "VALUES (911,:b,150.0,1000.0)"
+            ),
+            {"b": bht},
+        )
+        session.commit()
+    try:
+        with session_ctx() as session:
+            rows = session.execute(
+                text(
+                    'SELECT bht_count FROM "ogc_geothermal_wells_bht" '
+                    "WHERE well_data_id = :w"
+                ),
+                {"w": wid},
+            ).all()
+        assert len(rows) == 1, f"expected one feature per well, got {len(rows)}"
+        assert (
+            rows[0][0] == 1
+        ), f"bht_count inflated by duplicate locations: {rows[0][0]}"
+    finally:
+        with session_ctx() as session:
+            session.execute(text('TRUNCATE TABLE "NMW_WellHeaders" CASCADE'))
+            session.commit()
+
+
 # ============= EOF =============================================

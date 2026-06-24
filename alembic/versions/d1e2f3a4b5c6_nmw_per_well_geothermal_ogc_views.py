@@ -48,8 +48,18 @@ _INT_HF_VIEW = "ogc_geothermal_wells_interval_heat_flow"
 def upgrade() -> None:
     # ogc_geothermal_wells_bht
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_BHT_VIEW}" AS
+        WITH loc AS (
+            SELECT DISTINCT ON ("WellDataID")
+                "WellDataID", "Lat_dd83", "Long_dd83"
+            FROM "NMW_WellLocations"
+            WHERE "Lat_dd83" IS NOT NULL
+              AND "Long_dd83" IS NOT NULL
+            ORDER BY "WellDataID", "OBJECTID"
+        )
         SELECT
             row_number() OVER ()                                 AS id,
             r."WellDataID"::text                                 AS well_data_id,
@@ -68,10 +78,8 @@ def upgrade() -> None:
         JOIN "NMW_GtBhtHeaders" AS h ON h."BHTGUID" = d."BHTGUID"
         JOIN "NMW_WellSamples" AS s ON s."SamplSetID" = h."SamplSetID"
         JOIN "NMW_WellRecords" AS r ON r."RecrdSetID" = s."RecrdsetID"
-        JOIN "NMW_WellLocations" AS loc ON loc."WellDataID" = r."WellDataID"
+        JOIN loc ON loc."WellDataID" = r."WellDataID"
         LEFT JOIN "NMW_WellHeaders" AS hdr ON hdr."WellDataID" = r."WellDataID"
-        WHERE loc."Lat_dd83" IS NOT NULL
-          AND loc."Long_dd83" IS NOT NULL
         GROUP BY
             r."WellDataID",
             loc."Lat_dd83",
@@ -79,11 +87,15 @@ def upgrade() -> None:
             hdr."CurWellNam",
             hdr."API",
             hdr."TotalDepth"
-        """))
+        """
+        )
+    )
 
     # ogc_geothermal_wells_temperature_profile (materialized)
     op.execute(text(f'DROP MATERIALIZED VIEW IF EXISTS "{_PROFILE_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE MATERIALIZED VIEW "{_PROFILE_VIEW}" AS
         WITH loc AS (
             SELECT DISTINCT ON ("WellDataID")
@@ -124,7 +136,9 @@ def upgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """))
+        """
+        )
+    )
     op.execute(
         text(f'CREATE UNIQUE INDEX ux_{_PROFILE_VIEW}_id ON "{_PROFILE_VIEW}" (id)')
     )
@@ -136,8 +150,18 @@ def upgrade() -> None:
 
     # ogc_geothermal_wells_summary_heat_flow
     op.execute(text(f'DROP VIEW IF EXISTS "{_SUM_HF_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_SUM_HF_VIEW}" AS
+        WITH loc AS (
+            SELECT DISTINCT ON ("WellDataID")
+                "WellDataID", "Lat_dd83", "Long_dd83"
+            FROM "NMW_WellLocations"
+            WHERE "Lat_dd83" IS NOT NULL
+              AND "Long_dd83" IS NOT NULL
+            ORDER BY "WellDataID", "OBJECTID"
+        )
         SELECT
             row_number() OVER ()                                 AS id,
             r."WellDataID"::text                                 AS well_data_id,
@@ -173,22 +197,32 @@ def upgrade() -> None:
             )                                                    AS geom
         FROM "NMW_GtSumHeatFlow" AS shf
         JOIN "NMW_WellRecords" AS r ON r."RecrdSetID" = shf."RecrdSetID"
-        JOIN "NMW_WellLocations" AS loc ON loc."WellDataID" = r."WellDataID"
+        JOIN loc ON loc."WellDataID" = r."WellDataID"
         LEFT JOIN "NMW_WellHeaders" AS hdr ON hdr."WellDataID" = r."WellDataID"
-        WHERE loc."Lat_dd83" IS NOT NULL
-          AND loc."Long_dd83" IS NOT NULL
         GROUP BY
             r."WellDataID",
             loc."Lat_dd83",
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """))
+        """
+        )
+    )
 
     # ogc_geothermal_wells_interval_heat_flow
     op.execute(text(f'DROP VIEW IF EXISTS "{_INT_HF_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_INT_HF_VIEW}" AS
+        WITH loc AS (
+            SELECT DISTINCT ON ("WellDataID")
+                "WellDataID", "Lat_dd83", "Long_dd83"
+            FROM "NMW_WellLocations"
+            WHERE "Lat_dd83" IS NOT NULL
+              AND "Long_dd83" IS NOT NULL
+            ORDER BY "WellDataID", "OBJECTID"
+        )
         SELECT
             row_number() OVER ()                                 AS id,
             r."WellDataID"::text                                 AS well_data_id,
@@ -224,17 +258,17 @@ def upgrade() -> None:
         JOIN "NMW_WsIntervals" AS i ON i."IntrvlGUID" = hf."IntrvlGUID"
         JOIN "NMW_WellSamples" AS s ON s."SamplSetID" = i."SamplSetID"
         JOIN "NMW_WellRecords" AS r ON r."RecrdSetID" = s."RecrdsetID"
-        JOIN "NMW_WellLocations" AS loc ON loc."WellDataID" = r."WellDataID"
+        JOIN loc ON loc."WellDataID" = r."WellDataID"
         LEFT JOIN "NMW_WellHeaders" AS hdr ON hdr."WellDataID" = r."WellDataID"
-        WHERE loc."Lat_dd83" IS NOT NULL
-          AND loc."Long_dd83" IS NOT NULL
         GROUP BY
             r."WellDataID",
             loc."Lat_dd83",
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """))
+        """
+        )
+    )
 
 
 def downgrade() -> None:

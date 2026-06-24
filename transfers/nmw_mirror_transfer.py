@@ -237,7 +237,11 @@ def _copy_load_table(
         return {"table": name, "skipped": True, "reason": "no rows", "source": "sql"}
 
     # Staging reload: truncate then COPY (no upsert; tables are a 1:1 snapshot).
-    session.execute(text(f'TRUNCATE TABLE "{table.name}"'))
+    # CASCADE because mirror tables carry FK constraints (e.g. NMW_WellLocations
+    # / NMW_WellRecords -> NMW_WellHeaders); a bare TRUNCATE of a referenced
+    # parent is rejected. Specs load parents before children (see V2), so a
+    # cascaded truncate only clears child tables that are reloaded afterwards.
+    session.execute(text(f'TRUNCATE TABLE "{table.name}" CASCADE'))
     _copy_csv_into_table(session, table.name, header, out_csv)
     session.commit()
     logger.info("COPY %s -> %s: %d rows (%s)", name, table.name, n, out_csv)
