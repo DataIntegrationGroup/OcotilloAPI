@@ -452,6 +452,76 @@ def test_upload_and_record_asset_duplicate_returns_existing(water_well_thing):
     cleanup_post_test(Asset, first_id)
 
 
+def test_upload_and_record_asset_notifies_slack(water_well_thing, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    path = "tests/data/riochama.png"
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id, "label": "Slack test photo"},
+            files={"file": ("slack-test.png", f, "image/png")},
+        )
+
+    assert response.status_code == 201
+    assert len(calls) == 1
+    payload = calls[0][1]
+    assert water_well_thing.name in payload["text"]
+    what_field = next(
+        field
+        for field in payload["blocks"][1]["fields"]
+        if field["text"].startswith("*What:*")
+    )
+    assert "slack-test.png" in what_field["text"]
+
+    cleanup_post_test(Asset, response.json()["id"])
+
+
+def test_upload_and_record_asset_duplicate_does_not_notify_slack(
+    water_well_thing, monkeypatch
+):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    path = "tests/data/riochama.png"
+    with open(path, "rb") as f:
+        first = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert first.status_code == 201
+    assert len(calls) == 1
+
+    with open(path, "rb") as f:
+        second = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert second.status_code == 201
+    assert len(calls) == 1
+
+    cleanup_post_test(Asset, first.json()["id"])
+
+
 def test_upload_and_record_asset_bad_thing_id():
     """
     Providing a thing_id that does not exist must return 409 Conflict.

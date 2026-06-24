@@ -38,6 +38,7 @@ Associations are stored in **`ThingContactAssociation`** (`thing_id`, `contact_i
 | List resource | Virtual `field` | Meaning | Implementation sketch |
 |---------------|------------------|---------|------------------------|
 | Thing (wells) | `contacts` | “Does **any** linked contact’s **name** match?” | EXISTS over `ThingContactAssociation` joining `Contact`, predicate on **`Contact.name`** |
+| Thing (wells) | `groups` | “Does **any** linked project (**Group**) match?” | EXISTS over `GroupThingAssociation` joining `Group`, predicate on **`Group.id`** or **`Group.name`** |
 | Contact | `things` | “Does **any** linked monitoring site (**thing**) **name** match?” | EXISTS over **`ThingContactAssociation`** joining **`Thing`**, predicate on **`Thing.name`** |
 
 We keep naming aligned with ORM accessors (`Thing.contacts`-style summaries in API responses use **contacts**, and **`Contact`** side uses **`things`** for parity with the association proxy).
@@ -77,6 +78,7 @@ Those paths previously raised **500**. Virtual sorts are implemented in **`_appl
 | `monitoring_status`, `well_status`, `datalogger_suitability_status` | Same “latest open” **`StatusHistory.status_value`** subquery as filters; **`lower(...)`**, **`nulls_last`** |
 | `site_name` | **`ThingIdLink.alternate_id`** where **`alternate_organization = 'NMBGMR'`**, smallest link **`id`** (matches **`Thing.site_name`**) |
 | `contacts` | **`min(lower(Contact.name))`** over **`ThingContactAssociation`** (first name alphabetically among linked contacts) |
+| `groups` | **`min(lower(Group.name))`** over **`GroupThingAssociation`** (first project name alphabetically among linked groups) |
 | `aquifers` | **`min(lower(AquiferSystem.name))`** over **`ThingAquiferAssociation`** |
 | `open_status` | Latest open **“Open Status”** row; rank **Open** before **Closed**, then unknown strings, then no row |
 | `measuring_point_height` | Latest **`MeasuringPointHistory`** row with non-null height (**`start_date` desc**, limit 1) |
@@ -104,6 +106,7 @@ Each filter **must** include **`field`**, **`operator`**, and **`value`** keys (
 | Merge **`filter_`** + **`filters`**, sorting, pagination hook | **`order_sort_filter`** in **`services/query_helper.py`** |
 | Dispatch virtual fields | **`_apply_json_filter_clause`** in **`services/query_helper.py`** |
 | **`Thing` + contacts** | **`_apply_thing_contacts_filter`** |
+| **`Thing` + groups** | **`_apply_thing_groups_filter`** |
 | **`Contact` + things** | **`_apply_contact_things_filter`** |
 | Contact list accepts repeated **`filter`** | **`GET`** **`/contact`** in **`api/contact.py`**, **`get_db_contacts`** in **`services/contact_helper.py`** |
 | Wells list pattern (reference) | **`GET`** **`/thing/water-well`** in **`api/thing.py`**, **`get_db_things`** in **`services/thing_helper.py`** |
@@ -113,6 +116,7 @@ Each filter **must** include **`field`**, **`operator`**, and **`value`** keys (
 
 - **`tests/test_contact_filters.py`**: **`things`** filters, **`things`** sort, multiple **`filter`** params on **`GET /contact`**.
 - **`tests/test_thing.py`** (contacts on wells): **`contacts`** **`contains`**, **`ncontains`**, **`nnull`**, and **`sort`** on **`monitoring_status`**, **`site_name`**, **`contacts`**, **`aquifers`**, etc.
+- **`tests/test_thing.py`** (groups on wells): **`groups`** **`eq`** by project id or name when filtering wells by project.
 
 ## When you change this
 

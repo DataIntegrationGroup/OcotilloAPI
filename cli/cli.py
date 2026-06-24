@@ -24,6 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
+from services.materialized_views import MATERIALIZED_VIEWS
+
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
 load_dotenv(override=False)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
@@ -48,17 +50,6 @@ class ThemeMode(str, Enum):
 class SmokePopulation(str, Enum):
     all = "all"
     agreed = "agreed"
-
-
-PYGEOAPI_MATERIALIZED_VIEWS = (
-    "ogc_latest_depth_to_water_wells",
-    "ogc_water_elevation_wells",
-    "ogc_avg_tds_wells",
-    "ogc_depth_to_water_trend_wells",
-    "ogc_water_well_summary",
-    "ogc_major_chemistry_results",
-    "ogc_minor_chemistry_wells",
-)
 
 
 def _resolve_theme(theme: ThemeMode) -> ThemeMode:
@@ -1095,14 +1086,14 @@ def alembic_upgrade_and_data(
     typer.echo(f"applied {len(ran)} migration(s)")
 
 
-@cli.command("refresh-pygeoapi-materialized-views")
-def refresh_pygeoapi_materialized_views(
+@cli.command("refresh-materialized-views")
+def refresh_materialized_views(
     view: list[str] = typer.Option(
         None,
         "--view",
         help=(
             "Materialized view name(s) to refresh. Repeat --view for multiple. "
-            "Defaults to all pygeoapi materialized views."
+            "Defaults to all materialized views."
         ),
     ),
     concurrently: bool = typer.Option(
@@ -1115,7 +1106,7 @@ def refresh_pygeoapi_materialized_views(
 
     from db.engine import engine, session_ctx
 
-    target_views = tuple(view) if view else PYGEOAPI_MATERIALIZED_VIEWS
+    target_views = tuple(view) if view else MATERIALIZED_VIEWS
     # Validate all view names before opening any DB connections or sessions.
     safe_views = tuple(_validate_sql_identifier(v) for v in target_views)
 
