@@ -66,9 +66,7 @@ editor_dependency: TypeAlias = Annotated[dict, Depends(editor_function)]
 viewer_dependency: TypeAlias = Annotated[dict, Depends(viewer_function)]
 
 lexicon_admin_dependency: TypeAlias = Annotated[dict, Depends(lexicon_admin_function)]
-lexicon_editor_dependency: TypeAlias = Annotated[
-    dict, Depends(lexicon_editor_function)
-]
+lexicon_editor_dependency: TypeAlias = Annotated[dict, Depends(lexicon_editor_function)]
 
 amp_admin_dependency: TypeAlias = Annotated[dict, Depends(amp_admin_function)]
 amp_editor_dependency: TypeAlias = Annotated[dict, Depends(amp_editor_function)]
