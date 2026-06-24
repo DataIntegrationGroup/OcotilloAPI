@@ -24,10 +24,11 @@ Plus geothermal OGC API layers over mirror data. Phase-1 only: faithful copy, no
 - I.env — `NMW_SQL_DUMP` (dump path; else CSV), `NMW_CSV_DIR`, `TRANSFER_LIMIT`, `TRANSFER_GEOTHERMAL_REFERENCE` (def 1), `TRANSFER_NMW_MIRROR` (def 1). Export: `NMW_HOST/USER/PASSWORD/PORT/DATABASE`.
 - I.export — `transfers/export_nmw_csvs.py` — pymssql dump SQL Server → `transfers/data/nma_csv_cache/<table>.csv`.
 - I.db — 18 `NMW_*` mirror tables (`db/nmw_legacy.py`), PK verified vs dump DDL.
-- I.migrations — `c0d1e2f3a4b5` (tables+FK), `d1e2f3a4b5c6` (per-well views), `e2f3a4b5c6d7` (measurement views). Chain down_rev: t6u7v8w9x0y1 → c0 → d1 → e2.
+- I.migrations — `c0d1e2f3a4b5` (tables+FK), `d1e2f3a4b5c6` (per-well views), `e2f3a4b5c6d7` (measurement views). Linear chain (rebased onto staging head): x2y3z4a5b6c7 → c0 → d1 → e2.
 - I.ogc — 6 new collections in `core/pygeoapi-config.yml`: geothermal_wells_bht, geothermal_wells_temperature_profile (MATVIEW), bht_measurements, temp_depth_measurements, heat_flow, dst.
 - I.views — DB: ogc_geothermal_wells_bht, ogc_geothermal_wells_temperature_profile (MAT), ogc_geothermal_wells_summary_heat_flow, ogc_geothermal_wells_interval_heat_flow, ogc_bht_measurements, ogc_temp_depth_measurements, ogc_heat_flow, ogc_dst.
 - I.lexicon — `reference_lexicon_transfer.py` maps 46 `ref_*` → `nmw_ref_*` LexiconCategory + terms.
+- I.jira — BDMS-826 "Geothermal Migration Planning" (Story, In Progress) under epic BDMS-843 "Geothermal Migration". 6 linked tasks tracked in §T (T18-T23).
 
 ## §V — invariants
 
@@ -63,6 +64,16 @@ T14|.|run end-to-end load vs real dump, capture row counts per table|V2,V4
 T15|.|finish PR #738 body (truncated at "- I ") + reviewer notes|-
 T16|.|P2 (later): transform NMW_* → Ocotillo model; build new enums for 11 LEXICON_CANDIDATES_NO_REF|C2,V9
 T17|x|landed docs/nm_wells-migration.md (commit ccf566d9; force-add, docs/ gitignored). Referenced 4x: nmw_legacy.py:75,81,759; nmw_mirror_transfer.py:19|-
+
+### BDMS-826 linked tasks (six; status mirrors Jira)
+
+id|status|task|cites
+T18|x|BDMS-827 read/review Geothermal Data Discovery Report (Jira Done)|I.jira
+T19|x|BDMS-846 technical review complete (Jira Done)|I.jira
+T20|x|BDMS-845 Geothermal Report finalized (Jira Done)|I.jira
+T21|x|BDMS-847 update data-migration tracking mechanism (Jira Done)|I.jira
+T22|x|BDMS-907 stakeholder engagement follow-up (Jira Done; blocks BDMS-826)|I.jira
+T23|~|BDMS-848 Geothermal Migration Technical Implementation Plan (Jira In Progress) — umbrella for code tasks T1-T16|I.jira,T1,T16
 
 ## §B — bugs
 
