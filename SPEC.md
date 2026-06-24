@@ -43,6 +43,7 @@ Plus geothermal OGC API layers over mirror data. Phase-1 only: faithful copy, no
 - V9. P2 lexicon mapping complete: every coded NMW col either in `LEXICON_REF_BY_COLUMN` (28, has ref_*) or `LEXICON_CANDIDATES_NO_REF` (11, needs new enum).
 - V10. ORM `NMW_*` models declare index only (`index=True`, no ORM `ForeignKey`); FK enforcement lives in migration `c0d1e2f3a4b5` (`op.create_foreign_key`). Keep both in sync.
 - V11. SQL-dump parser unwraps `CAST(expr AS <type>)` for parameterised types too (`Decimal(18,2)`, `nvarchar(10)`); never store the literal `CAST(...)` string in a mirror column.
+- V12. Every "Migrate First" table in the NM_Wells inventory (planning workbook) has a `NMW_*` mirror in `NMW_MIRROR_SPECS`. Verified 18/18 (2026-06-23). Subsurface Library is a separate source DB — NOT covered by this invariant (see T24).
 
 ## §T — tasks
 
@@ -63,6 +64,7 @@ T13|.|verify alembic down path drops all views+tables (V3) on real db|V3
 T14|.|run end-to-end load vs real dump, capture row counts per table|V2,V4
 T15|.|finish PR #738 body (truncated at "- I ") + reviewer notes|-
 T16|.|P2 (later): transform NMW_* → Ocotillo model; build new enums for 11 LEXICON_CANDIDATES_NO_REF|C2,V9
+T24|.|Subsurface Library "Migrate First" tables NOT mirrored (separate source DB, out of NM_Wells scope): dst_scan, log_scanned, Well_Header, well_operators. Workbook lacks field map/DDL — needs own ticket|V12
 T17|x|landed docs/nm_wells-migration.md (commit ccf566d9; force-add, docs/ gitignored). Referenced 4x: nmw_legacy.py:75,81,759; nmw_mirror_transfer.py:19|-
 
 ### BDMS-826 linked tasks (six; status mirrors Jira)
