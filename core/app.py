@@ -128,7 +128,8 @@ def create_base_app() -> FastAPI:
                     (
                         r
                         for r in app.routes
-                        if r.path == path and method.upper() in r.methods
+                        if getattr(r, "path", None) == path
+                        and method.upper() in getattr(r, "methods", set())
                     ),
                     None,
                 )
