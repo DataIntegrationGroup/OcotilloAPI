@@ -38,6 +38,15 @@ class AssetResponse(BaseResponseModel, BaseAsset):
     signed_url: str | None = None
 
 
+class AssetAssociationUpdate(BaseModel):
+    thing_id: int | None = None
+
+
+class AssetAssociationResponse(BaseModel):
+    asset_id: int
+    thing_id: int | None = None
+
+
 # -------- UPDATE ----------
 class UpdateAsset(BaseUpdateModel):
     name: str | None = None
