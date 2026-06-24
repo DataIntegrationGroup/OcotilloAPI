@@ -27,7 +27,10 @@ load_dotenv(override=False)
 
 TABLES = [spec.source_table for spec in NMW_MIRROR_SPECS]
 
-OUT_DIR = Path(__file__).parent / "data" / "nma_csv_cache"
+_data_root = os.environ.get("TRANSFERS_DATA_DIR")
+OUT_DIR = (
+    Path(_data_root) if _data_root else Path(__file__).parent / "data" / "nma_csv_cache"
+)
 
 
 def _get_connection():

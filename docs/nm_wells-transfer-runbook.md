@@ -164,6 +164,12 @@ SQL
 **Pass:** both counts are 0. (FK constraints are enforced at load, so a non-zero here means
 data was loaded out of order or a constraint is missing — investigate.)
 
+**Known exception:** `orphan_locations` reports **51** rows. These are `NMW_WellLocations`
+rows whose `WellDataID` is blank in the source (`tbl_well_locations.csv`): empty values load
+as NULL, NULL FK columns are exempt from FK enforcement, and the `LEFT JOIN ... IS NULL`
+check counts them as orphans. This is a source data-quality issue, not a load-order or
+constraint problem — accepted as-is. `orphan_records` must still be 0.
+
 ---
 
 ## 6. Verify — OGC views + matview
