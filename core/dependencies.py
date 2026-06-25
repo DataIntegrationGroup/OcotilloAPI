@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Annotated
+from typing import Annotated, TypeAlias
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from core.permissions import authenticated
 from db.engine import get_db_session
 
-session_dependency: type[Session] = Annotated[Session, Depends(get_db_session)]
+session_dependency: TypeAlias = Annotated[Session, Depends(get_db_session)]
 
 """
 Developer Notes
@@ -61,18 +61,16 @@ no_permission_function = authenticated(permissions=["NoPermission"])
 
 
 # Permissions Dependencies -----------------------------------------------------
-admin_dependency: type[dict] = Annotated[dict, Depends(admin_function)]
-editor_dependency: type[dict] = Annotated[dict, Depends(editor_function)]
-viewer_dependency: type[dict] = Annotated[dict, Depends(viewer_function)]
+admin_dependency: TypeAlias = Annotated[dict, Depends(admin_function)]
+editor_dependency: TypeAlias = Annotated[dict, Depends(editor_function)]
+viewer_dependency: TypeAlias = Annotated[dict, Depends(viewer_function)]
 
-lexicon_admin_dependency: type[dict] = Annotated[dict, Depends(lexicon_admin_function)]
-lexicon_editor_dependency: type[dict] = Annotated[
-    dict, Depends(lexicon_editor_function)
-]
+lexicon_admin_dependency: TypeAlias = Annotated[dict, Depends(lexicon_admin_function)]
+lexicon_editor_dependency: TypeAlias = Annotated[dict, Depends(lexicon_editor_function)]
 
-amp_admin_dependency: type[dict] = Annotated[dict, Depends(amp_admin_function)]
-amp_editor_dependency: type[dict] = Annotated[dict, Depends(amp_editor_function)]
-amp_viewer_dependency: type[dict] = Annotated[dict, Depends(amp_viewer_function)]
+amp_admin_dependency: TypeAlias = Annotated[dict, Depends(amp_admin_function)]
+amp_editor_dependency: TypeAlias = Annotated[dict, Depends(amp_editor_function)]
+amp_viewer_dependency: TypeAlias = Annotated[dict, Depends(amp_viewer_function)]
 
-no_permission_dependency: type[dict] = Annotated[dict, Depends(no_permission_function)]
+no_permission_dependency: TypeAlias = Annotated[dict, Depends(no_permission_function)]
 # ============= EOF =============================================
