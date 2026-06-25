@@ -554,10 +554,7 @@ async def update_asset(
 async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):
-
-    # TODO: Interesting issue here. We don't have a way of tracking
-    # who deleted a record.
-    return model_deleter(session, Asset, asset_id)
+    return model_deleter(session, Asset, asset_id, user=user)
 
 
 @router.delete(
