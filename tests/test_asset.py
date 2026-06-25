@@ -475,6 +475,36 @@ def test_delete_asset(second_asset):
     assert data["detail"] == f"Asset with ID {second_asset.id} not found."
 
 
+def test_delete_asset_notifies_slack(second_asset, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv(
+        "SLACK_EDITS_WEBHOOK_URL",
+        "https://hooks.slack.test/edit",
+    )
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    response = client.delete(f"/asset/{second_asset.id}")
+
+    assert response.status_code == 204
+    assert len(calls) == 1
+    assert calls[0][0] == "https://hooks.slack.test/edit"
+    payload = calls[0][1]
+    assert payload["text"].startswith("[UNKNOWN] Record deleted")
+    what_field = next(
+        field
+        for field in payload["blocks"][1]["fields"]
+        if field["text"].startswith("*What:*")
+    )
+    assert f"Deleted asset {second_asset.name}" in what_field["text"]
+
+
 def test_delete_asset_404_not_found(second_asset):
     bad_id = 99999
     response = client.delete(f"/asset/{bad_id}/remove")
