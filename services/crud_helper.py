@@ -43,7 +43,7 @@ def model_adder(session, table, model, user=None, **kwargs):
     if kwargs:
         md.update(kwargs)
 
-    if user:
+    if isinstance(user, dict):
         # TODO: see note in "AuditMixin"
         md["created_by_id"] = user["sub"]
         md["created_by_name"] = user["name"]
@@ -115,14 +115,14 @@ def model_patcher(
         else:
             setattr(item, key, value)
 
-    if user:
+    if isinstance(user, dict):
         item.updated_by_id = user["sub"]
         item.updated_by_name = user["name"]
 
     session.commit()
     session.refresh(item)
 
-    if user:
+    if isinstance(user, dict):
         resource_type = _resource_type_for_item(model, item)
         if resource_type:
             label = _resource_label(item)
