@@ -76,7 +76,7 @@ jobs:
 
       - name: Cache project virtualenv
         id: cache-venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
@@ -168,7 +168,7 @@ jobs:
 
       - name: Cache project virtualenv
         id: cache-venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
