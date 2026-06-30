@@ -66,7 +66,7 @@ def model_adder(session, table, model, user=None, **kwargs):
         session.commit()
         session.refresh(obj)
 
-    if user:
+    if isinstance(user, dict):
         resource_type = _resource_type_for_item(table, obj)
         if resource_type:
             label = _resource_label(obj)
@@ -158,7 +158,7 @@ def model_deleter(
     session.delete(item)
     session.commit()
 
-    if user and resource_type:
+    if isinstance(user, dict) and resource_type:
         notify_edit_event(
             user,
             EditEvent(
