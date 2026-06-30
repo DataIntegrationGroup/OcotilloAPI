@@ -460,4 +460,4 @@ def seed_all(n: int = 5, skip_if_exists: bool = False):
 
 
 if __name__ == "__main__":
-    seed_all(5)
+    seed_all(5, skip_if_exists=True)

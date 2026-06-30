@@ -1117,3 +1117,29 @@ def test_delete_address_404_not_found(second_address):
 #     assert response.status_code == 404
 #     data = response.json()
 #     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+
+
+# REGRESSION: isinstance(user, dict) guard in model_patcher ====================
+# When AUTHENTIK_DISABLE_AUTHENTICATION=1 the auth dependency returns True
+# instead of a claims dict. Before the fix, model_patcher did user["sub"] on
+# True, which raised TypeError and produced a 500 with no CORS headers.
+# This test overrides the editor dependency with the boolean True (same as the
+# live dev environment does) to confirm the patch still returns 200.
+
+
+def test_patch_contact_with_bool_user(contact):
+    """PATCH returns 200 when the auth dependency yields True (not a dict)."""
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default=True
+    )
+    try:
+        payload = {"name": "Bool User Patch"}
+        response = client.patch(f"/contact/{contact.id}", json=payload)
+        assert response.status_code == 200
+        assert response.json()["name"] == payload["name"]
+    finally:
+        # Restore the dict-user override so subsequent tests are unaffected.
+        app.dependency_overrides[amp_editor_function] = override_authentication(
+            default={"name": "foobar", "sub": "1234567890"}
+        )
+        cleanup_patch_test(Contact, payload, contact)
