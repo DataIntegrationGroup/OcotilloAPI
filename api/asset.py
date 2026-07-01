@@ -468,6 +468,30 @@ async def list_assets(
     return paginate(query=sql, conn=session, transformer=transformer)
 
 
+@router.get("/unassociated")
+async def list_unassociated_assets(
+    user: viewer_dependency,
+    session: session_dependency,
+) -> CustomPage[AssetResponse]:
+    """
+    List assets that are not associated with any Thing.
+    """
+    sql = (
+        select(Asset)
+        .outerjoin(AssetThingAssociation)
+        .where(AssetThingAssociation.asset_id.is_(None))
+        .order_by(Asset.id)
+    )
+
+    def transformer(records: list[Asset]):
+        from services.gcs_helper import add_signed_url
+
+        bucket = get_storage_bucket()
+        return [add_signed_url(asset, bucket) for asset in records]
+
+    return paginate(query=sql, conn=session, transformer=transformer)
+
+
 @router.get("/{asset_id}")
 async def get_asset(
     user: viewer_dependency,

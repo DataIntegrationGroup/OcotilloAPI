@@ -306,6 +306,21 @@ def test_get_assets_thing_id(asset_with_associated_thing, water_well_thing):
         )
 
 
+def test_get_unassociated_assets(asset, asset_with_associated_thing):
+    with patch(
+        "api.asset.get_storage_bucket",
+        return_value=MockStorageBucket(),
+    ):
+        response = client.get("/asset/unassociated")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == asset.id
+        expected_signed_url = MockBlob().generate_signed_url()
+        assert data["items"][0]["signed_url"] == expected_signed_url
+        assert data["items"][0]["id"] != asset_with_associated_thing.id
+
+
 def test_get_asset_by_id(asset):
     response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
