@@ -483,6 +483,9 @@ async def list_unassociated_assets(
         .order_by(Asset.id)
     )
 
+    # Signed URLs are generated for thumbnail display on the frontend.
+    # The frontend paginates this endpoint and requests only 10 assets at a time,
+    # which limits GCP IAM calls and keeps signed URL generation manageable.
     def transformer(records: list[Asset]):
         from services.gcs_helper import add_signed_url
 
