@@ -2258,27 +2258,37 @@
       "definition": "Defines if a datalogger can or cannot be installed at the well."
     },
     {
-      "categories": ["status_value"],
+      "categories": [
+        "status_value"
+      ],
       "term": "Open",
       "definition": "The well is open."
     },
     {
-      "categories": ["status_value"],
+      "categories": [
+        "status_value"
+      ],
       "term": "Open (unequipped)",
       "definition": "The well is open and unequipped."
     },
     {
-      "categories": ["status_value"],
+      "categories": [
+        "status_value"
+      ],
       "term": "Closed",
       "definition": "The well is closed."
     },
     {
-      "categories": ["status_value"],
+      "categories": [
+        "status_value"
+      ],
       "term": "Datalogger can be installed",
       "definition": "A datalogger can be installed at the well"
     },
     {
-      "categories": ["status_value"],
+      "categories": [
+        "status_value"
+      ],
       "term": "Datalogger cannot be installed",
       "definition": "A datalogger cannot be installed at the well"
     },
@@ -4206,6 +4216,13 @@
       ],
       "term": "Slash Triangle Ranch",
       "definition": "Slash Triangle Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Spanish Stirrup Rockshop",
+      "definition": "Spanish Stirrup Rockshop"
     },
     {
       "categories": [
