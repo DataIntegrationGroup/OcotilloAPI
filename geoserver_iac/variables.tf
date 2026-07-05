@@ -53,14 +53,14 @@ variable "geoserver_image" {
 
 variable "geoserver_community_extensions" {
   type        = string
-  description = "Comma-separated GeoServer community extensions to install at startup (e.g. ogcapi-features)"
-  default     = "ogcapi-features"
+  description = "Comma-separated GeoServer community extensions to install at startup"
+  default     = ""
 }
 
 variable "geoserver_stable_extensions" {
   type        = string
-  description = "Comma-separated GeoServer stable extensions to install at startup"
-  default     = ""
+  description = "Comma-separated GeoServer stable extensions to install at startup (e.g. ogcapi-features)"
+  default     = "ogcapi-features"
 }
 
 variable "geoserver_data_bucket" {
