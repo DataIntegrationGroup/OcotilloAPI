@@ -51,16 +51,18 @@ resource "google_compute_instance" "geoserver" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup-geoserver.sh.tpl", {
-    domain_name                   = var.domain_name
-    geoserver_data_bucket         = var.geoserver_data_bucket
-    geoserver_data_mount_point    = var.geoserver_data_mount_point
-    geoserver_data_only_dir       = var.geoserver_data_only_dir
-    geoserver_data_read_only      = var.geoserver_data_read_only
-    geoserver_image               = var.geoserver_image
-    surveys_bucket                = var.surveys_bucket
-    surveys_container_mount_point = var.surveys_container_mount_point
-    surveys_mount_point           = var.surveys_mount_point
-    surveys_only_dir              = var.surveys_only_dir
+    domain_name                    = var.domain_name
+    geoserver_data_bucket          = var.geoserver_data_bucket
+    geoserver_data_mount_point     = var.geoserver_data_mount_point
+    geoserver_data_only_dir        = var.geoserver_data_only_dir
+    geoserver_data_read_only       = var.geoserver_data_read_only
+    geoserver_image                = var.geoserver_image
+    geoserver_community_extensions = var.geoserver_community_extensions
+    geoserver_stable_extensions    = var.geoserver_stable_extensions
+    surveys_bucket                 = var.surveys_bucket
+    surveys_container_mount_point  = var.surveys_container_mount_point
+    surveys_mount_point            = var.surveys_mount_point
+    surveys_only_dir               = var.surveys_only_dir
   })
 
   depends_on = [

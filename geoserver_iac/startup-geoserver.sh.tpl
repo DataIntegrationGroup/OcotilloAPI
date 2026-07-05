@@ -127,6 +127,9 @@ fi
 docker rm -f geoserver || true
 retry docker pull ${geoserver_image}
 
+COMMUNITY_EXTENSIONS="${geoserver_community_extensions}"
+STABLE_EXTENSIONS="${geoserver_stable_extensions}"
+
 docker_args=(
   -d
   --name geoserver
@@ -135,6 +138,18 @@ docker_args=(
   -e PROXY_BASE_URL="https://${domain_name}/geoserver"
   -e EXTRA_JAVA_OPTS="-DGEOSERVER_CSRF_WHITELIST=${domain_name}"
 )
+
+if [ -n "$COMMUNITY_EXTENSIONS" ] || [ -n "$STABLE_EXTENSIONS" ]; then
+  docker_args+=(-e INSTALL_EXTENSIONS=true)
+fi
+
+if [ -n "$STABLE_EXTENSIONS" ]; then
+  docker_args+=(-e STABLE_EXTENSIONS="$STABLE_EXTENSIONS")
+fi
+
+if [ -n "$COMMUNITY_EXTENSIONS" ]; then
+  docker_args+=(-e COMMUNITY_EXTENSIONS="$COMMUNITY_EXTENSIONS")
+fi
 
 if [ "$GEOSERVER_DATA_MOUNT_PRESENT" = "true" ]; then
   docker_args+=(-v "$${MOUNT_POINT}:/opt/geoserver_data$${DOCKER_VOLUME_SUFFIX}")

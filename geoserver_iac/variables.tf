@@ -51,6 +51,18 @@ variable "geoserver_image" {
   default     = "docker.osgeo.org/geoserver:2.28.0"
 }
 
+variable "geoserver_community_extensions" {
+  type        = string
+  description = "Comma-separated GeoServer community extensions to install at startup (e.g. ogcapi-features)"
+  default     = "ogcapi-features"
+}
+
+variable "geoserver_stable_extensions" {
+  type        = string
+  description = "Comma-separated GeoServer stable extensions to install at startup"
+  default     = ""
+}
+
 variable "geoserver_data_bucket" {
   type        = string
   description = "Existing GCS bucket name that backs the GeoServer data directory mount"
