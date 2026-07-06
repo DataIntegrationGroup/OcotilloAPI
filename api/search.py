@@ -16,7 +16,7 @@
 from fastapi import APIRouter
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
-from sqlalchemy import select, func, text, or_
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session, selectinload
 
 from api.pagination import CustomPage
@@ -203,23 +203,15 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 def _get_project_results(session: Session, q: str, limit: int) -> list[dict]:
-    search_term = f"%{q.strip()}%"
-    query = (
-        select(Group)
-        .where(
-            or_(
-                Group.name.ilike(search_term),
-                Group.description.ilike(search_term),
-                Group.group_type.ilike(search_term),
-            )
-        )
-        .order_by(Group.name)
-        .limit(limit)
-        .options(
+    query = search(
+        select(Group).options(
             selectinload(Group.thing_associations).selectinload(
                 GroupThingAssociation.thing
             )
-        )
+        ),
+        q,
+        vector=Group.search_vector,
+        limit=limit,
     )
 
     projects = session.scalars(query).all()
