@@ -14,13 +14,17 @@
 # limitations under the License.
 # ===============================================================================
 import json
+import os
+import shutil
+import tempfile
 from typing import Annotated, List
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from geoalchemy2.shape import to_shape
 from shapely.io import to_geojson
-from starlette.responses import JSONResponse
+from starlette.background import BackgroundTask
+from starlette.responses import StreamingResponse
 
 from core.dependencies import session_dependency, viewer_dependency
 from db import Group
@@ -54,8 +58,7 @@ def get_geospatial(
     """
 
     if format_ == "geojson":
-        content = get_feature_collection(session, thing_type, group)
-        return JSONResponse(content=content, media_type="application/geo+json")
+        return get_feature_collection(session, thing_type, group)
     else:
         return get_location_shapefile(session, thing_type, group)
 
@@ -94,9 +97,12 @@ def get_feature_collection(
     group: Annotated[
         str | int, Query(title="group", description="group", alias="group")
     ] = None,
-) -> FeatureCollectionResponse:
+) -> StreamingResponse:
     """
-    Endpoint to retrieve a GeoJSON FeatureCollection.
+    Retrieve a GeoJSON FeatureCollection.
+
+    Streamed feature-by-feature so the entire result set is never buffered in
+    memory at once.
     """
 
     things = get_thing_features(session, thing_type, group)
@@ -115,12 +121,15 @@ def get_feature_collection(
             "geometry": geometry,
         }
 
-    features = [make_feature_dict(*item) for item in things]
+    def generate():
+        yield '{"type": "FeatureCollection", "features": ['
+        first = True
+        for item in things:
+            yield ("" if first else ",") + json.dumps(make_feature_dict(*item))
+            first = False
+        yield "]}"
 
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+    return StreamingResponse(generate(), media_type="application/geo+json")
 
 
 def get_location_shapefile(
@@ -133,16 +142,26 @@ def get_location_shapefile(
     """
 
     things = get_thing_features(session, thing_type, group)
-    create_shapefile(things, "things.shp")
 
-    # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
+    # Write into a temp dir: the App Engine app directory is read-only, and /tmp
+    # is RAM-backed, so build here and clean up after the response is sent.
+    tmpdir = tempfile.mkdtemp()
+    shp_path = os.path.join(tmpdir, "things.shp")
+    zip_path = os.path.join(tmpdir, "things.zip")
+
+    create_shapefile(things, shp_path)
+
     import zipfile
 
-    with zipfile.ZipFile("things.zip", "w") as zf:
+    with zipfile.ZipFile(zip_path, "w") as zf:
         for ext in ["shp", "shx", "dbf"]:
-            zf.write(f"things.{ext}")
+            zf.write(os.path.join(tmpdir, f"things.{ext}"), arcname=f"things.{ext}")
+
     return FileResponse(
-        "things.zip", media_type="application/zip", filename="things.zip"
+        zip_path,
+        media_type="application/zip",
+        filename="things.zip",
+        background=BackgroundTask(shutil.rmtree, tmpdir, ignore_errors=True),
     )
 
 
