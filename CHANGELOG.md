@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.1...v1.1.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deploy:** align hotfix migration head with production DB (unblock v1.1.x deploy) ([1ee8a4b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1ee8a4b893027b851450d6ed98c811aea283c365))
+* **deploy:** align hotfix migration head with production DB + fix release tag passthrough ([790377f](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/790377f53e57c9f7671d45efbcab617189f2af36))
+
 ## [1.1.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.0...v1.1.1) (2026-07-06)
 
 
