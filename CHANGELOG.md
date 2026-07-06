@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.0...v1.1.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deploy:** prevent App Engine request starvation under burst load ([fec7dbd](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fec7dbd2e0f59d6ce1c3319cda9fded5c6051eb8))
+* **deploy:** prevent App Engine request starvation under burst load ([385c974](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/385c9743185520b82034f0b1549d51c57781f9e9))
+
 ## [1.1.0](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.0.0...v1.1.0) (2026-06-08)
 
 
