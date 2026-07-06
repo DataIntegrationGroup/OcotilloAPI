@@ -8,6 +8,7 @@ inbound_services:
 automatic_scaling:
   min_instances: ${MIN_INSTANCES}
   max_instances: ${MAX_INSTANCES}
+  max_concurrent_requests: 6
 handlers:
   - url: /.*
     secure: always
