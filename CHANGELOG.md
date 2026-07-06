@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.3](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.2...v1.1.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* correct shapefile DBF schema and clean up temp dir on failure ([f63d9ce](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f63d9ce2d28ba190b63628f40c61edee09ac1a5e))
+* drop yield_per in get_thing_features (incompatible with unique) ([fa727c4](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fa727c42898e5d8791f248ff4dc0b5f43c7b3da2))
+* stop per-request OOM on /geospatial export endpoint ([d3a1358](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d3a1358f54b9b6d02a6187d0004ba44b2b365ed0))
+* stop per-request OOM on /geospatial export endpoint ([2ed12b6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2ed12b602a080d98e2025fc0e4edefdc341412ba))
+* stream get_thing_features with yield_per instead of buffering ([877fff8](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/877fff833755034e9c0f1b67ed3d6c74a92d4084))
+
 ## [1.1.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.1...v1.1.2) (2026-07-06)
 
 
