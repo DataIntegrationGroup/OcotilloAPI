@@ -28,6 +28,7 @@ from starlette.responses import StreamingResponse
 
 from core.dependencies import session_dependency, viewer_dependency
 from db import Group
+from db.engine import session_ctx
 from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 from services.query_helper import simple_get_by_id
@@ -58,7 +59,7 @@ def get_geospatial(
     """
 
     if format_ == "geojson":
-        return get_feature_collection(session, thing_type, group)
+        return get_feature_collection(thing_type, group)
     else:
         return get_location_shapefile(session, thing_type, group)
 
@@ -92,7 +93,6 @@ def get_project_area(
 
 
 def get_feature_collection(
-    session: session_dependency,
     thing_type: List[str] | None = None,
     group: Annotated[
         str | int, Query(title="group", description="group", alias="group")
@@ -104,8 +104,6 @@ def get_feature_collection(
     Streamed feature-by-feature so the entire result set is never buffered in
     memory at once.
     """
-
-    things = get_thing_features(session, thing_type, group)
 
     def make_feature_dict(thing, geometry, elevation, *other):
         geometry = json.loads(geometry)
@@ -122,12 +120,15 @@ def get_feature_collection(
         }
 
     def generate():
-        yield '{"type": "FeatureCollection", "features": ['
-        first = True
-        for item in things:
-            yield ("" if first else ",") + json.dumps(make_feature_dict(*item))
-            first = False
-        yield "]}"
+        # The request-scoped session is closed before this response body
+        # streams, so open a dedicated session scoped to the stream.
+        with session_ctx() as stream_session:
+            yield '{"type": "FeatureCollection", "features": ['
+            first = True
+            for item in get_thing_features(stream_session, thing_type, group):
+                yield ("" if first else ",") + json.dumps(make_feature_dict(*item))
+                first = False
+            yield "]}"
 
     return StreamingResponse(generate(), media_type="application/geo+json")
 
