@@ -26,13 +26,16 @@ jobs:
     # (v*.*.*, v*.*.*-*, v*.*.*[a-z]*). startsWith() is a cheap pre-filter;
     # the "Validate release tag" step enforces the strict regex. The tag comes
     # from the workflow_call input or, for the release event, the payload.
-    if: ${{ startsWith((github.event_name == 'workflow_call' && inputs.tag_name) || github.event.release.tag_name, 'v') }}
+    # NOTE: a called workflow inherits the CALLER's event context, so
+    # github.event_name is never 'workflow_call' here — inputs.tag_name is
+    # simply empty when triggered by a release event, so `||` falls through.
+    if: ${{ startsWith(inputs.tag_name || github.event.release.tag_name, 'v') }}
 
     runs-on: ubuntu-latest
     environment: production
 
     env:
-      DEPLOY_TAG: ${{ (github.event_name == 'workflow_call' && inputs.tag_name) || github.event.release.tag_name }}
+      DEPLOY_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
 
     steps:
       - name: Validate release tag matches version pattern
