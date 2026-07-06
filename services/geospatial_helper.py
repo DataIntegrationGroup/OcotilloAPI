@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Iterable
-
 import shapefile
 from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
 from geoalchemy2.shape import to_shape
@@ -33,7 +31,7 @@ from db.thing import Thing
 
 def get_thing_features(
     session, thing_type: list | str | None, group: str | int | None
-) -> Iterable:
+) -> list:
     # sql = (
     #     select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
     #     .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
@@ -89,10 +87,10 @@ def get_thing_features(
         else:
             sql = sql.where(Group.id == group)
 
-    # unique() dedups rows from eager loading; yield_per streams the result in
-    # chunks so the whole table is never buffered in memory at once. Callers
-    # iterate the result exactly once.
-    return session.execute(sql.execution_options(yield_per=1000)).unique()
+    # unique needs to be invoked to prevent duplicates from eager loading
+    # (yield_per is not compatible with unique(), so the rows are materialized
+    # here; the callers avoid a second full copy by streaming their output).
+    return session.execute(sql).unique().all()
 
 
 def create_shapefile(things: list, filename: str = "things.shp") -> None:
