@@ -15,13 +15,8 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      # In manifest mode, release-please-action exposes the unprefixed
-      # `release_created` boolean but only a PATH-SCOPED `.--tag_name` (the
-      # unprefixed `tag_name` comes through empty). Fall back to the path-scoped
-      # key so the tag reaches CD_production; without it the deploy job's
-      # `startsWith(inputs.tag_name, 'v')` gate silently skips the release.
-      release_created: ${{ steps.release.outputs.release_created || steps.release.outputs['.--release_created'] }}
-      tag_name: ${{ steps.release.outputs.tag_name || steps.release.outputs['.--tag_name'] }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.resolve_tag.outputs.tag_name }}
     steps:
       # staging uses its own config/manifest pair: prerelease (rc) versioning,
       # separate changelog, and its own version state so the rc line never
@@ -32,6 +27,34 @@ jobs:
           config-file: ${{ github.ref_name == 'staging' && 'release-please-config.staging.json' || 'release-please-config.json' }}
           manifest-file: ${{ github.ref_name == 'staging' && '.release-please-manifest.staging.json' || '.release-please-manifest.json' }}
           target-branch: ${{ github.ref_name }}
+
+      # release-please-action@v5 does not populate a usable `tag_name` output in
+      # this manifest setup: it emits `release_created` plus an EMPTY `tag_name`,
+      # and no path-scoped (`.--tag_name`) outputs exist. An empty tag makes
+      # CD_production's `startsWith(inputs.tag_name, 'v')` gate silently skip the
+      # deploy (and forward-merge get an empty tag). Resolve the tag ourselves
+      # from the released version in the branch-appropriate manifest. Both
+      # configs set include-v-in-tag: true, so the tag is `v<version>`. Prefer
+      # the action's own output if it is ever non-empty.
+      - if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/checkout@v7.0.0
+      - id: resolve_tag
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          ACTION_TAG: ${{ steps.release.outputs.tag_name }}
+          MANIFEST: ${{ github.ref_name == 'staging' && '.release-please-manifest.staging.json' || '.release-please-manifest.json' }}
+        run: |
+          tag="$ACTION_TAG"
+          if [ -z "$tag" ]; then
+            version="$(jq -r '.["."]' "$MANIFEST")"
+            if [ -z "$version" ] || [ "$version" = "null" ]; then
+              echo "Could not resolve released version from $MANIFEST" >&2
+              exit 1
+            fi
+            tag="v${version}"
+          fi
+          echo "Resolved release tag: $tag"
+          echo "tag_name=${tag}" >> "$GITHUB_OUTPUT"
 
   # When release-please cuts a stable or hotfix release, deploy it. RC releases
   # on staging never deploy production. The release is created with
