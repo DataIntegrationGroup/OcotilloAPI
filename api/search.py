@@ -16,11 +16,12 @@
 from fastapi import APIRouter
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, or_
 from sqlalchemy.orm import Session, selectinload
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency, viewer_dependency
+from services.group_helper import get_well_counts_by_group_id
 from db import (
     Contact,
     Email,
@@ -32,6 +33,8 @@ from db import (
     WellPurpose,
     Asset,
     AssetThingAssociation,
+    Group,
+    GroupThingAssociation,
     search,
 )
 
@@ -86,10 +89,13 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
+    empty = text("''::tsvector")
+    casing_vector = func.coalesce(WellCasingMaterial.search_vector, empty)
+    purpose_vector = func.coalesce(WellPurpose.search_vector, empty)
     well_vector = (
-        func.coalesce(Thing.search_vector, text("''::tsvector"))
-        .op("||")(func.coalesce(WellCasingMaterial.search_vector, text("''::tsvector")))
-        .op("||")(func.coalesce(WellPurpose.search_vector, text("''::tsvector")))
+        func.coalesce(Thing.search_vector, empty)
+        .op("||")(casing_vector)
+        .op("||")(purpose_vector)
     )
 
     water_well_query = search(
@@ -196,6 +202,52 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
     return results
 
 
+def _get_project_results(session: Session, q: str, limit: int) -> list[dict]:
+    search_term = f"%{q.strip()}%"
+    query = (
+        select(Group)
+        .where(
+            or_(
+                Group.name.ilike(search_term),
+                Group.description.ilike(search_term),
+                Group.group_type.ilike(search_term),
+            )
+        )
+        .order_by(Group.name)
+        .limit(limit)
+        .options(
+            selectinload(Group.thing_associations).selectinload(
+                GroupThingAssociation.thing
+            )
+        )
+    )
+
+    projects = session.scalars(query).all()
+    well_counts = get_well_counts_by_group_id(
+        session, [project.id for project in projects]
+    )
+    results = [
+        {
+            "label": project.name,
+            "group": "Projects",
+            "properties": {
+                "id": project.id,
+                "description": project.description,
+                "group_type": project.group_type,
+                "parent_group_id": project.parent_group_id,
+                "well_count": well_counts.get(project.id, 0),
+                "things": [
+                    {"label": t.name, "id": t.id, "thing_type": t.thing_type}
+                    for t in project.things
+                ],
+            },
+        }
+        for project in projects
+    ]
+
+    return results
+
+
 @router.get("")
 def search_api(
     user: viewer_dependency,
@@ -211,6 +263,7 @@ def search_api(
     results = _get_contact_results(session, q, limit)
     results.extend(_get_thing_results(session, q, limit))
     results.extend(_get_asset_results(session, q, limit))
+    results.extend(_get_project_results(session, q, limit))
 
     return paginate(results)
     # return {"items": results, "total": len(results)}
