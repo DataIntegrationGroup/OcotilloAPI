@@ -146,16 +146,22 @@ def get_location_shapefile(
     # Write into a temp dir: the App Engine app directory is read-only, and /tmp
     # is RAM-backed, so build here and clean up after the response is sent.
     tmpdir = tempfile.mkdtemp()
-    shp_path = os.path.join(tmpdir, "things.shp")
-    zip_path = os.path.join(tmpdir, "things.zip")
+    try:
+        shp_path = os.path.join(tmpdir, "things.shp")
+        zip_path = os.path.join(tmpdir, "things.zip")
 
-    create_shapefile(things, shp_path)
+        create_shapefile(things, shp_path)
 
-    import zipfile
+        import zipfile
 
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        for ext in ["shp", "shx", "dbf"]:
-            zf.write(os.path.join(tmpdir, f"things.{ext}"), arcname=f"things.{ext}")
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for ext in ["shp", "shx", "dbf"]:
+                zf.write(os.path.join(tmpdir, f"things.{ext}"), arcname=f"things.{ext}")
+    except Exception:
+        # BackgroundTask only runs on a successful response, so clean up here to
+        # avoid leaking temp dirs when generation fails.
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise
 
     return FileResponse(
         zip_path,

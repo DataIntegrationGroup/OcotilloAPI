@@ -96,8 +96,11 @@ def get_thing_features(
 def create_shapefile(things: list, filename: str = "things.shp") -> None:
     # Create a point shapefile
     with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
-        shp.field("id", "L")
+        # Field schema must match the values written in shp.record() below:
+        # id (numeric), name (char), elevation (numeric).
+        shp.field("id", "N")
         shp.field("name", "C")
+        shp.field("elevation", "N", decimal=3)
 
         for thing, point, elevation in things:
             # Assume loc.point is WKT or a Shapely geometry or GeoJSON
