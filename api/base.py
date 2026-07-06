@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
+import os
+import shutil
+import tempfile
 from typing import List, Union
 
 from constants import SRID_WGS84
@@ -29,7 +33,11 @@ from services.query_helper import (
 from services.validation.well import validate_screens
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
-from starlette.responses import FileResponse
+from starlette.background import BackgroundTask
+from starlette.responses import FileResponse, StreamingResponse
+
+# stream DB rows in chunks instead of buffering the whole table in memory
+_STREAM_CHUNK = 1000
 
 from db import get_db_session, adder
 from db.base import (
@@ -196,7 +204,7 @@ def create_equipment(
 
 # ==== Get ============================================
 @router.get("/location/shapefile", summary="Get location as shapefile")
-async def get_location_shapefile(
+def get_location_shapefile(
     query: str = None, session: Session = Depends(get_db_session)
 ):
     """
@@ -206,28 +214,37 @@ async def get_location_shapefile(
     if query:
         sql = sql.where(make_query(SampleLocation, query))
 
-    result = session.execute(sql)
-    locations = result.scalars().all()
-    # create a shapefile from the locations
+    # Write into a temp dir: the App Engine app directory is read-only, and
+    # streaming rows keeps the whole table out of memory at once.
+    tmpdir = tempfile.mkdtemp()
+    shp_path = os.path.join(tmpdir, "locations.shp")
+    zip_path = os.path.join(tmpdir, "locations.zip")
 
-    create_shapefile(locations, "locations.shp")
-    # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
+    locations = session.execute(sql).scalars().yield_per(_STREAM_CHUNK)
+    create_shapefile(locations, shp_path)
+
     import zipfile
 
-    with zipfile.ZipFile("locations.zip", "w") as zf:
+    with zipfile.ZipFile(zip_path, "w") as zf:
         for ext in ["shp", "shx", "dbf"]:
-            zf.write(f"locations.{ext}")
+            zf.write(os.path.join(tmpdir, f"locations.{ext}"), arcname=f"locations.{ext}")
+
     return FileResponse(
-        "locations.zip", media_type="application/zip", filename="locations.zip"
+        zip_path,
+        media_type="application/zip",
+        filename="locations.zip",
+        background=BackgroundTask(shutil.rmtree, tmpdir, ignore_errors=True),
     )
 
 
 @router.get("/location/feature_collection", summary="Get location feature collection")
-async def get_location_feature_collection(
+def get_location_feature_collection(
     query: str = None, session: Session = Depends(get_db_session)
 ):
     """
     Retrieve all sample locations as a GeoJSON FeatureCollection.
+
+    Streamed row-by-row so the entire table is never buffered in memory at once.
     """
     sql = select(
         SampleLocation, geofunc.ST_AsGeoJSON(SampleLocation.point).label("geojson")
@@ -235,21 +252,17 @@ async def get_location_feature_collection(
     if query:
         sql = sql.where(make_query(SampleLocation, query))
 
-    result = session.execute(sql)
-    locations = result.all()
+    def generate():
+        yield '{"type": "FeatureCollection", "features": ['
+        first = True
+        result = session.execute(sql).yield_per(_STREAM_CHUNK)
+        for location, geojson in result:
+            feature = {"type": "Feature", "geometry": geojson}
+            yield ("" if first else ",") + json.dumps(feature)
+            first = False
+        yield "]}"
 
-    features = []
-    for location, geojson in locations:
-        feature = {
-            "type": "Feature",
-            "geometry": geojson,
-        }
-        features.append(feature)
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+    return StreamingResponse(generate(), media_type="application/json")
 
 
 @router.get(

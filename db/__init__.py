@@ -77,8 +77,12 @@ async def get_async_engine():
 
     return create_async_engine(
         "postgresql+asyncpg://",
-        echo=True,
+        echo=False,
         creator=asyncify_connection,
+        pool_size=5,
+        max_overflow=2,
+        pool_recycle=1800,
+        pool_pre_ping=True,
     )
 
 
@@ -106,6 +110,10 @@ if driver == "cloudsql":
             "postgresql+pg8000://",
             creator=getconn,
             echo=False,
+            pool_size=5,
+            max_overflow=2,
+            pool_recycle=1800,
+            pool_pre_ping=True,
         )
         return engine
 
