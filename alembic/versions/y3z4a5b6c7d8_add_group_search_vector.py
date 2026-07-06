@@ -12,7 +12,6 @@ import sqlalchemy as sa
 import sqlalchemy_utils
 from alembic import op
 
-
 revision: str = "y3z4a5b6c7d8"
 down_revision: Union[str, None] = "e2f3a4b5c6d7"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -35,17 +34,14 @@ def upgrade() -> None:
         unique=False,
         postgresql_using="gin",
     )
-    op.execute(
-        """
+    op.execute("""
         UPDATE "group"
         SET search_vector = to_tsvector(
             'pg_catalog.simple',
             concat_ws(' ', name, description, group_type)
         )
-        """
-    )
-    op.execute(
-        """
+        """)
+    op.execute("""
         CREATE TRIGGER "group_search_vector_update"
         BEFORE INSERT OR UPDATE ON "group"
         FOR EACH ROW EXECUTE PROCEDURE
@@ -56,8 +52,7 @@ def upgrade() -> None:
             'description',
             'group_type'
         )
-        """
-    )
+        """)
 
 
 def downgrade() -> None:
