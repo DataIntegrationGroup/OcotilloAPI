@@ -1,212 +1,167 @@
-# API Monitoring Options for OcotilloAPI Production
+# API Monitoring & Public Status Page — Options and Recommendation
 
-**Purpose:** Evaluate open-source uptime and health-check monitoring tools for watching production deployments of OcotilloAPI (FastAPI + PostgreSQL/PostGIS), and — added in the 2026-07-07 revision — tools for a **public status page** so users and developers can see live service health.
+**Purpose:** Choose how to (1) monitor the OcotilloAPI production deployment (FastAPI + PostgreSQL/PostGIS on Google App Engine) and (2) publish a **public status page** so users and developers can see live service health, incidents, and planned maintenance.
 
-**Focus:** Uptime and health checks — is the API reachable, is it responding within acceptable latency, and does its health endpoint report the database and dependencies as healthy — plus a public, subscribable status page. This document does not cover full APM/tracing platforms (SigNoz, Grafana Tempo, etc.), which are a heavier and separate decision.
+**Out of scope:** Full APM/tracing platforms (SigNoz, Grafana Tempo, Datadog APM). Those are a heavier, separate decision. This doc is about uptime/health checks and a status page.
 
 **Date:** 2026-07-07
 
 ---
 
-## What OcotilloAPI needs monitored
+## TL;DR
 
-OcotilloAPI is a FastAPI service backed by PostgreSQL + PostGIS. A practical uptime/health monitor for this stack should cover:
+- **Recommended: [OpenStatus](https://www.openstatus.dev/).** It is the only option that combines a **first-class public status page**, **monitoring-as-code** (YAML + Terraform, matching this repo's config-as-code habits), and a **SaaS-to-self-host path** — start managed, migrate later without switching tools.
+- **Start on the SaaS free tier**, monitoring `https://<prod-host>/health`, published to a custom-domain status page. Zero infrastructure, external probe vantage by default. Commit the monitor definition (YAML/Terraform) to the repo.
+- **If config-as-code is not a requirement**, the fastest polished alternatives are **Better Stack** (free, all-in-one) or **Instatus** (best-looking page, ~$15/mo).
+- **Non-negotiable constraint:** the probe must run **outside GCP**. A status page that goes dark during a platform outage is worthless — see [Probe independence](#probe-independence).
 
-- **Reachability** of the public API (HTTP/HTTPS status codes, TLS certificate validity/expiry).
-- **A health endpoint** — expose a `/health` (and optionally `/health/db`) route in FastAPI that checks database connectivity and returns JSON like `{"status": "ok", "db": "ok"}`. All three tools below can assert against that JSON.
+---
+
+## What we need
+
+OcotilloAPI is a FastAPI service backed by PostgreSQL + PostGIS, deployed on App Engine. The monitoring + status-page solution should cover:
+
+- **Reachability** of the public API — HTTP/HTTPS status codes and TLS certificate validity/expiry.
+- **Health-endpoint assertion** — check `/health` and assert the JSON body, not just a 200.
 - **Response-time thresholds** — flag slow spatial queries before users notice.
 - **Alerting** to a channel the team watches (email, Slack, PagerDuty).
-- **A public status page** — a page users and developers can visit to see current uptime, incidents, and planned maintenance, ideally with email/RSS/webhook subscriptions.
-- **Self-hostable** alongside the existing Docker Compose stack, and ideally versioned in the repo.
+- **A public status page** — a branded page users and developers can visit for current uptime, incident history, and scheduled maintenance, with email/RSS/webhook subscriptions.
+- **Config-as-code** (preferred) — monitor definitions versioned in the repo, consistent with this project's release-please, templated `app.yaml`, and `geoserver_iac/` Terraform.
 
-> **Probe independence.** A status page exists to be trustworthy *when the service is down*. If the monitor runs inside the same GCP project/App Engine service it watches, a platform-level outage takes the status page down with it (correlated failure). Run the probe from an **external vantage** — a hosted/SaaS checker, or a self-hosted probe on separate infrastructure — regardless of which tool below is chosen.
+### Health endpoint
 
-A recommended FastAPI health route to monitor:
+A monitor is only as good as what it checks. `/health` already exists (`core/app.py`) but currently returns `{"status": "ok", "version": ...}` **without** touching the database — a 200 from it does not prove PostGIS is reachable. Before wiring up monitoring, extend it to verify DB connectivity so the status page reflects real health:
 
 ```python
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
-
-router = APIRouter()
-
 @router.get("/health")
 async def health(session=Depends(get_session)):
     await session.execute(text("SELECT 1"))
-    return {"status": "ok", "db": "ok"}
+    return {"status": "ok", "db": "ok", "version": settings.version}
 ```
 
----
+Every tool below can assert on `"db": "ok"` (JSON query or body match).
 
-## Option 1 — Uptime Kuma
+### Probe independence
 
-**License:** MIT · **Language:** Node.js/Vue · **Repo:** github.com/louislam/uptime-kuma (~76k+ GitHub stars — the most popular self-hosted uptime monitor)
+A status page exists to be trustworthy **when the service is down**. If the monitor runs inside the same GCP project / App Engine service it watches, a platform-level outage takes the status page down with it — exactly when users need it. Therefore:
 
-Uptime Kuma is a UI-driven, self-hosted uptime monitor. You add and configure monitors through a polished web dashboard rather than a config file.
+- Prefer a **SaaS probe** (checks from external regions), or
+- Self-host the probe on **separate infrastructure** (different provider/region), never on the monitored App Engine service.
 
-**Relevant capabilities**
-
-- Monitor types include HTTP/HTTPS, TCP port, ping, DNS, keyword-in-response, **HTTP(S) JSON query**, database checks, and Docker containers.
-- HTTP monitor checks the status code, can assert a **keyword** or a **JSON query** against the response body (ideal for asserting `"db": "ok"` from the health route), and warns on certificate expiry within a configurable threshold.
-- Built-in status pages, per-monitor history/uptime %, and a large set of notification integrations (Slack, email/SMTP, Telegram, Discord, PagerDuty, webhooks, and many more).
-- v2.0 (Oct 2025) added MariaDB backend support, rootless Docker images, refreshed UI. v2.1 (Feb 2026) added Globalping worldwide probes and domain-expiry monitoring.
-
-**Fit for OcotilloAPI**
-
-Fastest path to "is the API up and is the DB healthy." Drops into the existing Docker Compose stack as one container, and the JSON-query monitor maps directly onto a FastAPI `/health` response. Best when the team wants a friendly UI and public status page with minimal setup.
-
-**Trade-offs**
-
-- Config lives in the app's own database, not in the repo — no native config-as-code/GitOps (community tools like the `uptime-kuma-api` Python package or `uptime-kuma-web-api` can script setup, but it is not first-class).
-- No official REST API; automation goes through the Socket.IO API.
-- Single-instance architecture; not built for horizontally-scaled HA.
-
----
-
-## Option 2 — Gatus
-
-**License:** Apache 2.0 · **Language:** Go · **Repo:** github.com/TwiN/gatus
-
-Gatus is a lightweight, developer-oriented health dashboard where every monitored endpoint, condition, and alert rule is declared in a **YAML file**. That makes it a natural fit for GitOps — monitoring changes become versioned commits.
-
-**Relevant capabilities**
-
-- Probes HTTP, TCP, ICMP, DNS, WebSocket, SSH, TLS, and STARTTLS endpoints on a schedule.
-- Declarative **conditions** on status code, response time, response body (including JSON assertions, e.g. `[BODY].db == ok`), IP, and TLS certificate expiration.
-- `failure-threshold` / `success-threshold` settings prevent alert flapping from intermittent blips.
-- Alerting out of the box: Slack, Mattermost, PagerDuty, Twilio, Google Chat, Teams, Messagebird, plus custom providers.
-- Built-in web dashboard with per-endpoint status, response-time history, and uptime % — no Grafana required for basic visualization.
-
-**Fit for OcotilloAPI**
-
-Strong match for a team that already versions infrastructure. A single `config.yaml` lives in the repo next to OcotilloAPI, defining checks against `/health`, asserting the JSON body and a response-time ceiling, and firing alerts after N consecutive failures. Lightweight Go binary/container, low resource use.
-
-Example condition set:
-
-```yaml
-endpoints:
-  - name: ocotillo-api-health
-    url: "https://api.example.org/health"
-    interval: 60s
-    conditions:
-      - "[STATUS] == 200"
-      - "[BODY].db == ok"
-      - "[RESPONSE_TIME] < 500"
-    alerts:
-      - type: slack
-        failure-threshold: 3
-        success-threshold: 2
-```
-
-**Trade-offs**
-
-- No point-and-click UI for adding monitors — everything is YAML (a feature for engineers, friction for non-technical stakeholders).
-- Status-page/incident features are lighter than Uptime Kuma's.
-
----
-
-## Option 3 — Prometheus Blackbox Exporter
-
-**License:** Apache 2.0 · **Language:** Go · **Repo:** github.com/prometheus/blackbox_exporter (official Prometheus / CNCF component)
-
-The Blackbox Exporter probes endpoints externally and exposes the results as **Prometheus metrics**. It is the production-grade, standards-based choice — but it is a component, not a standalone product: it assumes (or introduces) a Prometheus + Alertmanager stack, usually with Grafana for dashboards.
-
-**Relevant capabilities**
-
-- Probes over HTTP, HTTPS, DNS, TCP, ICMP, and gRPC.
-- HTTP probe defaults to GET expecting 2xx; configurable for other methods, expected status codes, **basic/bearer auth**, custom headers, body matching (regex on response), and proxies.
-- Emits metrics such as `probe_success`, `probe_duration_seconds`, `probe_http_status_code`, and `probe_ssl_earliest_cert_expiry` (TLS expiry timestamp).
-- Alerting via Prometheus alerting rules → Alertmanager (routing, grouping, silencing, dedup) to Slack, PagerDuty, email, etc.
-- Multi-target / multi-region probing and long-term metric retention when paired with the Prometheus stack.
-
-**Fit for OcotilloAPI**
-
-Best long-term fit **if** OcotilloAPI already runs, or plans to run, Prometheus for infrastructure metrics. Then endpoint uptime, latency, and cert expiry become just more series alongside app and host metrics, with unified Grafana dashboards and Alertmanager routing. Body-regex matching can assert the health-endpoint payload.
-
-**Trade-offs**
-
-- Heaviest setup by far: Blackbox Exporter + Prometheus + Alertmanager (+ Grafana) to reach parity with what Uptime Kuma or Gatus give in one container.
-- No built-in status page or friendly UI on its own.
-- Overkill if uptime/health is the only goal and there is no existing Prometheus footprint.
-
----
-
-## Option 4 — OpenStatus
-
-**License:** AGPL-3.0 · **Language:** TypeScript (Next.js) · **Repo:** github.com/openstatusHQ/openstatus
-
-OpenStatus is a **status-page-first** platform that combines synthetic uptime monitoring, public status pages, and incident/maintenance communication in one product. Unlike the three options above — where a status page is either a side feature (Uptime Kuma, Gatus) or absent (Blackbox Exporter) — the public status page is OpenStatus's primary deliverable. Available as managed SaaS or fully self-hosted.
-
-**Relevant capabilities**
-
-- HTTP/HTTPS (REST/GraphQL) and TCP monitoring with assertions on status code, response time, headers, and response body — maps onto the existing `/health` route (`core/app.py`, returns `{"status": "ok", "version": ...}`).
-- **Public status page** with custom domains, branded themes, timestamped incident reports, and scheduled maintenance windows. Automatic status updates during incidents (no manual toggling).
-- **Subscriber notifications** on the status page: email, RSS/Atom, and webhooks — so users and developers self-subscribe to updates.
-- **Monitoring as code**: YAML config, a Terraform provider, a CLI, and GitHub Actions integration — checks live in the repo, consistent with this project's release-please / templated-`app.yaml` / `geoserver_iac/` Terraform habits.
-- Alerts via Slack, Discord, PagerDuty, email, and webhooks. A RESTful (OpenAPI) API for automation.
-- SaaS probes run from 28 regions across 3 cloud providers; self-hosting supports private probe locations behind a firewall.
-- Self-host ships as Docker Compose. A **lightweight status-page-only** mode runs just four services (database, migration runner, dashboard, status page) for teams that only want the public page.
-
-**Fit for OcotilloAPI**
-
-The best fit specifically for the "users and developers can see status" goal, because the public status page is first-class rather than bolted on, and because monitoring-as-code (YAML + Terraform) matches how this repo already manages deployment config. Lowest-effort path: the SaaS free tier watching `https://<prod-host>/health`, published to a custom-domain status page — zero infrastructure and an external probe vantage by default.
-
-**Trade-offs**
-
-- **AGPL-3.0** copyleft. Fine for internal self-hosting; only a concern if the code is modified *and redistributed*.
-- SaaS free tier is limited to **one monitor, one status page, 10-minute checks**; more monitors or faster intervals start at ~$30/month. Self-hosting removes these limits but requires running (and keeping independent) the stack.
-- Self-hosting the probe on the same infrastructure as OcotilloAPI reintroduces the correlated-failure problem noted above — keep the probe external, or use SaaS.
-- Newer and smaller-community than Uptime Kuma; maintained by a small bootstrapped team.
-
----
-
-## Comparison
-
-| Criterion | Uptime Kuma | Gatus | Blackbox Exporter | OpenStatus |
-|---|---|---|---|---|
-| License | MIT | Apache 2.0 | Apache 2.0 | AGPL-3.0 |
-| Configuration | Web UI (stored in DB) | YAML (config-as-code) | YAML + Prometheus config | YAML / Terraform / UI |
-| JSON health-body assertion | Yes (JSON query) | Yes (`[BODY]` conditions) | Regex on body | Yes (body assertions) |
-| TLS expiry checks | Yes | Yes | Yes | Yes |
-| Response-time thresholds | Yes | Yes | Yes (via Prometheus rules) | Yes |
-| Public status page | Yes | Basic | No | **Yes (first-class)** |
-| Status-page subscriptions | Limited | No | No | Email / RSS / webhook |
-| Built-in dashboard | Yes (rich + status page) | Yes (lightweight) | No (needs Grafana) | Yes (status page + dashboard) |
-| Alerting | Many integrations built in | Many integrations built in | Via Alertmanager | Slack/Discord/PagerDuty/email/webhook |
-| Setup effort | Low (1 container) | Low (1 container) | High (full stack) | Low (SaaS) / Medium (self-host) |
-| GitOps / versioned config | No (community tooling) | Yes (native) | Yes | Yes (YAML + Terraform) |
-| Hosted SaaS option | No | No | No | Yes (free tier + paid) |
-| Best when… | Want a UI + status page fast | Want config in the repo | Already run Prometheus | Want a public status page + config-as-code |
+This rules out running the monitor as just another container in the production stack.
 
 ---
 
 ## Recommendation
 
-The goal has two parts: (a) internal uptime/health monitoring and alerting, and (b) a **public status page** for users and developers. The right pick depends on which dominates.
+**Adopt OpenStatus, starting on the managed SaaS free tier.**
 
-**If the public status page is the priority (the current goal): OpenStatus.** The status page is first-class — custom domain, incident timeline, maintenance windows, and email/RSS/webhook subscriptions — and monitoring-as-code (YAML + Terraform) matches this repo's existing config-as-code habits. Fastest path: the **SaaS free tier** watching `https://<prod-host>/health`, published to a custom-domain status page. Zero infrastructure, and the probe runs from an external vantage by default (satisfying the probe-independence requirement). Upgrade to a paid tier or self-host only when more monitors or sub-10-minute intervals are needed.
+Rationale, weighted to the stated goal (public status page for users + developers):
 
-**If config-as-code monitoring/alerting matters more than the public page: Gatus.** One repo-committed `config.yaml`, one container, JSON health assertions, flap-resistant alerting. Its status page is thinner than OpenStatus's, so pair it with OpenStatus (or promote OpenStatus) if the public page becomes central.
+1. **The status page is the product, not a side feature.** Custom domain, branded theme, timestamped incident reports, scheduled maintenance windows, and automatic status updates during incidents. Users and developers self-subscribe via email, RSS/Atom, or webhook.
+2. **Monitoring-as-code.** Checks are defined in YAML with a Terraform provider, CLI, and GitHub Actions integration — the same config-as-code model already used for deployments here. Monitor changes become reviewable commits.
+3. **No lock-in on hosting.** Begin on SaaS (zero infra, external probe vantage) and migrate to self-hosted later if cost or data-residency demands it — same tool, same config. Most tools force an either/or.
+4. **Fits the endpoint we have.** HTTP checks assert on `/health` status, latency, and JSON body.
 
-**If a friendly point-and-click UI is the priority: Uptime Kuma.** Quickest UI-driven setup and a decent status page, at the cost of no native GitOps.
+**Trade-offs to accept:** AGPL-3.0 license (fine for internal self-hosting; matters only if the code is modified *and* redistributed); the SaaS free tier is limited to one monitor / one status page / 10-minute checks (≈$30/mo unlocks more monitors and faster intervals); smaller community than Uptime Kuma, maintained by a small bootstrapped team.
 
-**Blackbox Exporter** remains the choice only if (or once) OcotilloAPI adopts Prometheus for broader infrastructure metrics — then fold endpoint monitoring into that stack rather than running a separate tool. It has no status page of its own.
+**If config-as-code is dropped as a requirement**, pick for speed instead:
+- **Better Stack** — all-in-one uptime + incident + status page, generous free tier.
+- **Instatus** — the best-looking, fastest-loading status page; ~$15/mo with basic monitoring included.
 
-A reasonable starting move for the stated goal: stand up **OpenStatus** (SaaS free tier to start) monitoring the existing `/health` route, publish a public status page on a custom domain, and commit the monitor definition (YAML/Terraform) to the repo. Keep the probe external to GCP so the page stays up during a platform outage.
+### Rollout plan
+
+1. Extend `/health` to verify PostGIS connectivity (snippet above).
+2. Create an OpenStatus SaaS account (free tier). Add one HTTP monitor on `https://<prod-host>/health` asserting `[STATUS] == 200`, `[BODY].db == ok`, and a response-time ceiling.
+3. Publish a public status page on a custom domain (e.g. `status.<domain>`); enable email/RSS subscriptions.
+4. Wire alerts to the team's Slack (and PagerDuty if used).
+5. Export the monitor as YAML/Terraform and commit it to the repo so the config is versioned.
+6. Revisit self-hosting (or a paid tier) only when more monitors or sub-10-minute intervals are needed.
+
+---
+
+## Shortlist
+
+The five worth serious consideration, in priority order for this project:
+
+1. **OpenStatus** *(recommended)* — status-page-first, config-as-code, SaaS-or-self-host. Best overall fit.
+2. **Better Stack** *(SaaS, zero-ops)* — all-in-one, generous free tier; pick if you want managed and don't need config-as-code.
+3. **Instatus** *(SaaS, prettiest page)* — cheapest polished public page; monitoring is basic.
+4. **Gatus** *(self-host, GitOps)* — excellent YAML health checks, but a thin status page; pick if internal monitoring matters more than the public page.
+5. **Uptime Kuma** *(self-host, easiest UI)* — friendly dashboard and a decent status page, but single-location probe and no native GitOps.
+
+Everything else below is context for why these five rise to the top.
+
+---
+
+## Full catalog
+
+### Self-hosted, open source
+
+- **OpenStatus** — AGPL-3.0, TypeScript. Status page + monitoring + incidents; YAML/Terraform config; also offered as SaaS. *(Shortlisted #1.)*
+- **Gatus** — Apache-2.0, Go. Config-as-code health checks with JSON body assertions and flap-resistant thresholds; lightweight built-in dashboard; thin status page. *(Shortlisted #4.)*
+- **Uptime Kuma** — MIT, Node/Vue. ~76k★, the most popular self-hosted monitor; rich UI + status page; single-location probe; config lives in its DB (no native GitOps). *(Shortlisted #5.)*
+- **OneUptime** — open-source all-in-one suite (monitoring + status page + incidents + on-call). The closest full-suite rival to OpenStatus; heavier to run; self-host or cloud.
+- **Checkmate** (ex-BlueWave Uptime) — React/Node/Mongo; modern UI; active but newer/smaller community.
+- **Cachet** — the original OSS status page. **Caution:** last release 2023, mid a v3.0 rewrite; status-page-only (needs a separate monitor).
+- **Statping-ng** — all-in-one monitor + page; dated UI, uncertain maintenance.
+- **Vigil** / **Uptimepage** — Rust, microservice-oriented; fast standalone binaries; sparser status-page polish, more infra effort.
+- **Prometheus Blackbox Exporter** — Apache-2.0, Go. Probe-to-metrics; production-grade but a *component*, not a product — assumes a Prometheus + Alertmanager (+ Grafana) stack, and has **no status page**. Right choice only once Prometheus exists for broader infra metrics.
+
+### SaaS (external probe by default — satisfies probe independence)
+
+- **Better Stack** — all-in-one uptime + incident management + status page; generous free tier. *(Shortlisted #2.)*
+- **Instatus** — best-looking, fastest status pages; ~$15/mo; basic monitoring included. *(Shortlisted #3.)*
+- **UptimeRobot** — cheapest/free uptime + status pages; simple.
+- **Atlassian Statuspage** — the polished incumbent for incident communication; pricier.
+- **Checkly** — monitoring-as-code (Playwright, Terraform); very developer/GitOps-oriented; pricier and broader than a status page.
+- **incident.io** — Slack-centric incident management + status page; priced for incident-heavy teams.
+
+---
+
+## Comparison
+
+Focused on the shortlist plus the two reference points from the original evaluation (Blackbox, as the Prometheus path).
+
+| Criterion | OpenStatus | Better Stack | Instatus | Gatus | Uptime Kuma | Blackbox Exporter |
+|---|---|---|---|---|---|---|
+| Hosting | SaaS **or** self-host | SaaS | SaaS | Self-host | Self-host | Self-host |
+| License (self-host) | AGPL-3.0 | — | — | Apache-2.0 | MIT | Apache-2.0 |
+| Public status page | **First-class** | Yes | **Best-looking** | Basic | Yes | No |
+| Status-page subscriptions | Email/RSS/webhook | Email/SMS/webhook | Email/Slack/webhook | No | Limited | No |
+| Config-as-code | Yes (YAML + Terraform) | Partial (API/TF) | No | **Yes (native)** | No | Yes |
+| JSON health-body assertion | Yes | Yes | Basic | Yes (`[BODY]`) | Yes (JSON query) | Regex on body |
+| TLS expiry checks | Yes | Yes | Yes | Yes | Yes | Yes |
+| Alerting | Slack/Discord/PagerDuty/email/webhook | Many + on-call | Slack/email/webhook | Many built-in | Many built-in | Via Alertmanager |
+| External probe by default | Yes (SaaS) | Yes | Yes | No (you host) | No (you host) | No (you host) |
+| Setup effort | Low (SaaS) / Med (self-host) | Low | Low | Low (1 container) | Low (1 container) | High (full stack) |
+| Best when… | Public page **+** config-as-code | Managed all-in-one, free | Prettiest page, cheap | GitOps health checks | Friendly UI fast | Already run Prometheus |
+
+---
+
+## Decision guide
+
+- **Want a public status page *and* config-as-code (the stated goal):** → **OpenStatus**.
+- **Want managed, all-in-one, free to start, don't care about GitOps:** → **Better Stack**.
+- **Want the prettiest public page for the least money:** → **Instatus** (or **UptimeRobot** if cost is the only axis).
+- **Care most about versioned internal health checks, public page secondary:** → **Gatus** (pair with a status-page tool later).
+- **Want the quickest friendly UI, self-hosted:** → **Uptime Kuma**.
+- **Already adopting Prometheus for infra metrics:** → **Blackbox Exporter**, folded into that stack.
 
 ---
 
 ## Sources
 
-- [Uptime Kuma — GitHub](https://github.com/louislam/uptime-kuma)
-- [Uptime Kuma — official site](https://uptimekuma.org/)
-- [Uptime Kuma: Self-Hosted Uptime Monitoring for Servers and APIs](https://trivox.sh/blog/content/uptime-kuma-self-hosted-monitoring/)
-- [Gatus — GitHub](https://github.com/TwiN/gatus)
-- [Gatus: A Complete Guide to Self-Hosted Service Monitoring and Status Pages](https://www.blog.brightcoding.dev/2025/07/26/gatus-a-complete-guide-to-self-hosted-service-monitoring-and-status-pages/)
-- [Gatus vs Uptime Kuma: A Detailed Comparison (2026)](https://openalternative.co/compare/gatus/vs/uptime-kuma)
-- [Prometheus Blackbox Exporter — GitHub](https://github.com/prometheus/blackbox_exporter)
-- [Prometheus Blackbox Exporter: Ultimate Guide (SolarWinds)](https://www.solarwinds.com/blog/prometheus-blackbox-exporter)
-- [How to Use Alertmanager and Blackbox Exporter to Monitor Your Web Server (DigitalOcean)](https://www.digitalocean.com/community/tutorials/how-to-use-alertmanager-and-blackbox-exporter-to-monitor-your-web-server-on-ubuntu-16-04)
 - [OpenStatus — official site](https://www.openstatus.dev/)
 - [OpenStatus — GitHub](https://github.com/openstatusHQ/openstatus)
 - [OpenStatus — self-hosting guide](https://docs.openstatus.dev/guides/self-hosting-openstatus/)
 - [OpenStatus — self-host status page only (lightweight)](https://docs.openstatus.dev/guides/self-host-status-page-only/)
+- [OpenStatus — Best Open Source Status Page Tools in 2026](https://www.openstatus.dev/guides/best-opensource-status-page-2026)
+- [UptimeRobot — Best Status Page Tools in 2026 (SaaS and open source)](https://uptimerobot.com/knowledge-hub/comparisons-and-alternatives/best-status-page-tools/)
+- [Hyperping — Top Statuspage Alternatives (2026)](https://hyperping.com/blog/best-statuspage-alternatives)
+- [OneUptime — Best Statuspage Alternatives (2026)](https://oneuptime.com/blog/post/2026-03-10-best-statuspage-alternatives/view)
+- [Instatus — Best Self-Hosted Status Pages for 2026](https://instatus.com/blog/best-self-hosted-status-pages)
+- [awesome-status-pages (curated list)](https://github.com/ivbeg/awesome-status-pages)
+- [Uptime Kuma — GitHub](https://github.com/louislam/uptime-kuma)
+- [Gatus — GitHub](https://github.com/TwiN/gatus)
+- [Prometheus Blackbox Exporter — GitHub](https://github.com/prometheus/blackbox_exporter)
