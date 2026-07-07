@@ -17,7 +17,9 @@ ocotillo-api-production:
   description: "Production OcotilloAPI health endpoint (FastAPI + PostGIS on App Engine)."
   frequency: "10m"
   active: true
-  regions: ["iad", "lax"]
+  # SaaS free tier allows a single region; add more (e.g. "lax", "ams") on a
+  # paid tier or self-hosted probes.
+  regions: ["iad"]
   retry: 3
   kind: http
   request:
