@@ -20,13 +20,17 @@ from uuid import uuid4
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Response, status
 from fastapi import Request
 from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
 from fastapi.openapi.utils import get_openapi
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from db.engine import get_db_session
 
 from .settings import settings
 
@@ -221,8 +225,25 @@ def create_base_app() -> FastAPI:
 
     @app.get("/health", tags=["meta"])
     @public_route
-    async def health():
-        return {"status": "ok", "version": settings.version}
+    def health(response: Response, session: Session = Depends(get_db_session)):
+        # Ping the database so a 200 actually proves PostGIS is reachable, not
+        # just that the process is up. Uptime monitors / status pages assert on
+        # the "db" field; on failure return 503 so they flag the outage.
+        try:
+            session.execute(text("SELECT 1"))
+            db_ok = True
+        except Exception:
+            logger.exception("health check: database ping failed")
+            db_ok = False
+
+        if not db_ok:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+        return {
+            "status": "ok" if db_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "version": settings.version,
+        }
 
     return app
 
