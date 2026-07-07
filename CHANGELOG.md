@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.4...v1.1.5) (2026-07-07)
+
+
+### Bug Fixes
+
+* **deploy:** raise instance class to F4_1G to stop OOM instance churn ([ec012d6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ec012d60ff8b985e89c8a2ca4167b4f24cae8540))
+
 ## [1.1.4](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.3...v1.1.4) (2026-07-07)
 
 
