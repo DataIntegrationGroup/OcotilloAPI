@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.4](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.3...v1.1.4) (2026-07-07)
+
+
+### Bug Fixes
+
+* **ci:** deploy on inline workflow_call to CD (Production) ([8371f64](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8371f646b08363a578d339d99da8ebf5863d21c9))
+* **ci:** deploy on inline workflow_call to CD (Production) ([1a11ee9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1a11ee9e5237d33ce7b9ee7f093dad5e023436c6))
+
 ## [1.1.3](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.2...v1.1.3) (2026-07-06)
 
 
