@@ -2,7 +2,13 @@ service: ${SERVICE_NAME}
 runtime: python313
 entrypoint: ${ENTRYPOINT}
 service_account: "${CLOUD_SQL_USER}.gserviceaccount.com"
-instance_class: F4
+# F4_1G (2 GB) not F4 (1 GB): production runs gunicorn -w 8, and eight workers
+# each importing the full stack (sqlalchemy + geoalchemy2 + shapely + cloud-sql
+# connector + pygeoapi) exceeded 1 GB, so App Engine terminated processes for
+# "using too much memory" and cycled workers continuously, cold-loading every
+# request. See docs/app-engine-oom-instance-churn.md. Shipped to prod in v1.1.5;
+# this propagates the same class to staging/testing to prevent regression.
+instance_class: F4_1G
 inbound_services:
   - warmup
 automatic_scaling:

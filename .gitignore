@@ -49,7 +49,6 @@ cli/logs
 .pygeoapi/
 # deployment files
 app.yaml
-docs/
 
 #Codex
 .codex
