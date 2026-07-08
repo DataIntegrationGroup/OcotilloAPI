@@ -32,8 +32,10 @@ os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")
 water_levels = typer.Typer(help="Water-level utilities")
+water_chemistry = typer.Typer(help="Water-chemistry utilities")
 data_migrations = typer.Typer(help="Data migration utilities")
 cli.add_typer(water_levels, name="water-levels")
+cli.add_typer(water_chemistry, name="water-chemistry")
 cli.add_typer(data_migrations, name="data-migrations")
 
 
@@ -954,6 +956,221 @@ def water_levels_bulk_upload(
                 f"... and {len(validation_errors) - shown} more validation errors",
                 fg=colors["issue"],
             )
+
+    typer.secho("=" * 72, fg=colors["accent"])
+    raise typer.Exit(result.exit_code)
+
+
+@water_chemistry.command("bulk-upload")
+def water_chemistry_bulk_upload(
+    file_path: str = typer.Option(
+        ...,
+        "--file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Path to LIMS .xlsx workbook containing chemistry results.",
+    ),
+    output_format: OutputFormat | None = typer.Option(
+        None,
+        "--output",
+        help="Optional output format",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    parse a LIMS chemistry workbook and load it into the NMA Major/Minor
+    chemistry tables. All-or-nothing: if any analyte already exists, or any row
+    fails to map, nothing is written.
+    """
+    from cli.service_adapter import chemistry_lims_xlsx
+
+    colors = _palette(theme)
+    result = chemistry_lims_xlsx(
+        file_path, pretty_json=output_format == OutputFormat.json
+    )
+
+    if output_format == OutputFormat.json:
+        typer.echo(result.stdout)
+        raise typer.Exit(result.exit_code)
+
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+    validation_errors = payload.get("validation_errors", [])
+    created_samples = payload.get("created_samples", [])
+    skipped_duplicates = payload.get("skipped_duplicates", [])
+
+    if result.exit_code == 0:
+        typer.secho("[WATER CHEMISTRY IMPORT] SUCCESS", fg=colors["ok"], bold=True)
+    else:
+        typer.secho(
+            "[WATER CHEMISTRY IMPORT] COMPLETED WITH ISSUES",
+            fg=colors["issue"],
+            bold=True,
+        )
+    typer.secho("=" * 72, fg=colors["accent"])
+
+    if summary:
+        processed = summary.get("total_rows_processed", 0)
+        imported = summary.get("total_rows_imported", 0)
+        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
+        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
+        label_width = 16
+        value_width = 8
+        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
+        typer.secho(
+            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
+            fg=colors["accent"],
+        )
+        typer.secho(
+            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
+            fg=colors["ok"],
+        )
+        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
+        typer.secho(
+            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
+            fg=issue_color,
+        )
+        typer.echo()
+
+    if created_samples:
+        typer.secho("CREATED SAMPLES", fg=colors["ok"], bold=True)
+        for sample in created_samples:
+            typer.secho(
+                f"  - {sample['sample_point_id']} "
+                f"(WCLab_ID {sample.get('wclab_id')}): {sample.get('rows', 0)} row(s)",
+                fg=colors["ok"],
+            )
+        typer.echo()
+
+    if skipped_duplicates:
+        typer.secho("SKIPPED (already ingested)", fg=colors["muted"], bold=True)
+        for dupe in skipped_duplicates:
+            typer.secho(
+                f"  - {dupe['pointid']} (WCLab_ID {dupe.get('wclab_id')})",
+                fg=colors["field"],
+            )
+        typer.echo()
+
+    if validation_errors:
+        typer.secho("VALIDATION", fg=colors["accent"], bold=True)
+        typer.secho(
+            f"Validation errors: {len(validation_errors)}",
+            fg=colors["issue"],
+            bold=True,
+        )
+        for entry in validation_errors[:25]:
+            typer.secho(f"  - {entry}", fg=colors["issue"])
+        if len(validation_errors) > 25:
+            typer.secho(
+                f"... and {len(validation_errors) - 25} more validation errors",
+                fg=colors["issue"],
+            )
+
+    typer.secho("=" * 72, fg=colors["accent"])
+    raise typer.Exit(result.exit_code)
+
+
+@water_chemistry.command("sync-drive")
+def water_chemistry_sync_drive(
+    folder_id: str = typer.Option(
+        None,
+        "--folder-id",
+        help="Google Drive folder id to scan. Defaults to $CHEMISTRY_DRIVE_FOLDER_ID.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="List new files without downloading, ingesting, or updating the manifest.",
+    ),
+    output_format: OutputFormat | None = typer.Option(
+        None,
+        "--output",
+        help="Optional output format",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    ingest LIMS chemistry workbooks from a Google Drive folder. Run on demand
+    by an engineer -- this does no polling or scheduling. New or changed files
+    are ingested; a manifest of ingested files is kept in GCS so
+    already-processed files are skipped.
+    """
+    import json as _json
+
+    from services.chemistry_drive import ChemistryDriveConfigError, sync_and_ingest
+
+    colors = _palette(theme)
+    try:
+        result = sync_and_ingest(folder_id=folder_id, dry_run=dry_run)
+    except ChemistryDriveConfigError as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    if output_format == OutputFormat.json:
+        typer.echo(_json.dumps(result.to_payload()))
+        raise typer.Exit(result.exit_code)
+
+    summary = result.to_payload()["summary"]
+    header = (
+        "[CHEMISTRY DRIVE SYNC] DRY RUN" if result.dry_run else "[CHEMISTRY DRIVE SYNC]"
+    )
+    header_color = colors["ok"] if result.exit_code == 0 else colors["issue"]
+    typer.secho(header, fg=header_color, bold=True)
+    typer.secho("=" * 72, fg=colors["accent"])
+    typer.secho(f"Folder: {result.folder_id}", fg=colors["accent"])
+    typer.echo()
+
+    typer.secho("SUMMARY", fg=colors["accent"], bold=True)
+    for label, value, color in (
+        ("files_seen", summary["files_seen"], colors["accent"]),
+        ("new_files", summary["new_files"], colors["accent"]),
+        ("ingested", summary["ingested"], colors["ok"]),
+        ("skipped", summary["skipped"], colors["muted"]),
+        (
+            "failed",
+            summary["failed"],
+            colors["issue"] if summary["failed"] else colors["ok"],
+        ),
+    ):
+        typer.secho(f"  {label:<12} | {value:>6}", fg=color)
+    typer.echo()
+
+    if result.dry_run and result.new_files:
+        typer.secho("NEW FILES (not ingested)", fg=colors["accent"], bold=True)
+        for name in result.new_files:
+            typer.secho(f"  - {name}", fg=colors["field"])
+        typer.echo()
+
+    if result.ingested:
+        typer.secho("INGESTED", fg=colors["ok"], bold=True)
+        for record in result.ingested:
+            typer.secho(
+                f"  - {record['name']}: {record.get('rows_imported', 0)} row(s)",
+                fg=colors["ok"],
+            )
+        typer.echo()
+
+    if result.failed:
+        typer.secho("FAILED", fg=colors["issue"], bold=True)
+        for record in result.failed:
+            detail = record.get("error")
+            if not detail:
+                payload = record.get("payload", {})
+                errors = payload.get("validation_errors") or []
+                if errors:
+                    detail = errors[0]
+                    if len(errors) > 1:
+                        detail += f" (+{len(errors) - 1} more)"
+                else:
+                    detail = "ingestion aborted"
+            typer.secho(f"  - {record['name']}: {detail}", fg=colors["issue"])
+        typer.echo()
 
     typer.secho("=" * 72, fg=colors["accent"])
     raise typer.Exit(result.exit_code)
