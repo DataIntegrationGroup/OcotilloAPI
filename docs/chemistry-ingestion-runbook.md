@@ -94,8 +94,6 @@ Then ingest:
 oco water-chemistry sync-drive
 # or point at a specific folder:
 oco water-chemistry sync-drive --folder-id <DRIVE_FOLDER_ID>
-# machine-readable:
-oco water-chemistry sync-drive --output json
 ```
 
 Read the summary. Buckets:
@@ -112,7 +110,7 @@ Read the summary. Buckets:
 
 | Reported cause | Meaning | Action |
 |----------------|---------|--------|
-| `Unmapped analyte Param=...` | A LIMS `Param` name is not in the analyte map. | Send the Param name to engineering to add to `FMapper`. |
+| `Unmapped analyte Param=...` | A LIMS `Param` name is not in the analyte map. | Send the Param name to engineering to add to `_ANALYTE_MAPPINGS` in `services/chemistry_lims.py`. |
 | `no matching Thing (well) found` | `SamplePointID` has no Ocotillo well. | Verify the PointID; ensure the well was transferred to Data Services first. |
 
 Exit code is non-zero if any file failed.
@@ -146,7 +144,7 @@ oco water-chemistry bulk-upload --file /path/to/batch.xlsx
 ## 6. What the ingest does (summary)
 
 For each workbook: map each `Param` to an analyte code + target table (major vs
-minor) via `FMapper`; compute the value (non-detects become
+minor) via `lookup_analyte`; compute the value (non-detects become
 `LowerLimit × Dilution` with a `<` symbol); collapse duplicate
 (SamplePointID, WCLab_ID, analyte) rows (prefer EPA 200.7, or "low bromide" for
 Br); resolve the base `SamplePointID → Thing`. Then, per distinct lab sample
@@ -168,8 +166,8 @@ matching well) aborts the whole file — nothing is written.
 - **`.xlsx` only.** Legacy `.xls` LIMS exports are not read; the file must be
   a modern `.xlsx`.
 - **Fixed analyte map.** Unknown `Param` names fail until engineering adds them
-  to `FMapper`. Only major + minor analytes are handled — field parameters and
-  radionuclides are out of scope.
+  to `_ANALYTE_MAPPINGS`. Only major + minor analytes are handled — field
+  parameters and radionuclides are out of scope.
 - **Well must exist first.** `SamplePointID` must already match an Ocotillo
   `Thing.name`; otherwise the file fails.
 - **Failed files retry loudly.** A file that fails (e.g. unmapped analyte or a
