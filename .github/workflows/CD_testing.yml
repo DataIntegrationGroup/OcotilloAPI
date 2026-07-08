@@ -59,16 +59,6 @@ jobs:
         run: |
           uv run --no-dev alembic upgrade head
 
-      - name: Refresh materialized views on staging database
-        env:
-          DB_DRIVER: "cloudsql"
-          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-          CLOUD_SQL_IAM_AUTH: true
-        run: |
-          uv run --no-dev python -m cli.cli refresh-materialized-views
-
       - name: Ensure envsubst is available
         run: |
           if ! command -v envsubst >/dev/null 2>&1; then
