@@ -972,30 +972,21 @@ def water_chemistry_bulk_upload(
         readable=True,
         help="Path to LIMS .xlsx workbook containing chemistry results.",
     ),
-    output_format: OutputFormat | None = typer.Option(
-        None,
-        "--output",
-        help="Optional output format",
-    ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
 ):
     """
     parse a LIMS chemistry workbook and load it into the NMA Major/Minor
-    chemistry tables. All-or-nothing: if any analyte already exists, or any row
-    fails to map, nothing is written.
+    chemistry tables. Each distinct lab sample (WCLab_ID) is appended as a new
+    lettered sample point; a lab sample already recorded for the well is
+    skipped. A row that fails to map or references an unknown well aborts the
+    whole file.
     """
     from cli.service_adapter import chemistry_lims_xlsx
 
     colors = _palette(theme)
-    result = chemistry_lims_xlsx(
-        file_path, pretty_json=output_format == OutputFormat.json
-    )
-
-    if output_format == OutputFormat.json:
-        typer.echo(result.stdout)
-        raise typer.Exit(result.exit_code)
+    result = chemistry_lims_xlsx(file_path)
 
     payload = result.payload if isinstance(result.payload, dict) else {}
     summary = payload.get("summary", {})
@@ -1086,11 +1077,6 @@ def water_chemistry_sync_drive(
         "--dry-run",
         help="List new files without downloading, ingesting, or updating the manifest.",
     ),
-    output_format: OutputFormat | None = typer.Option(
-        None,
-        "--output",
-        help="Optional output format",
-    ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
@@ -1101,8 +1087,6 @@ def water_chemistry_sync_drive(
     are ingested; a manifest of ingested files is kept in GCS so
     already-processed files are skipped.
     """
-    import json as _json
-
     from services.chemistry_drive import ChemistryDriveConfigError, sync_and_ingest
 
     colors = _palette(theme)
@@ -1111,10 +1095,6 @@ def water_chemistry_sync_drive(
     except ChemistryDriveConfigError as exc:
         typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
         raise typer.Exit(1) from exc
-
-    if output_format == OutputFormat.json:
-        typer.echo(_json.dumps(result.to_payload()))
-        raise typer.Exit(result.exit_code)
 
     summary = result.to_payload()["summary"]
     header = (

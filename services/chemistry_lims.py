@@ -23,7 +23,8 @@ read an ``.xls`` LIMS export with ``xlrd`` and inserted rows into the SQL Server
 ``Chemistry SampleInfo`` table. This adaptation:
 
 * reads an ``.xlsx`` workbook with ``openpyxl``,
-* maps each LIMS ``Param`` to an analyte code + target table via ``FMapper``,
+* maps each LIMS ``Param`` to an analyte code + target table via
+  :func:`lookup_analyte`,
 * resolves each ``SamplePointID`` (the base well PointID) to a ``Thing`` by
   name,
 * appends each distinct lab sample (``WCLab_ID``) as a new
@@ -37,7 +38,6 @@ The public entrypoint is :func:`bulk_upload_chemistry`.
 from __future__ import annotations
 
 import io
-import json
 import re
 import uuid
 from dataclasses import dataclass
@@ -71,101 +71,99 @@ COND = "µS/cm"
 ANALYSES_AGENCY = "NMBGMR"
 
 
-class AnalyteField:
-    def __init__(self, xlsfield, dbanalyte, table, units=None, method=None):
-        self.xlsfield = xlsfield
-        self.dbanalyte = dbanalyte
-        self.table = table
-        self.units = units
-        self.method = method
+@dataclass(frozen=True)
+class AnalyteMapping:
+    """Maps a LIMS ``Param`` name to its analyte code and target table.
+
+    ``units`` overrides the LIMS-reported units when set; ``method`` is appended
+    to the LIMS analysis method when set.
+    """
+
+    lims_param: str
+    analyte: str
+    table: str
+    units: str | None = None
+    method: str | None = None
 
 
-class FMapper:
-    def __init__(self):
-        self._map = [
-            AnalyteField("alkalinity as caco3", "ALK", MAJOR, method="As CaCO3"),
-            AnalyteField("aluminum", "Al", MINOR),
-            AnalyteField("anions total", "TAn", MAJOR, EPM),
-            AnalyteField("antimony 121", "Sb", MINOR),
-            AnalyteField("antimony 123", "Sb", MINOR),
-            AnalyteField("antimony", "Sb", MINOR),
-            AnalyteField("arsenic", "As", MINOR),
-            AnalyteField("barium", "Ba", MINOR),
-            AnalyteField("beryllium", "Be", MINOR),
-            AnalyteField(
-                "bicarbonate (hco3)", "HCO3", MAJOR, method="Alkalinity as HC03"
-            ),
-            AnalyteField("boron 11", "B", MINOR),
-            AnalyteField("boron", "B", MINOR),
-            AnalyteField("bromide", "Br", MINOR),
-            AnalyteField("cadmium 111", "Cd", MINOR),
-            AnalyteField("cadmium", "Cd", MINOR),
-            AnalyteField("calcium", "Ca", MAJOR),
-            AnalyteField("carbonate (co3)", "CO3", MAJOR),
-            AnalyteField("cations total", "TCat", MAJOR, EPM),
-            AnalyteField("chloride", "Cl", MAJOR),
-            AnalyteField("chromium", "Cr", MINOR),
-            AnalyteField("cobalt", "Co", MINOR),
-            AnalyteField("copper 65", "Cu", MINOR),
-            AnalyteField("copper", "Cu", MINOR),
-            AnalyteField("fluoride", "F", MINOR),
-            AnalyteField("hardness", "HRD", MAJOR, MGL, method="As CaCO3"),
-            AnalyteField("iron", "Fe", MINOR),
-            AnalyteField("lead", "Pb", MINOR),
-            AnalyteField("lithium", "Li", MINOR),
-            AnalyteField("magnesium", "Mg", MAJOR),
-            AnalyteField("manganese", "Mn", MINOR),
-            AnalyteField("mercury", "Hg", MINOR),
-            AnalyteField("molybdenum 95", "Mo", MINOR),
-            AnalyteField("molybdenum", "Mo", MINOR),
-            AnalyteField("nickel", "Ni", MINOR),
-            AnalyteField("nitrate", "NO3", MINOR),
-            AnalyteField("nitrite", "NO2", MINOR),
-            AnalyteField("phosphate", "PO4", MINOR),
-            AnalyteField("percent difference", "IONBAL", MAJOR, PDIFF),
-            AnalyteField("potassium", "K", MAJOR),
-            AnalyteField("selenium", "Se", MINOR),
-            AnalyteField("siliconDioxide", "SiO2", MINOR),
-            AnalyteField("sio2", "SiO2", MINOR),
-            AnalyteField("silicon", "Si", MINOR),
-            AnalyteField("silver 107", "Ag", MINOR),
-            AnalyteField("silver", "Ag", MINOR),
-            AnalyteField("sodium", "Na", MAJOR),
-            AnalyteField("specific conductance", "CONDLAB", MAJOR, COND),
-            AnalyteField("strontium", "Sr", MINOR),
-            AnalyteField("sulfate", "SO4", MAJOR),
-            AnalyteField("tds calc", "TDS", MAJOR, method="Calculation"),
-            AnalyteField("thallium", "Tl", MINOR),
-            AnalyteField("thorium", "Th", MINOR),
-            AnalyteField("tin", "Sn", MINOR),
-            AnalyteField("titanium", "Ti", MINOR),
-            AnalyteField("uranium", "U", MINOR),
-            AnalyteField("vanadium", "V", MINOR),
-            AnalyteField("zinc 66", "Zn", MINOR),
-            AnalyteField("zinc", "Zn", MINOR),
-            AnalyteField("pH", "pHL", MAJOR, PH),
-            AnalyteField("ortho phosphate", "PO4", MINOR),
-        ]
+# Every known LIMS ``Param`` -> analyte mapping (ported from AMPAPI chemfile.py).
+_ANALYTE_MAPPINGS: list[AnalyteMapping] = [
+    AnalyteMapping("alkalinity as caco3", "ALK", MAJOR, method="As CaCO3"),
+    AnalyteMapping("aluminum", "Al", MINOR),
+    AnalyteMapping("anions total", "TAn", MAJOR, EPM),
+    AnalyteMapping("antimony 121", "Sb", MINOR),
+    AnalyteMapping("antimony 123", "Sb", MINOR),
+    AnalyteMapping("antimony", "Sb", MINOR),
+    AnalyteMapping("arsenic", "As", MINOR),
+    AnalyteMapping("barium", "Ba", MINOR),
+    AnalyteMapping("beryllium", "Be", MINOR),
+    AnalyteMapping("bicarbonate (hco3)", "HCO3", MAJOR, method="Alkalinity as HC03"),
+    AnalyteMapping("boron 11", "B", MINOR),
+    AnalyteMapping("boron", "B", MINOR),
+    AnalyteMapping("bromide", "Br", MINOR),
+    AnalyteMapping("cadmium 111", "Cd", MINOR),
+    AnalyteMapping("cadmium", "Cd", MINOR),
+    AnalyteMapping("calcium", "Ca", MAJOR),
+    AnalyteMapping("carbonate (co3)", "CO3", MAJOR),
+    AnalyteMapping("cations total", "TCat", MAJOR, EPM),
+    AnalyteMapping("chloride", "Cl", MAJOR),
+    AnalyteMapping("chromium", "Cr", MINOR),
+    AnalyteMapping("cobalt", "Co", MINOR),
+    AnalyteMapping("copper 65", "Cu", MINOR),
+    AnalyteMapping("copper", "Cu", MINOR),
+    AnalyteMapping("fluoride", "F", MINOR),
+    AnalyteMapping("hardness", "HRD", MAJOR, MGL, method="As CaCO3"),
+    AnalyteMapping("iron", "Fe", MINOR),
+    AnalyteMapping("lead", "Pb", MINOR),
+    AnalyteMapping("lithium", "Li", MINOR),
+    AnalyteMapping("magnesium", "Mg", MAJOR),
+    AnalyteMapping("manganese", "Mn", MINOR),
+    AnalyteMapping("mercury", "Hg", MINOR),
+    AnalyteMapping("molybdenum 95", "Mo", MINOR),
+    AnalyteMapping("molybdenum", "Mo", MINOR),
+    AnalyteMapping("nickel", "Ni", MINOR),
+    AnalyteMapping("nitrate", "NO3", MINOR),
+    AnalyteMapping("nitrite", "NO2", MINOR),
+    AnalyteMapping("phosphate", "PO4", MINOR),
+    AnalyteMapping("percent difference", "IONBAL", MAJOR, PDIFF),
+    AnalyteMapping("potassium", "K", MAJOR),
+    AnalyteMapping("selenium", "Se", MINOR),
+    AnalyteMapping("siliconDioxide", "SiO2", MINOR),
+    AnalyteMapping("sio2", "SiO2", MINOR),
+    AnalyteMapping("silicon", "Si", MINOR),
+    AnalyteMapping("silver 107", "Ag", MINOR),
+    AnalyteMapping("silver", "Ag", MINOR),
+    AnalyteMapping("sodium", "Na", MAJOR),
+    AnalyteMapping("specific conductance", "CONDLAB", MAJOR, COND),
+    AnalyteMapping("strontium", "Sr", MINOR),
+    AnalyteMapping("sulfate", "SO4", MAJOR),
+    AnalyteMapping("tds calc", "TDS", MAJOR, method="Calculation"),
+    AnalyteMapping("thallium", "Tl", MINOR),
+    AnalyteMapping("thorium", "Th", MINOR),
+    AnalyteMapping("tin", "Sn", MINOR),
+    AnalyteMapping("titanium", "Ti", MINOR),
+    AnalyteMapping("uranium", "U", MINOR),
+    AnalyteMapping("vanadium", "V", MINOR),
+    AnalyteMapping("zinc 66", "Zn", MINOR),
+    AnalyteMapping("zinc", "Zn", MINOR),
+    AnalyteMapping("pH", "pHL", MAJOR, PH),
+    AnalyteMapping("ortho phosphate", "PO4", MINOR),
+]
 
-    def values(self):
-        return self._map
+# Case-insensitive lookup by LIMS ``Param`` name.
+_ANALYTE_BY_PARAM: dict[str, AnalyteMapping] = {
+    m.lims_param.lower(): m for m in _ANALYTE_MAPPINGS
+}
 
-    def get(self, key, attr="xlsfield"):
-        if key is None:
-            return None
-        for p in self._map:
-            value = getattr(p, attr)
-            if not isinstance(value, (list, tuple)):
-                value = (value,)
-            for vi in value:
-                if str(vi).lower() == str(key).lower():
-                    return p
+
+def lookup_analyte(param: str | None) -> AnalyteMapping | None:
+    """Return the mapping for a LIMS ``Param`` name, or ``None`` if unknown."""
+    if param is None:
         return None
+    return _ANALYTE_BY_PARAM.get(str(param).strip().lower())
 
 
-FM = FMapper()
-
-# Target ORM model per FMapper table bucket.
+# Target ORM model per analyte table bucket.
 _TABLE_MODEL = {MAJOR: NMA_MajorChemistry, MINOR: NMA_MinorTraceChemistry}
 
 
@@ -176,7 +174,6 @@ class ChemistryMappingError(Exception):
 @dataclass
 class ChemistryUploadResult:
     exit_code: int
-    stdout: str
     stderr: str
     payload: dict[str, Any]
 
@@ -272,15 +269,15 @@ def prep_record(record: dict) -> dict:
     Raises :class:`ChemistryMappingError` when the row cannot be mapped.
     """
     param = _get(record, "Param")
-    pm = FM.get(param)
-    if pm is None:
+    mapping = lookup_analyte(param)
+    if mapping is None:
         raise ChemistryMappingError(f"Unmapped analyte Param={param!r}")
 
     pointid = _get(record, "SamplePointID") or _get(record, "CustomerSampleNumber")
     if not pointid:
         raise ChemistryMappingError("Missing SamplePointID")
 
-    units = pm.units or _get(record, "Results_Units")
+    units = mapping.units or _get(record, "Results_Units")
 
     reported = _get(record, "ReportedND")
     if reported is not None and str(reported).upper() == "ND":
@@ -294,9 +291,11 @@ def prep_record(record: dict) -> dict:
         symbol = None
 
     analysis_method = _get(record, "Method")
-    if pm.method:
+    if mapping.method:
         analysis_method = (
-            f"{analysis_method}, {pm.method}" if analysis_method else pm.method
+            f"{analysis_method}, {mapping.method}"
+            if analysis_method
+            else mapping.method
         )
 
     analysis_date = _to_datetime(_get(record, "AnalysisTime"))
@@ -304,8 +303,8 @@ def prep_record(record: dict) -> dict:
     wclab_id = _get(record, "SampleNumber")
 
     return {
-        "analyte": pm.dbanalyte,
-        "table": pm.table,
+        "analyte": mapping.analyte,
+        "table": mapping.table,
         "units": str(units) if units is not None else None,
         "symbol": symbol,
         "sample_value": sample_value,
@@ -453,7 +452,7 @@ def _build_measurement(
 
 
 def bulk_upload_chemistry(
-    source: Path | str | bytes, *, pretty_json: bool = False
+    source: Path | str | bytes,
 ) -> ChemistryUploadResult:
     """Ingest a LIMS ``.xlsx`` workbook into the NMA chemistry tables.
 
@@ -482,7 +481,6 @@ def bulk_upload_chemistry(
             validation_errors=[f"Could not read workbook: {exc}"],
             skipped_duplicates=[],
             created=[],
-            pretty_json=pretty_json,
         )
 
     processed = len(raw_records)
@@ -518,7 +516,6 @@ def bulk_upload_chemistry(
                 validation_errors=validation_errors,
                 skipped_duplicates=[],
                 created=[],
-                pretty_json=pretty_json,
             )
 
         # One sample = one lab sample (WCLab_ID) for a well.
@@ -588,7 +585,6 @@ def bulk_upload_chemistry(
         validation_errors=validation_errors,
         skipped_duplicates=skipped_duplicates,
         created=created,
-        pretty_json=pretty_json,
     )
 
 
@@ -599,7 +595,6 @@ def _result(
     validation_errors: list[str],
     skipped_duplicates: list[dict],
     created: list[dict],
-    pretty_json: bool,
 ) -> ChemistryUploadResult:
     rows_with_issues = len(validation_errors) + len(skipped_duplicates)
     payload = {
@@ -614,7 +609,6 @@ def _result(
         "skipped_duplicates": skipped_duplicates,
         "created_samples": created,
     }
-    stdout = json.dumps(payload, indent=2 if pretty_json else None)
     stderr_parts: list[str] = []
     if validation_errors:
         stderr_parts.append("\n".join(validation_errors))
@@ -626,9 +620,7 @@ def _result(
     stderr = "\n".join(stderr_parts)
     # Only a data-quality abort is a failure; skipped duplicates are idempotent.
     exit_code = 1 if validation_errors else 0
-    return ChemistryUploadResult(
-        exit_code=exit_code, stdout=stdout, stderr=stderr, payload=payload
-    )
+    return ChemistryUploadResult(exit_code=exit_code, stderr=stderr, payload=payload)
 
 
 # ============= EOF =============================================

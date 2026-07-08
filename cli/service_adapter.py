@@ -89,13 +89,13 @@ def water_levels_csv(source_file: Path | str, *, pretty_json: bool = False):
     return result
 
 
-def chemistry_lims_xlsx(source_file: Path | str, *, pretty_json: bool = False):
+def chemistry_lims_xlsx(source_file: Path | str):
     from services.chemistry_lims import bulk_upload_chemistry
 
     if isinstance(source_file, str):
         source_file = Path(source_file)
 
-    result = bulk_upload_chemistry(source_file, pretty_json=pretty_json)
+    result = bulk_upload_chemistry(source_file)
     if result.stderr:
         print(result.stderr, file=sys.stderr)
     return result
