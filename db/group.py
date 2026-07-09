@@ -19,6 +19,7 @@ from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy_utils import TSVectorType
 
 from core.constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -36,6 +37,9 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
     )
     group_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
+    search_vector: Mapped[TSVectorType] = mapped_column(
+        TSVectorType("name", "description", "group_type")
+    )
 
     # Foreign Keys
     parent_group_id: Mapped[Optional[int]] = mapped_column(
