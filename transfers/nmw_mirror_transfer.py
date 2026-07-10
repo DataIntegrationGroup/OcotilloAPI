@@ -353,7 +353,45 @@ def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
         inserted,
         len(errors),
     )
+
+    # The mirror load inserts explicit OBJECTID values, which does NOT advance
+    # the tables' identity sequences. Live inserts (the BDMS-960 submission
+    # endpoint) rely on those sequences, so realign them past the loaded max or
+    # the first submitted row would collide on the OBJECTID primary key.
+    reset_nmw_identity_sequences(session)
+
     return len(loaded), inserted, errors
+
+
+def reset_nmw_identity_sequences(session: Session) -> list[str]:
+    """Advance each NMW_ OBJECTID identity sequence past ``MAX(OBJECTID)``.
+
+    Safe to run any time; a no-op on tables with no OBJECTID sequence or no
+    rows. Returns the list of tables whose sequence was realigned.
+    """
+    realigned = []
+    for spec in NMW_MIRROR_SPECS:
+        table = spec.model.__table__
+        if "OBJECTID" not in table.columns:
+            continue
+        seq = session.execute(
+            text("SELECT pg_get_serial_sequence(:t, 'OBJECTID')"),
+            {"t": f'"{table.name}"'},
+        ).scalar()
+        if not seq:
+            continue
+        session.execute(
+            text(
+                f"SELECT setval(:seq, "
+                f'(SELECT COALESCE(MAX("OBJECTID"), 0) + 1 FROM "{table.name}"), '
+                f"false)"
+            ),
+            {"seq": seq},
+        )
+        realigned.append(table.name)
+    session.commit()
+    logger.info("Realigned %d NMW OBJECTID sequences", len(realigned))
+    return realigned
 
 
 def refresh_materialized_views(session: Session) -> list[str]:

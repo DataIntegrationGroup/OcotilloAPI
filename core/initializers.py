@@ -217,6 +217,7 @@ def register_api_routes(app):
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
     from api.feedback import router as feedback_router
+    from api.nmw import router as nmw_router
 
     app.include_router(asset_router)
     app.include_router(author_router)
@@ -233,6 +234,7 @@ def register_api_routes(app):
     app.include_router(thing_router)
     app.include_router(ngwmn_router)
     app.include_router(feedback_router)
+    app.include_router(nmw_router)
     add_pagination(app)
     app.state.api_routes_registered = True
 
