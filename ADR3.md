@@ -241,9 +241,6 @@ and OGC API - Features. pygeoapi owns the EDR observational surface.
   reliable. **Decided:** a collection-level query at a well returns the merged
   series (manual + transducer on one time axis); instances remain available to
   isolate a single transducer deployment (see Decision).
-- **Private-IP database access** — the facade must reach Cloud SQL over the
-  private IP path (`10.10.0.3`), consistent with the datastore convention noted
-  for GeoServer; public IP returns 502s.
 - **Publication gating** — enforce that only `visible` / QC-approved records
   reach EDR, ideally at the view layer so it cannot be bypassed.
 - **Units and vocabularies** — declare EDR parameter units and definitions from
@@ -262,8 +259,7 @@ and OGC API - Features. pygeoapi owns the EDR observational surface.
 - `GET /collections/water-chemistry/area?coords=...&parameter-name=...` returns
   the expected analyses for a polygon, filtered by analyte.
 - Only QC-approved / visible records appear in EDR responses.
-- The service reaches Cloud SQL over the private IP and passes a read-only
-  smoke test against production-shaped data.
+- The service passes a read-only smoke test against production-shaped data.
 - OpenAPI and conformance documents validate against the EDR spec.
 
 ## Notes
