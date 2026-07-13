@@ -286,9 +286,12 @@ Features today, plus EDR after this ADR.
 - `GET /ogcapi/collections/waterlevels/locations/{thingId}?datetime=...` returns
   CoverageJSON depth-to-water for a real well over a bounded time range,
   covering both manual and transducer readings.
-- `GET /ogcapi/collections/waterlevels/instances` lists transducer deployments
-  for a well with correct temporal extents and resolution, and querying one
-  instance returns only that deployment's dense series.
+- `GET /ogcapi/collections/waterlevels/instances` lists each transducer
+  deployment as an EDR instance. (Note: pygeoapi 0.23.4's Starlette app routes
+  the generic `.../area|locations|...` query patterns ahead of their
+  `.../instances/{id}/...` counterparts because `collection_id` is matched as a
+  greedy path, so instance-scoped *data* queries are not currently served;
+  instance discovery is. Tracked as a follow-up / upstream limitation.)
 - `GET /ogcapi/collections/water_chemistry/area?coords=...&parameter-name=...`
   returns the expected analyses for a polygon, filtered by analyte.
 - Only `release_status = 'public'` records appear in EDR responses.

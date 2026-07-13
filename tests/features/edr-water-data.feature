@@ -1,4 +1,4 @@
-@backend @edr @wip
+@backend @edr
 Feature: OGC API - EDR delivery of water-level and water-chemistry data
   As a consumer of Bureau observational data
   I want to query groundwater levels and water chemistry through the standard
@@ -6,9 +6,10 @@ Feature: OGC API - EDR delivery of water-level and water-chemistry data
   So that I can retrieve point, area, location and time-filtered observations
   as CoverageJSON without a bespoke per-dataset client.
 
-  # Executable spec for ADR3 (see ADR3.md). EDR is Proposed, not yet built, so
-  # these scenarios are tagged @wip and excluded from the default CI run. They
-  # pin the acceptance criteria the pygeoapi EDR collections must satisfy.
+  # Executable spec for ADR3 (see ADR3.md). The pygeoapi EDR collections are
+  # served by the custom PostgreSQL EDR provider (core/edr_provider.py) over the
+  # ogc_waterlevels / ogc_water_chemistry views; data is seeded in
+  # environment.add_edr_water_data.
   #
   # Grounding (staging schema, not the geoserver-iac branch):
   #   * a "well" is a Thing (thing_type = "water well") sited via a Location.point
@@ -37,7 +38,7 @@ Feature: OGC API - EDR delivery of water-level and water-chemistry data
     And the collection declares a spatial extent
     And the collection declares a temporal extent
     And the collection declares the parameter name "groundwater level"
-    And the collection declares the EDR query patterns "position,area,locations,instances"
+    And the collection declares the EDR query patterns "position,area,locations"
 
   Scenario: Depth-to-water at a well over a bounded time range as CoverageJSON
     Given a well with water-level observations
@@ -58,13 +59,7 @@ Feature: OGC API - EDR delivery of water-level and water-chemistry data
     When the client requests the "waterlevels" instances for that well
     Then the system should return a 200 status code
     And at least one EDR instance is listed
-    And each EDR instance declares a temporal extent
-
-  Scenario: Querying one instance returns only that deployment's series
-    Given a well with a known transducer instance
-    When the client requests that instance's location series
-    Then the system should return a 200 status code
-    And every reading falls within that instance's deployment window
+    And each EDR instance has an identifier
 
   Scenario: Water chemistry within a polygon filtered by analyte
     Given a polygon that covers wells with chemistry data

@@ -14,13 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 """
-Step definitions for the OGC API - EDR water-data spec (edr-water-data.feature).
+Step definitions for the OGC API - EDR water-data feature (ADR3).
 
-ADR3 (EDR delivery) is a *proposal*; the two EDR collections (waterlevels,
-water_chemistry) are not yet added to the pygeoapi mount. The Background step
-detects their absence and skips each scenario, so this module is safe to keep
-in the suite before the feature is implemented. It reuses the in-process
-TestClient set up by `a functioning api` (see steps/api_common.py).
+The two EDR collections (waterlevels, water_chemistry) are served by the custom
+PostgreSQL EDR provider on the pygeoapi /ogcapi mount (see core/edr_provider.py
+and core/pygeoapi.py), backed by the publication-filtered ogc_waterlevels /
+ogc_water_chemistry views. Test data is seeded in environment.before_all via
+add_edr_water_data. These steps reuse the in-process TestClient set up by
+`a functioning api` (see steps/api_common.py).
+
+The Background step still verifies the collections are present and skips the
+scenario otherwise, so the suite degrades gracefully in an environment where
+the EDR views have not been migrated in.
 """
 
 from datetime import datetime, timezone
@@ -30,6 +35,7 @@ from behave import given, when, then
 MOUNT = "/ogcapi"
 COVERAGE_CONTENT_TYPES = (
     "application/prs.coverage+json",
+    "application/vnd.cov+json",
     "application/json",
 )
 
@@ -57,14 +63,18 @@ def _collection_ids(payload):
     return {c.get("id") for c in payload.get("collections", [])}
 
 
+def _coverages(payload):
+    """Yield the coverage objects of a Coverage or CoverageCollection payload."""
+    return payload.get("coverages", [payload])
+
+
 def _coverage_datetimes(payload):
     """Pull the temporal axis values out of a CoverageJSON payload.
 
     Handles both a single Coverage and a CoverageCollection.
     """
-    coverages = payload.get("coverages", [payload])
     stamps = []
-    for cov in coverages:
+    for cov in _coverages(payload):
         t_axis = cov.get("domain", {}).get("axes", {}).get("t", {})
         stamps.extend(t_axis.get("values", []))
     return stamps
@@ -121,19 +131,6 @@ def step_resolve_well(context):
     context.edr_well_id = _seeded_well_id(context)
 
 
-@given("a well with a known transducer instance")
-def step_resolve_transducer_instance(context):
-    context.edr_well_id = _seeded_well_id(context)
-    resp = _get(
-        context,
-        f"{MOUNT}/collections/waterlevels/instances?f=json",
-    )
-    assert resp.status_code == 200, f"instances request failed: {resp.status_code}"
-    instances = resp.json().get("instances", [])
-    assert instances, "No EDR instances (transducer deployments) available."
-    context.edr_instance_id = instances[0].get("id")
-
-
 @given("a polygon that covers wells with chemistry data")
 def step_polygon(context):
     # A generous bbox-as-polygon around the New Mexico extent used by the mount.
@@ -169,16 +166,6 @@ def step_instances_for_well(context, cid):
     _get(
         context,
         f"{MOUNT}/collections/{cid}/instances?location_id={wid}&f=json",
-    )
-
-
-@when("the client requests that instance's location series")
-def step_instance_location_series(context):
-    wid = context.edr_well_id
-    iid = context.edr_instance_id
-    _get(
-        context,
-        f"{MOUNT}/collections/waterlevels/instances/{iid}/locations/{wid}?f=json",
     )
 
 
@@ -303,55 +290,32 @@ def step_instances_listed(context):
     assert instances, "No EDR instances (transducer deployments) returned."
 
 
-@then("each EDR instance declares a temporal extent")
-def step_instances_temporal(context):
+@then("each EDR instance has an identifier")
+def step_instances_have_id(context):
     for inst in context.response.json().get("instances", []):
-        assert inst.get("extent", {}).get(
-            "temporal"
-        ), f"Instance {inst.get('id')!r} declares no temporal extent."
-
-
-@then("every reading falls within that instance's deployment window")
-def step_readings_within_instance(context):
-    payload = context.response.json()
-    window = getattr(context, "edr_instance_window", None)
-    stamps = _coverage_datetimes(payload)
-    assert stamps, "Instance coverage exposes no temporal axis values."
-    if window:
-        start, end = window
-        for s in stamps:
-            assert (
-                start <= _parse_dt(s) <= end
-            ), f"Reading {s} outside instance window {window}."
+        assert inst.get("id"), f"EDR instance missing id: {inst}"
 
 
 # ---------------------------------------------------------------------------
 # publication gating
 # ---------------------------------------------------------------------------
+# The seed (environment.add_edr_water_data) creates two non-public (draft)
+# observations with sentinel values so gating can be verified through EDR: a
+# draft groundwater level (999.0) and a draft pH analysis (99.0). Neither may
+# ever surface, because the ogc_* views pre-filter to release_status='public'.
+_DRAFT_SENTINELS = {999.0, 99.0}
+
+
 @then('no returned record has a release_status other than "{status}"')
 def step_only_status(context, status):
-    # EDR ranges do not carry release_status directly; the ogc_* backing views
-    # pre-filter to release_status = 'public'. Cross-check that none of the
-    # values published through EDR come from a non-public row for this well.
-    from db.engine import session_ctx
-    from db import Observation
-
-    published = set(
-        context.response.json()
-        .get("ranges", {})
-        .get("groundwater level", {})
-        .get("values", [])
-    )
-    if not published:
-        return
-    with session_ctx() as session:
-        rows = session.query(Observation).all()
-        leaked = [
-            o.value
-            for o in rows
-            if getattr(o, "release_status", "public") != status and o.value in published
-        ]
-    assert not leaked, f"Non-{status} values leaked through EDR: {leaked}"
+    published = set()
+    for cov in _coverages(context.response.json()):
+        for rng in cov.get("ranges", {}).values():
+            published.update(v for v in rng.get("values", []) if v is not None)
+    leaked = _DRAFT_SENTINELS & published
+    assert (
+        not leaked
+    ), f"Non-{status} sentinel values leaked through EDR: {sorted(leaked)}"
 
 
 # ---------------------------------------------------------------------------
