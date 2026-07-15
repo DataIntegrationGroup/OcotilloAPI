@@ -54,7 +54,7 @@ resources:
           password: {postgres_password_env}
           search_path: [public]
         id_field: id
-        table: location
+        table: ogc_locations
         geom_field: point
 
   latest_depth_to_water_wells:
