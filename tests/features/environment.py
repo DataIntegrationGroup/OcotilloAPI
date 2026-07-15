@@ -832,10 +832,19 @@ def after_all(context):
 def before_scenario(context, scenario):
     # runs before EVERY scenario
     # e.g. reset test data, open browser, etc.
-    pass
+    if "migration-mutates-schema" in scenario.tags:
+        # Defense in depth against a previous, unrelated failure having
+        # already left the database below head.
+        command.upgrade(_alembic_config(), "head")
 
 
 def after_scenario(context, scenario):
+    if "migration-mutates-schema" in scenario.tags:
+        # Runs whether the scenario passed or failed, so a downgrade left
+        # mid-scenario never leaks into later scenarios/features sharing
+        # this database. Deliberately not gated on DROP_AND_REBUILD_DB,
+        # since these scenarios mutate schema regardless of that flag.
+        command.upgrade(_alembic_config(), "head")
 
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return
