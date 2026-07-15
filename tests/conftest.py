@@ -134,7 +134,7 @@ def location():
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
             county="Sierra",
-            release_status="draft",
+            release_status="public",
             state="NM",
             quad_name="Hillsboro Peak",
         )
@@ -182,7 +182,7 @@ def water_well_thing(location):
             name="Test Well",
             first_visit_date="2023-03-03",
             thing_type="water well",
-            release_status="draft",
+            release_status="public",
             well_depth=10,
             hole_depth=10,
             well_casing_diameter=5.0,
@@ -1041,7 +1041,7 @@ def observation_to_delete(water_chemistry_sample, sensor):
 def group(water_well_thing):
     with session_ctx() as session:
         group = Group(
-            release_status="draft",
+            release_status="public",
             name="Test Group",
             description="This is a test group.",
             project_area="MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))",
