@@ -44,9 +44,10 @@ def create_api_app():
     initialize_runtime()
     app = create_base_app()
     register_api_routes(app)
-    from core.pygeoapi import mount_pygeoapi
+    from core.pygeoapi import mount_pygeoapi, mount_pygeoapi_internal
 
     mount_pygeoapi(app)
+    mount_pygeoapi_internal(app)
     if os.environ.get("SESSION_SECRET_KEY"):
         configure_session_middleware(app)
     configure_cors_middleware(app)
