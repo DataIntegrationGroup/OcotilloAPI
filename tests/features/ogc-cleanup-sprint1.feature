@@ -178,38 +178,38 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A11 — Stand up authenticated internal OGC mount at /ogcapi-internal
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Anonymous request to internal OGC endpoint is rejected
     When an unauthenticated client requests /ogcapi-internal/collections
     Then the response HTTP status is 401
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Request with insufficient role to internal OGC endpoint is rejected
     Given the client presents a valid token with role "public-viewer"
     When the client requests /ogcapi-internal/collections
     Then the response HTTP status is 403
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Authenticated internal staff can access /ogcapi-internal collections
     Given an internal staff member with the required role is authenticated via Authentik
     When the staff member requests /ogcapi-internal/collections
     Then the response HTTP status is 200
     And the response includes collections not available on the public /ogcapi endpoint
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Internal collections expose private and draft records
     Given an authenticated internal staff member
     When the staff member requests items from the "water_wells" internal collection
     Then records with a release_status other than "public" are included in the response
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Internal database relations are separate from public relations
     Given the /ogcapi-internal mount has been deployed
     When the database schema is inspected
     Then the database schema contains relations prefixed with "ogc_internal_"
     And no ogc_internal_ relation is shared with the public /ogcapi endpoint
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Public /ogcapi surface is unaffected by the internal mount
     When a client requests /ogcapi/collections
     Then no collection in the response has an id prefixed "ogc_internal_"

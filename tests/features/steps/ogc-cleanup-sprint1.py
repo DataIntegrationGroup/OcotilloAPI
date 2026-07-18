@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Step definitions for A1 (public release_status filter on ogc_* views).
+"""Step definitions for A1 (public release_status filter on ogc_* views) and
+A11 (authenticated internal OGC mount at /ogcapi-internal).
 
-Only the @A1-tagged scenarios in ogc-cleanup-sprint1.feature are implemented
-here. The other ~10 tickets sharing that feature file have no steps yet and
-stay undefined/dormant, per this ticket's plan.
+Only the @A1- and @A11-tagged scenarios in ogc-cleanup-sprint1.feature are
+implemented here. The other ~9 tickets sharing that feature file have no
+steps yet and stay undefined/dormant, per this ticket's plan.
 """
 
 import importlib
+import os
 from datetime import date
+from unittest.mock import patch
 
 from alembic import command
 from behave import given, when, then
@@ -34,6 +37,7 @@ from core.dependencies import (
     admin_function,
     amp_admin_function,
 )
+from core.permissions import INTERNAL_OGC_GROUP
 from starlette.testclient import TestClient
 
 from db import (
@@ -668,6 +672,185 @@ def step_then_same_feature_count_as_before(context):
         assert (
             after_count == before_count
         ), f"{layer_id}: expected {before_count} features (unchanged), got {after_count}"
+
+
+# ---------------------------------------------------------------------------
+# A11 -- authenticated internal OGC mount (/ogcapi-internal)
+# ---------------------------------------------------------------------------
+#
+# tests/test_pygeoapi_mount.py's existing coverage and the "a functioning
+# api" step above both only touch FastAPI's app.dependency_overrides, which
+# has zero effect on ASGI middleware -- none of this codebase's existing
+# auth-testing infrastructure reaches InternalOGCAuthMiddleware for free.
+# The 401/403/200 scenarios below instead neutralize the ambient
+# AUTHENTIK_DISABLE_AUTHENTICATION dev-bypass (set for the whole bdd-tests CI
+# job) for the scenario's duration only, and control
+# core.permissions.decode_token_payload's return value directly, since no
+# real Authentik server is available in CI to issue a genuine JWT.
+
+
+def _neutralize_authentik_bypass(context):
+    """Temporarily force the dev-bypass off so InternalOGCAuthMiddleware's
+    real 401/403 logic actually runs, restored unconditionally afterward so
+    later scenarios relying on the global CI dev-bypass are unaffected.
+    """
+    original = os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION")
+    os.environ["AUTHENTIK_DISABLE_AUTHENTICATION"] = "0"
+
+    def _restore():
+        if original is None:
+            os.environ.pop("AUTHENTIK_DISABLE_AUTHENTICATION", None)
+        else:
+            os.environ["AUTHENTIK_DISABLE_AUTHENTICATION"] = original
+
+    context.add_cleanup(_restore)
+
+
+def _patch_decode_token_payload(context, groups):
+    patcher = patch(
+        "core.permissions.decode_token_payload", return_value={"groups": groups}
+    )
+    patcher.start()
+    context.add_cleanup(patcher.stop)
+
+
+def _teardown_a11_seed_data():
+    with session_ctx() as session:
+        session.execute(text("DELETE FROM thing WHERE name LIKE 'A11 %'"))
+        session.commit()
+
+
+@when("an unauthenticated client requests /ogcapi-internal/collections")
+def step_when_unauthenticated_client_requests_internal_collections(context):
+    _neutralize_authentik_bypass(context)
+    context.response = context.client.get("/ogcapi-internal/collections")
+
+
+@given('the client presents a valid token with role "{role}"')
+def step_given_client_presents_token_with_role(context, role):
+    _neutralize_authentik_bypass(context)
+    _patch_decode_token_payload(context, groups=[role])
+    context.auth_token = "a11-behave-test-token"
+
+
+@when("the client requests /ogcapi-internal/collections")
+def step_when_client_requests_internal_collections(context):
+    headers = {"Authorization": f"Bearer {context.auth_token}"}
+    context.response = context.client.get(
+        "/ogcapi-internal/collections", headers=headers
+    )
+
+
+@given("an internal staff member with the required role is authenticated via Authentik")
+def step_given_internal_staff_authenticated_via_authentik(context):
+    _neutralize_authentik_bypass(context)
+    _patch_decode_token_payload(context, groups=[INTERNAL_OGC_GROUP])
+    context.auth_token = "a11-behave-test-token"
+
+
+@when("the staff member requests /ogcapi-internal/collections")
+def step_when_staff_member_requests_internal_collections(context):
+    headers = {"Authorization": f"Bearer {context.auth_token}"}
+    context.response = context.client.get(
+        "/ogcapi-internal/collections", headers=headers
+    )
+
+
+@then("the response includes collections not available on the public /ogcapi endpoint")
+def step_then_response_includes_internal_only_collections(context):
+    payload = context.response.json()
+    collections = payload.get("collections", [])
+    assert collections, "internal endpoint returned no collections"
+    for collection in collections:
+        links = collection.get("links", [])
+        assert any("/ogcapi-internal" in link.get("href", "") for link in links), (
+            f"{collection.get('id')}: no self-link referencing /ogcapi-internal -- "
+            "expected each internal collection representation to be reachable "
+            "only via the internal mount, not the public /ogcapi endpoint"
+        )
+
+
+@given("an authenticated internal staff member")
+def step_given_an_authenticated_internal_staff_member(context):
+    # Relies on the ambient AUTHENTIK_DISABLE_AUTHENTICATION dev-bypass (set
+    # for the whole CI job) rather than a real token -- this scenario is
+    # about what the internal mount exposes, not auth semantics (covered
+    # separately by the 401/403/200 scenarios above).
+    with session_ctx() as session:
+        context.a11_seed_ids = {}
+        for status in STATUSES:
+            thing = _seed_thing_with_location(
+                session, "water well", status, f"A11 {status}"
+            )
+            context.a11_seed_ids[status] = thing.id
+    context.add_cleanup(_teardown_a11_seed_data)
+
+
+@when('the staff member requests items from the "{layer_id}" internal collection')
+def step_when_staff_member_requests_internal_collection_items(context, layer_id):
+    context.response = context.client.get(
+        f"/ogcapi-internal/collections/{layer_id}/items?limit=500"
+    )
+
+
+@then('records with a release_status other than "public" are included in the response')
+def step_then_non_public_records_included(context):
+    payload = context.response.json()
+    ids_present = _layer_feature_ids(payload)
+    non_public_ids = {context.a11_seed_ids["private"], context.a11_seed_ids["draft"]}
+    assert non_public_ids & ids_present, (
+        "expected the internal collection to include the seeded private/draft "
+        f"wells {non_public_ids}, got ids {ids_present}"
+    )
+
+
+@given("the /ogcapi-internal mount has been deployed")
+def step_given_internal_mount_has_been_deployed(context):
+    command.upgrade(_alembic_config(), "head")
+
+
+@when("the database schema is inspected")
+def step_when_database_schema_is_inspected(context):
+    with session_ctx() as session:
+        context.schema_relations = set(
+            session.execute(
+                text(
+                    "SELECT c.relname FROM pg_class c "
+                    "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    "WHERE c.relkind IN ('v', 'm') AND n.nspname = 'public'"
+                )
+            ).scalars()
+        )
+
+
+@then('the database schema contains relations prefixed with "{prefix}"')
+def step_then_schema_contains_relations_prefixed(context, prefix):
+    matching = {r for r in context.schema_relations if r.startswith(prefix)}
+    assert matching, f"expected at least one relation prefixed {prefix!r}, found none"
+
+
+@then("no ogc_internal_ relation is shared with the public /ogcapi endpoint")
+def step_then_no_internal_relation_shared_with_public(context):
+    internal = {r for r in context.schema_relations if r.startswith("ogc_internal_")}
+    assert internal, "no ogc_internal_ relations found in the schema"
+    for relation in internal:
+        public_equivalent = relation.replace("ogc_internal_", "ogc_", 1)
+        assert public_equivalent in context.schema_relations, (
+            f"{relation} has no distinct public counterpart ({public_equivalent}) in "
+            "the schema -- expected the two sets to coexist as separate relations"
+        )
+
+
+@when("a client requests /ogcapi/collections")
+def step_when_client_requests_ogcapi_collections(context):
+    context.response = context.client.get("/ogcapi/collections")
+
+
+@then('no collection in the response has an id prefixed "{prefix}"')
+def step_then_no_collection_id_prefixed(context, prefix):
+    payload = context.response.json()
+    offending = [c["id"] for c in payload["collections"] if c["id"].startswith(prefix)]
+    assert not offending, f"found collections with id prefixed {prefix!r}: {offending}"
 
 
 # ============= EOF =============================================
