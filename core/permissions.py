@@ -153,4 +153,36 @@ def _get_token_payload(token: str = Depends(oauth2_scheme)):
         )
 
 
+class TokenInvalid(Exception):
+    """Raised by decode_token_payload() for any JWT verification failure.
+
+    Not an HTTPException: this is called from raw ASGI middleware
+    (core/internal_ogc_auth.py), which has no FastAPI exception handler
+    watching, so raising HTTPException there would just be an unhandled
+    exception rather than the intended response.
+    """
+
+
+# Required Authentik group for the authenticated internal OGC mount
+# (/ogcapi-internal). Not Depends()-shaped like the roles above -- see the
+# cross-reference note in core/dependencies.py for why it still lives here.
+INTERNAL_OGC_GROUP = "OGCInternal"
+
+
+def decode_token_payload(token: str) -> dict:
+    """Same JWT verification as _get_token_payload (get_public_key/JWKS/
+    jwt.decode), but raises TokenInvalid instead of HTTPException(401).
+    """
+    try:
+        public_key = get_public_key(token)
+        return jwt.decode(
+            token,
+            public_key,
+            algorithms=ALGORITHMS,
+            audience=os.environ.get("AUTHENTIK_CLIENT_ID"),
+        )
+    except (JWTError, HTTPException) as e:
+        raise TokenInvalid(str(e)) from e
+
+
 # ============= EOF =============================================

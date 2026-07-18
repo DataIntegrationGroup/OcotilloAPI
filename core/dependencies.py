@@ -56,6 +56,12 @@ lexicon_admin_function = authenticated(permissions=["LexiconAdmin"])
 lexicon_editor_function = authenticated(permissions=["LexiconEditor"])
 
 
+# OGC-Internal Authentication/Permissions --------------------------------------
+# INTERNAL_OGC_GROUP ("OGCInternal") lives in core/permissions.py, not here --
+# it gates core/internal_ogc_auth.py's ASGI middleware in front of the
+# /ogcapi-internal mount, which runs outside FastAPI's Depends() machinery.
+
+
 # Testing-Specific Authentication/Permissions ----------------------------------
 no_permission_function = authenticated(permissions=["NoPermission"])
 
