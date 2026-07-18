@@ -1,30 +1,37 @@
-"""apply public release_status filter to ogc views
+"""create internal ogc views
 
-Restricts every ogc_* view/materialized view to release_status = 'public'
-so that published, unauthenticated OGC endpoints (/ogcapi) never expose
-private or draft records. Reversible: downgrade() recreates the same 22
-relations with the byte-identical unfiltered SQL that was in production
-before this migration, so "no predicate" is restored exactly rather than
-approximated.
+Companion migration to f4a5b6c7d8e9 (public release_status filter on ogc_*
+views): creates a second, unfiltered copy of the same 22 relations, named
+ogc_internal_<id>, backing the authenticated /ogcapi-internal mount
+(core/pygeoapi.py::mount_pygeoapi_internal). Full parity with the public
+set, per ticket A11 -- not a subset.
 
-ogc_actively_monitored_wells gets no predicate of its own -- it inherits
-public-only rows transitively once ogc_water_well_summary is filtered (see
-alembic/versions/w1x2y3z4a5b6_drop_child_release_filters_from_ngwmn_views.py
-for why an extra child-table release_status filter here would be wrong).
-Because it depends on ogc_water_well_summary via a direct JOIN, it must be
-dropped before ogc_water_well_summary and recreated after.
+The major/minor chemistry analyte-mapping CASE blocks and
+STATIC_ANALYTE_COLUMNS lists below are intentionally character-for-character
+identical (modulo view name) to their counterparts in f4a5b6c7d8e9 -- this
+codebase keeps migrations self-contained with no cross-migration imports, so
+the logic is duplicated here rather than shared. tests/test_migration_view_
+parity.py enforces the two stay in sync: if you fix an analyte mapping in
+one file, apply the same fix to the other.
 
-ogc_locations does not exist before this migration -- core/pygeoapi-config.yml
-points the locations collection directly at the raw location table. This
-migration creates ogc_locations for the first time (explicit column list,
-no SELECT *, matching every other view in this file) and a separate change
-repoints that one config line at it. Since ogc_locations never existed
-unfiltered in production, downgrade() drops it rather than recreating an
-unfiltered copy.
+ogc_internal_locations has no release_status predicate at all (unlike
+ogc_locations, which is always public-only) -- the internal mount is
+unfiltered by design, and ogc_internal_locations never existed before this
+migration in any form.
 
-Revision ID: f4a5b6c7d8e9
-Revises: y3z4a5b6c7d8
-Create Date: 2026-07-14 00:00:00.000000
+ogc_internal_actively_monitored_wells gets no predicate of its own -- like
+its public counterpart, it inherits whichever rows ogc_internal_water_well_
+summary exposes (here, all of them) transitively via a direct JOIN. Because
+of that JOIN, it must be dropped before ogc_internal_water_well_summary and
+recreated after (same ordering constraint as the public side).
+
+All 22 relations here are newly created by this migration -- none of them
+existed in any form beforehand -- so downgrade() simply drops them rather
+than recreating a prior state.
+
+Revision ID: 2d3c3a268652
+Revises: f4a5b6c7d8e9
+Create Date: 2026-07-16 00:00:00.000000
 """
 
 import re
@@ -34,8 +41,8 @@ from alembic import op
 from sqlalchemy import inspect, text
 
 # revision identifiers, used by Alembic.
-revision: str = "f4a5b6c7d8e9"
-down_revision: Union[str, Sequence[str], None] = "y3z4a5b6c7d8"
+revision: str = "2d3c3a268652"
+down_revision: Union[str, Sequence[str], None] = "f4a5b6c7d8e9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -66,11 +73,7 @@ WHERE lta.effective_end IS NULL
 ORDER BY lta.thing_id, lta.effective_start DESC
 """.strip()
 
-# The 11 thing-type views still in scope after
-# s4t5u6v7w8x9_drop_unused_well_type_ogc_views.py removed the well-subtype
-# variants (abandoned_wells, artesian_wells, dry_holes, dug_wells,
-# exploration_wells, injection_wells, monitoring_wells, observation_wells,
-# piezometers, production_wells, test_wells).
+# Same 11 thing-type views as f4a5b6c7d8e9's THING_VIEWS.
 THING_VIEWS = [
     ("water_wells", "water well"),
     ("springs", "spring"),
@@ -116,7 +119,7 @@ def _check_required_tables() -> None:
     missing = REQUIRED_TABLES - existing_tables
     if missing:
         raise RuntimeError(
-            "Cannot apply public release_status filter to OGC views. "
+            "Cannot create internal OGC views. "
             f"Missing required tables: {', '.join(sorted(missing))}"
         )
 
@@ -126,7 +129,7 @@ def _create_thing_view(view_id: str, thing_type: str, public_only: bool) -> str:
     escaped_thing_type = thing_type.replace("'", "''")
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE VIEW ogc_{safe_view_id} AS
+        CREATE VIEW ogc_internal_{safe_view_id} AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         )
@@ -159,7 +162,7 @@ def _create_thing_view(view_id: str, thing_type: str, public_only: bool) -> str:
 def _create_latest_depth_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_latest_depth_to_water_wells AS
+        CREATE MATERIALIZED VIEW ogc_internal_latest_depth_to_water_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -210,7 +213,7 @@ def _create_latest_depth_view(public_only: bool) -> str:
 def _create_avg_tds_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_avg_tds_wells AS
+        CREATE MATERIALIZED VIEW ogc_internal_avg_tds_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -256,7 +259,7 @@ def _create_avg_tds_view(public_only: bool) -> str:
 def _create_latest_tds_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE VIEW ogc_latest_tds_wells AS
+        CREATE VIEW ogc_internal_latest_tds_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -315,7 +318,7 @@ def _create_latest_tds_view(public_only: bool) -> str:
 def _create_depth_to_water_trend_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_depth_to_water_trend_wells AS
+        CREATE MATERIALIZED VIEW ogc_internal_depth_to_water_trend_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -380,7 +383,7 @@ def _create_depth_to_water_trend_view(public_only: bool) -> str:
 def _create_water_well_summary_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_water_well_summary AS
+        CREATE MATERIALIZED VIEW ogc_internal_water_well_summary AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -468,9 +471,8 @@ def _create_water_well_summary_view(public_only: bool) -> str:
 
 # Static analyte columns for major chemistry pivots.
 # Includes aliases observed in current DB values (e.g., Ca(total), IONBAL, TAn, TCat, Na+K).
-# Mirrored character-for-character (modulo view name) in
-# 2d3c3a268652_create_internal_ogc_views.py; tests/test_migration_view_parity.py
-# enforces the two stay in sync.
+# Kept character-for-character identical to f4a5b6c7d8e9's copy -- see
+# tests/test_migration_view_parity.py.
 STATIC_ANALYTE_COLUMNS_MAJOR: list[tuple[str, str]] = [
     ("tds", "tds"),
     ("calcium", "calcium"),
@@ -528,7 +530,7 @@ def _create_major_chemistry_results_view(public_only: bool) -> str:
     static_unit_columns = _major_chemistry_unit_columns()
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_major_chemistry_results AS
+        CREATE MATERIALIZED VIEW ogc_internal_major_chemistry_results AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -697,9 +699,8 @@ def _create_major_chemistry_results_view(public_only: bool) -> str:
     """
 
 
-# Mirrored character-for-character (modulo view name) in
-# 2d3c3a268652_create_internal_ogc_views.py; tests/test_migration_view_parity.py
-# enforces the two stay in sync.
+# Kept character-for-character identical to f4a5b6c7d8e9's copy -- see
+# tests/test_migration_view_parity.py.
 STATIC_ANALYTE_COLUMNS_MINOR: list[tuple[str, str]] = [
     ("h2r", "h2r"),
     ("o18r", "o18r"),
@@ -801,7 +802,7 @@ def _create_minor_chemistry_wells_view(public_only: bool) -> str:
     unit_columns = _minor_chemistry_unit_columns()
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_minor_chemistry_wells AS
+        CREATE MATERIALIZED VIEW ogc_internal_minor_chemistry_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -960,7 +961,7 @@ METERS_TO_FEET = 3.28084
 def _create_water_elevation_view(public_only: bool) -> str:
     release_filter = " AND t.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE MATERIALIZED VIEW ogc_water_elevation_wells AS
+        CREATE MATERIALIZED VIEW ogc_internal_water_elevation_wells AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -1027,13 +1028,14 @@ def _create_water_elevation_view(public_only: bool) -> str:
 
 
 def _create_actively_monitored_wells_view() -> str:
-    # No predicate of its own -- inherits public-only rows transitively via
-    # the JOIN to ogc_water_well_summary, which is itself filtered. Adding a
-    # filter on status_history.release_status here would repeat the mistake
-    # reverted in w1x2y3z4a5b6 (that column is never actually populated for
-    # this table).
+    # No predicate of its own -- inherits whatever rows
+    # ogc_internal_water_well_summary exposes (here, all of them)
+    # transitively via the JOIN below. Mirrors the public side's
+    # ogc_actively_monitored_wells, which likewise never filters on
+    # status_history.release_status directly (see
+    # w1x2y3z4a5b6_drop_child_release_filters_from_ngwmn_views.py for why).
     return """
-        CREATE VIEW ogc_actively_monitored_wells AS
+        CREATE VIEW ogc_internal_actively_monitored_wells AS
         WITH latest_monitoring_status AS (
             SELECT DISTINCT ON (sh.target_id)
                 sh.target_id AS thing_id,
@@ -1064,7 +1066,7 @@ def _create_actively_monitored_wells_view() -> str:
             wws.point
         FROM "group" AS g
         JOIN group_thing_association AS gta ON gta.group_id = g.id
-        JOIN ogc_water_well_summary AS wws ON wws.id = gta.thing_id
+        JOIN ogc_internal_water_well_summary AS wws ON wws.id = gta.thing_id
         JOIN latest_monitoring_status AS lms ON lms.thing_id = wws.id
         WHERE lower(trim(g.name)) = 'water level network'
           AND lms.status_value = 'Currently monitored'
@@ -1074,7 +1076,7 @@ def _create_actively_monitored_wells_view() -> str:
 def _create_project_areas_view(public_only: bool) -> str:
     release_filter = " AND g.release_status = 'public'" if public_only else ""
     return f"""
-        CREATE VIEW ogc_project_areas AS
+        CREATE VIEW ogc_internal_project_areas AS
         SELECT
             g.id,
             g.name,
@@ -1088,15 +1090,15 @@ def _create_project_areas_view(public_only: bool) -> str:
 
 
 def _create_locations_view() -> str:
-    # Explicit column list verified against db/location.py and its mixins
-    # (AutoBaseMixin/AuditMixin, ReleaseMixin, NotesMixin, DataProvenanceMixin).
-    # NotesMixin/DataProvenanceMixin add only polymorphic relationships, no
-    # real columns. Audit columns (created_at, created_by_*, updated_by_*)
-    # are deliberately excluded, matching every other view in this file --
-    # none of them expose those columns either, even for Thing's otherwise
-    # thorough column list.
+    # Unlike ogc_locations (always public-only, even on the public side's
+    # downgrade path), ogc_internal_locations has no release_status
+    # predicate at all -- the internal mount is unfiltered by design, and
+    # this relation never existed in any form before this migration.
+    # Column list matches ogc_locations exactly; see
+    # f4a5b6c7d8e9_apply_public_release_status_filter_to_ogc_views.py's
+    # _create_locations_view() for the db/location.py column verification.
     return """
-        CREATE VIEW ogc_locations AS
+        CREATE VIEW ogc_internal_locations AS
         SELECT
             l.id,
             l.nma_pk_location,
@@ -1113,170 +1115,190 @@ def _create_locations_view() -> str:
             l.elevation,
             l.point
         FROM location AS l
-        WHERE l.release_status = 'public'
     """
 
 
-def _recreate_governed_views(public_only: bool) -> None:
-    # ogc_actively_monitored_wells depends on ogc_water_well_summary via a
-    # direct JOIN; Postgres refuses to drop a materialized view while a
-    # dependent view exists, so it must go first and come back last.
-    _drop_view_or_materialized_view("ogc_actively_monitored_wells")
+def _recreate_all_internal_views() -> None:
+    # ogc_internal_actively_monitored_wells depends on
+    # ogc_internal_water_well_summary via a direct JOIN; Postgres refuses to
+    # drop a materialized view while a dependent view exists, so it must go
+    # first and come back last -- same ordering constraint as the public side.
+    _drop_view_or_materialized_view("ogc_internal_actively_monitored_wells")
 
     for view_id, thing_type in THING_VIEWS:
-        _drop_view_or_materialized_view(f"ogc_{_safe_view_id(view_id)}")
-        op.execute(text(_create_thing_view(view_id, thing_type, public_only)))
+        _drop_view_or_materialized_view(f"ogc_internal_{_safe_view_id(view_id)}")
+        op.execute(text(_create_thing_view(view_id, thing_type, public_only=False)))
 
-    _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
-    op.execute(text(_create_latest_depth_view(public_only)))
+    _drop_view_or_materialized_view("ogc_internal_latest_depth_to_water_wells")
+    op.execute(text(_create_latest_depth_view(public_only=False)))
     op.execute(
         text(
-            "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
-            "'Latest depth-to-water per well view for pygeoapi.'"
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_latest_depth_to_water_wells IS "
+            "'Unfiltered latest depth-to-water per well view for the internal pygeoapi mount.'"
         )
     )
     op.execute(
         text(
-            "CREATE UNIQUE INDEX ux_ogc_latest_depth_to_water_wells_id "
-            "ON ogc_latest_depth_to_water_wells (id)"
-        )
-    )
-
-    _drop_view_or_materialized_view("ogc_avg_tds_wells")
-    op.execute(text(_create_avg_tds_view(public_only)))
-    op.execute(
-        text(
-            "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
-            "'Average TDS per well from major chemistry results for pygeoapi.'"
-        )
-    )
-    op.execute(
-        text("CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)")
-    )
-
-    _drop_view_or_materialized_view("ogc_latest_tds_wells")
-    op.execute(text(_create_latest_tds_view(public_only)))
-    op.execute(
-        text(
-            "COMMENT ON VIEW ogc_latest_tds_wells IS "
-            "'Latest TDS per well from major chemistry results for pygeoapi.'"
+            "CREATE UNIQUE INDEX ux_ogc_internal_latest_depth_to_water_wells_id "
+            "ON ogc_internal_latest_depth_to_water_wells (id)"
         )
     )
 
-    _drop_view_or_materialized_view("ogc_depth_to_water_trend_wells")
-    op.execute(text(_create_depth_to_water_trend_view(public_only)))
+    _drop_view_or_materialized_view("ogc_internal_avg_tds_wells")
+    op.execute(text(_create_avg_tds_view(public_only=False)))
     op.execute(
         text(
-            "COMMENT ON MATERIALIZED VIEW ogc_depth_to_water_trend_wells IS "
-            "'Depth-to-water trend classification for water wells.'"
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_avg_tds_wells IS "
+            "'Unfiltered average TDS per well from major chemistry results for the internal pygeoapi mount.'"
         )
     )
     op.execute(
         text(
-            "CREATE UNIQUE INDEX ux_ogc_depth_to_water_trend_wells_id "
-            "ON ogc_depth_to_water_trend_wells (id)"
-        )
-    )
-
-    _drop_view_or_materialized_view("ogc_water_well_summary")
-    op.execute(text(_create_water_well_summary_view(public_only)))
-    op.execute(
-        text(
-            "COMMENT ON MATERIALIZED VIEW ogc_water_well_summary IS "
-            "'Summary statistics for water wells including water-level trend.'"
-        )
-    )
-    op.execute(
-        text(
-            "CREATE UNIQUE INDEX ux_ogc_water_well_summary_id "
-            "ON ogc_water_well_summary (id)"
+            "CREATE UNIQUE INDEX ux_ogc_internal_avg_tds_wells_id "
+            "ON ogc_internal_avg_tds_wells (id)"
         )
     )
 
-    _drop_view_or_materialized_view("ogc_major_chemistry_results")
-    op.execute(text(_create_major_chemistry_results_view(public_only)))
+    _drop_view_or_materialized_view("ogc_internal_latest_tds_wells")
+    op.execute(text(_create_latest_tds_view(public_only=False)))
     op.execute(
         text(
-            "COMMENT ON MATERIALIZED VIEW ogc_major_chemistry_results IS "
-            "'Latest major-chemistry analyte values per location, pivoted into static analyte columns.'"
-        )
-    )
-    op.execute(
-        text(
-            "CREATE UNIQUE INDEX ux_ogc_major_chemistry_results_id "
-            "ON ogc_major_chemistry_results (id)"
+            "COMMENT ON VIEW ogc_internal_latest_tds_wells IS "
+            "'Unfiltered latest TDS per well from major chemistry results for the internal pygeoapi mount.'"
         )
     )
 
-    _drop_view_or_materialized_view("ogc_minor_chemistry_wells")
-    op.execute(text(_create_minor_chemistry_wells_view(public_only)))
+    _drop_view_or_materialized_view("ogc_internal_depth_to_water_trend_wells")
+    op.execute(text(_create_depth_to_water_trend_view(public_only=False)))
     op.execute(
         text(
-            "COMMENT ON MATERIALIZED VIEW ogc_minor_chemistry_wells IS "
-            "'Latest minor/trace chemistry analyte values for water wells, pivoted into static analyte columns.'"
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_depth_to_water_trend_wells IS "
+            "'Unfiltered depth-to-water trend classification for water wells, for the internal pygeoapi mount.'"
         )
     )
     op.execute(
         text(
-            "CREATE UNIQUE INDEX ux_ogc_minor_chemistry_wells_id "
-            "ON ogc_minor_chemistry_wells (id)"
-        )
-    )
-
-    _drop_view_or_materialized_view("ogc_water_elevation_wells")
-    op.execute(text(_create_water_elevation_view(public_only)))
-    op.execute(
-        text(
-            "COMMENT ON MATERIALIZED VIEW ogc_water_elevation_wells IS "
-            "'Latest water elevation per well with explicit units: "
-            "elevation_m, depth_to_water_below_ground_surface_ft, water_elevation_ft.'"
-        )
-    )
-    op.execute(
-        text(
-            "CREATE UNIQUE INDEX ux_ogc_water_elevation_wells_id "
-            "ON ogc_water_elevation_wells (id)"
+            "CREATE UNIQUE INDEX ux_ogc_internal_depth_to_water_trend_wells_id "
+            "ON ogc_internal_depth_to_water_trend_wells (id)"
         )
     )
 
-    # Recreate now that ogc_water_well_summary exists again.
+    _drop_view_or_materialized_view("ogc_internal_water_well_summary")
+    op.execute(text(_create_water_well_summary_view(public_only=False)))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_water_well_summary IS "
+            "'Unfiltered summary statistics for water wells including water-level trend, for the internal pygeoapi mount.'"
+        )
+    )
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX ux_ogc_internal_water_well_summary_id "
+            "ON ogc_internal_water_well_summary (id)"
+        )
+    )
+
+    _drop_view_or_materialized_view("ogc_internal_major_chemistry_results")
+    op.execute(text(_create_major_chemistry_results_view(public_only=False)))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_major_chemistry_results IS "
+            "'Unfiltered latest major-chemistry analyte values per location, pivoted into static analyte columns, for the internal pygeoapi mount.'"
+        )
+    )
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX ux_ogc_internal_major_chemistry_results_id "
+            "ON ogc_internal_major_chemistry_results (id)"
+        )
+    )
+
+    _drop_view_or_materialized_view("ogc_internal_minor_chemistry_wells")
+    op.execute(text(_create_minor_chemistry_wells_view(public_only=False)))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_minor_chemistry_wells IS "
+            "'Unfiltered latest minor/trace chemistry analyte values for water wells, pivoted into static analyte columns, for the internal pygeoapi mount.'"
+        )
+    )
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX ux_ogc_internal_minor_chemistry_wells_id "
+            "ON ogc_internal_minor_chemistry_wells (id)"
+        )
+    )
+
+    _drop_view_or_materialized_view("ogc_internal_water_elevation_wells")
+    op.execute(text(_create_water_elevation_view(public_only=False)))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_internal_water_elevation_wells IS "
+            "'Unfiltered latest water elevation per well with explicit units: "
+            "elevation_m, depth_to_water_below_ground_surface_ft, water_elevation_ft, for the internal pygeoapi mount.'"
+        )
+    )
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX ux_ogc_internal_water_elevation_wells_id "
+            "ON ogc_internal_water_elevation_wells (id)"
+        )
+    )
+
+    # Recreate now that ogc_internal_water_well_summary exists again.
     op.execute(text(_create_actively_monitored_wells_view()))
     op.execute(
         text(
-            "COMMENT ON VIEW ogc_actively_monitored_wells IS "
-            "'Wells in the Water Level Network group for pygeoapi.'"
+            "COMMENT ON VIEW ogc_internal_actively_monitored_wells IS "
+            "'Unfiltered wells in the Water Level Network group, for the internal pygeoapi mount.'"
         )
     )
 
-    _drop_view_or_materialized_view("ogc_project_areas")
-    op.execute(text(_create_project_areas_view(public_only)))
+    _drop_view_or_materialized_view("ogc_internal_project_areas")
+    op.execute(text(_create_project_areas_view(public_only=False)))
     op.execute(
         text(
-            "COMMENT ON VIEW ogc_project_areas IS "
-            "'Project areas for groups with polygon boundaries for pygeoapi.'"
+            "COMMENT ON VIEW ogc_internal_project_areas IS "
+            "'Unfiltered project areas for groups with polygon boundaries, for the internal pygeoapi mount.'"
         )
     )
+
+    _drop_view_or_materialized_view("ogc_internal_locations")
+    op.execute(text(_create_locations_view()))
+    op.execute(
+        text(
+            "COMMENT ON VIEW ogc_internal_locations IS "
+            "'Unfiltered locations for the internal pygeoapi mount.'"
+        )
+    )
+
+
+# All 22 relations this migration creates, in an order safe for DROP (the
+# dependent view first, mirroring _recreate_all_internal_views's ordering).
+ALL_INTERNAL_RELATIONS = [
+    "ogc_internal_actively_monitored_wells",
+    *[f"ogc_internal_{view_id}" for view_id, _ in THING_VIEWS],
+    "ogc_internal_latest_depth_to_water_wells",
+    "ogc_internal_avg_tds_wells",
+    "ogc_internal_latest_tds_wells",
+    "ogc_internal_depth_to_water_trend_wells",
+    "ogc_internal_water_well_summary",
+    "ogc_internal_major_chemistry_results",
+    "ogc_internal_minor_chemistry_wells",
+    "ogc_internal_water_elevation_wells",
+    "ogc_internal_project_areas",
+    "ogc_internal_locations",
+]
 
 
 def upgrade() -> None:
     _check_required_tables()
-    _recreate_governed_views(public_only=True)
-
-    # ogc_locations does not exist before this migration -- see module
-    # docstring. Only ever created in its filtered form.
-    _drop_view_or_materialized_view("ogc_locations")
-    op.execute(text(_create_locations_view()))
-    op.execute(
-        text(
-            "COMMENT ON VIEW ogc_locations IS "
-            "'Public locations for pygeoapi, replacing the raw location table provider.'"
-        )
-    )
+    _recreate_all_internal_views()
 
 
 def downgrade() -> None:
-    _recreate_governed_views(public_only=False)
-
-    # ogc_locations never existed unfiltered in production; downgrading
-    # drops it rather than recreating an unfiltered copy.
-    _drop_view_or_materialized_view("ogc_locations")
+    # None of these 22 relations existed before this migration -- unlike
+    # f4a5b6c7d8e9's downgrade (which recreates the prior unfiltered public
+    # views), there is no prior state to restore, so downgrade just drops
+    # everything this migration created.
+    for relation in ALL_INTERNAL_RELATIONS:
+        _drop_view_or_materialized_view(relation)
