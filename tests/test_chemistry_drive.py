@@ -16,6 +16,9 @@
 """Tests for the Drive-polling chemistry sync (services/chemistry_drive.py)."""
 
 import io
+import sys
+import types
+from types import SimpleNamespace
 
 import pytest
 from openpyxl import Workbook
@@ -26,6 +29,7 @@ from db.nma_legacy import NMA_Chemistry_SampleInfo
 from services import chemistry_drive
 from services.chemistry_drive import (
     ChemistryDriveConfigError,
+    assert_folder_accessible,
     load_manifest,
     save_manifest,
     sync_and_ingest,
@@ -136,6 +140,85 @@ def test_missing_folder_raises(monkeypatch):
     monkeypatch.delenv("CHEMISTRY_DRIVE_FOLDER_ID", raising=False)
     with pytest.raises(ChemistryDriveConfigError):
         sync_and_ingest(folder_id=None)
+
+
+@pytest.mark.parametrize("bucket_name", ["", "   "])
+def test_missing_manifest_bucket_raises(monkeypatch, bucket_name):
+    """An unset GCS_BUCKET_NAME must fail as a config error, not an IndexError."""
+    monkeypatch.setenv("GCS_BUCKET_NAME", bucket_name)
+    with pytest.raises(ChemistryDriveConfigError, match="GCS_BUCKET_NAME"):
+        sync_and_ingest(folder_id="folder")
+
+
+def test_dry_run_missing_manifest_bucket_raises(monkeypatch):
+    """The dry run reads the manifest too, so it fails the same clean way."""
+    monkeypatch.delenv("GCS_BUCKET_NAME", raising=False)
+    with pytest.raises(ChemistryDriveConfigError, match="GCS_BUCKET_NAME"):
+        sync_and_ingest(folder_id="folder", dry_run=True)
+
+
+# ------------------------- folder access tests -------------------------------
+
+
+class _FakeHttpError(Exception):
+    """Stand-in for googleapiclient.errors.HttpError with a status code."""
+
+    def __init__(self, status):
+        super().__init__(f"HTTP {status}")
+        self.resp = SimpleNamespace(status=status)
+
+
+class _FakeFilesApi:
+    def __init__(self, error=None):
+        self._error = error
+        self.get_called_with = None
+
+    def get(self, **kwargs):
+        self.get_called_with = kwargs
+
+        def _execute():
+            if self._error:
+                raise self._error
+            return {"id": kwargs.get("fileId")}
+
+        return SimpleNamespace(execute=_execute)
+
+
+class _FakeDriveService:
+    def __init__(self, error=None):
+        self.files_api = _FakeFilesApi(error)
+
+    def files(self):
+        return self.files_api
+
+
+@pytest.fixture()
+def _fake_http_error(monkeypatch):
+    """Make the service module treat _FakeHttpError as googleapiclient's."""
+    module = types.ModuleType("googleapiclient.errors")
+    module.HttpError = _FakeHttpError
+    monkeypatch.setitem(sys.modules, "googleapiclient.errors", module)
+
+
+@pytest.mark.parametrize("status", [403, 404])
+def test_unshared_folder_raises_config_error(_fake_http_error, status):
+    """Drive returns notFound for an unshared folder; that must not look empty."""
+    service = _FakeDriveService(error=_FakeHttpError(status))
+    with pytest.raises(ChemistryDriveConfigError, match="not accessible"):
+        assert_folder_accessible("folder", service=service)
+
+
+def test_accessible_folder_passes(_fake_http_error):
+    service = _FakeDriveService()
+    assert_folder_accessible("folder", service=service) is None
+    assert service.files_api.get_called_with["fileId"] == "folder"
+
+
+def test_unexpected_http_error_is_not_swallowed(_fake_http_error):
+    """A 500 is a transient Drive fault, not a misconfiguration -- let it bubble."""
+    service = _FakeDriveService(error=_FakeHttpError(500))
+    with pytest.raises(_FakeHttpError):
+        assert_folder_accessible("folder", service=service)
 
 
 # ------------------------- sync tests ----------------------------------------

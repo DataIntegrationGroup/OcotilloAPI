@@ -60,7 +60,7 @@ DEFAULT_MANIFEST_PATH = "chemistry-ingest/manifest.json"
 
 
 class ChemistryDriveConfigError(Exception):
-    """The Drive folder is not configured (missing folder id)."""
+    """The ingest is not configured (missing folder id or manifest bucket)."""
 
 
 # --- Google Drive access -------------------------------------------------------
@@ -93,9 +93,34 @@ def get_drive_service():
     return build("drive", "v3", credentials=_drive_credentials(), cache_discovery=False)
 
 
+def assert_folder_accessible(folder_id: str, service=None) -> None:
+    """Fail loudly when the folder is missing or not shared with our identity.
+
+    Drive answers ``notFound`` for a folder the caller cannot see, so an
+    unshared folder is indistinguishable from an empty one on a plain list
+    call. Without this check a missing share reads as "nothing new to
+    ingest" and real lab batches sit unprocessed with a zero exit code.
+    """
+    from googleapiclient.errors import HttpError
+
+    service = service or get_drive_service()
+    try:
+        service.files().get(
+            fileId=folder_id, fields="id", supportsAllDrives=True
+        ).execute()
+    except HttpError as exc:
+        if exc.resp.status in (403, 404):
+            raise ChemistryDriveConfigError(
+                f"Drive folder {folder_id!r} is not accessible. Check the folder id, "
+                "and that the folder is shared with the account running the ingest."
+            ) from exc
+        raise
+
+
 def list_drive_xlsx(folder_id: str, service=None) -> list[dict]:
     """List non-trashed ``.xlsx`` files directly under ``folder_id``."""
     service = service or get_drive_service()
+    assert_folder_accessible(folder_id, service=service)
     query = (
         f"'{folder_id}' in parents "
         "and trashed = false "
@@ -146,8 +171,22 @@ def _manifest_path() -> str:
     return os.environ.get("CHEMISTRY_INGEST_MANIFEST_PATH", DEFAULT_MANIFEST_PATH)
 
 
+def _manifest_bucket():
+    """Resolve the manifest bucket, failing cleanly when it is unconfigured.
+
+    ``get_storage_bucket`` raises an opaque ``IndexError`` from deep inside the
+    storage client when the bucket name is empty, so check it here first.
+    """
+    if not (os.environ.get("GCS_BUCKET_NAME") or "").strip():
+        raise ChemistryDriveConfigError(
+            "No manifest bucket configured. Set GCS_BUCKET_NAME to the bucket "
+            "holding the chemistry ingest manifest."
+        )
+    return get_storage_bucket()
+
+
 def load_manifest(bucket=None) -> dict[str, dict]:
-    bucket = bucket or get_storage_bucket()
+    bucket = bucket or _manifest_bucket()
     blob = bucket.blob(_manifest_path())
     if not blob.exists():
         return {}
@@ -159,7 +198,7 @@ def load_manifest(bucket=None) -> dict[str, dict]:
 
 
 def save_manifest(manifest: dict[str, dict], bucket=None) -> None:
-    bucket = bucket or get_storage_bucket()
+    bucket = bucket or _manifest_bucket()
     blob = bucket.blob(_manifest_path())
     blob.upload_from_string(
         json.dumps(manifest, indent=2, sort_keys=True),
@@ -225,7 +264,7 @@ def sync_and_ingest(
             "No Drive folder configured. Set CHEMISTRY_DRIVE_FOLDER_ID or pass --folder-id."
         )
 
-    bucket = bucket or get_storage_bucket()
+    bucket = bucket or _manifest_bucket()
     manifest = load_manifest(bucket)
     files = list_drive_xlsx(folder_id, service=drive_service)
 
