@@ -1,7 +1,7 @@
 """dedupe NMW_WellLocations in the measurement OGC views
 
 Revision ID: a5b6c7d8e9f0
-Revises: y3z4a5b6c7d8
+Revises: z9a0b1c2d3e4
 Create Date: 2026-07-20
 
 ``NMW_WellLocations`` is keyed on ``OBJECTID``, not ``WellDataID``, so a single
@@ -34,7 +34,7 @@ from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision: str = "a5b6c7d8e9f0"
-down_revision: Union[str, Sequence[str], None] = "y3z4a5b6c7d8"
+down_revision: Union[str, Sequence[str], None] = "z9a0b1c2d3e4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -101,7 +101,9 @@ def _recreate_views(deduped: bool) -> None:
     # ogc_bht_measurements
     cte, loc_join, loc_where = _loc_parts(deduped, exclude_filter=False)
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_MEAS_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_BHT_MEAS_VIEW}" AS
         {cte}
         SELECT
@@ -133,12 +135,16 @@ def _recreate_views(deduped: bool) -> None:
         JOIN "NMW_WellHeaders"   AS hdr ON hdr."WellDataID" = r."WellDataID"
         {loc_join} = r."WellDataID"
         {loc_where}
-        """))
+        """
+        )
+    )
 
     # ogc_temp_depth_measurements
     cte, loc_join, loc_where = _loc_parts(deduped, exclude_filter=True)
     op.execute(text(f'DROP VIEW IF EXISTS "{_TEMP_DEPTH_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_TEMP_DEPTH_VIEW}" AS
         {cte}
         SELECT
@@ -175,12 +181,16 @@ def _recreate_views(deduped: bool) -> None:
         JOIN "NMW_WellHeaders"   AS hdr ON hdr."WellDataID" = r."WellDataID"
         {loc_join} = r."WellDataID"
         {loc_where}
-        """))
+        """
+        )
+    )
 
     # ogc_heat_flow
     cte, loc_join, loc_where = _loc_parts(deduped, exclude_filter=True)
     op.execute(text(f'DROP VIEW IF EXISTS "{_HEAT_FLOW_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_HEAT_FLOW_VIEW}" AS
         {cte}
         SELECT
@@ -253,7 +263,9 @@ def _recreate_views(deduped: bool) -> None:
         LEFT JOIN "NMW_WellZDatum" AS z  ON z."RecrdsetID"   = r."RecrdSetID"
         JOIN "NMW_Sources"        AS src ON src."SourceID"   = r."SourceID"
         {loc_where}
-        """))
+        """
+        )
+    )
 
     # ogc_dst -- the only view with a second CTE, so the location CTE has to be
     # spliced into the same WITH clause rather than prefixed.
@@ -264,7 +276,9 @@ def _recreate_views(deduped: bool) -> None:
         else "WITH flow_history AS ("
     )
     op.execute(text(f'DROP VIEW IF EXISTS "{_DST_VIEW}"'))
-    op.execute(text(f"""
+    op.execute(
+        text(
+            f"""
         CREATE VIEW "{_DST_VIEW}" AS
         {with_clause}
             SELECT
@@ -326,7 +340,9 @@ def _recreate_views(deduped: bool) -> None:
         LEFT JOIN "NMW_WsDstPressure" AS p ON p."DSTInterval" = i."DSTInterval"
         LEFT JOIN flow_history     AS fh  ON fh."DSTInterval" = i."DSTInterval"
         {loc_where}
-        """))
+        """
+        )
+    )
 
 
 def upgrade() -> None:
