@@ -50,6 +50,12 @@ cli/logs
 # deployment files
 app.yaml
 
+# terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
 #Codex
 .codex
 # Claude Code
