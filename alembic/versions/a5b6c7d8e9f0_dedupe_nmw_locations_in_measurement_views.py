@@ -1,7 +1,7 @@
 """dedupe NMW_WellLocations in the measurement OGC views
 
 Revision ID: a5b6c7d8e9f0
-Revises: y3z4a5b6c7d8
+Revises: z9a0b1c2d3e4
 Create Date: 2026-07-20
 
 ``NMW_WellLocations`` is keyed on ``OBJECTID``, not ``WellDataID``, so a single
@@ -34,7 +34,7 @@ from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision: str = "a5b6c7d8e9f0"
-down_revision: Union[str, Sequence[str], None] = "y3z4a5b6c7d8"
+down_revision: Union[str, Sequence[str], None] = "z9a0b1c2d3e4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

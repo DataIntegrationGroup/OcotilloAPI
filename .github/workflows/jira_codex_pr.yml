@@ -71,7 +71,7 @@ jobs:
       - name: Sync dependencies (pyproject/uv.lock)
         run: |
           set -euo pipefail
-          uv sync --all-extras --dev
+          uv sync --all-extras --dev --group cli
 
       - name: Verify tooling exists
         run: |
