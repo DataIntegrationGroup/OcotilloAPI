@@ -362,6 +362,23 @@ def dedupe_records(records: list[dict]) -> list[dict]:
 
 _SUFFIX_RE_TEMPLATE = r"^{base}([A-Z]+)$"
 
+# A PointID ending in letters is a *sample point* id, never a base well id:
+# ``WL-0434A`` is a sample point on well ``WL-0434``. The base must therefore
+# end in a non-letter (``WL-0434``, ``MG-030``) for the trailing letters to
+# count as an incrementor.
+_POINTID_SUFFIX_RE = re.compile(r"^(?P<base>.*[^A-Z])(?P<suffix>[A-Z]+)$")
+
+
+def split_pointid(pointid: str) -> tuple[str, str | None]:
+    """Split a PointID into its base well id and any supplied letter suffix.
+
+    ``WL-0434A`` -> ``("WL-0434", "A")``; ``WL-0434`` -> ``("WL-0434", None)``.
+    """
+    match = _POINTID_SUFFIX_RE.match(pointid)
+    if not match:
+        return pointid, None
+    return match.group("base"), match.group("suffix")
+
 
 def _resolve_thing_id(session: Session, pointid: str) -> int | None:
     things = session.scalars(select(Thing).where(Thing.name == pointid)).all()
@@ -496,7 +513,22 @@ def bulk_upload_chemistry(
 
     prepped = dedupe_records(prepped)
 
+    warnings: list[str] = []
+
     with session_ctx() as session:
+        # A workbook's SamplePointID may already carry a sample-point letter
+        # (WL-0434A). The well is always the base (WL-0434), so strip it before
+        # resolving; the supplied letter is checked against the computed one
+        # below.
+        supplied_suffixes: dict[str, str | None] = {}
+        for rec in prepped:
+            base, suffix = split_pointid(rec["samplepointid"])
+            rec["samplepointid"] = base
+            # Keep the first supplied suffix seen for the well; a workbook
+            # should not disagree with itself, and if it does the mismatch
+            # warning below still fires.
+            supplied_suffixes.setdefault(base, suffix)
+
         # Resolve every distinct (base) sample point to a Thing up front.
         base_pointids = sorted({r["samplepointid"] for r in prepped})
         thing_ids: dict[str, int | None] = {
@@ -549,7 +581,19 @@ def bulk_upload_chemistry(
                 max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
             )
             used_suffixes[thing_id].add(next_int)
-            sample_point_id = f"{base}{_int_to_suffix(next_int)}"
+            computed_suffix = _int_to_suffix(next_int)
+            sample_point_id = f"{base}{computed_suffix}"
+
+            # The workbook may have supplied its own letter. The computed one
+            # wins (it cannot collide with an existing sample point), but a
+            # disagreement is surfaced so a human can reconcile it.
+            supplied = supplied_suffixes.get(base)
+            if supplied is not None and supplied != computed_suffix:
+                warnings.append(
+                    f"{base}: workbook supplied sample point {base}{supplied}, "
+                    f"but the next free incrementor is {computed_suffix}; "
+                    f"loaded as {sample_point_id}."
+                )
 
             collection_date = next(
                 (r["sample_date"] for r in recs if r["sample_date"]), None
@@ -585,6 +629,7 @@ def bulk_upload_chemistry(
         validation_errors=validation_errors,
         skipped_duplicates=skipped_duplicates,
         created=created,
+        warnings=warnings,
     )
 
 
@@ -595,8 +640,10 @@ def _result(
     validation_errors: list[str],
     skipped_duplicates: list[dict],
     created: list[dict],
+    warnings: list[str] | None = None,
 ) -> ChemistryUploadResult:
-    rows_with_issues = len(validation_errors) + len(skipped_duplicates)
+    warnings = warnings or []
+    rows_with_issues = len(validation_errors) + len(skipped_duplicates) + len(warnings)
     payload = {
         "summary": {
             "total_rows_processed": processed,
@@ -606,12 +653,15 @@ def _result(
             "samples_skipped": len(skipped_duplicates),
         },
         "validation_errors": validation_errors,
+        "warnings": warnings,
         "skipped_duplicates": skipped_duplicates,
         "created_samples": created,
     }
     stderr_parts: list[str] = []
     if validation_errors:
         stderr_parts.append("\n".join(validation_errors))
+    if warnings:
+        stderr_parts.append("\n".join(warnings))
     if skipped_duplicates:
         dupes = ", ".join(
             f"{d['pointid']} (WCLab_ID {d['wclab_id']})" for d in skipped_duplicates

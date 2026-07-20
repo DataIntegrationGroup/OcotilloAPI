@@ -33,6 +33,7 @@ from services.chemistry_lims import (
     bulk_upload_chemistry,
     dedupe_records,
     prep_record,
+    split_pointid,
 )
 
 LIMS_HEADER = [
@@ -202,6 +203,65 @@ def test_bulk_upload_skips_duplicate_lab_sample(
             select(NMA_MajorChemistry).where(NMA_MajorChemistry.analyte == "Ca")
         ).all()
     assert len(rows_ca) == 1  # not duplicated
+
+
+@pytest.mark.parametrize(
+    "pointid,expected",
+    [
+        ("WL-0434", ("WL-0434", None)),
+        ("WL-0434A", ("WL-0434", "A")),
+        ("WL-0434AB", ("WL-0434", "AB")),
+        ("MG-030", ("MG-030", None)),
+        ("MG-030A", ("MG-030", "A")),
+        # Lowercase is not an incrementor, so a name ending in one is a base.
+        ("Test Well", ("Test Well", None)),
+        ("Test WellA", ("Test Well", "A")),
+    ],
+)
+def test_split_pointid(pointid, expected):
+    """A PointID ending in capitals is a sample point; the well is the base."""
+    assert split_pointid(pointid) == expected
+
+
+def test_bulk_upload_strips_supplied_suffix_to_find_the_well(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """A workbook naming sample point 'Test WellA' resolves to well 'Test Well'."""
+    _write_workbook(
+        tmp_path / "lims.xlsx",
+        [_lims_row("calcium", "12.5", pointid="Test WellA", SampleNumber="LAB-1")],
+    )
+
+    result = bulk_upload_chemistry(tmp_path / "lims.xlsx")
+
+    assert result.exit_code == 0, result.stderr
+    # Not 'Test WellAA' -- the supplied letter is not doubled.
+    assert result.payload["created_samples"][0]["sample_point_id"] == "Test WellA"
+    assert result.payload["warnings"] == []
+
+
+def test_bulk_upload_warns_when_supplied_suffix_disagrees(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """Computed letter wins; the disagreement is reported but does not fail."""
+    _write_workbook(
+        tmp_path / "first.xlsx",
+        [_lims_row("calcium", "12.5", pointid="Test WellA", SampleNumber="LAB-1")],
+    )
+    bulk_upload_chemistry(tmp_path / "first.xlsx")
+
+    # A second lab sample still labelled 'A', though 'B' is the next free one.
+    _write_workbook(
+        tmp_path / "second.xlsx",
+        [_lims_row("calcium", "9.9", pointid="Test WellA", SampleNumber="LAB-2")],
+    )
+    result = bulk_upload_chemistry(tmp_path / "second.xlsx")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["created_samples"][0]["sample_point_id"] == "Test WellB"
+    warnings = result.payload["warnings"]
+    assert len(warnings) == 1
+    assert "Test WellA" in warnings[0] and "Test WellB" in warnings[0]
 
 
 def test_bulk_upload_appends_new_lab_sample_with_next_suffix(

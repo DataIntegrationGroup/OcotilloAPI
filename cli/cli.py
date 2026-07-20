@@ -991,6 +991,7 @@ def water_chemistry_bulk_upload(
     payload = result.payload if isinstance(result.payload, dict) else {}
     summary = payload.get("summary", {})
     validation_errors = payload.get("validation_errors", [])
+    warnings = payload.get("warnings", [])
     created_samples = payload.get("created_samples", [])
     skipped_duplicates = payload.get("skipped_duplicates", [])
 
@@ -1044,6 +1045,12 @@ def water_chemistry_bulk_upload(
                 f"  - {dupe['pointid']} (WCLab_ID {dupe.get('wclab_id')})",
                 fg=colors["field"],
             )
+        typer.echo()
+
+    if warnings:
+        typer.secho("WARNINGS (loaded, but check these)", fg=colors["field"], bold=True)
+        for entry in warnings:
+            typer.secho(f"  - {entry}", fg=colors["field"])
         typer.echo()
 
     if validation_errors:
