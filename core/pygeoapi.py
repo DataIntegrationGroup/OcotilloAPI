@@ -104,6 +104,35 @@ THING_COLLECTIONS = [
 ]
 
 
+# OGC API - EDR collections (see ADR3). Each is backed by a publication-
+# filtered ogc_* view and served by the custom PostgreSQL EDR provider.
+EDR_COLLECTIONS = [
+    {
+        "id": "waterlevels",
+        "title": "Water Levels",
+        "description": (
+            "Depth-to-water observations (manual readings and continuous "
+            "transducer time series) served as OGC API - EDR coverages. "
+            "Each transducer deployment is exposed as an EDR instance."
+        ),
+        "keywords": ["groundwater", "water-level", "depth-to-water", "edr"],
+        "table": "ogc_waterlevels",
+        "instance_field": "deployment_id",
+    },
+    {
+        "id": "water_chemistry",
+        "title": "Water Chemistry",
+        "description": (
+            "Water-chemistry analyses keyed by analyte, served as OGC API - "
+            "EDR coverages."
+        ),
+        "keywords": ["water-chemistry", "analyte", "edr"],
+        "table": "ogc_water_chemistry",
+        "instance_field": None,
+    },
+]
+
+
 def _template_path() -> Path:
     return Path(__file__).resolve().parent / "pygeoapi-config.yml"
 
@@ -205,6 +234,55 @@ def _thing_collections_block(
     return textwrap.indent(block, "  ")
 
 
+def _edr_collections_block(
+    host: str,
+    port: str,
+    dbname: str,
+    user: str,
+    password_placeholder: str,
+) -> str:
+    resources: dict[str, dict] = {}
+    for collection in EDR_COLLECTIONS:
+        provider = {
+            "type": "edr",
+            "name": "core.edr_provider.WaterEDRProvider",
+            "data": {
+                "host": host,
+                "port": port,
+                "dbname": dbname,
+                "user": user,
+                "password": password_placeholder,
+            },
+            "id_field": "id",
+            "table": collection["table"],
+        }
+        if collection["instance_field"]:
+            provider["instance_field"] = collection["instance_field"]
+
+        resources[collection["id"]] = {
+            "type": "collection",
+            "title": collection["title"],
+            "description": collection["description"],
+            "keywords": collection["keywords"],
+            "extents": {
+                "spatial": {
+                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                },
+                "temporal": {"begin": None, "end": None},
+            },
+            "providers": [provider],
+        }
+
+    block = yaml.safe_dump(
+        resources,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=False,
+    ).rstrip()
+    return textwrap.indent(block, "  ")
+
+
 def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
     host = (
         (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip()
@@ -247,12 +325,23 @@ def _write_config(path: Path) -> None:
         postgres_db=dbname,
         postgres_user=user,
         postgres_password_env=password_placeholder,
-        thing_collections_block=_thing_collections_block(
-            host=host,
-            port=port,
-            dbname=dbname,
-            user=user,
-            password_placeholder=password_placeholder,
+        thing_collections_block="\n".join(
+            [
+                _thing_collections_block(
+                    host=host,
+                    port=port,
+                    dbname=dbname,
+                    user=user,
+                    password_placeholder=password_placeholder,
+                ),
+                _edr_collections_block(
+                    host=host,
+                    port=port,
+                    dbname=dbname,
+                    user=user,
+                    password_placeholder=password_placeholder,
+                ),
+            ]
         ),
     )
     # NOTE: The generated runtime config file at

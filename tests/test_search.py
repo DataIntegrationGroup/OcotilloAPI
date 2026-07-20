@@ -79,6 +79,33 @@ def test_search_api(
     ]
 
 
+def test_search_api_projects(group, water_well_thing):
+    response = client.get("/search", params={"q": "Test Group"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict)
+    items = data.get("items")
+    assert isinstance(items, list)
+
+    project_items = [item for item in items if item["group"] == "Projects"]
+    assert len(project_items) == 1
+    project_item = project_items[0]
+    assert project_item["label"] == group.name
+    assert project_item["properties"]["id"] == group.id
+    assert project_item["properties"]["description"] == group.description
+    assert project_item["properties"]["group_type"] == group.group_type
+    parent_group_id = project_item["properties"]["parent_group_id"]
+    assert parent_group_id == group.parent_group_id
+    assert project_item["properties"]["well_count"] == 1
+    assert project_item["properties"]["things"] == [
+        {
+            "label": water_well_thing.name,
+            "id": water_well_thing.id,
+            "thing_type": water_well_thing.thing_type,
+        },
+    ]
+
+
 @pytest.mark.skip(reason="This test is not working .")
 def test_search_api2():
     response = client.get("/search", params={"q": "riochama"})

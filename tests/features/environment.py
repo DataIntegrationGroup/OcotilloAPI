@@ -509,6 +509,95 @@ def add_geologic_formation(context, session, formation_code, well):
     return formation
 
 
+def add_edr_water_data(context, session, well, deployment):
+    """
+    Seed manual + transducer water-level and water-chemistry observations for a
+    well so the OGC API - EDR collections (ADR3) have data to serve.
+
+    Adds, for ``well``:
+      * a public FieldEvent -> FieldActivity -> Sample chain
+      * a public manual groundwater-level Observation (2022, in range)
+      * a public pH (chemistry) Observation
+      * non-public (draft) groundwater-level and pH Observations for the
+        publication-gating scenario
+    and promotes the already-seeded transducer deployment/observations to
+    release_status 'public'.
+    """
+    from sqlalchemy import text
+
+    lex_term = "(SELECT term FROM lexicon_term LIMIT 1)"
+
+    # Promote the seeded transducer data to public and give the deployment a
+    # bounded window + recording interval so it reads as an EDR instance.
+    session.execute(
+        text(
+            "UPDATE transducer_observation SET release_status = 'public' "
+            "WHERE deployment_id = :did"
+        ),
+        {"did": deployment.id},
+    )
+    session.execute(
+        text(
+            "UPDATE transducer_observation_block SET release_status = 'public' "
+            "WHERE thing_id = :tid"
+        ),
+        {"tid": well.id},
+    )
+    session.execute(
+        text(
+            "UPDATE deployment SET recording_interval = 15, "
+            "removal_date = installation_date "
+            "WHERE id = :did"
+        ),
+        {"did": deployment.id},
+    )
+
+    event_id = session.execute(
+        text(
+            "INSERT INTO field_event (thing_id, event_date, release_status) "
+            "VALUES (:tid, '2022-06-01T00:00:00Z', 'public') RETURNING id"
+        ),
+        {"tid": well.id},
+    ).scalar()
+    activity_id = session.execute(
+        text(
+            f"INSERT INTO field_activity "
+            f"(field_event_id, activity_type, release_status) "
+            f"VALUES (:eid, {lex_term}, 'public') RETURNING id"
+        ),
+        {"eid": event_id},
+    ).scalar()
+    sample_id = session.execute(
+        text(
+            f"INSERT INTO sample "
+            f"(field_activity_id, sample_date, sample_name, sample_matrix, "
+            f"sample_method, qc_type, release_status) "
+            f"VALUES (:aid, '2022-06-01T00:00:00Z', 'EDR-TEST-SAMPLE', "
+            f"{lex_term}, {lex_term}, 'Normal', 'public') RETURNING id"
+        ),
+        {"aid": activity_id},
+    ).scalar()
+
+    # parameter 1 = 'groundwater level', parameter 2 = 'pH' (init_parameter).
+    observations = [
+        (sample_id, 1, "2022-06-01T12:00:00Z", 42.5, "public"),
+        (sample_id, 2, "2022-06-01T12:00:00Z", 7.1, "public"),
+        (sample_id, 1, "2022-07-01T12:00:00Z", 999.0, "draft"),
+        (sample_id, 2, "2022-07-01T12:00:00Z", 99.0, "draft"),
+    ]
+    for sid, pid, dt, value, status in observations:
+        session.execute(
+            text(
+                "INSERT INTO observation "
+                "(sample_id, parameter_id, observation_datetime, value, unit, "
+                "release_status) VALUES (:sid, :pid, :dt, :val, 'ft', :st)"
+            ),
+            {"sid": sid, "pid": pid, "dt": dt, "val": value, "st": status},
+        )
+
+    session.commit()
+
+
 def _alembic_config() -> Config:
     root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     cfg = Config(os.path.join(root, "alembic.ini"))
@@ -715,6 +804,8 @@ def before_all(context):
             )
 
         session.commit()
+
+        add_edr_water_data(context, session, well_1, deployment)
 
         # the following needs to be refreshed to get all the new relationships
         session.refresh(well_1)
