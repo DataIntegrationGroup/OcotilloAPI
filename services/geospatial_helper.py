@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Iterator
+
 import shapefile
 from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
 from geoalchemy2.shape import to_shape
@@ -31,7 +33,7 @@ from db.thing import Thing
 
 def get_thing_features(
     session, thing_type: list | str | None, group: str | int | None
-) -> list:
+) -> Iterator:
     # sql = (
     #     select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
     #     .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
@@ -87,15 +89,29 @@ def get_thing_features(
         else:
             sql = sql.where(Group.id == group)
 
-    # unique needs to be invoked to prevent duplicates from eager loading
-    return session.execute(sql).unique().all()
+    # Stream the result with yield_per so the whole table is never buffered in
+    # memory at once. Thing has no eager-loaded collections (all relationships
+    # are lazy), so unique() is unnecessary -- and unique() is incompatible with
+    # yield_per anyway. Dedup defensively by id with a bounded set of ints in
+    # case the joins ever produce duplicate rows.
+    seen = set()
+    result = session.execute(sql.execution_options(yield_per=1000))
+    for row in result:
+        thing_id = row[0].id
+        if thing_id in seen:
+            continue
+        seen.add(thing_id)
+        yield row
 
 
 def create_shapefile(things: list, filename: str = "things.shp") -> None:
     # Create a point shapefile
     with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
-        shp.field("id", "L")
+        # Field schema must match the values written in shp.record() below:
+        # id (numeric), name (char), elevation (numeric).
+        shp.field("id", "N")
         shp.field("name", "C")
+        shp.field("elevation", "N", decimal=3)
 
         for thing, point, elevation in things:
             # Assume loc.point is WKT or a Shapely geometry or GeoJSON

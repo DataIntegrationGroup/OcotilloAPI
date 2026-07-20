@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.5](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.4...v1.1.5) (2026-07-07)
+
+
+### Bug Fixes
+
+* **deploy:** raise instance class to F4_1G to stop OOM instance churn ([ec012d6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ec012d60ff8b985e89c8a2ca4167b4f24cae8540))
+
+## [1.1.4](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.3...v1.1.4) (2026-07-07)
+
+
+### Bug Fixes
+
+* **ci:** deploy on inline workflow_call to CD (Production) ([8371f64](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8371f646b08363a578d339d99da8ebf5863d21c9))
+* **ci:** deploy on inline workflow_call to CD (Production) ([1a11ee9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1a11ee9e5237d33ce7b9ee7f093dad5e023436c6))
+
+## [1.1.3](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.2...v1.1.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* correct shapefile DBF schema and clean up temp dir on failure ([f63d9ce](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f63d9ce2d28ba190b63628f40c61edee09ac1a5e))
+* drop yield_per in get_thing_features (incompatible with unique) ([fa727c4](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fa727c42898e5d8791f248ff4dc0b5f43c7b3da2))
+* stop per-request OOM on /geospatial export endpoint ([d3a1358](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d3a1358f54b9b6d02a6187d0004ba44b2b365ed0))
+* stop per-request OOM on /geospatial export endpoint ([2ed12b6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2ed12b602a080d98e2025fc0e4edefdc341412ba))
+* stream get_thing_features with yield_per instead of buffering ([877fff8](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/877fff833755034e9c0f1b67ed3d6c74a92d4084))
+
+## [1.1.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.1...v1.1.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deploy:** align hotfix migration head with production DB (unblock v1.1.x deploy) ([1ee8a4b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1ee8a4b893027b851450d6ed98c811aea283c365))
+* **deploy:** align hotfix migration head with production DB + fix release tag passthrough ([790377f](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/790377f53e57c9f7671d45efbcab617189f2af36))
+
+## [1.1.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.0...v1.1.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deploy:** prevent App Engine request starvation under burst load ([fec7dbd](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fec7dbd2e0f59d6ce1c3319cda9fded5c6051eb8))
+* **deploy:** prevent App Engine request starvation under burst load ([385c974](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/385c9743185520b82034f0b1549d51c57781f9e9))
+
 ## [1.1.0](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.0.0...v1.1.0) (2026-06-08)
 
 

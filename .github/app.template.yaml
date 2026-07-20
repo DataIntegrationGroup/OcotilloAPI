@@ -2,12 +2,18 @@ service: ${SERVICE_NAME}
 runtime: python313
 entrypoint: ${ENTRYPOINT}
 service_account: "${CLOUD_SQL_USER}.gserviceaccount.com"
-instance_class: F4
+# F4_1G (2 GB) not F4 (1 GB): the entrypoint runs gunicorn -w 8, and eight
+# workers each importing the full stack (sqlalchemy + geoalchemy2 + shapely +
+# cloud-sql connector + pygeoapi) exceeded 1 GB. App Engine logged "using too
+# much memory and was terminated" ~44x/3h and cycled workers continuously
+# (304 "Booting worker", 297 SIGTERM in 3h), so every request re-cold-loaded.
+instance_class: F4_1G
 inbound_services:
   - warmup
 automatic_scaling:
   min_instances: ${MIN_INSTANCES}
   max_instances: ${MAX_INSTANCES}
+  max_concurrent_requests: 6
 handlers:
   - url: /.*
     secure: always
