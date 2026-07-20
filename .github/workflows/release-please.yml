@@ -14,8 +14,13 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      # In manifest mode, release-please-action exposes the unprefixed
+      # `release_created` boolean but only a PATH-SCOPED `.--tag_name` (the
+      # unprefixed `tag_name` comes through empty). Fall back to the path-scoped
+      # key so the tag reaches CD_production; without it the deploy job's
+      # `startsWith(inputs.tag_name, 'v')` gate silently skips the release.
+      release_created: ${{ steps.release.outputs.release_created || steps.release.outputs['.--release_created'] }}
+      tag_name: ${{ steps.release.outputs.tag_name || steps.release.outputs['.--tag_name'] }}
     steps:
       - id: release
         uses: googleapis/release-please-action@v5
