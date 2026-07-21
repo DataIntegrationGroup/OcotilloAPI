@@ -20,7 +20,7 @@ dependencies = [
   "attrs==26.1.0",
   "authlib==1.7.2",
   "bcrypt==4.3.0",
-  "cachetools==5.5.2",
+  "cachetools==7.1.4",
   "certifi==2026.6.17",
   "cffi==2.1.0",
   "charset-normalizer==3.4.9",
