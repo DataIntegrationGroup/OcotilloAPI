@@ -406,6 +406,11 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def get_transfers_data_path(name: str) -> Path:
+    # Explicit override wins: CSVs live flat in this dir (no nma_csv_cache subdir).
+    env_root = os.environ.get("TRANSFERS_DATA_DIR")
+    if env_root:
+        return Path(env_root) / Path(name).name
+
     def data_path(r):
         return Path(r) / "transfers" / "data"
 

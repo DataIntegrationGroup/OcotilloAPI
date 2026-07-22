@@ -326,7 +326,7 @@ def observation_model_patcher(
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(observation, key, value)
 
-    if user:
+    if isinstance(user, dict):
         observation.updated_by_id = user["sub"]
         observation.updated_by_name = user["name"]
 

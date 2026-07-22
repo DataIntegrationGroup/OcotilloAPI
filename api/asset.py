@@ -19,7 +19,7 @@ import time
 
 from fastapi import APIRouter, Depends, Form, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import ProgrammingError
 from starlette.concurrency import run_in_threadpool
 from starlette.status import (
@@ -38,9 +38,20 @@ from core.dependencies import (
 )
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
-from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
+from schemas.asset import (
+    AssetAssociationResponse,
+    AssetAssociationUpdate,
+    AssetResponse,
+    CreateAsset,
+    UpdateAsset,
+)
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
+from services.edit_notification_helper import (
+    EditEvent,
+    format_file_size,
+    notify_edit_event,
+)
 from services.env import get_bool_env
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id
@@ -345,6 +356,29 @@ async def upload_and_record_asset(
         raise
 
     session.refresh(asset)
+
+    thing_label = thing.name or f"Thing {thing_id}"
+    file_name = asset.name or file.filename or "attachment"
+
+    notify_edit_event(
+        user,
+        EditEvent(
+            action="attachment_uploaded",
+            resource_type="well" if thing.thing_type == "water well" else "thing",
+            resource_id=thing_id,
+            resource_label=thing_label,
+            summary=(
+                f"Uploaded {file_name} ({asset.mime_type}, "
+                f"{format_file_size(asset.size or file_size)}) to {thing_label}"
+            ),
+            metadata={
+                "file_name": file_name,
+                "mime_type": asset.mime_type,
+                "size": asset.size or file_size,
+                "asset_id": asset.id,
+            },
+        ),
+    )
     return asset
 
 
@@ -434,6 +468,33 @@ async def list_assets(
     return paginate(query=sql, conn=session, transformer=transformer)
 
 
+@router.get("/unassociated")
+async def list_unassociated_assets(
+    user: viewer_dependency,
+    session: session_dependency,
+) -> CustomPage[AssetResponse]:
+    """
+    List assets that are not associated with any Thing.
+    """
+    sql = (
+        select(Asset)
+        .outerjoin(AssetThingAssociation)
+        .where(AssetThingAssociation.asset_id.is_(None))
+        .order_by(Asset.id)
+    )
+
+    # Signed URLs are generated for thumbnail display on the frontend.
+    # The frontend paginates this endpoint and requests only 10 assets at a time,
+    # which limits GCP IAM calls and keeps signed URL generation manageable.
+    def transformer(records: list[Asset]):
+        from services.gcs_helper import add_signed_url
+
+        bucket = get_storage_bucket()
+        return [add_signed_url(asset, bucket) for asset in records]
+
+    return paginate(query=sql, conn=session, transformer=transformer)
+
+
 @router.get("/{asset_id}")
 async def get_asset(
     user: viewer_dependency,
@@ -453,6 +514,53 @@ async def get_asset(
 
 
 # PATCH ======================================================================
+@router.patch("/{asset_id}/association")
+async def update_asset_thing_association(
+    asset_id: int,
+    association_data: AssetAssociationUpdate,
+    session: session_dependency,
+    user: editor_dependency,
+) -> AssetAssociationResponse:
+    """
+    Move an asset to another Thing or remove its Thing association.
+
+    Passing a `thing_id` replaces any existing Thing links for the asset with
+    that one Thing. Passing `thing_id: null` leaves the Asset record in place
+    and removes all Thing links.
+    """
+    simple_get_by_id(session, Asset, asset_id)
+
+    thing_id = association_data.thing_id
+    thing = None
+    if thing_id is not None:
+        thing = session.get(Thing, thing_id)
+        if thing is None:
+            raise PydanticStyleException(
+                status_code=HTTP_409_CONFLICT,
+                detail=[
+                    {
+                        "loc": ["body", "thing_id"],
+                        "msg": f"Thing with ID {thing_id} not found.",
+                        "type": "value_error",
+                        "input": {"thing_id": thing_id},
+                    }
+                ],
+            )
+
+    association_delete = delete(AssetThingAssociation).where(
+        AssetThingAssociation.asset_id == asset_id
+    )
+    session.execute(association_delete)
+
+    if thing is not None:
+        assoc = AssetThingAssociation(asset_id=asset_id, thing_id=thing.id)
+        audit_add(user, assoc)
+        session.add(assoc)
+
+    session.commit()
+    return AssetAssociationResponse(asset_id=asset_id, thing_id=thing_id)
+
+
 @router.patch("/{asset_id}")
 async def update_asset(
     asset_id: int,
@@ -473,10 +581,7 @@ async def update_asset(
 async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):
-
-    # TODO: Interesting issue here. We don't have a way of tracking
-    # who deleted a record.
-    return model_deleter(session, Asset, asset_id)
+    return model_deleter(session, Asset, asset_id, user=user)
 
 
 @router.delete(

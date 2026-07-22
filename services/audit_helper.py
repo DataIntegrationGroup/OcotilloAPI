@@ -25,4 +25,10 @@ def audit_add(user: dict, obj: DeclarativeBase) -> None:
         obj.created_by_name = user["name"]
 
 
+def audit_update(user: dict, obj: DeclarativeBase) -> None:
+    if user and isinstance(user, dict):
+        obj.updated_by_id = user["sub"]
+        obj.updated_by_name = user["name"]
+
+
 # ============= EOF =============================================

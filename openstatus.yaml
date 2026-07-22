@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://www.openstatus.dev/schema.json
+#
+# OpenStatus monitoring-as-code for OcotilloAPI.
+# See docs/api-monitoring-options.md for the tool evaluation and rationale.
+#
+# Apply with the OpenStatus CLI (https://www.openstatus.dev/docs/cli):
+#   openstatus monitors apply --config openstatus.yaml
+# Authenticate first via `openstatus login` (or set the OpenStatus API key per
+# the CLI docs). `apply` diffs this file against the account and creates,
+# updates, or deletes monitors to match — this file is the source of truth.
+#
+# frequency/regions are set for the SaaS free tier (10m interval). Raise the
+# frequency and add regions once on a paid tier or self-hosted.
+
+ocotillo-api-production:
+  name: "OcotilloAPI — Production"
+  description: "Production OcotilloAPI health endpoint (FastAPI + PostGIS on App Engine)."
+  frequency: "10m"
+  active: true
+  # SaaS free tier allows a single region; add more (e.g. "lax", "ams") on a
+  # paid tier or self-hosted probes.
+  regions: ["iad"]
+  retry: 3
+  kind: http
+  request:
+    url: https://ocotillo-api.newmexicowaterdata.org/health
+    method: GET
+    headers:
+      User-Agent: openstatus
+  assertions:
+    # /health returns 503 when Postgres is unreachable (see core/app.py), so a
+    # 200 proves both the app process AND the database are healthy.
+    - kind: statusCode
+      compare: eq
+      target: 200
+    # Extra insurance: assert the JSON "db" field is explicitly ok. Requires the
+    # DB-check /health (PR #773, > v1.1.5) to be live in production; enable once
+    # that release has deployed to prod.
+    # - kind: textBody
+    #   compare: contains
+    #   target: '"db":"ok"'
+
+# Staging monitor — uncomment to also watch staging (counts against the SaaS
+# free-tier one-monitor limit; enable on a paid tier or self-host).
+# ocotillo-api-staging:
+#   name: "OcotilloAPI — Staging"
+#   description: "Staging OcotilloAPI health endpoint."
+#   frequency: "10m"
+#   active: true
+#   regions: ["iad"]
+#   retry: 3
+#   kind: http
+#   request:
+#     url: https://ocotillo-api-staging.newmexicowaterdata.org/health
+#     method: GET
+#     headers:
+#       User-Agent: openstatus
+#   assertions:
+#     - kind: statusCode
+#       compare: eq
+#       target: 200

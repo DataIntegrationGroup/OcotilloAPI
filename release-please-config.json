@@ -21,9 +21,7 @@
   ],
   "packages": {
     ".": {
-      "package-name": "OcotilloAPI",
-      "prerelease": true,
-      "prerelease-type": "rc"
+      "package-name": "OcotilloAPI"
     }
   }
 }

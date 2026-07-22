@@ -48,8 +48,7 @@
 ### Features
 
 * add app.template.yaml for dynamic app configuration and update CI/CD scripts to render app.yaml ([9274d83](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/9274d830a464215286f4c8c470ca87f54f5f8ebf))
-* add auto-generation prefix extraction for well IDs with new regex support ([dcd49b4](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dcd49b40c622e31e6539998429e02c07c85a8c60))
-* add auto-generation prefix extraction for well IDs with new regex support ([3c11d05](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/3c11d0592792e65d914d013c8140eed7e2ee5b62))
+* add auto-generation prefix extraction for well IDs with new regex support ([dcd49b4](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dcd49b40c622e31e6539998429e02c07c85a8c60)) ([3c11d05](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/3c11d0592792e65d914d013c8140eed7e2ee5b62))
 * add command to import project area boundaries and create associated OGC view ([919222e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/919222e81c47fa29c6dbfc2920412a70fb3903f0))
 * add Dockerfile to set up PostGIS with pg_cron for scheduled tasks ([dc424cf](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dc424cf0fde24bda9957ee5b7e236287aa464979))
 * add field event limit to well details API and enhance response validation ([ac76eba](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ac76eba0cf1430fd9ec147be34063d747ff933f7))

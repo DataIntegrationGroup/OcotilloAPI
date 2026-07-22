@@ -21,11 +21,13 @@ from datetime import timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from api.asset import get_storage_bucket
 from main import app
 from core.dependencies import viewer_function, admin_function, editor_function
-from db import Asset
+from db.engine import session_ctx
+from db import Asset, AssetThingAssociation, Thing
 from schemas import DT_FMT
 from services import gcs_helper
 from tests import (
@@ -304,6 +306,21 @@ def test_get_assets_thing_id(asset_with_associated_thing, water_well_thing):
         )
 
 
+def test_get_unassociated_assets(asset, asset_with_associated_thing):
+    with patch(
+        "api.asset.get_storage_bucket",
+        return_value=MockStorageBucket(),
+    ):
+        response = client.get("/asset/unassociated")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == asset.id
+        expected_signed_url = MockBlob().generate_signed_url()
+        assert data["items"][0]["signed_url"] == expected_signed_url
+        assert data["items"][0]["id"] != asset_with_associated_thing.id
+
+
 def test_get_asset_by_id(asset):
     response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
@@ -332,6 +349,105 @@ def test_get_asset_by_id_404_not_found(asset):
 
 
 # PATCH tests ================================================================
+
+
+def test_patch_asset_association_moves_asset_to_another_thing(
+    asset_with_associated_thing, water_well_thing
+):
+    with session_ctx() as session:
+        other_thing = Thing(
+            name="Other Test Well",
+            thing_type="water well",
+            release_status="draft",
+        )
+        session.add(other_thing)
+        session.commit()
+        session.refresh(other_thing)
+        other_thing_id = other_thing.id
+
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": other_thing_id},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "asset_id": asset_with_associated_thing.id,
+        "thing_id": other_thing_id,
+    }
+
+    with session_ctx() as session:
+        asset_association_matches = (
+            AssetThingAssociation.asset_id == asset_with_associated_thing.id
+        )
+        thing_id_query = select(AssetThingAssociation.thing_id).where(
+            asset_association_matches
+        )
+        thing_ids = session.scalars(thing_id_query).all()
+        assert thing_ids == [other_thing_id]
+        assert water_well_thing.id not in thing_ids
+
+        session.delete(session.get(Thing, other_thing_id))
+        session.commit()
+
+
+def test_patch_asset_association_disassociates_asset(
+    asset_with_associated_thing,
+):
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": None},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "asset_id": asset_with_associated_thing.id,
+        "thing_id": None,
+    }
+
+    with session_ctx() as session:
+        asset = session.get(Asset, asset_with_associated_thing.id)
+        asset_association_matches = (
+            AssetThingAssociation.asset_id == asset_with_associated_thing.id
+        )
+        association = session.scalars(
+            select(AssetThingAssociation).where(asset_association_matches)
+        ).one_or_none()
+
+    assert asset is not None
+    assert association is None
+
+
+def test_patch_asset_association_bad_thing_id(asset_with_associated_thing):
+    bad_thing_id = 99999
+
+    response = client.patch(
+        f"/asset/{asset_with_associated_thing.id}/association",
+        json={"thing_id": bad_thing_id},
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    expected_message = f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["msg"] == expected_message
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+
+
+def test_patch_asset_association_bad_asset_id():
+    bad_asset_id = 99999
+
+    response = client.patch(
+        f"/asset/{bad_asset_id}/association",
+        json={"thing_id": None},
+    )
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_asset_id} not found."
 
 
 def test_patch_asset(asset):
@@ -372,6 +488,36 @@ def test_delete_asset(second_asset):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Asset with ID {second_asset.id} not found."
+
+
+def test_delete_asset_notifies_slack(second_asset, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv(
+        "SLACK_EDITS_WEBHOOK_URL",
+        "https://hooks.slack.test/edit",
+    )
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    response = client.delete(f"/asset/{second_asset.id}")
+
+    assert response.status_code == 204
+    assert len(calls) == 1
+    assert calls[0][0] == "https://hooks.slack.test/edit"
+    payload = calls[0][1]
+    assert payload["text"].startswith("[UNKNOWN] Record deleted")
+    what_field = next(
+        field
+        for field in payload["blocks"][1]["fields"]
+        if field["text"].startswith("*What:*")
+    )
+    assert f"Deleted asset {second_asset.name}" in what_field["text"]
 
 
 def test_delete_asset_404_not_found(second_asset):
@@ -450,6 +596,76 @@ def test_upload_and_record_asset_duplicate_returns_existing(water_well_thing):
     assert second.json()["id"] == first_id
 
     cleanup_post_test(Asset, first_id)
+
+
+def test_upload_and_record_asset_notifies_slack(water_well_thing, monkeypatch):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    path = "tests/data/riochama.png"
+    with open(path, "rb") as f:
+        response = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id, "label": "Slack test photo"},
+            files={"file": ("slack-test.png", f, "image/png")},
+        )
+
+    assert response.status_code == 201
+    assert len(calls) == 1
+    payload = calls[0][1]
+    assert water_well_thing.name in payload["text"]
+    what_field = next(
+        field
+        for field in payload["blocks"][1]["fields"]
+        if field["text"].startswith("*What:*")
+    )
+    assert "slack-test.png" in what_field["text"]
+
+    cleanup_post_test(Asset, response.json()["id"])
+
+
+def test_upload_and_record_asset_duplicate_does_not_notify_slack(
+    water_well_thing, monkeypatch
+):
+    calls: list[tuple[str, dict]] = []
+
+    def _capture(webhook_url: str, payload: dict) -> None:
+        calls.append((webhook_url, payload))
+
+    monkeypatch.setenv("SLACK_EDITS_WEBHOOK_URL", "https://hooks.slack.test/edit")
+    monkeypatch.setattr(
+        "services.edit_notification_helper._post_slack_async",
+        _capture,
+    )
+
+    path = "tests/data/riochama.png"
+    with open(path, "rb") as f:
+        first = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert first.status_code == 201
+    assert len(calls) == 1
+
+    with open(path, "rb") as f:
+        second = client.post(
+            "/asset/upload-and-record",
+            data={"thing_id": water_well_thing.id},
+            files={"file": ("riochama.png", f, "image/png")},
+        )
+    assert second.status_code == 201
+    assert len(calls) == 1
+
+    cleanup_post_test(Asset, first.json()["id"])
 
 
 def test_upload_and_record_asset_bad_thing_id():

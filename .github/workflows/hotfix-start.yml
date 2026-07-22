@@ -5,8 +5,9 @@ name: hotfix-start
 #   1. Run this workflow (optionally pin base_tag; default = latest v*.*.*).
 #   2. Push fix commit(s) to the new hotfix/vX.Y.(Z+1) branch via PR.
 #   3. release-please opens a Release PR on the hotfix branch.
-#   4. Merge it -> tag vX.Y.(Z+1) -> CD (Production) deploys.
-#   5. Open a forward-merge PR from hotfix/vX.Y.(Z+1) back into production.
+#   4. Merge it -> tag vX.Y.(Z+1) -> CD (Production) deploys, and a
+#      forward-merge PR into production is opened automatically
+#      (forward-merge.yml).
 
 on:
   workflow_dispatch:
@@ -23,7 +24,7 @@ jobs:
   create-hotfix-branch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
@@ -71,6 +72,26 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "${{ steps.next.outputs.branch }}" "${{ steps.base.outputs.tag }}"
+
+          # Backport the CD (Production) inline-deploy gate fix. Tags cut before
+          # the fix carry a gate keyed on `github.event_name == 'workflow_call'`,
+          # which is NEVER true inside a called workflow (it inherits the
+          # caller's `push` event), so release-please's inline deploy silently
+          # skips `production-deploy` and the hotfix never ships. Rewrite the
+          # gate to key on `inputs.tag_name` (empty on the release path, so `||`
+          # still falls through). SURGICAL edit only — do not copy the whole
+          # file from the default branch, whose deploy steps may not match this
+          # tag's code.
+          f=.github/workflows/CD_production.yml
+          if [ -f "$f" ] && grep -qF "github.event_name == 'workflow_call'" "$f"; then
+            sed -i "s#(github.event_name == 'workflow_call' && inputs.tag_name) || github.event.release.tag_name#inputs.tag_name || github.event.release.tag_name#g" "$f"
+            git add "$f"
+            git commit -m "ci: backport CD (Production) inline-deploy gate fix"
+            echo "Backported CD (Production) deploy-gate fix onto ${{ steps.next.outputs.branch }}."
+          else
+            echo "CD (Production) deploy gate already current; no backport needed."
+          fi
+
           git push origin "${{ steps.next.outputs.branch }}"
 
       - name: Summary
@@ -85,6 +106,6 @@ jobs:
             echo "Next steps:"
             echo "1. Open a fix PR targeting \`${{ steps.next.outputs.branch }}\` (Conventional Commit title, \`fix:\` prefix)."
             echo "2. After merge, release-please will open a Release PR on the hotfix branch."
-            echo "3. Merge the Release PR -> tag \`v${{ steps.next.outputs.version }}\` -> CD (Production) deploys."
-            echo "4. Open a forward-merge PR \`${{ steps.next.outputs.branch }}\` -> \`production\`."
+            echo "3. Merge the Release PR -> tag \`v${{ steps.next.outputs.version }}\` -> CD (Production) deploys and a forward-merge PR \`${{ steps.next.outputs.branch }}\` -> \`production\` opens automatically."
+            echo "4. After merging that PR, run the \`forward-merge\` workflow (source_branch=production) to propagate the hotfix to \`staging\`."
           } >> "$GITHUB_STEP_SUMMARY"
