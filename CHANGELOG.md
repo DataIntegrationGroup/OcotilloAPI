@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.2.0](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.5...v1.2.0) (2026-07-22)
+
+
+### Features
+
+* **api/search:** add groups/projects to search ([271f850](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/271f850c643f2a07b5fcc85ede65e19c64d135d2))
+* **cli:** add chemistry LIMS ingestion with Google Drive sync ([e13c5c3](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/e13c5c3a23f49a93163973f610a7ed59243314df))
+* **cli:** chemistry LIMS ingestion with Google Drive sync (BDMS-1034) ([195be59](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/195be594e542092624369e3e6db36903650f499e))
+* **edr:** implement OGC API - EDR water collections and BDD spec ([7b32233](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7b322330e4691f27ef754d36b7910e8879ca0f42))
+* **monitoring:** add OpenStatus monitoring-as-code config ([afd7775](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/afd77756e3c6bee57fa9260fc97259085d2b7ef2))
+* **monitoring:** add OpenStatus monitoring-as-code config ([c4f7dc7](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/c4f7dc734c78f10f1f33f44c29d2a55485e313b9))
+
+
+### Bug Fixes
+
+* **api:** probe database in /health so 200 proves PostGIS reachable ([fe0b626](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fe0b6260781bf4d8e84a47e4ecd4b516e22ea7af))
+* **api:** probe the database in /health so a 200 proves PostGIS is reachable ([8cc9c88](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8cc9c88ff56a116c8e6d9400ba5f069213ecdaa5))
+* **chemistry:** fail loudly when Drive sync is misconfigured ([beeb4ad](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/beeb4adb7e924e9b98b0239577b2a41bd02bfd5e))
+* **chemistry:** treat trailing letters in SamplePointID as a sample point ([7fc86d0](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7fc86d0841d8d35ffbd363695edc46c2f60ca2c8))
+* **db:** dedupe NMW locations in measurement views, re-register pg_cron job ([12bfe8b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/12bfe8b0e16416e2068c9b5458930a17896af956))
+* **db:** dedupe NMW locations in measurement views, re-register pg_cron job ([d96f394](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d96f394c34355912368973b5fb9e10f4c95b00e5))
+* **db:** reparent a5b6c7d8e9f0 onto the EDR views revision ([eb89d04](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/eb89d046651b3517bf2299df635842d8747cfc20))
+* **deploy:** propagate F4_1G instance class to staging + document OOM churn ([a830e71](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a830e714171bb64d52929b6efbe0b685ac87e72c))
+* **deploy:** propagate F4_1G instance class to staging + OOM writeup ([8e79756](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8e79756a9de1b901455bb176130b86d6b2cd0208))
+* **monitoring:** use single region for OpenStatus free tier ([7802f01](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7802f015134dcf22f436d3f7f6f937babb9caa0b))
+
 ## [1.1.5](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.1.4...v1.1.5) (2026-07-07)
 
 
