@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Check out source repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           # Fully-qualified tag ref avoids ambiguity if a branch is ever

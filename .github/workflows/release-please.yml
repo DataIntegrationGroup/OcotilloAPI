@@ -37,7 +37,7 @@ jobs:
       # configs set include-v-in-tag: true, so the tag is `v<version>`. Prefer
       # the action's own output if it is ever non-empty.
       - if: ${{ steps.release.outputs.release_created == 'true' }}
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
       - id: resolve_tag
         if: ${{ steps.release.outputs.release_created == 'true' }}
         env:
