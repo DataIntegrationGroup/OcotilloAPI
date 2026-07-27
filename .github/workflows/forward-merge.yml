@@ -54,7 +54,7 @@ jobs:
       GH_TOKEN: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
       TAG: ${{ inputs.tag_name }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
@@ -149,7 +149,7 @@ jobs:
       TAG: ${{ inputs.tag_name }}
       SOURCE: ${{ inputs.source_branch }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.source_branch }}
