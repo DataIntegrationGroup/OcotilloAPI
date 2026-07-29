@@ -86,7 +86,6 @@ jobs:
           AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
           AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
           AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
-          SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
           APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
           JIRA_BASE_URL: "${{ vars.JIRA_BASE_URL || 'https://nmbgmr.atlassian.net' }}"
           JIRA_EMAIL: "${{ steps.feedback-secrets.outputs.jira_email }}"

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import asyncio
 import os
 from pathlib import Path
 
@@ -21,7 +20,6 @@ from fastapi_pagination import add_pagination
 from sqlalchemy import text, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
-from starlette.responses import PlainTextResponse
 
 from db import Base
 from db.engine import session_ctx
@@ -237,17 +235,6 @@ def register_api_routes(app):
     app.state.api_routes_registered = True
 
 
-def configure_session_middleware(app):
-    from starlette.middleware.sessions import SessionMiddleware
-
-    if not getattr(app.state, "session_middleware_configured", False):
-        session_secret_key = os.environ.get("SESSION_SECRET_KEY")
-        if not session_secret_key:
-            raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
-        app.add_middleware(SessionMiddleware, secret_key=session_secret_key)
-        app.state.session_middleware_configured = True
-
-
 def configure_cors_middleware(app):
     from starlette.middleware.cors import CORSMiddleware
 
@@ -284,43 +271,8 @@ def configure_apitally_middleware(app):
 
 
 def configure_middleware(app):
-    configure_session_middleware(app)
     configure_cors_middleware(app)
     configure_apitally_middleware(app)
-
-
-def configure_admin(app):
-    if getattr(app.state, "admin_configured", False):
-        return
-
-    from admin import create_admin
-    from admin.auth_routes import router as admin_auth_router
-
-    app.include_router(admin_auth_router)
-    create_admin(app)
-    app.state.admin_configured = True
-
-
-def configure_lazy_admin(app):
-    if getattr(app.state, "lazy_admin_configured", False):
-        return
-
-    app.state.admin_configure_lock = asyncio.Lock()
-
-    @app.middleware("http")
-    async def ensure_admin_initialized(request, call_next):
-        if request.url.path.startswith("/admin"):
-            if not getattr(app.state, "session_middleware_configured", False):
-                return PlainTextResponse(
-                    "Admin requires SESSION_SECRET_KEY to be configured.",
-                    status_code=503,
-                )
-            async with app.state.admin_configure_lock:
-                if not getattr(app.state, "admin_configured", False):
-                    configure_admin(app)
-        return await call_next(request)
-
-    app.state.lazy_admin_configured = True
 
 
 # ============= EOF =============================================

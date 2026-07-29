@@ -6,8 +6,6 @@ from core.app import create_base_app
 from core.initializers import (
     configure_apitally_middleware,
     configure_cors_middleware,
-    configure_lazy_admin,
-    configure_session_middleware,
     register_api_routes,
 )
 
@@ -47,9 +45,6 @@ def create_api_app():
     from core.pygeoapi import mount_pygeoapi
 
     mount_pygeoapi(app)
-    if os.environ.get("SESSION_SECRET_KEY"):
-        configure_session_middleware(app)
     configure_cors_middleware(app)
     configure_apitally_middleware(app)
-    configure_lazy_admin(app)
     return app
