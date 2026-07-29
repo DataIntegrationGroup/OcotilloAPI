@@ -29,8 +29,6 @@ def pytest_configure():
         except OSError:
             os.environ[env_name] = "localhost"
     os.environ.setdefault("POSTGRES_PORT", "54321")
-    # NOTE: This hardcoded secret key is for tests only and must NEVER be used in production.
-    os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")
     # Always use test database, never dev
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
