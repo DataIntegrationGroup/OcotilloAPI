@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.2.1...v1.2.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* **api/asset:** update access from admin to editor ([c73d866](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/c73d8668afd46f2c00831780d5eb034e535eb6c5))
+
 ## [1.2.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.2.0...v1.2.1) (2026-07-29)
 
 
