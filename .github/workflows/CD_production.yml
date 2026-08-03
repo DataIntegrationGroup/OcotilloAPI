@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Check out source repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           # Fully-qualified tag ref avoids ambiguity if a branch is ever
@@ -54,7 +54,7 @@ jobs:
           ref: refs/tags/${{ env.DEPLOY_TAG }}
 
       - name: Install uv in container
-        uses: astral-sh/setup-uv@v8.3.0
+        uses: astral-sh/setup-uv@v8.3.2
         with:
           version: "latest"
 
@@ -99,16 +99,6 @@ jobs:
         run: |
           uv run --no-dev alembic upgrade head
 
-      - name: Refresh materialized views on production database
-        env:
-          DB_DRIVER: "cloudsql"
-          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-          CLOUD_SQL_IAM_AUTH: true
-        run: |
-          uv run --no-dev python -m cli.cli refresh-materialized-views
-
       - name: Ensure envsubst is available
         run: |
           if ! command -v envsubst >/dev/null 2>&1; then
@@ -136,7 +126,6 @@ jobs:
           AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
           AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
           AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
-          SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
           APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
           JIRA_BASE_URL: "${{ vars.JIRA_BASE_URL || 'https://nmbgmr.atlassian.net' }}"
           JIRA_EMAIL: "${{ steps.feedback-secrets.outputs.jira_email }}"

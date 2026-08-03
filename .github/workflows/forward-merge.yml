@@ -54,7 +54,7 @@ jobs:
       GH_TOKEN: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
       TAG: ${{ inputs.tag_name }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.FORWARD_MERGE_TOKEN || github.token }}
@@ -103,7 +103,7 @@ jobs:
       # the lockfile is re-locked (see commit 27751110). Idempotent: no
       # lockfile change -> no commit.
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.0
+        uses: astral-sh/setup-uv@v8.3.2
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
@@ -149,7 +149,7 @@ jobs:
       TAG: ${{ inputs.tag_name }}
       SOURCE: ${{ inputs.source_branch }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.source_branch }}
@@ -166,7 +166,7 @@ jobs:
       # push. Plain push (not force) so an out-of-date checkout fails loudly
       # instead of clobbering newer hotfix commits.
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.0
+        uses: astral-sh/setup-uv@v8.3.2
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
