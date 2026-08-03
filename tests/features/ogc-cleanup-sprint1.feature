@@ -25,13 +25,13 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A1 — Apply release_status = 'public' filter to all OGC views
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
   Scenario: Sprint 1 migration restricts all ogc_* views to public records
     Given a clean database state before the Sprint 1 migration
     When the Sprint 1 Alembic migration is applied
     Then each ogc_* view returns only records with release_status "public"
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
   Scenario: Sprint 1 migration can be reversed without error
     Given the Sprint 1 migration has been applied
     When the Sprint 1 migration downgrade is run
@@ -40,7 +40,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     And each ogc_* view returns the same count of draft records as before the migration
     And no database errors are raised
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @cleanup_samples
   Scenario: Non-public records are excluded from every exposure-affected OGC layer
     Given the Sprint 1 migration has been applied
     When a public client requests items from each of the following layers:
@@ -69,15 +69,22 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     # other_things above: A1 must apply the filter to its view, but A18 removes
     # other_things from the catalog — run this scenario before A18 is applied
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production
   Scenario: project_areas returns 56 rows after all records are updated to public
     Given all 56 project_areas records have been updated from release_status "draft" to release_status "public"
     When a client requests features from the project_areas layer
     Then the response contains 56 features
     And the response HTTP status is 200
     And all returned features have release_status "public"
+    # The "Given" precondition above is satisfied by a dedicated data
+    # migration (not the schema migration that adds the release_status
+    # filter) -- see the project_areas data migration in this ticket's
+    # implementation. Automated tests verify the underlying property
+    # (every project_area-bearing group ends up public), not the literal
+    # count 56, which is specific to today's real production data and is
+    # spot-checked manually against the target environment instead.
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
   Scenario: The 4 already-consistent layers are unaffected by the migration
     Given the following layers were already filtering correctly before the migration:
       | layer-id                        |
@@ -171,38 +178,38 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A11 — Stand up authenticated internal OGC mount at /ogcapi-internal
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Anonymous request to internal OGC endpoint is rejected
     When an unauthenticated client requests /ogcapi-internal/collections
     Then the response HTTP status is 401
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Request with insufficient role to internal OGC endpoint is rejected
     Given the client presents a valid token with role "public-viewer"
     When the client requests /ogcapi-internal/collections
     Then the response HTTP status is 403
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Authenticated internal staff can access /ogcapi-internal collections
     Given an internal staff member with the required role is authenticated via Authentik
     When the staff member requests /ogcapi-internal/collections
     Then the response HTTP status is 200
     And the response includes collections not available on the public /ogcapi endpoint
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Internal collections expose private and draft records
     Given an authenticated internal staff member
     When the staff member requests items from the "water_wells" internal collection
     Then records with a release_status other than "public" are included in the response
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Internal database relations are separate from public relations
     Given the /ogcapi-internal mount has been deployed
     When the database schema is inspected
     Then the database schema contains relations prefixed with "ogc_internal_"
     And no ogc_internal_ relation is shared with the public /ogcapi endpoint
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A11
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A11 @production
   Scenario: Public /ogcapi surface is unaffected by the internal mount
     When a client requests /ogcapi/collections
     Then no collection in the response has an id prefixed "ogc_internal_"

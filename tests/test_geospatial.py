@@ -117,7 +117,7 @@ def populate():
 
         session.add(group)
         session.commit()
-        yield
+        yield group
 
         # Cleanup
         session.delete(loc1)
@@ -128,15 +128,15 @@ def populate():
         session.commit()
 
 
-def test_get_project_area():
-    response = client.get("/geospatial/project-area/1")
+def test_get_project_area(populate):
+    response = client.get(f"/geospatial/project-area/{populate.id}")
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
     assert data["type"] == "FeatureCollection"
     assert "features" in data
     assert len(data["features"]) > 0
-    assert data["features"][0]["properties"]["group_id"] == 1
+    assert data["features"][0]["properties"]["group_id"] == populate.id
     assert data["features"][0]["properties"]["group_name"] == "Test Group Foo"
     assert (
         data["features"][0]["properties"]["group_description"]

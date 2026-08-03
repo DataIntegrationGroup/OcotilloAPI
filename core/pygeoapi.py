@@ -137,13 +137,17 @@ def _template_path() -> Path:
     return Path(__file__).resolve().parent / "pygeoapi-config.yml"
 
 
-def _mount_path() -> str:
-    # Read and sanitize the configured mount path, defaulting to "/ogcapi".
-    path = (os.environ.get("PYGEOAPI_MOUNT_PATH", "/ogcapi") or "").strip()
+def _internal_template_path() -> Path:
+    return Path(__file__).resolve().parent / "pygeoapi-config-internal.yml"
+
+
+def _sanitized_mount_path(env_var: str, default: str) -> str:
+    # Read and sanitize the configured mount path, falling back to `default`.
+    path = (os.environ.get(env_var, default) or "").strip()
 
     # Treat empty or root ("/") values as invalid and fall back to the default.
     if path in {"", "/"}:
-        path = "/ogcapi"
+        path = default
 
     # Ensure a single leading slash.
     if not path.startswith("/"):
@@ -156,19 +160,25 @@ def _mount_path() -> str:
     # Disallow traversal/current-directory segments.
     segments = [segment for segment in path.split("/") if segment]
     if any(segment in {".", ".."} for segment in segments):
-        raise ValueError(
-            "Invalid PYGEOAPI_MOUNT_PATH: traversal segments are not allowed."
-        )
+        raise ValueError(f"Invalid {env_var}: traversal segments are not allowed.")
 
     # Allow only slash-delimited segments of alphanumerics, underscore,
     # or hyphen.
     if not re.fullmatch(r"/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*", path):
         raise ValueError(
-            "Invalid PYGEOAPI_MOUNT_PATH: only letters, numbers, underscores, "
+            f"Invalid {env_var}: only letters, numbers, underscores, "
             "hyphens, and slashes are allowed."
         )
 
     return path
+
+
+def _mount_path() -> str:
+    return _sanitized_mount_path("PYGEOAPI_MOUNT_PATH", "/ogcapi")
+
+
+def _internal_mount_path() -> str:
+    return _sanitized_mount_path("PYGEOAPI_INTERNAL_MOUNT_PATH", "/ogcapi-internal")
 
 
 def _server_url() -> str:
@@ -178,10 +188,19 @@ def _server_url() -> str:
     return f"http://localhost:8000{_mount_path()}"
 
 
-def _pygeoapi_dir() -> Path:
+def _internal_server_url() -> str:
+    configured = os.environ.get("PYGEOAPI_INTERNAL_SERVER_URL")
+    if configured:
+        return configured.rstrip("/")
+    return f"http://localhost:8000{_internal_mount_path()}"
+
+
+def _pygeoapi_dir(
+    runtime_dir_env: str = "PYGEOAPI_RUNTIME_DIR", default: str = "/tmp/pygeoapi"
+) -> Path:
     # Use instance-local ephemeral storage by default (GAE-safe).
-    runtime_dir = (os.environ.get("PYGEOAPI_RUNTIME_DIR") or "").strip()
-    path = Path(runtime_dir) if runtime_dir else Path("/tmp/pygeoapi")
+    runtime_dir = (os.environ.get(runtime_dir_env) or "").strip()
+    path = Path(runtime_dir) if runtime_dir else Path(default)
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -192,6 +211,7 @@ def _thing_collections_block(
     dbname: str,
     user: str,
     password_placeholder: str,
+    table_prefix: str = "ogc_",
 ) -> str:
     resources: dict[str, dict] = {}
     for collection in THING_COLLECTIONS:
@@ -219,7 +239,7 @@ def _thing_collections_block(
                         "search_path": ["public"],
                     },
                     "id_field": "id",
-                    "table": f"ogc_{collection['id']}",
+                    "table": f"{table_prefix}{collection['id']}",
                     "geom_field": "point",
                 }
             ],
@@ -240,9 +260,15 @@ def _edr_collections_block(
     dbname: str,
     user: str,
     password_placeholder: str,
+    table_prefix: str = "ogc_",
 ) -> str:
     resources: dict[str, dict] = {}
     for collection in EDR_COLLECTIONS:
+        # EDR_COLLECTIONS' table values are hardcoded to the public
+        # ogc_waterlevels/ogc_water_chemistry names -- strip that literal
+        # "ogc_" so table_prefix (here, "ogc_internal_" for the internal
+        # mount) still applies, the same way _thing_collections_block does.
+        table_name = table_prefix + collection["table"].removeprefix("ogc_")
         provider = {
             "type": "edr",
             "name": "core.edr_provider.WaterEDRProvider",
@@ -254,7 +280,7 @@ def _edr_collections_block(
                 "password": password_placeholder,
             },
             "id_field": "id",
-            "table": collection["table"],
+            "table": table_name,
         }
         if collection["instance_field"]:
             provider["instance_field"] = collection["instance_field"]
@@ -315,46 +341,89 @@ def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
     return host, port, dbname, user, "${PYGEOAPI_POSTGRES_PASSWORD}"
 
 
-def _write_config(path: Path) -> None:
+def _write_config(
+    path: Path,
+    *,
+    server_url: str,
+    table_prefix: str = "ogc_",
+    template_path: Path | None = None,
+    include_edr: bool = False,
+) -> None:
     host, port, dbname, user, password_placeholder = _pygeoapi_db_settings()
-    template = _template_path().read_text(encoding="utf-8")
-    config = template.format(
-        server_url=_server_url(),
-        postgres_host=host,
-        postgres_port=port,
-        postgres_db=dbname,
-        postgres_user=user,
-        postgres_password_env=password_placeholder,
-        thing_collections_block="\n".join(
+    template = (template_path or _template_path()).read_text(encoding="utf-8")
+    thing_collections_block = _thing_collections_block(
+        host=host,
+        port=port,
+        dbname=dbname,
+        user=user,
+        password_placeholder=password_placeholder,
+        table_prefix=table_prefix,
+    )
+    if include_edr:
+        # EDR collections (core/edr_provider.py), backed by
+        # ogc_waterlevels/ogc_water_chemistry (public) or
+        # ogc_internal_waterlevels/ogc_internal_water_chemistry (internal,
+        # see 2d3c3a268652_create_internal_ogc_views.py) depending on
+        # table_prefix.
+        thing_collections_block = "\n".join(
             [
-                _thing_collections_block(
-                    host=host,
-                    port=port,
-                    dbname=dbname,
-                    user=user,
-                    password_placeholder=password_placeholder,
-                ),
+                thing_collections_block,
                 _edr_collections_block(
                     host=host,
                     port=port,
                     dbname=dbname,
                     user=user,
                     password_placeholder=password_placeholder,
+                    table_prefix=table_prefix,
                 ),
             ]
-        ),
+        )
+    config = template.format(
+        server_url=server_url,
+        postgres_host=host,
+        postgres_port=port,
+        postgres_db=dbname,
+        postgres_user=user,
+        postgres_password_env=password_placeholder,
+        thing_collections_block=thing_collections_block,
     )
-    # NOTE: The generated runtime config file at
-    # `${PYGEOAPI_RUNTIME_DIR}/pygeoapi-config.yml` (default:
-    # `/tmp/pygeoapi/pygeoapi-config.yml`) contains database connection details
-    # (host, port, dbname, user). Although the password is expected to be
-    # provided via environment variables at runtime by pygeoapi, this file
-    # should still be treated as sensitive configuration:
+    # NOTE: The generated runtime config file (default:
+    # `/tmp/pygeoapi/pygeoapi-config.yml` or
+    # `/tmp/pygeoapi-internal/pygeoapi-config.yml`) contains database
+    # connection details (host, port, dbname, user). Although the password is
+    # expected to be provided via environment variables at runtime by
+    # pygeoapi, this file should still be treated as sensitive configuration:
     #   * Do not commit it to version control.
     #   * Do not expose it in logs, error messages, or diagnostics.
     #   * Ensure filesystem permissions restrict access appropriately.
     path.write_text(config, encoding="utf-8")
     path.chmod(0o600)
+
+
+def _assert_server_settings_match(
+    public_config_path: Path, internal_config_path: Path
+) -> None:
+    # pygeoapi.api.API.__init__ mutates process-wide, module-level globals
+    # (CHARSET, FORMAT_TYPES) that persist across the importlib.reload this
+    # scheme relies on -- whichever mount is constructed last wins for both.
+    # Inert as long as both configs agree on these settings; fail loudly at
+    # startup rather than let a future divergence silently corrupt responses
+    # on whichever mount lost the race.
+    public_server = yaml.safe_load(public_config_path.read_text(encoding="utf-8")).get(
+        "server", {}
+    )
+    internal_server = yaml.safe_load(
+        internal_config_path.read_text(encoding="utf-8")
+    ).get("server", {})
+    for key in ("encoding", "gzip"):
+        if public_server.get(key) != internal_server.get(key):
+            raise RuntimeError(
+                "pygeoapi public/internal config drift detected: "
+                f"server.{key} differs ({public_server.get(key)!r} vs "
+                f"{internal_server.get(key)!r}). Both configs must agree "
+                "here since pygeoapi.api.API.__init__ mutates shared "
+                "process-wide globals from these settings."
+            )
 
 
 def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
@@ -389,7 +458,7 @@ def mount_pygeoapi(app: FastAPI) -> None:
     pygeoapi_dir = _pygeoapi_dir()
     config_path = pygeoapi_dir / "pygeoapi-config.yml"
     openapi_path = pygeoapi_dir / "pygeoapi-openapi.yml"
-    _write_config(config_path)
+    _write_config(config_path, server_url=_server_url(), include_edr=True)
     _generate_openapi(config_path, openapi_path)
 
     os.environ["PYGEOAPI_CONFIG"] = str(config_path)
@@ -400,3 +469,52 @@ def mount_pygeoapi(app: FastAPI) -> None:
     app.mount(mount_path, pygeoapi_app)
 
     app.state.pygeoapi_mounted = True
+
+
+def mount_pygeoapi_internal(app: FastAPI) -> None:
+    if getattr(app.state, "pygeoapi_internal_mounted", False):
+        return
+    if find_spec("pygeoapi") is None:
+        raise RuntimeError(
+            "pygeoapi is not installed. Rebuild/sync dependencies so "
+            "/ogcapi-internal can be mounted."
+        )
+
+    public_mount_path = _mount_path()
+    internal_mount_path = _internal_mount_path()
+    if internal_mount_path == public_mount_path:
+        # Starlette doesn't error on duplicate mount paths -- it registers
+        # both Mounts and matches whichever was registered first (the
+        # public mount), leaving the internal mount silently unreachable.
+        # Fail loudly at startup instead of that way blind.
+        raise RuntimeError(
+            "PYGEOAPI_MOUNT_PATH and PYGEOAPI_INTERNAL_MOUNT_PATH both "
+            f"resolve to {internal_mount_path!r}. They must be distinct."
+        )
+
+    internal_dir = _pygeoapi_dir(
+        "PYGEOAPI_INTERNAL_RUNTIME_DIR", "/tmp/pygeoapi-internal"
+    )
+    config_path = internal_dir / "pygeoapi-config.yml"
+    openapi_path = internal_dir / "pygeoapi-openapi.yml"
+    _write_config(
+        config_path,
+        server_url=_internal_server_url(),
+        table_prefix="ogc_internal_",
+        template_path=_internal_template_path(),
+        include_edr=True,
+    )
+    _generate_openapi(config_path, openapi_path)
+    _assert_server_settings_match(_pygeoapi_dir() / "pygeoapi-config.yml", config_path)
+
+    os.environ["PYGEOAPI_CONFIG"] = str(config_path)
+    os.environ["PYGEOAPI_OPENAPI"] = str(openapi_path)
+
+    pygeoapi_app = _load_pygeoapi_app()
+
+    from core.internal_ogc_auth import InternalOGCAuthMiddleware
+
+    app.add_middleware(InternalOGCAuthMiddleware, mount_path=internal_mount_path)
+    app.mount(internal_mount_path, pygeoapi_app)
+
+    app.state.pygeoapi_internal_mounted = True

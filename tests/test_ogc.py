@@ -413,7 +413,7 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
         group = Group(
             name="Water Level Network",
             group_type="Monitoring Plan",
-            release_status="draft",
+            release_status="public",
         )
         session.add(group)
         session.flush()
@@ -462,7 +462,7 @@ def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
         group = Group(
             name="Water Level Network",
             group_type="Monitoring Plan",
-            release_status="draft",
+            release_status="public",
         )
         session.add(group)
         session.flush()
