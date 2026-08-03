@@ -23,8 +23,16 @@ unfiltered in production, downgrade() drops it rather than recreating an
 unfiltered copy.
 
 Revision ID: f4a5b6c7d8e9
-Revises: y3z4a5b6c7d8
+Revises: b6c7d8e9f0a1
 Create Date: 2026-07-14 00:00:00.000000
+
+Re-pointed from the original y3z4a5b6c7d8 on 2026-08-03: three colleague
+migrations (z9a0b1c2d3e4, a5b6c7d8e9f0, b6c7d8e9f0a1) landed on staging off
+that same revision while this branch was still open, forking the history.
+Neither touches anything this migration's SQL depends on -- the two new EDR
+views (z9a0b1c2d3e4) already filter on release_status = 'public' themselves,
+and the other two only touch the unrelated NMW measurement views and
+pg_cron scheduling.
 """
 
 import re
@@ -35,7 +43,7 @@ from sqlalchemy import inspect, text
 
 # revision identifiers, used by Alembic.
 revision: str = "f4a5b6c7d8e9"
-down_revision: Union[str, Sequence[str], None] = "y3z4a5b6c7d8"
+down_revision: Union[str, Sequence[str], None] = "b6c7d8e9f0a1"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
