@@ -260,9 +260,15 @@ def _edr_collections_block(
     dbname: str,
     user: str,
     password_placeholder: str,
+    table_prefix: str = "ogc_",
 ) -> str:
     resources: dict[str, dict] = {}
     for collection in EDR_COLLECTIONS:
+        # EDR_COLLECTIONS' table values are hardcoded to the public
+        # ogc_waterlevels/ogc_water_chemistry names -- strip that literal
+        # "ogc_" so table_prefix (here, "ogc_internal_" for the internal
+        # mount) still applies, the same way _thing_collections_block does.
+        table_name = table_prefix + collection["table"].removeprefix("ogc_")
         provider = {
             "type": "edr",
             "name": "core.edr_provider.WaterEDRProvider",
@@ -274,7 +280,7 @@ def _edr_collections_block(
                 "password": password_placeholder,
             },
             "id_field": "id",
-            "table": collection["table"],
+            "table": table_name,
         }
         if collection["instance_field"]:
             provider["instance_field"] = collection["instance_field"]
@@ -354,11 +360,11 @@ def _write_config(
         table_prefix=table_prefix,
     )
     if include_edr:
-        # EDR collections (core/edr_provider.py) are backed by ogc_waterlevels/
-        # ogc_water_chemistry, which are always public-filtered (see
-        # z9a0b1c2d3e4_add_edr_water_views.py) with no table_prefix
-        # parametrization -- there is no internal, unfiltered counterpart, so
-        # this only ever applies to the public mount's config.
+        # EDR collections (core/edr_provider.py), backed by
+        # ogc_waterlevels/ogc_water_chemistry (public) or
+        # ogc_internal_waterlevels/ogc_internal_water_chemistry (internal,
+        # see 2d3c3a268652_create_internal_ogc_views.py) depending on
+        # table_prefix.
         thing_collections_block = "\n".join(
             [
                 thing_collections_block,
@@ -368,6 +374,7 @@ def _write_config(
                     dbname=dbname,
                     user=user,
                     password_placeholder=password_placeholder,
+                    table_prefix=table_prefix,
                 ),
             ]
         )
@@ -495,6 +502,7 @@ def mount_pygeoapi_internal(app: FastAPI) -> None:
         server_url=_internal_server_url(),
         table_prefix="ogc_internal_",
         template_path=_internal_template_path(),
+        include_edr=True,
     )
     _generate_openapi(config_path, openapi_path)
     _assert_server_settings_match(_pygeoapi_dir() / "pygeoapi-config.yml", config_path)

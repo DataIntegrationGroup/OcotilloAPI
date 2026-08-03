@@ -6,6 +6,14 @@ ogc_internal_<id>, backing the authenticated /ogcapi-internal mount
 (core/pygeoapi.py::mount_pygeoapi_internal). Full parity with the public
 set, per ticket A11 -- not a subset.
 
+Also mirrors ogc_waterlevels/ogc_water_chemistry from z9a0b1c2d3e4 (added to
+staging after this migration's original 22-relation scope was written, per
+ADR3's EDR feature) as ogc_internal_waterlevels/ogc_internal_water_chemistry,
+bringing the total to 24. Unfiltered in all three places the public views
+predicate on release_status: the manual-readings and chemistry selects'
+`o.release_status = 'public'`, and the transducer union's
+`tobs.release_status = 'public'`.
+
 The major/minor chemistry analyte-mapping CASE blocks and
 STATIC_ANALYTE_COLUMNS lists below are intentionally character-for-character
 identical (modulo view name) to their counterparts in f4a5b6c7d8e9 -- this
@@ -25,7 +33,7 @@ summary exposes (here, all of them) transitively via a direct JOIN. Because
 of that JOIN, it must be dropped before ogc_internal_water_well_summary and
 recreated after (same ordering constraint as the public side).
 
-All 22 relations here are newly created by this migration -- none of them
+All 24 relations here are newly created by this migration -- none of them
 existed in any form beforehand -- so downgrade() simply drops them rather
 than recreating a prior state.
 
@@ -61,6 +69,11 @@ REQUIRED_TABLES = {
     "NMA_MajorChemistry",
     "NMA_Chemistry_SampleInfo",
     "NMA_MinorTraceChemistry",
+    # For the ogc_internal_waterlevels/ogc_internal_water_chemistry EDR
+    # mirrors (see z9a0b1c2d3e4_add_edr_water_views.py).
+    "transducer_observation",
+    "deployment",
+    "parameter",
 }
 
 LATEST_LOCATION_CTE = """
@@ -1118,6 +1131,101 @@ def _create_locations_view() -> str:
     """
 
 
+# Shared join from a thing to its current location point -- same shape as
+# z9a0b1c2d3e4's _LOCATION_JOIN.
+_EDR_LOCATION_JOIN = """
+    JOIN location_thing_association lta
+        ON lta.thing_id = t.id AND lta.effective_end IS NULL
+    JOIN location l ON l.id = lta.location_id
+"""
+
+
+def _create_internal_waterlevels_view() -> str:
+    # Mirrors z9a0b1c2d3e4's ogc_waterlevels with both release_status
+    # predicates dropped (manual readings: o.release_status; transducer
+    # readings: tobs.release_status). release_status itself is still
+    # selected as a column, same as the public view.
+    return f"""
+        CREATE VIEW ogc_internal_waterlevels AS
+        -- manual water-level readings
+        SELECT
+            'm-' || o.id                        AS id,
+            t.id                                AS thing_id,
+            t.name                              AS station_name,
+            ST_X(l.point)                       AS longitude,
+            ST_Y(l.point)                       AS latitude,
+            o.observation_datetime              AS datetime,
+            o.value                             AS value,
+            o.unit                              AS unit,
+            'groundwater level'                 AS parameter_name,
+            'manual'                            AS source,
+            NULL::integer                       AS deployment_id,
+            o.release_status                    AS release_status
+        FROM observation o
+        JOIN parameter p
+            ON p.id = o.parameter_id AND p.parameter_name = 'groundwater level'
+        JOIN sample sm ON sm.id = o.sample_id
+        JOIN field_activity fa ON fa.id = sm.field_activity_id
+        JOIN field_event fe ON fe.id = fa.field_event_id
+        JOIN thing t ON t.id = fe.thing_id
+        {_EDR_LOCATION_JOIN}
+        WHERE o.value IS NOT NULL
+
+        UNION ALL
+
+        -- transducer (instrument) water-level readings
+        SELECT
+            't-' || tobs.id                     AS id,
+            t.id                                AS thing_id,
+            t.name                              AS station_name,
+            ST_X(l.point)                       AS longitude,
+            ST_Y(l.point)                       AS latitude,
+            tobs.observation_datetime           AS datetime,
+            tobs.value                          AS value,
+            p.default_unit                      AS unit,
+            'groundwater level'                 AS parameter_name,
+            'transducer'                        AS source,
+            tobs.deployment_id                  AS deployment_id,
+            tobs.release_status                 AS release_status
+        FROM transducer_observation tobs
+        JOIN parameter p
+            ON p.id = tobs.parameter_id AND p.parameter_name = 'groundwater level'
+        JOIN deployment d ON d.id = tobs.deployment_id
+        JOIN thing t ON t.id = d.thing_id
+        {_EDR_LOCATION_JOIN}
+        WHERE tobs.value IS NOT NULL
+    """
+
+
+def _create_internal_water_chemistry_view() -> str:
+    # Mirrors z9a0b1c2d3e4's ogc_water_chemistry with its release_status
+    # predicate (o.release_status) dropped.
+    return f"""
+        CREATE VIEW ogc_internal_water_chemistry AS
+        SELECT
+            'c-' || o.id                        AS id,
+            t.id                                AS thing_id,
+            t.name                              AS station_name,
+            ST_X(l.point)                       AS longitude,
+            ST_Y(l.point)                       AS latitude,
+            o.observation_datetime              AS datetime,
+            o.value                             AS value,
+            o.unit                              AS unit,
+            p.parameter_name                    AS parameter_name,
+            o.sample_id                         AS sample_id,
+            o.release_status                    AS release_status
+        FROM observation o
+        JOIN parameter p
+            ON p.id = o.parameter_id AND p.parameter_name <> 'groundwater level'
+        JOIN sample sm ON sm.id = o.sample_id
+        JOIN field_activity fa ON fa.id = sm.field_activity_id
+        JOIN field_event fe ON fe.id = fa.field_event_id
+        JOIN thing t ON t.id = fe.thing_id
+        {_EDR_LOCATION_JOIN}
+        WHERE o.value IS NOT NULL
+    """
+
+
 def _recreate_all_internal_views() -> None:
     # ogc_internal_actively_monitored_wells depends on
     # ogc_internal_water_well_summary via a direct JOIN; Postgres refuses to
@@ -1271,8 +1379,26 @@ def _recreate_all_internal_views() -> None:
         )
     )
 
+    _drop_view_or_materialized_view("ogc_internal_waterlevels")
+    op.execute(text(_create_internal_waterlevels_view()))
+    op.execute(
+        text(
+            "COMMENT ON VIEW ogc_internal_waterlevels IS "
+            "'Unfiltered depth-to-water readings (manual + transducer) for the internal pygeoapi mount.'"
+        )
+    )
 
-# All 22 relations this migration creates, in an order safe for DROP (the
+    _drop_view_or_materialized_view("ogc_internal_water_chemistry")
+    op.execute(text(_create_internal_water_chemistry_view()))
+    op.execute(
+        text(
+            "COMMENT ON VIEW ogc_internal_water_chemistry IS "
+            "'Unfiltered water-chemistry analyses (by analyte) for the internal pygeoapi mount.'"
+        )
+    )
+
+
+# All 24 relations this migration creates, in an order safe for DROP (the
 # dependent view first, mirroring _recreate_all_internal_views's ordering).
 ALL_INTERNAL_RELATIONS = [
     "ogc_internal_actively_monitored_wells",
@@ -1287,6 +1413,8 @@ ALL_INTERNAL_RELATIONS = [
     "ogc_internal_water_elevation_wells",
     "ogc_internal_project_areas",
     "ogc_internal_locations",
+    "ogc_internal_waterlevels",
+    "ogc_internal_water_chemistry",
 ]
 
 
@@ -1296,7 +1424,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # None of these 22 relations existed before this migration -- unlike
+    # None of these 24 relations existed before this migration -- unlike
     # f4a5b6c7d8e9's downgrade (which recreates the prior unfiltered public
     # views), there is no prior state to restore, so downgrade just drops
     # everything this migration created.
