@@ -841,9 +841,11 @@ def step_then_no_internal_relation_shared_with_public(context):
         )
 
 
-@when("a client requests /ogcapi/collections")
-def step_when_client_requests_ogcapi_collections(context):
-    context.response = context.client.get("/ogcapi/collections")
+# "a client requests /ogcapi/collections" is defined in
+# tests/features/steps/edr_water_data.py (functionally identical: GETs
+# /ogcapi/collections and stashes context.response) -- reused rather than
+# redefined here, since Behave raises AmbiguousStep on duplicate step text
+# across files.
 
 
 @then('no collection in the response has an id prefixed "{prefix}"')
