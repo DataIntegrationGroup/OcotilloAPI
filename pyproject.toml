@@ -26,7 +26,7 @@ dependencies = [
   "charset-normalizer==3.4.9",
   "click==8.4.2",
   "cloud-sql-python-connector==1.21.0",
-  "cryptography==48.0.1",
+  "cryptography==50.0.0",
   "dnspython==2.8.0",
   "dotenv==0.9.9",
   "email-validator==2.3.0",
