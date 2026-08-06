@@ -215,10 +215,12 @@ def register_api_routes(app):
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
     from api.feedback import router as feedback_router
+    from api.disclaimer import router as disclaimer_router
 
     app.include_router(asset_router)
     app.include_router(author_router)
     app.include_router(contact_router)
+    app.include_router(disclaimer_router)
     app.include_router(geospatial_router)
     app.include_router(group_router)
     app.include_router(lexicon_router)
