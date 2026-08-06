@@ -5,6 +5,7 @@ import sys
 import textwrap
 from importlib.util import find_spec
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 from fastapi import FastAPI
@@ -198,6 +199,28 @@ def _internal_server_url() -> str:
     return f"http://localhost:8000{_internal_mount_path()}"
 
 
+def _app_base_url() -> str:
+    # Derived from PYGEOAPI_SERVER_URL rather than a dedicated env var: that
+    # variable is already set in app.template.yaml and all three CD workflows,
+    # and a second base-URL variable would be a fourth place to get a deploy
+    # wrong. PYGEOAPI_SERVER_URL points at the mount (".../ogcapi"), so strip
+    # the mount path back off to recover the application root.
+    server_url = _server_url()
+    mount_path = _mount_path()
+    if server_url.endswith(mount_path):
+        return server_url[: -len(mount_path)].rstrip("/")
+    # Deployment where the advertised OGC URL is not simply <root><mount>
+    # (a rewriting proxy, say). Scheme + netloc is the best root available.
+    parsed = urlparse(server_url)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return server_url.rstrip("/")
+
+
+def _terms_of_service_url() -> str:
+    return f"{_app_base_url()}/disclaimer"
+
+
 def _pygeoapi_dir(
     runtime_dir_env: str = "PYGEOAPI_RUNTIME_DIR", default: str = "/tmp/pygeoapi"
 ) -> Path:
@@ -383,6 +406,7 @@ def _write_config(
         )
     config = template.format(
         server_url=server_url,
+        terms_of_service_url=_terms_of_service_url(),
         postgres_host=host,
         postgres_port=port,
         postgres_db=dbname,
