@@ -77,9 +77,7 @@ _LOC_CTE = """
 
 
 def upgrade() -> None:
-    op.execute(
-        text(
-            """
+    op.execute(text("""
         CREATE OR REPLACE FUNCTION public.nmw_temp_unit_code(unit text)
         RETURNS text
         LANGUAGE sql
@@ -101,13 +99,9 @@ def upgrade() -> None:
                 ELSE NULL
             END
         $$
-        """
-        )
-    )
+        """))
 
-    op.execute(
-        text(
-            """
+    op.execute(text("""
         CREATE OR REPLACE FUNCTION public.nmw_temp_to_c(val double precision, unit text)
         RETURNS double precision
         LANGUAGE sql
@@ -120,15 +114,11 @@ def upgrade() -> None:
                 ELSE NULL
             END
         $$
-        """
-        )
-    )
+        """))
 
     # ogc_geothermal_wells_bht
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_BHT_VIEW}" AS
         {_LOC_CTE}
         SELECT
@@ -171,15 +161,11 @@ def upgrade() -> None:
             hdr."CurWellNam",
             hdr."API",
             hdr."TotalDepth"
-        """
-        )
-    )
+        """))
 
     # ogc_geothermal_wells_temperature_profile (materialized)
     op.execute(text(f'DROP MATERIALIZED VIEW IF EXISTS "{_PROFILE_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE MATERIALIZED VIEW "{_PROFILE_VIEW}" AS
         {_LOC_CTE}
         SELECT
@@ -231,9 +217,7 @@ def upgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """
-        )
-    )
+        """))
     op.execute(
         text(f'CREATE UNIQUE INDEX ux_{_PROFILE_VIEW}_id ON "{_PROFILE_VIEW}" (id)')
     )
@@ -247,9 +231,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Restore the d1e2f3a4b5c6 definitions verbatim, then drop the helpers.
     op.execute(text(f'DROP VIEW IF EXISTS "{_BHT_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE VIEW "{_BHT_VIEW}" AS
         {_LOC_CTE}
         SELECT
@@ -279,14 +261,10 @@ def downgrade() -> None:
             hdr."CurWellNam",
             hdr."API",
             hdr."TotalDepth"
-        """
-        )
-    )
+        """))
 
     op.execute(text(f'DROP MATERIALIZED VIEW IF EXISTS "{_PROFILE_VIEW}"'))
-    op.execute(
-        text(
-            f"""
+    op.execute(text(f"""
         CREATE MATERIALIZED VIEW "{_PROFILE_VIEW}" AS
         {_LOC_CTE}
         SELECT
@@ -320,9 +298,7 @@ def downgrade() -> None:
             loc."Long_dd83",
             hdr."CurWellNam",
             hdr."API"
-        """
-        )
-    )
+        """))
     op.execute(
         text(f'CREATE UNIQUE INDEX ux_{_PROFILE_VIEW}_id ON "{_PROFILE_VIEW}" (id)')
     )
