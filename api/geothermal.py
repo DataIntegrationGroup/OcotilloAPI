@@ -13,126 +13,84 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+"""Geothermal well endpoints.
+
+TEMPORARY BACKING: routes read from the legacy NM_Wells staging mirror
+(``db/nmw_legacy.py``) via ``services/geothermal_helper.py``. Once the
+NM_Wells -> Ocotillo transform lands these will be backed by the ``thing``
+table and ``thing_id`` will be populated on the response. The route path lives
+under ``/thing`` so the URL is stable across that swap.
+"""
+
+from typing import Optional
+from uuid import UUID
+
 from fastapi import APIRouter
+from fastapi_pagination.ext.sqlalchemy import paginate
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
-#
-# from db.geothermal import (
-#     GeothermalTemperatureProfile,
-#     GeothermalTemperatureProfileObservation,
-#     GeothermalBottomHoleTemperature,
-#     GeothermalWellInterval,
-#     GeothermalHeatFlow,
-#     GeothermalThermalConductivity,
-#     GeothermalSampleSet,
-#     GeothermalBottomHoleTemperatureHeader,
-# )
+from api.pagination import CustomPage
+from core.dependencies import session_dependency, viewer_dependency
+from schemas.geothermal import GeothermalWellResponse
+from services.exceptions_helper import PydanticStyleException
+from services.geothermal_helper import (
+    geothermal_wells_transformer,
+    get_geothermal_well_by_id,
+    get_geothermal_wells_query,
+)
 
-router = APIRouter(prefix="/geothermal", tags=["geothermal"])
+router = APIRouter(prefix="/thing", tags=["geothermal"])
 
 
-# @router.post("/sample_set", status_code=status.HTTP_201_CREATED)
-# async def add_geothermal_sample_set(
-#     sample_set_data: CreateGeothermalSampleSet,  # Replace with appropriate schema
-#     session: session_dependency
-# ):
-#     """
-#     Add a new geothermal sample set.
-#     """
-#     # Assuming you have a model for GeothermalSampleSet
-#     return adder(session, GeothermalSampleSet, sample_set_data)
-#
-#
-# @router.post("/bottom_hole_temperature_header", status_code=status.HTTP_201_CREATED)
-# async def add_bottom_hole_temperature_header(
-#     bottom_hole_temperature_header_data: CreateBottomHoleTemperatureHeader,
-#     session: session_dependency
-# ):
-#     """
-#     Add a new bottom hole temperature header.
-#     """
-#     # Assuming you have a model for GeothermalBottomHoleTemperatureHeader
-#     return adder(
-#         session,
-#         GeothermalBottomHoleTemperatureHeader,
-#         bottom_hole_temperature_header_data,
-#     )
-#
-#
-# @router.post("/temperature_profile", status_code=status.HTTP_201_CREATED)
-# async def add_temperature_profile(
-#     temperature_profile_data: CreateTemperatureProfile,
-#     session: session_dependency
-# ):
-#     """
-#     Add a new temperature profile.
-#     """
-#     return adder(session, GeothermalTemperatureProfile, temperature_profile_data)
-#
-#
-# @router.post("/temperature_profile_observation", status_code=status.HTTP_201_CREATED)
-# async def add_temperature_profile_observation(
-#     temperature_profile_observation_data: CreateTemperatureProfileObservation,
-#     session: session_dependency
-# ):
-#     """
-#     Add a new temperature profile observation.
-#     """
-#     return adder(
-#         session,
-#         GeothermalTemperatureProfileObservation,
-#         temperature_profile_observation_data,
-#     )
-#
-#
-# @router.post("/bottom_hole_temperature", status_code=status.HTTP_201_CREATED)
-# async def add_bottom_hole_temperature(
-#     bottom_hole_temperature_data: CreateBottomHoleTemperature,
-#     session: session_dependency
-# ):
-#     """
-#     Add a new bottom hole temperature.
-#     """
-#     return adder(
-#         session,
-#         GeothermalBottomHoleTemperature,  # Assuming this is the correct model
-#         bottom_hole_temperature_data,
-#     )
-#
-#
-# @router.post("/interval", status_code=status.HTTP_201_CREATED)
-# async def add_geothermal_interval(
-#     interval_data: CreateGeothermalInterval,  # Replace with appropriate schema
-#     session: session_dependency
-# ):
-#     """
-#     Add a new geothermal interval.
-#     """
-#     # Assuming you have a model for GeothermalInterval
-#     return adder(session, GeothermalWellInterval, interval_data)
-#
-#
-# @router.post("/thermal_conductivity", status_code=status.HTTP_201_CREATED)
-# async def add_thermal_conductivity(
-#     thermal_conductivity_data: CreateThermalConductivity,  # Replace with appropriate schema
-#     session: session_dependency
-# ):
-#     """
-#     Add a new geothermal thermal conductivity.
-#     """
-#     # Assuming you have a model for GeothermalThermalConductivity
-#     return adder(session, GeothermalThermalConductivity, thermal_conductivity_data)
-#
-#
-# @router.post("/heat_flow", status_code=status.HTTP_201_CREATED)
-# async def add_heat_flow(
-#     heat_flow_data: CreateHeatFlow,
-#     session: session_dependency
-# ):
-#     """
-#     Add a new geothermal heat flow.
-#     """
-#     # Assuming you have a model for GeothermalHeatFlow
-#     return adder(session, GeothermalHeatFlow, heat_flow_data)
-#
+@router.get(
+    "/geothermal-well",
+    summary="Get all geothermal wells",
+    status_code=HTTP_200_OK,
+)
+def get_geothermal_wells(
+    user: viewer_dependency,
+    session: session_dependency,
+    county: Optional[str] = None,
+    name_contains: Optional[str] = None,
+) -> CustomPage[GeothermalWellResponse]:
+    """List geothermal wells.
+
+    NOTE: sourced from the legacy NM_Wells mirror (NMW_WellHeaders where
+    GthrmExist is set). Will be re-pointed at the thing table post-transform.
+    """
+    sql = get_geothermal_wells_query(county=county, name_contains=name_contains)
+    return paginate(query=sql, conn=session, transformer=geothermal_wells_transformer)
+
+
+@router.get(
+    "/geothermal-well/{well_data_id}",
+    summary="Get geothermal well by legacy WellDataID",
+    status_code=HTTP_200_OK,
+)
+def get_geothermal_well(
+    user: viewer_dependency,
+    well_data_id: UUID,
+    session: session_dependency,
+) -> GeothermalWellResponse:
+    """Get a single geothermal well by its legacy NMW WellDataID (GUID).
+
+    NOTE: keyed by the legacy GUID because these rows are not yet in the thing
+    table. Post-transform this becomes an integer thing_id lookup.
+    """
+    well = get_geothermal_well_by_id(session, well_data_id)
+    if well is None:
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "well_data_id"],
+                    "msg": f"Geothermal well with WellDataID {well_data_id} not found.",
+                    "type": "value_error",
+                    "input": {"well_data_id": str(well_data_id)},
+                }
+            ],
+        )
+    return well
+
 
 # ============= EOF =============================================

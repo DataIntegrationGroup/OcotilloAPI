@@ -13,7 +13,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
+
+class GeothermalWellResponse(BaseModel):
+    """Read model for a geothermal well sourced from the legacy NM_Wells mirror.
+
+    NOTE: This currently reads directly from the ``NMW_WellHeaders`` /
+    ``NMW_WellLocations`` staging tables (see ``db/nmw_legacy.py``). Once the
+    NM_Wells -> Ocotillo transform lands, these rows will be backed by the
+    ``thing`` table and ``thing_id`` will be populated. Until then ``thing_id``
+    is always ``None`` and ``well_data_id`` (legacy GUID) is the identifier.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    well_data_id: UUID  # legacy NMW_WellHeaders.WellDataID
+    thing_id: int | None = None  # populated after NM_Wells -> thing transform
+
+    api: str | None = None
+    name: str | None = None  # cur_well_nam
+    well_number: str | None = None  # cur_well_num
+    well_class: str | None = None
+    well_type: str | None = None
+    status: str | None = None  # cur_status
+    operator: str | None = None  # cur_operatr
+    owner: str | None = None  # cur_owner
+    total_depth: float | None = None
+    completion_date: datetime | None = None  # compl_date
+    has_geothermal_data: bool | None = None  # gthrm_exist
+
+    # location, joined from NMW_WellLocations on WellDataID
+    county: str | None = None
+    state: str | None = None
+    latitude: float | None = None  # lat_dd83
+    longitude: float | None = None  # long_dd83
 
 
 class CreateTemperatureProfile(BaseModel):
