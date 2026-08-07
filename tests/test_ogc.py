@@ -15,6 +15,7 @@
 # ===============================================================================
 from datetime import date, datetime
 from importlib.util import find_spec
+from urllib.parse import urlparse
 
 import pytest
 from fastapi.testclient import TestClient
@@ -93,6 +94,61 @@ def test_ogc_openapi_has_paths(ogc_client):
     assert payload["openapi"].startswith("3.")
     assert payload["paths"]
     assert "/collections" in payload["paths"]
+
+
+# A2: every surface that echoes metadata from core/pygeoapi-config.yml.
+# The JSON landing page carries only title/description/links, so the
+# provider/contact/terms assertions below have to go through the OpenAPI
+# document -- see pygeoapi.api.landing_page vs pygeoapi.openapi.get_oas_30.
+@pytest.mark.parametrize(
+    "path,params",
+    [
+        ("/ogcapi", {"f": "json"}),
+        ("/ogcapi", {"f": "html"}),
+        ("/ogcapi/openapi", {}),
+        ("/ogcapi/collections", {"f": "json"}),
+    ],
+)
+def test_ogc_metadata_has_no_placeholders(ogc_client, path, params):
+    response = ogc_client.get(path, params=params)
+    assert response.status_code == 200
+    assert "example.com" not in response.text
+
+
+def test_ogc_openapi_contact_metadata(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    assert response.status_code == 200
+    info = response.json()["info"]
+
+    # info.contact is built from metadata.provider, and metadata.contact is
+    # nested under the x-ogc-serviceContact extension.
+    assert info["contact"]["name"] == "NMBGMR"
+    assert info["contact"]["url"] == "https://geoinfo.nmt.edu"
+    assert info["contact"]["email"] == "ocotillo-nmbg@nmt.edu"
+
+    service_contact = info["contact"]["x-ogc-serviceContact"]
+    assert service_contact["name"] == "Ocotillo Support, NMBGMR"
+    assert service_contact["emails"][0]["value"] == "ocotillo-nmbg@nmt.edu"
+
+
+def test_ogc_terms_of_service_resolves(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    terms_url = response.json()["info"]["termsOfService"]
+    parsed = urlparse(terms_url)
+    assert parsed.scheme in ("http", "https")
+    assert parsed.path == "/disclaimer"
+
+    # An advertised terms_of_service that 404s is no better than a placeholder.
+    disclaimer = ogc_client.get(parsed.path)
+    assert disclaimer.status_code == 200
+    assert "New Mexico Bureau of Geology and Mineral Resources" in disclaimer.text
+
+
+def test_ogc_landing_page_advertises_service_url(ogc_client):
+    response = ogc_client.get("/ogcapi", params={"f": "json"})
+    about = [link for link in response.json()["links"] if link["rel"] == "about"]
+    assert about, "landing page has no rel=about link"
+    assert about[0]["href"] == "https://ocotillo.newmexicowaterdata.org"
 
 
 def test_latest_tds_observation_date_falls_back_to_collection_date(water_well_thing):

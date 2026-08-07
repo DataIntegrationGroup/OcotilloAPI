@@ -99,21 +99,26 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A2 — Replace OGC server metadata placeholders in pygeoapi-config.yml
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A2
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A2 @production
   Scenario: Service metadata contains no placeholder or example.com values
     Given the service configuration has been updated with accurate metadata
-    When a client requests the /ogcapi landing page
-    Then the response body contains no "example.com" strings
+    When a client requests the /ogcapi landing page as JSON, as HTML, and as OpenAPI
+    Then no response body contains an "example.com" string
 
-  @backend @ogc-infrastructure @sprint-1 @high-priority @A2 @wip
-  Scenario: Landing page reflects correct contact and provider information
-    When a client requests the /ogcapi landing page
+  @backend @ogc-infrastructure @sprint-1 @high-priority @A2 @production
+  Scenario: Service metadata reflects correct contact and provider information
+    When a client requests the /ogcapi OpenAPI document
     Then the service metadata fields match the following values:
-      | field             | expected-value                        |
-      | terms_of_service  | TODO: confirm with technical lead     |
-      | provider_url      | https://geoinfo.nmt.edu               |
-      | contact_name      | TODO: confirm with technical lead     |
-      | contact_email     | ocotillo-nmbg@nmt.edu                 |
+      | field         | expected-value            |
+      | provider_url  | https://geoinfo.nmt.edu   |
+      | contact_name  | Ocotillo Support, NMBGMR  |
+      | contact_email | ocotillo-nmbg@nmt.edu     |
+    And the terms of service URL resolves to the service disclaimer page
+    # The three fields above are asserted against the OpenAPI document, not
+    # the JSON landing page: in pygeoapi 0.23.5 the JSON landing page carries
+    # only title, description, and links. terms_of_service is checked by
+    # resolving it, because an advertised URL that 404s is no better than a
+    # placeholder.
 
   # ---------------------------------------------------------------------------
   # A3 — Fix broken README example URLs

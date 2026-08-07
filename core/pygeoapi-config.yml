@@ -19,19 +19,34 @@ logging:
 metadata:
   identification:
     title: Ocotillo OGC API
-    description: OGC API - Features backed by PostGIS and pygeoapi
-    keywords: [features, ogcapi, postgis, pygeoapi]
-    terms_of_service: https://example.com/terms
-    url: https://example.com
+    # The disclaimer pointer is repeated here because the JSON landing page
+    # carries only title/description/links -- terms_of_service below reaches
+    # the HTML landing page and the OpenAPI document, but not JSON clients.
+    description: >-
+      OGC API - Features service publishing New Mexico Bureau of Geology and
+      Mineral Resources groundwater, geochemistry, and monitoring-location
+      data. Provided without warranty - see the terms of service for data
+      limitations.
+    keywords: [features, ogcapi, postgis, pygeoapi, groundwater, new mexico]
+    terms_of_service: {terms_of_service_url}
+    url: https://ocotillo.newmexicowaterdata.org
   license:
     name: CC-BY 4.0
     url: https://creativecommons.org/licenses/by/4.0/
   provider:
     name: NMBGMR
     url: https://geoinfo.nmt.edu
+    # pygeoapi builds OpenAPI info.contact from `provider`, not `contact`
+    # (pygeoapi/openapi.py gen_contact), so info.contact.email is empty
+    # without this line.
+    email: ocotillo-nmbg@nmt.edu
   contact:
-    name: API Support
-    email: support@example.com
+    name: Ocotillo Support, NMBGMR
+    email: ocotillo-nmbg@nmt.edu
+    # No `role:` here. pygeoapi 0.23.5 writes contact.role into
+    # x-ogc-serviceContact.hoursOfService (pygeoapi/openapi.py, gen_contact --
+    # the line is a copy-paste of the `hours` branch above it), so setting it
+    # publishes "pointOfContact" as the service's hours of operation.
 
 resources:
   locations:

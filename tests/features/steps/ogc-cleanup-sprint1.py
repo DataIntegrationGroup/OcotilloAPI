@@ -13,18 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Step definitions for A1 (public release_status filter on ogc_* views) and
-A11 (authenticated internal OGC mount at /ogcapi-internal).
+"""Step definitions for A1 (public release_status filter on ogc_* views),
+A2 (OGC server metadata placeholders) and A11 (authenticated internal OGC
+mount at /ogcapi-internal).
 
-Only the @A1- and @A11-tagged scenarios in ogc-cleanup-sprint1.feature are
-implemented here. The other ~9 tickets sharing that feature file have no
-steps yet and stay undefined/dormant, per this ticket's plan.
+Only the @A1-, @A2- and @A11-tagged scenarios in ogc-cleanup-sprint1.feature
+are implemented here. The other ~8 tickets sharing that feature file have no
+steps yet and stay undefined/dormant, per those tickets' plans.
 """
 
 import importlib
 import os
 from datetime import date
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 from alembic import command
 from behave import given, when, then
@@ -853,6 +855,100 @@ def step_then_no_collection_id_prefixed(context, prefix):
     payload = context.response.json()
     offending = [c["id"] for c in payload["collections"] if c["id"].startswith(prefix)]
     assert not offending, f"found collections with id prefixed {prefix!r}: {offending}"
+
+
+# ---------------------------------------------------------------------------
+# A2 -- Replace OGC server metadata placeholders in pygeoapi-config.yml
+# ---------------------------------------------------------------------------
+
+
+@given("the service configuration has been updated with accurate metadata")
+def step_given_service_metadata_updated(context):
+    # No-op marker: core/pygeoapi-config.yml is the artifact under test, so
+    # there is no runtime state to arrange. Mirrors how the A1/A11 givens
+    # treat already-applied state.
+    pass
+
+
+@when("a client requests the /ogcapi landing page as JSON, as HTML, and as OpenAPI")
+def step_when_request_landing_page_all_formats(context):
+    context.metadata_responses = {
+        "landing page (JSON)": context.client.get("/ogcapi", params={"f": "json"}),
+        "landing page (HTML)": context.client.get("/ogcapi", params={"f": "html"}),
+        "OpenAPI document": context.client.get("/ogcapi/openapi"),
+    }
+    for label, response in context.metadata_responses.items():
+        assert (
+            response.status_code == 200
+        ), f"{label} returned {response.status_code}, expected 200"
+
+
+@then('no response body contains an "{needle}" string')
+def step_then_no_response_contains(context, needle):
+    offending = [
+        label
+        for label, response in context.metadata_responses.items()
+        if needle in response.text
+    ]
+    assert not offending, f"{needle!r} still present in: {', '.join(offending)}"
+
+
+@when("a client requests the /ogcapi OpenAPI document")
+def step_when_request_openapi_document(context):
+    context.response = context.client.get("/ogcapi/openapi")
+    assert (
+        context.response.status_code == 200
+    ), f"/ogcapi/openapi returned {context.response.status_code}, expected 200"
+
+
+def _openapi_metadata_field(info, field):
+    # pygeoapi maps metadata.provider onto OpenAPI info.contact and
+    # metadata.contact onto the x-ogc-serviceContact extension
+    # (pygeoapi/openapi.py gen_contact) -- neither is on the JSON landing page.
+    contact = info["contact"]
+    service_contact = contact["x-ogc-serviceContact"]
+    if field == "provider_url":
+        return contact["url"]
+    if field == "contact_name":
+        return service_contact["name"]
+    if field == "contact_email":
+        return service_contact["emails"][0]["value"]
+    raise KeyError(f"unmapped metadata field {field!r}")
+
+
+@then("the service metadata fields match the following values:")
+def step_then_service_metadata_fields_match(context):
+    info = context.response.json()["info"]
+    mismatches = []
+    for row in context.table:
+        field = row["field"]
+        expected = row["expected-value"]
+        actual = _openapi_metadata_field(info, field)
+        if actual != expected:
+            mismatches.append(f"{field}: expected {expected!r}, got {actual!r}")
+    assert not mismatches, "; ".join(mismatches)
+
+
+@then("the terms of service URL resolves to the service disclaimer page")
+def step_then_terms_of_service_resolves(context):
+    terms_url = context.response.json()["info"]["termsOfService"]
+    parsed = urlparse(terms_url)
+    assert parsed.scheme in (
+        "http",
+        "https",
+    ), f"termsOfService {terms_url!r} is not an absolute http(s) URL"
+    assert (
+        parsed.path == "/disclaimer"
+    ), f"termsOfService {terms_url!r} does not point at /disclaimer"
+
+    response = context.client.get(parsed.path)
+    assert response.status_code == 200, (
+        f"advertised termsOfService {terms_url!r} returned "
+        f"{response.status_code} -- a 404 is no better than a placeholder"
+    )
+    assert (
+        "New Mexico Bureau of Geology and Mineral Resources" in response.text
+    ), f"{terms_url!r} resolved but does not look like the disclaimer page"
 
 
 # ============= EOF =============================================
