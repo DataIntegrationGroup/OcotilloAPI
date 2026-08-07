@@ -117,8 +117,9 @@ Location (geographic point)
 ├── db/                   # SQLAlchemy models (one file per table/resource)
 │   ├── engine.py         # Database connection configuration
 │   └── ...
+├── domain/               # Business rules as plain functions (no DB, no HTTP)
 ├── schemas/              # Pydantic schemas (validation, serialization)
-├── services/             # Business logic and database interactions
+├── services/             # Orchestration: load, call domain rules, persist
 ├── tests/                # Pytest test suite
 │   ├── conftest.py       # Shared fixtures (test data setup)
 │   └── __init__.py       # Sets test database (ocotilloapi_test)
@@ -128,6 +129,22 @@ Location (geographic point)
 │   └── ...
 └── main.py               # Application entry point
 ```
+
+### Domain Rules
+
+`domain/` holds business rules as plain functions over plain values -- unit
+conversion, cross-column validation, deterministic naming. Modules there import
+nothing from `api/`, `db/`, `schemas/`, or `services/`, and no `fastapi`,
+`sqlalchemy`, `pydantic`, or `httpx`, so the rules are testable without a
+database.
+
+`services/` loads the data, calls the rule, and persists the result. Domain
+errors subclass `ValueError` because the CSV importers treat a `ValueError`
+raised on a row as a per-row validation failure.
+
+Extraction is opportunistic, not a migration: move a rule into `domain/` when
+you are already editing it and it is shared, subtle, or awkward to test in
+place. Read **`ADR4.md`** before extending the layer.
 
 ### Authentication & Authorization
 

@@ -1281,29 +1281,31 @@ class TestWellInventoryHelpers:
 
     def test_extract_autogen_prefix_pattern(self):
         """Test auto-generation prefix extraction for supported placeholders."""
-        from services.well_inventory_csv import _extract_autogen_prefix
+        # The rule itself now lives in domain/wells.py; see
+        # tests/test_domain_wells.py for the database-free version of this.
+        from domain.wells import autogen_prefix
 
         # Existing supported form
-        assert _extract_autogen_prefix("XY-") == "XY-"
-        assert _extract_autogen_prefix("AB-") == "AB-"
+        assert autogen_prefix("XY-") == "XY-"
+        assert autogen_prefix("AB-") == "AB-"
 
         # Placeholder tokens are accepted case-insensitively and normalized.
-        assert _extract_autogen_prefix("WL-XXXX") == "WL-"
-        assert _extract_autogen_prefix("SAC-XXXX") == "SAC-"
-        assert _extract_autogen_prefix("ABC -xxxx") == "ABC-"
-        assert _extract_autogen_prefix("wl-xxxx") == "WL-"
-        assert _extract_autogen_prefix("abc - XXXX") == "ABC-"
+        assert autogen_prefix("WL-XXXX") == "WL-"
+        assert autogen_prefix("SAC-XXXX") == "SAC-"
+        assert autogen_prefix("ABC -xxxx") == "ABC-"
+        assert autogen_prefix("wl-xxxx") == "WL-"
+        assert autogen_prefix("abc - XXXX") == "ABC-"
 
         # Blank values use default prefix
-        assert _extract_autogen_prefix("") == "NM-"
-        assert _extract_autogen_prefix("   ") == "NM-"
+        assert autogen_prefix("") == "NM-"
+        assert autogen_prefix("   ") == "NM-"
 
         # Unsupported forms
-        assert _extract_autogen_prefix("XY-001") is None
-        assert _extract_autogen_prefix("XYZ-") == "XYZ-"
-        assert _extract_autogen_prefix("X-") is None
-        assert _extract_autogen_prefix("123-") is None
-        assert _extract_autogen_prefix("USER-XXXX") is None
+        assert autogen_prefix("XY-001") is None
+        assert autogen_prefix("XYZ-") == "XYZ-"
+        assert autogen_prefix("X-") is None
+        assert autogen_prefix("123-") is None
+        assert autogen_prefix("USER-XXXX") is None
 
     def test_make_row_models_missing_well_name_point_id_column_errors(self):
         """Missing well_name_point_id column should fail validation (blank cell is separate)."""
