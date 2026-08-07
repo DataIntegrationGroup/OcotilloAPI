@@ -1,4 +1,4 @@
-import importlib
+import importlib.util
 import os
 import re
 import sys
@@ -8,6 +8,9 @@ from pathlib import Path
 
 import yaml
 from fastapi import FastAPI
+
+# Consumed by pygeoapi at import time only; see _load_pygeoapi_app.
+_PYGEOAPI_ENV_KEYS = ("PYGEOAPI_CONFIG", "PYGEOAPI_OPENAPI")
 
 THING_COLLECTIONS = [
     {
@@ -404,8 +407,10 @@ def _assert_server_settings_match(
     public_config_path: Path, internal_config_path: Path
 ) -> None:
     # pygeoapi.api.API.__init__ mutates process-wide, module-level globals
-    # (CHARSET, FORMAT_TYPES) that persist across the importlib.reload this
-    # scheme relies on -- whichever mount is constructed last wins for both.
+    # (CHARSET, FORMAT_TYPES). Loading each mount from its own copy of
+    # pygeoapi.starlette_app does not help here, since both copies still
+    # share the one pygeoapi.api module -- whichever mount is constructed
+    # last wins for both.
     # Inert as long as both configs agree on these settings; fail loudly at
     # startup rather than let a future divergence silently corrupt responses
     # on whichever mount lost the race.
@@ -437,12 +442,37 @@ def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
     openapi_path.write_text(openapi, encoding="utf-8")
 
 
-def _load_pygeoapi_app():
+def _load_pygeoapi_app(instance: str, config_path: Path, openapi_path: Path):
+    # pygeoapi.starlette_app resolves PYGEOAPI_CONFIG at import time into a
+    # module-level `api_`, and every route handler looks that name up in the
+    # module's globals at request time. importlib.reload() rebinds those
+    # globals *in place*, so reloading for the second mount retargets the
+    # handlers of the app already built for the first one -- both mounts end
+    # up serving whichever config was loaded last. Give each mount its own
+    # module object so the two sets of globals can never alias.
     module_name = "pygeoapi.starlette_app"
-    if module_name in sys.modules:
-        module = importlib.reload(sys.modules[module_name])
-    else:
-        module = importlib.import_module(module_name)
+    spec = find_spec(module_name)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to locate {module_name} for the {instance} mount.")
+
+    module = importlib.util.module_from_spec(spec)
+    # Registered before exec_module so the module can survive importing itself.
+    sys.modules[f"{module_name}__ocotillo_{instance}"] = module
+
+    previous = {key: os.environ.get(key) for key in _PYGEOAPI_ENV_KEYS}
+    os.environ["PYGEOAPI_CONFIG"] = str(config_path)
+    os.environ["PYGEOAPI_OPENAPI"] = str(openapi_path)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        # These are read only during import, so leaving the last mount's paths
+        # behind would silently decide the config for any later importer.
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
     return module.APP
 
 
@@ -461,10 +491,7 @@ def mount_pygeoapi(app: FastAPI) -> None:
     _write_config(config_path, server_url=_server_url(), include_edr=True)
     _generate_openapi(config_path, openapi_path)
 
-    os.environ["PYGEOAPI_CONFIG"] = str(config_path)
-    os.environ["PYGEOAPI_OPENAPI"] = str(openapi_path)
-
-    pygeoapi_app = _load_pygeoapi_app()
+    pygeoapi_app = _load_pygeoapi_app("public", config_path, openapi_path)
     mount_path = _mount_path()
     app.mount(mount_path, pygeoapi_app)
 
@@ -507,10 +534,7 @@ def mount_pygeoapi_internal(app: FastAPI) -> None:
     _generate_openapi(config_path, openapi_path)
     _assert_server_settings_match(_pygeoapi_dir() / "pygeoapi-config.yml", config_path)
 
-    os.environ["PYGEOAPI_CONFIG"] = str(config_path)
-    os.environ["PYGEOAPI_OPENAPI"] = str(openapi_path)
-
-    pygeoapi_app = _load_pygeoapi_app()
+    pygeoapi_app = _load_pygeoapi_app("internal", config_path, openapi_path)
 
     from core.internal_ogc_auth import InternalOGCAuthMiddleware
 
