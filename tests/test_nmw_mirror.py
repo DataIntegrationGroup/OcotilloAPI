@@ -204,6 +204,123 @@ def test_geothermal_collections_back_existing_relations():
         ), f"backing relation {expected_table} for {coll} does not exist in DB"
 
 
+# ------------------------------------------------------------ temperature units
+@pytest.mark.parametrize(
+    "unit,expected",
+    [
+        ("C", "C"),
+        ("c", "C"),
+        (" degC ", "C"),
+        ("Celsius", "C"),
+        ("F", "F"),
+        ("degF", "F"),
+        ("FAHRENHEIT", "F"),
+        ("K", "K"),
+        ("Kelvin", "K"),
+        ("bogus", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_temp_unit_code_canonicalizes_legacy_units(unit, expected):
+    """Legacy TempUnit strings collapse to C/F/K, or NULL when unrecognized.
+
+    NMW_GtTempDepths."TempUnit" is String(1) and NMW_GtBhtData."TempUnit" is
+    String(5), so both single-letter and spelled-out forms reach the views.
+    """
+    with session_ctx() as session:
+        got = session.execute(
+            text("SELECT public.nmw_temp_unit_code(:u)"), {"u": unit}
+        ).scalar()
+    assert got == expected
+
+
+@pytest.mark.parametrize(
+    "value,unit,expected",
+    [
+        (212.0, "F", 100.0),
+        (32.0, "F", 0.0),
+        (40.0, "C", 40.0),
+        (273.15, "K", 0.0),
+        (50.0, "bogus", None),  # unknown unit -> NULL, never an assumed default
+        (50.0, None, None),
+        (None, "F", None),
+    ],
+)
+def test_temp_to_c_converts_or_nulls(value, unit, expected):
+    with session_ctx() as session:
+        got = session.execute(
+            text("SELECT public.nmw_temp_to_c(:v, :u)"), {"v": value, "u": unit}
+        ).scalar()
+    if expected is None:
+        assert got is None
+    else:
+        assert got == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "relation,columns",
+    [
+        (
+            "ogc_geothermal_wells_bht",
+            {
+                "min_bht_c",
+                "max_bht_c",
+                "temp_unit",
+                "temp_unit_source",
+                "temp_unit_mixed",
+                "unconvertible_count",
+            },
+        ),
+        (
+            "ogc_geothermal_wells_temperature_profile",
+            {
+                "min_temp_c",
+                "max_temp_c",
+                "temp_unit",
+                "temp_unit_source",
+                "temp_unit_mixed",
+                "unconvertible_count",
+            },
+        ),
+    ],
+)
+def test_temperature_views_publish_celsius_columns(relation, columns):
+    """Both temperature views carry normalized Celsius columns alongside the
+    raw legacy ones (pg_attribute, since matviews are not in
+    information_schema.columns)."""
+    with session_ctx() as session:
+        present = {
+            r[0]
+            for r in session.execute(
+                text(
+                    "SELECT attname FROM pg_attribute "
+                    "WHERE attrelid = cast(:rel AS regclass) AND attnum > 0 "
+                    "AND NOT attisdropped"
+                ),
+                {"rel": relation},
+            ).all()
+        }
+    assert columns <= present, f"{relation} missing {sorted(columns - present)}"
+
+
+def test_temperature_views_label_celsius_not_source_unit():
+    """temp_unit describes the *_c columns, so it is the constant 'C' rather
+    than a lexical max() over mixed source units."""
+    with session_ctx() as session:
+        for relation in (
+            "ogc_geothermal_wells_bht",
+            "ogc_geothermal_wells_temperature_profile",
+        ):
+            units = {
+                r[0]
+                for r in session.execute(
+                    text(f'SELECT DISTINCT temp_unit FROM "{relation}"')  # noqa: S608
+                ).all()
+            }
+            assert units <= {"C"}, f"{relation} published temp_unit {units}"
+
+
 # ----------------------------------------------------------------- dump parser
 @pytest.mark.parametrize(
     "raw,expected",
