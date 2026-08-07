@@ -216,6 +216,7 @@ def register_api_routes(app):
     from api.ngwmn import router as ngwmn_router
     from api.feedback import router as feedback_router
     from api.disclaimer import router as disclaimer_router
+    from api.geothermal import router as geothermal_router
 
     app.include_router(asset_router)
     app.include_router(author_router)
@@ -230,6 +231,9 @@ def register_api_routes(app):
     app.include_router(sample_router)
     app.include_router(sensor_router)
     app.include_router(search_router)
+    # geothermal shares the /thing prefix; register before thing_router so its
+    # explicit /thing/geothermal-well routes take precedence over /thing/{id}
+    app.include_router(geothermal_router)
     app.include_router(thing_router)
     app.include_router(ngwmn_router)
     app.include_router(feedback_router)
