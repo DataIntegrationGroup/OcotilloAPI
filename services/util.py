@@ -11,8 +11,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 from core.constants import SRID_WGS84
 
+# Re-exported so the many existing ``from services.util import convert_ft_to_m``
+# imports keep working. The definitions live in ``domain/units.py``; importing
+# them from here drags in httpx, pyproj, and SQLAlchemy, which is exactly what
+# the domain layer exists to avoid.
+from domain.units import (  # noqa: F401
+    METERS_TO_FEET,
+    convert_ft_to_m,
+    convert_m_to_ft,
+)
+
 TRANSFORMERS = {}
-METERS_TO_FEET = 3.28084
 DEFAULT_HTTP_TIMEOUT = 10.0
 DEFAULT_HTTP_RETRIES = 3
 DEFAULT_HTTP_BACKOFF = 0.5
@@ -118,20 +127,6 @@ def convert_dt_tz_naive_to_tz_aware(
     tz = ZoneInfo(iana_timezone)
     dt_aware = dt_naive.replace(tzinfo=tz, fold=fold)
     return dt_aware
-
-
-def convert_ft_to_m(feet: float | None, ndigits: int = 6) -> float | None:
-    """Convert a length from feet to meters."""
-    if feet is None:
-        return None
-    return round(feet / METERS_TO_FEET, ndigits)
-
-
-def convert_m_to_ft(meters: float | None, ndigits: int = 6) -> float | None:
-    """Convert a length from meters to feet."""
-    if meters is None:
-        return None
-    return round(meters * METERS_TO_FEET, ndigits)
 
 
 def get_tiger_data(

@@ -29,7 +29,7 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from core.constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
+from core.constants import SRID_WGS84
 from db import (
     Group,
     Location,
@@ -46,51 +46,38 @@ from db import (
     Parameter,
 )
 from db.engine import session_ctx
+from domain.field_staff import (
+    FIELD_STAFF_ORGANIZATION,
+    LEAD_ROLE,
+    PARTICIPANT_ROLE,
+    field_staff_contact_payload,
+)
+from domain.samples import water_level_sample_name
+from domain.values import build_notes, enum_value
+from domain.water_levels import (
+    GROUNDWATER_LEVEL_ACTIVITY_TYPE,
+    MEASUREMENT_UNIT,
+    SAMPLE_MATRIX,
+)
+from domain.wells import (
+    alternate_ids,
+    autogen_prefix,
+    elevation_m_from_ft,
+    historic_depth_to_water_note,
+    release_status,
+    resolve_measuring_point_height,
+    srid_for_utm_zone,
+    well_purposes,
+)
 from pydantic import ValidationError
 from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing, find_water_wells_by_name
-from services.util import transform_srid, convert_ft_to_m
+from services.util import transform_srid
 
-AUTOGEN_DEFAULT_PREFIX = "NM-"
-AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$", re.IGNORECASE)
-AUTOGEN_TOKEN_REGEX = re.compile(
-    r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$", re.IGNORECASE
-)
 PROGRESS_INTERVAL = 25
-
-
-def _extract_autogen_prefix(well_id: str | None) -> str | None:
-    """
-    Return normalized auto-generation prefix when a placeholder token is provided.
-
-    Supported forms:
-    - ``XY-`` (existing behavior)
-    - ``WL-XXXX`` / ``SAC-XXXX`` / ``ABC-XXXX`` (2-3 uppercase letter prefixes)
-    - blank value (uses default ``NM-`` prefix)
-    """
-    # Normalize input
-    value = (well_id or "").strip()
-
-    # Blank / missing value -> use default prefix
-    if not value:
-        return AUTOGEN_DEFAULT_PREFIX
-
-    # Direct prefix form, e.g. "XY-" or "ABC-"
-    if AUTOGEN_PREFIX_REGEX.match(value):
-        # Ensure normalized trailing dash and uppercase
-        prefix = value[:-1].upper()
-        return f"{prefix}-"
-
-    # Token form, e.g. "WL-XXXX", "SAC-xxxx", with optional spaces around "-"
-    m = AUTOGEN_TOKEN_REGEX.match(value)
-    if m:
-        prefix = m.group("prefix").upper()
-        return f"{prefix}-"
-
-    return None
 
 
 def import_well_inventory_csv(*args, **kw) -> dict:
@@ -363,47 +350,28 @@ def _extract_field_from_value_error(error_text: str) -> str:
 def _make_location(model) -> Location:
     point = Point(model.utm_easting, model.utm_northing)
 
-    # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
-    if model.utm_zone == "13N":
-        source_srid = SRID_UTM_ZONE_13N
-    elif model.utm_zone == "12N":
-        source_srid = SRID_UTM_ZONE_12N
-    else:
-        raise ValueError(f"Unsupported UTM zone: {model.utm_zone}")
-
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
-        point, source_srid=source_srid, target_srid=SRID_WGS84
-    )
-    elevation_ft = model.elevation_ft
-    elevation_m = (
-        convert_ft_to_m(float(elevation_ft)) if elevation_ft is not None else 0.0
+        point,
+        source_srid=srid_for_utm_zone(model.utm_zone),
+        target_srid=SRID_WGS84,
     )
 
-    release_status = "draft"
-    if model.public_availability_acknowledgement is True:
-        release_status = "public"
-    elif model.public_availability_acknowledgement is False:
-        release_status = "private"
-
-    loc = Location(
+    return Location(
         point=transformed_point.wkt,
-        elevation=elevation_m,
-        release_status=release_status,
+        elevation=elevation_m_from_ft(model.elevation_ft),
+        release_status=release_status(model.public_availability_acknowledgement),
     )
-
-    return loc
 
 
 def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     # add contact
-    notes = []
-    for content, note_type in (
-        (model.result_communication_preference, "Communication"),
-        (model.contact_special_requests_notes, "General"),
-    ):
-        if content is not None:
-            notes.append({"content": content, "note_type": note_type})
+    notes = build_notes(
+        (
+            (model.result_communication_preference, "Communication"),
+            (model.contact_special_requests_notes, "General"),
+        )
+    )
 
     emails = []
     phones = []
@@ -517,9 +485,8 @@ def _find_existing_imported_well(
     session: Session, model: WellInventoryRow
 ) -> Thing | None:
     if model.measurement_date_time is not None:
-        sample_name = (
-            f"{model.well_name_point_id}-WL-"
-            f"{model.measurement_date_time.strftime('%Y%m%d%H%M')}"
+        sample_name = water_level_sample_name(
+            model.well_name_point_id, model.measurement_date_time
         )
         existing = session.scalars(
             select(Thing)
@@ -529,7 +496,7 @@ def _find_existing_imported_well(
             .where(
                 Thing.name == model.well_name_point_id,
                 Thing.thing_type == "water well",
-                FieldActivity.activity_type == "groundwater level",
+                FieldActivity.activity_type == GROUNDWATER_LEVEL_ACTIVITY_TYPE,
                 Sample.sample_name == sample_name,
             )
             .order_by(Thing.id.asc())
@@ -567,13 +534,11 @@ def _make_row_models(rows, session, progress_callback=None):
                 raise ValueError("Field required")
 
             well_id = row.get("well_name_point_id")
-            autogen_prefix = _extract_autogen_prefix(well_id)
-            if autogen_prefix is not None:
-                offset = offsets.get(autogen_prefix, 0)
-                well_id, offset = _generate_autogen_well_id(
-                    session, autogen_prefix, offset
-                )
-                offsets[autogen_prefix] = offset
+            prefix = autogen_prefix(well_id)
+            if prefix is not None:
+                offset = offsets.get(prefix, 0)
+                well_id, offset = _generate_autogen_well_id(session, prefix, offset)
+                offsets[prefix] = offset
                 row["well_name_point_id"] = well_id
             elif not well_id:
                 raise ValueError("Field required")
@@ -644,18 +609,19 @@ def _make_row_models(rows, session, progress_callback=None):
 def _add_field_staff(
     session: Session, fs: str, field_event: FieldEvent, role: str, user: str
 ) -> None:
-    ct = "Field Event Participant"
-    org = "NMBGMR"
+    # Contact uniqueness is enforced on (name, organization), so the lookup must
+    # use the same key. Adding contact_type here misses an existing row created
+    # with a different type and then fails on the duplicate insert.
     contact = session.scalars(
         select(Contact)
         .where(Contact.name == fs)
-        .where(Contact.organization == org)
-        .where(Contact.contact_type == ct)
+        .where(Contact.organization == FIELD_STAFF_ORGANIZATION)
     ).first()
 
     if not contact:
-        payload = dict(name=fs, role="Technician", organization=org, contact_type=ct)
-        contact = add_contact(session, payload, user, commit=False)
+        contact = add_contact(
+            session, field_staff_contact_payload(fs), user, commit=False
+        )
 
     fec = FieldEventParticipant(
         field_event=field_event, contact_id=contact.id, participant_role=role
@@ -694,16 +660,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.add(directions_note)
 
     # add data provenance records
-    elevation_method = (
-        model.elevation_method.value
-        if hasattr(model.elevation_method, "value")
-        else (model.elevation_method or "Unknown")
-    )
     dp = DataProvenance(
         target_id=loc.id,
         target_table="location",
         field_name="elevation",
-        collection_method=elevation_method,
+        collection_method=enum_value(model.elevation_method, "Unknown"),
     )
     session.add(dp)
 
@@ -712,67 +673,29 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     # --------------------
 
     # add Thing
-    """
-    Developer's note
+    historic_depth_note = historic_depth_to_water_note(
+        model.historic_depth_to_water_ft, model.depth_source
+    )
 
-    Laila said that the depth source is almost always the source for the historic depth to water.
-    She indicated that it would be acceptable to use the depth source for the historic depth to water source.
-    """
-    if model.depth_source:
-        historic_depth_to_water_source = (
-            model.depth_source.value
-            if hasattr(model.depth_source, "value")
-            else model.depth_source
-        ).lower()
-    else:
-        historic_depth_to_water_source = "unknown"
-
-    if model.historic_depth_to_water_ft is not None:
-        historic_depth_note = f"historic depth to water: {model.historic_depth_to_water_ft} ft - source: {historic_depth_to_water_source}"
-    else:
-        historic_depth_note = None
-
-    well_notes = []
-    for note_content, note_type in (
-        (model.specific_location_of_well, "Access"),
-        (model.contact_special_requests_notes, "General"),
-        (model.well_measuring_notes, "Sampling Procedure"),
-        (model.sampling_scenario_notes, "Sampling Procedure"),
-        (model.well_notes, "General"),
-        (model.water_notes, "Water"),
-        (historic_depth_note, "Historical"),
+    well_notes = build_notes(
         (
+            (model.specific_location_of_well, "Access"),
+            (model.contact_special_requests_notes, "General"),
+            (model.well_measuring_notes, "Sampling Procedure"),
+            (model.sampling_scenario_notes, "Sampling Procedure"),
+            (model.well_notes, "General"),
+            (model.water_notes, "Water"),
+            (historic_depth_note, "Historical"),
             (
-                f"Sample possible: {model.sample_possible}"
-                if model.sample_possible is not None
-                else None
+                (
+                    f"Sample possible: {model.sample_possible}"
+                    if model.sample_possible is not None
+                    else None
+                ),
+                "Sampling Procedure",
             ),
-            "Sampling Procedure",
-        ),
-    ):
-        if note_content is not None:
-            well_notes.append({"content": note_content, "note_type": note_type})
-
-    alternate_ids = []
-    for alternate_id, alternate_organization in (
-        (model.site_name, "NMBGMR"),
-        (model.ose_well_record_id, "NMOSE"),
-    ):
-        if alternate_id is not None:
-            alternate_ids.append(
-                {
-                    "thing_id": -1,
-                    "alternate_id": alternate_id,
-                    "alternate_organization": alternate_organization,
-                    "relation": "same_as",
-                }
-            )
-
-    well_purposes = []
-    if model.well_purpose:
-        well_purposes.append(model.well_purpose)
-    if model.well_purpose_2:
-        well_purposes.append(model.well_purpose_2)
+        )
+    )
 
     monitoring_frequencies = []
     if model.monitoring_frequency:
@@ -783,21 +706,9 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             }
         )
 
-    if (
-        model.mp_height is not None
-        and model.measuring_point_height_ft is not None
-        and model.mp_height != model.measuring_point_height_ft
-    ):
-        raise ValueError(
-            "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
-        )
-
-    if model.measuring_point_height_ft is not None:
-        universal_mp_height = model.measuring_point_height_ft
-    elif model.mp_height is not None:
-        universal_mp_height = model.mp_height
-    else:
-        universal_mp_height = None
+    universal_mp_height = resolve_measuring_point_height(
+        model.mp_height, model.measuring_point_height_ft
+    )
 
     data = CreateWell(
         location_id=loc.id,
@@ -815,20 +726,12 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_pump_depth=model.well_pump_depth_ft,
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
-        well_status=(
-            model.well_status.value
-            if hasattr(model.well_status, "value")
-            else model.well_status
-        ),
-        monitoring_status=(
-            model.monitoring_status.value
-            if hasattr(model.monitoring_status, "value")
-            else model.monitoring_status
-        ),
+        well_status=enum_value(model.well_status),
+        monitoring_status=enum_value(model.monitoring_status),
         notes=well_notes,
-        well_purposes=well_purposes,
+        well_purposes=well_purposes(model.well_purpose, model.well_purpose_2),
         monitoring_frequencies=monitoring_frequencies,
-        alternate_ids=alternate_ids,
+        alternate_ids=alternate_ids(model.site_name, model.ose_well_record_id),
     )
     well_data = data.model_dump()
 
@@ -878,9 +781,9 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
 
     # add field staff
     for fsi, role in (
-        (model.field_staff, "Lead"),
-        (model.field_staff_2, "Participant"),
-        (model.field_staff_3, "Participant"),
+        (model.field_staff, LEAD_ROLE),
+        (model.field_staff_2, PARTICIPANT_ROLE),
+        (model.field_staff_3, PARTICIPANT_ROLE),
     ):
         if not fsi:
             continue
@@ -920,24 +823,19 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         # create FieldActivity
         gwl_field_activity = FieldActivity(
             field_event=fe,
-            activity_type="groundwater level",
+            activity_type=GROUNDWATER_LEVEL_ACTIVITY_TYPE,
             notes="Groundwater level measurement activity conducted during well inventory field event.",
         )
         session.add(gwl_field_activity)
         session.flush()
 
         # create Sample
-        sample_method = (
-            model.sample_method.value
-            if hasattr(model.sample_method, "value")
-            else (model.sample_method or "Unknown")
-        )
         sample = Sample(
             field_activity_id=gwl_field_activity.id,
             sample_date=model.measurement_date_time,
-            sample_name=f"{well.name}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
-            sample_matrix="groundwater",
-            sample_method=sample_method,
+            sample_name=water_level_sample_name(well.name, model.measurement_date_time),
+            sample_matrix=SAMPLE_MATRIX,
+            sample_method=enum_value(model.sample_method, "Unknown"),
             notes=model.water_level_notes,
         )
         session.add(sample)
@@ -949,7 +847,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             sample_id=sample.id,
             parameter_id=parameter.id,
             value=model.depth_to_water_ft,
-            unit="ft",
+            unit=MEASUREMENT_UNIT,
             observation_datetime=model.measurement_date_time,
             measuring_point_height=universal_mp_height,
             groundwater_level_reason=(

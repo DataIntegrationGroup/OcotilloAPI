@@ -35,6 +35,21 @@ from db import (
     FieldEventParticipant,
 )
 from db.engine import session_ctx
+from domain.field_staff import (
+    FIELD_STAFF_ORGANIZATION,
+    field_staff_contact_payload,
+    field_staff_entries,
+)
+from domain.samples import water_level_sample_name
+from domain.water_levels import (
+    GROUNDWATER_LEVEL_ACTIVITY_TYPE,
+    MEASUREMENT_UNIT,
+    SAMPLE_MATRIX,
+    SAMPLE_QC_TYPE,
+    depth_to_water_error,
+    measuring_point_height_conflict_message,
+    reconcile_measuring_point_height,
+)
 from pydantic import ValidationError
 from schemas.water_level_csv import (
     WaterLevelCsvRow,
@@ -323,30 +338,16 @@ def _normalize_field_staff_entries(
     model: WaterLevelCsvRow,
 ) -> tuple[tuple[str, str], ...]:
     """Normalize fixed staff columns into an iterable participant list."""
-    participant_specs = (
-        (model.field_staff, "Lead"),
-        (model.field_staff_2, "Participant"),
-        (model.field_staff_3, "Participant"),
-    )
-    return tuple(
-        (staff_name, role) for staff_name, role in participant_specs if staff_name
+    return field_staff_entries(
+        model.field_staff, model.field_staff_2, model.field_staff_3
     )
 
 
 def _resolve_measuring_point_height(
     well: Thing, csv_mp_height: float | None
 ) -> tuple[float | int | None, float | int | None, bool]:
-    existing_mp_height = well.measuring_point_height
-    if existing_mp_height is not None:
-        existing_mp_height = float(existing_mp_height)
-    if csv_mp_height is not None:
-        return (
-            csv_mp_height,
-            existing_mp_height,
-            (existing_mp_height is not None and csv_mp_height != existing_mp_height),
-        )
-
-    return existing_mp_height, existing_mp_height, False
+    """Read the well's recorded height and apply the reconciliation rule."""
+    return reconcile_measuring_point_height(csv_mp_height, well.measuring_point_height)
 
 
 def _validate_depth_to_water_against_well(
@@ -355,22 +356,11 @@ def _validate_depth_to_water_against_well(
     depth_to_water_ft: float | None,
     resolved_mp_height: float | int | None,
 ) -> str | None:
-    well_depth = well.well_depth
-    if well_depth is not None:
-        well_depth = float(well_depth)
-
-    if depth_to_water_ft is None or resolved_mp_height is None or well_depth is None:
+    """Apply the depth-to-water rule to a well, tagging any message with its row."""
+    error = depth_to_water_error(depth_to_water_ft, resolved_mp_height, well.well_depth)
+    if error is None:
         return None
-
-    corrected_depth_to_water = depth_to_water_ft - resolved_mp_height
-    if corrected_depth_to_water >= well_depth:
-        return (
-            f"Row {row_index}: depth_to_water_ft minus measuring point height "
-            f"({corrected_depth_to_water}) must be less than well depth "
-            f"({well_depth})"
-        )
-
-    return None
+    return f"Row {row_index}: {error}"
 
 
 def _create_records(
@@ -395,7 +385,7 @@ def _create_records(
                 )
                 field_activity = FieldActivity(
                     field_event=field_event,
-                    activity_type="groundwater level",
+                    activity_type=GROUNDWATER_LEVEL_ACTIVITY_TYPE,
                     # Measuring staff now lives on structured participants and the
                     # sample participant link, not in field_activity.notes.
                     notes=None,
@@ -433,10 +423,10 @@ def _create_records(
 
             if row.mp_height_differs_from_history:
                 errors.append(
-                    "Row "
-                    f"{row.row_index}: CSV mp_height ({row.mp_height}) differs "
-                    "from existing measuring point height "
-                    f"({row.existing_mp_height}); CSV value will be used"
+                    f"Row {row.row_index}: "
+                    + measuring_point_height_conflict_message(
+                        row.mp_height, row.existing_mp_height
+                    )
                 )
 
             created.append(
@@ -463,7 +453,7 @@ def _create_records(
 
 def _build_sample_name(row: _ValidatedRow) -> str:
     """Build the deterministic sample identifier used for create/update matching."""
-    return f"{row.well.name}-WL-{row.measurement_dt.strftime('%Y%m%d%H%M')}"
+    return water_level_sample_name(row.well.name, row.measurement_dt)
 
 
 def _find_existing_imported_sample(
@@ -482,7 +472,7 @@ def _find_existing_imported_sample(
         .where(
             Thing.name == row.well.name,
             Thing.thing_type == "water well",
-            FieldActivity.activity_type == "groundwater level",
+            FieldActivity.activity_type == GROUNDWATER_LEVEL_ACTIVITY_TYPE,
             Sample.sample_name == sample_name,
         )
         .order_by(Sample.id.asc())
@@ -537,25 +527,19 @@ def _ensure_field_event_participants(
 
 def _get_or_create_field_staff_contact(session: Session, staff_name: str) -> Contact:
     """Resolve or create the contact record used by field event participants."""
-    contact_type = "Field Event Participant"
-    organization = "NMBGMR"
     # Contact uniqueness is enforced on (name, organization), so the lookup
     # must use the same key to avoid missing an existing row with a different
     # contact_type and attempting a duplicate insert.
     contact = session.scalars(
         select(Contact)
         .where(Contact.name == staff_name)
-        .where(Contact.organization == organization)
+        .where(Contact.organization == FIELD_STAFF_ORGANIZATION)
     ).first()
 
     if contact is None:
-        payload = {
-            "name": staff_name,
-            "role": "Technician",
-            "organization": organization,
-            "contact_type": contact_type,
-        }
-        contact = add_contact(session, payload, None, commit=False)
+        contact = add_contact(
+            session, field_staff_contact_payload(staff_name), None, commit=False
+        )
 
     return contact
 
@@ -592,9 +576,9 @@ def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -
     """Apply normalized sample values from the validated CSV row."""
     sample.sample_date = row.measurement_dt
     sample.sample_name = sample_name
-    sample.sample_matrix = "groundwater"
+    sample.sample_matrix = SAMPLE_MATRIX
     sample.sample_method = row.sample_method_term
-    sample.qc_type = "Normal"
+    sample.qc_type = SAMPLE_QC_TYPE
     sample.notes = row.water_level_notes
 
 
@@ -605,7 +589,7 @@ def _apply_observation_values(
     observation.observation_datetime = row.measurement_dt
     observation.parameter_id = parameter_id
     observation.value = row.depth_to_water_ft
-    observation.unit = "ft"
+    observation.unit = MEASUREMENT_UNIT
     observation.measuring_point_height = row.resolved_mp_height
     observation.groundwater_level_reason = row.level_status
     observation.nma_data_quality = row.data_quality
