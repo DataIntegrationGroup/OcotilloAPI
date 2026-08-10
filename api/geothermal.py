@@ -25,7 +25,7 @@ under ``/thing`` so the URL is stable across that swap.
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
@@ -52,13 +52,25 @@ def get_geothermal_wells(
     session: session_dependency,
     county: Optional[str] = None,
     name_contains: Optional[str] = None,
+    q: Optional[str] = Query(
+        None,
+        description=(
+            "Free-text search across well name, API, well number, operator and "
+            "county. Whitespace-separated words are ANDed, so each word added "
+            "narrows the result. Case-insensitive substring match."
+        ),
+    ),
 ) -> CustomPage[GeothermalWellResponse]:
     """List geothermal wells.
 
     NOTE: sourced from the legacy NM_Wells mirror (NMW_WellHeaders where
     GthrmExist is set). Will be re-pointed at the thing table post-transform.
+
+    ``q`` is what the UI well picker uses: the catalogue is far too large to
+    choose from by scrolling, so the term is matched server-side and the total
+    reported by the pagination envelope is the size of the match set.
     """
-    sql = get_geothermal_wells_query(county=county, name_contains=name_contains)
+    sql = get_geothermal_wells_query(county=county, name_contains=name_contains, q=q)
     return paginate(query=sql, conn=session, transformer=geothermal_wells_transformer)
 
 
