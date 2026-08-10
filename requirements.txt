@@ -2019,9 +2019,9 @@ typer==0.27.1 \
     --hash=sha256:53150287edd11baeb4e4722c8e394fcdf8181c0ae89485cba8d25c778d5edd56 \
     --hash=sha256:a79bef8469a79c45498e7b814ecf8d603cc7644e9acbd9e19cac0334240b18df
     # via ocotilloapi
-types-pytz==2025.2.0.20250809 \
-    --hash=sha256:222e32e6a29bb28871f8834e8785e3801f2dc4441c715cd2082b271eecbe21e5 \
-    --hash=sha256:4f55ed1b43e925cf851a756fe1707e0f5deeb1976e15bf844bcaa025e8fbd0db
+types-pytz==2026.3.1.20260727 \
+    --hash=sha256:42ac44e83645bfceb46597342c8fb8ec028a1407e2feae9c5c539986eab6b57a \
+    --hash=sha256:4364075b6867dd15b210bb8c1d29727d609917129b45600defe1d4b3eda5ecb9
     # via pandas-stubs
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
