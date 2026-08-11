@@ -19,7 +19,13 @@ from typing import Optional, Annotated, TypeAlias
 
 import phonenumbers
 import utm
-from core.constants import STATE_CODES
+from core.constants import (
+    COORD_LAT_MAX,
+    COORD_LAT_MIN,
+    COORD_LON_MAX,
+    COORD_LON_MIN,
+    STATE_CODES,
+)
 from core.enums import (
     ElevationMethod,
     Role,
@@ -47,6 +53,7 @@ from pydantic import (
     Field,
     AliasChoices,
 )
+from domain.wells import utm_zone_number
 from schemas import past_or_today_validator, PastOrTodayDatetime
 from services.util import normalize_datetime_to_utc
 
@@ -385,20 +392,23 @@ class WellInventoryRow(BaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-        # verify utm in NM
-        utm_zone_value = (self.utm_zone or "").upper()
-        if utm_zone_value not in ("12N", "13N"):
-            raise ValueError("Invalid utm zone. Must be one of: 12N, 13N")
-
-        zone = int(utm_zone_value[:-1])
-        northern = True  # only northern hemisphere zones (12N, 13N) are supported
+        # utm_zone_number raises UnsupportedUtmZone (a ValueError) for anything
+        # outside the supported northern-hemisphere CONUS range; Pydantic wraps it
+        # with its own "Value error, " prefix, so no message is composed here.
+        zone = utm_zone_number(self.utm_zone)
+        northern = True  # utm_zone_number rejects anything but an "N" suffix
         lat, lon = utm.to_latlon(
             self.utm_easting, self.utm_northing, zone, northern=northern
         )
-        if not ((31.33 <= lat <= 37.00) and (-109.05 <= lon <= -103.00)):
+        # A coarse sanity check, not a border check -- catches transposed
+        # easting/northing and feet-vs-meters entry mistakes.
+        if not (
+            COORD_LAT_MIN <= lat <= COORD_LAT_MAX
+            and COORD_LON_MIN <= lon <= COORD_LON_MAX
+        ):
             raise ValueError(
-                f"UTM coordinates are outside of the NM. E={self.utm_easting} N={self.utm_northing}"
-                f" Zone={self.utm_zone}"
+                f"UTM coordinates are outside the expected range. E={self.utm_easting}"
+                f" N={self.utm_northing} Zone={self.utm_zone}"
             )
 
         if self.depth_to_water_ft is not None:

@@ -939,7 +939,7 @@ class TestWellInventoryErrorHandling:
             assert result.exit_code == 1
 
     def test_upload_invalid_utm_coordinates(self):
-        """Upload fails when UTM coordinates are outside New Mexico."""
+        """Upload fails when UTM coordinates are outside the expected range."""
         file_path = Path("tests/features/data/well-inventory-invalid-utm.csv")
         if file_path.exists():
             result = well_inventory_csv(file_path)
@@ -1396,6 +1396,42 @@ class TestWellInventoryRowUtmValidation:
         model = WellInventoryRow(**row)
 
         assert model.utm_zone == "13N"
+
+    def test_zone_outside_conus_range_is_rejected(self):
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "20N"
+
+        with pytest.raises(ValueError, match="Unsupported UTM zone"):
+            WellInventoryRow(**row)
+
+    def test_coordinates_far_outside_expected_range_are_rejected(self):
+        # Zone 13N easting/northing well south of the sanity range (~9N lat).
+        row = _minimal_valid_well_inventory_row()
+        row["utm_easting"] = 500000
+        row["utm_northing"] = 1000000
+
+        with pytest.raises(ValueError, match="outside the expected range"):
+            WellInventoryRow(**row)
+
+    def test_badly_scaled_coordinates_raise_out_of_range_error(self):
+        # utm.to_latlon itself rejects an easting/northing outside its valid
+        # domain (e.g. a value entered in the wrong units). This becomes
+        # reachable for more zones now that the NM-only allowlist is gone.
+        row = _minimal_valid_well_inventory_row()
+        row["utm_easting"] = 99999999
+
+        with pytest.raises(ValueError, match="easting out of range"):
+            WellInventoryRow(**row)
+
+    def test_zone_outside_nm_but_inside_conus_is_accepted(self):
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "11N"
+        row["utm_easting"] = 500000
+        row["utm_northing"] = 4000000
+
+        model = WellInventoryRow(**row)
+
+        assert model.utm_zone == "11N"
 
 
 class TestWellInventoryRowAliases:

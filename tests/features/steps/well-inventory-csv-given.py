@@ -227,7 +227,7 @@ def step_step_step_11(context: Context):
 
 
 @given(
-    "my CSV file contains a row with utm_easting utm_northing and utm_zone values that are not within New Mexico"
+    "my CSV file contains a row with utm_easting utm_northing and utm_zone values that are outside the expected coordinate range"
 )
 def step_step_step_12(context: Context):
     _set_file_content(context, "well-inventory-invalid-utm.csv")

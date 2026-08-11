@@ -23,6 +23,12 @@ SRID_NAD83_UTM_BASE = 26900
 UTM_ZONE_MIN = 10
 UTM_ZONE_MAX = 19
 
+# A coarse sanity range, not a national border: it catches transposed
+# easting/northing and feet-vs-meters entry mistakes. It is wider than the US
+# (e.g. it admits Mexico City) -- do not use it to decide "is this the US".
+COORD_LAT_MIN, COORD_LAT_MAX = 18.0, 72.0
+COORD_LON_MIN, COORD_LON_MAX = -180.0, -66.0
+
 STATE_CODES = (
     "AL",
     "AK",

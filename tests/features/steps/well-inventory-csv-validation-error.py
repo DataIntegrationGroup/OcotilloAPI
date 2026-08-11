@@ -85,11 +85,11 @@ def step_then_the_response_includes_a_validation_error_indicating_the_invalid_ut
     expected_errors = [
         {
             "field": "composite field error",
-            "error": "Value error, UTM coordinates are outside of the NM. E=457100.0 N=4159020.0 Zone=13N",
+            "error": "Value error, UTM coordinates are outside the expected range. E=500000.0 N=1000000.0 Zone=13N",
         },
         {
             "field": "composite field error",
-            "error": "Value error, Invalid utm zone. Must be one of: 12N, 13N",
+            "error": "Value error, Unsupported UTM zone: 13S",
         },
     ]
     _handle_validation_error(context, expected_errors)
