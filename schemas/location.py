@@ -20,9 +20,10 @@ from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
 
-from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.constants import SRID_WGS84
 from core.enums import ElevationMethod, CoordinateMethod
 from core.enums import ReleaseStatus
+from domain.geospatial import srid_for_longitude, utm_zone_for_longitude
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.util import convert_m_to_ft, transform_srid
@@ -172,14 +173,16 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["nma_date_created"] = data_dict.get("nma_date_created")
         data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
 
-        # populate UTM coordinates
-        point_utm_zone_13n_wkt = transform_srid(
-            point_wgs84_wkt, SRID_WGS84, SRID_UTM_ZONE_13N
+        # populate UTM coordinates using the zone the point actually falls in,
+        # not a fixed NM zone -- a well outside 12N/13N previously read back
+        # with a confidently wrong easting/northing labeled "13N".
+        zone = utm_zone_for_longitude(point_wgs84_wkt.x)
+        point_utm_wkt = transform_srid(
+            point_wgs84_wkt, SRID_WGS84, srid_for_longitude(point_wgs84_wkt.x)
         )
-        data_dict["properties"]["utm_coordinates"]["easting"] = point_utm_zone_13n_wkt.x
-        data_dict["properties"]["utm_coordinates"][
-            "northing"
-        ] = point_utm_zone_13n_wkt.y
+        data_dict["properties"]["utm_coordinates"]["easting"] = point_utm_wkt.x
+        data_dict["properties"]["utm_coordinates"]["northing"] = point_utm_wkt.y
+        data_dict["properties"]["utm_coordinates"]["utm_zone"] = f"{zone}N"
 
         return data_dict
 

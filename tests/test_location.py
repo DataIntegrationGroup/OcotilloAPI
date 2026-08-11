@@ -325,4 +325,35 @@ def test_ampapi_fields_independent_of_created_at():
     cleanup_post_test(Location, data["id"])
 
 
+def test_geojson_response_uses_the_points_actual_utm_zone():
+    """A well outside 12N/13N must not read back with a hardcoded 13N label."""
+    from shapely import Point
+
+    from core.constants import SRID_WGS84
+    from db.engine import session_ctx
+    from schemas.location import LocationGeoJSONResponse
+    from services.util import transform_srid
+
+    lon, lat = -117.0, 36.144718  # zone 11N (Nevada), outside 12N/13N
+    expected = transform_srid(Point(lon, lat), SRID_WGS84, 26911)
+
+    with session_ctx() as session:
+        loc = Location(point=f"POINT({lon} {lat})", elevation=0, release_status="draft")
+        session.add(loc)
+        session.commit()
+        session.refresh(loc)
+        location_id = loc.id
+
+        response = LocationGeoJSONResponse.model_validate(loc)
+
+    try:
+        utm = response.properties.utm_coordinates
+        assert utm.utm_zone == "11N"
+        assert utm.easting == pytest.approx(expected.x)
+        assert utm.northing == pytest.approx(expected.y)
+        assert utm.horizontal_datum == "NAD83"
+    finally:
+        cleanup_post_test(Location, location_id)
+
+
 # ============= EOF =============================================
