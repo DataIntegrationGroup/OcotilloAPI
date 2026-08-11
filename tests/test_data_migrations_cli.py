@@ -73,6 +73,30 @@ def test_data_migrations_run_invokes_runner(monkeypatch):
     assert "applied" in result.output
 
 
+def test_data_migrations_run_dry_run_invokes_preview(monkeypatch):
+    monkeypatch.setattr("db.engine.session_ctx", _fake_session_ctx)
+
+    called = {}
+
+    def fake_dry_run(session, migration_id):
+        called["migration_id"] = migration_id
+
+    def fail_run(*args, **kwargs):
+        raise AssertionError("--dry-run must not apply the migration")
+
+    monkeypatch.setattr("data_migrations.runner.dry_run_migration_by_id", fake_dry_run)
+    monkeypatch.setattr("data_migrations.runner.run_migration_by_id", fail_run)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["data-migrations", "run", "20260205_0001", "--dry-run"]
+    )
+
+    assert result.exit_code == 0
+    assert called == {"migration_id": "20260205_0001"}
+    assert "nothing written" in result.output
+
+
 def test_data_migrations_run_all_invokes_runner(monkeypatch):
     monkeypatch.setattr("db.engine.session_ctx", _fake_session_ctx)
 

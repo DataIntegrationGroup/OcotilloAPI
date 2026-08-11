@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from sqlalchemy.orm import Session
 
@@ -27,3 +27,8 @@ class DataMigration:
     description: str
     run: Callable[[Session], None]
     is_repeatable: bool = False
+    # Optional read-only preview. Migrations that delete rows or re-point
+    # foreign keys should provide one so the planned changes can be reviewed
+    # before anything is written. It must not commit. Any return value is for
+    # the caller's own use -- the runner ignores it.
+    dry_run: Optional[Callable[[Session], object]] = None

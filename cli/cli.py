@@ -1281,12 +1281,23 @@ def data_migrations_run(
     force: bool = typer.Option(
         False, "--force", help="Re-run even if already applied."
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Report the planned changes without writing anything.",
+    ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
 ):
     from db.engine import session_ctx
-    from data_migrations.runner import run_migration_by_id
+    from data_migrations.runner import dry_run_migration_by_id, run_migration_by_id
+
+    if dry_run:
+        with session_ctx() as session:
+            dry_run_migration_by_id(session, migration_id)
+        typer.echo("dry run complete; nothing written")
+        return
 
     with session_ctx() as session:
         ran = run_migration_by_id(session, migration_id, force=force)
