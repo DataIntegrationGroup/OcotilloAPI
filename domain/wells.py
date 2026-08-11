@@ -27,7 +27,7 @@ import.
 
 import re
 
-from core.constants import SRID_UTM_ZONE_12N, SRID_UTM_ZONE_13N
+from core.constants import SRID_NAD83_UTM_BASE, UTM_ZONE_MAX, UTM_ZONE_MIN
 from domain.units import convert_ft_to_m
 from domain.values import enum_value
 
@@ -37,12 +37,7 @@ AUTOGEN_TOKEN_REGEX = re.compile(
     r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$", re.IGNORECASE
 )
 
-# TODO: this needs to be more sophisticated in the future. Likely more than 13N
-# and 12N will be used.
-UTM_ZONE_SRIDS = {
-    "13N": SRID_UTM_ZONE_13N,
-    "12N": SRID_UTM_ZONE_12N,
-}
+UTM_ZONE_REGEX = re.compile(r"^\s*(\d{1,2})\s*N\s*$", re.IGNORECASE)
 
 RELEASE_STATUS_PUBLIC = "public"
 RELEASE_STATUS_PRIVATE = "private"
@@ -91,12 +86,31 @@ def autogen_prefix(well_id: str | None) -> str | None:
     return None
 
 
+def utm_zone_number(utm_zone: str | None) -> int:
+    """
+    Parse a UTM zone label (e.g. ``"13N"``) into its zone number.
+
+    Accepts any northern-hemisphere zone from ``UTM_ZONE_MIN`` to ``UTM_ZONE_MAX``
+    (10N-19N spans the continental US), case-insensitively and tolerant of
+    surrounding whitespace. Anything else -- a bad shape, a southern-hemisphere
+    suffix, or a zone outside that range -- raises ``UnsupportedUtmZone``, which
+    also names the supported range so the message is useful on its own.
+    """
+    match = UTM_ZONE_REGEX.match(utm_zone or "")
+    if match:
+        zone = int(match.group(1))
+        if UTM_ZONE_MIN <= zone <= UTM_ZONE_MAX:
+            return zone
+
+    raise UnsupportedUtmZone(
+        f"Unsupported UTM zone: {utm_zone}. Must be a northern-hemisphere zone "
+        f"from {UTM_ZONE_MIN}N to {UTM_ZONE_MAX}N."
+    )
+
+
 def srid_for_utm_zone(utm_zone: str | None) -> int:
     """Return the EPSG code for a supported UTM zone label."""
-    try:
-        return UTM_ZONE_SRIDS[utm_zone]
-    except KeyError:
-        raise UnsupportedUtmZone(f"Unsupported UTM zone: {utm_zone}") from None
+    return SRID_NAD83_UTM_BASE + utm_zone_number(utm_zone)
 
 
 def elevation_m_from_ft(elevation_ft: float | str | None) -> float:

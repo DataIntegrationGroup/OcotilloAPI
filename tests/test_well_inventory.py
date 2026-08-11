@@ -1058,6 +1058,23 @@ class TestWellInventoryHelpers:
         assert location.point is not None
         assert location.elevation is not None
 
+    def test_make_location_utm_zone_19n(self):
+        """A zone outside NM's historical 12N/13N range still projects."""
+        from services.well_inventory_csv import _make_location
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.utm_easting = 500000.0
+        model.utm_northing = 4700000.0
+        model.utm_zone = "19N"
+        model.elevation_ft = 200.0
+
+        location = _make_location(model)
+
+        assert location is not None
+        assert location.point is not None
+        assert location.elevation is not None
+
     def test_make_contact_with_full_info(self):
         """Test contact dict creation with all fields populated."""
         from services.well_inventory_csv import _make_contact
