@@ -1366,6 +1366,21 @@ class TestWellInventoryHelpers:
             session.commit()
 
 
+class TestWellInventoryRowUtmValidation:
+    """WellInventoryRow's UTM zone/coordinate checks, post NM-restriction removal."""
+
+    def test_lowercase_zone_is_accepted(self):
+        # utm_zone is normalized before the SRID lookup downstream; a row that
+        # used to pass here and fail case-sensitively at persist time now
+        # succeeds end to end.
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "13n"
+
+        model = WellInventoryRow(**row)
+
+        assert model.utm_zone == "13N"
+
+
 class TestWellInventoryRowAliases:
     """Schema alias handling for well inventory CSV field names."""
 

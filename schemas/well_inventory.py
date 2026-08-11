@@ -375,6 +375,14 @@ class WellInventoryRow(BaseModel):
             return None
         return normalize_datetime_to_utc(value)
 
+    @field_validator("utm_zone", mode="after")
+    @classmethod
+    def normalize_utm_zone(cls, value: str) -> str:
+        # Canonicalize so downstream callers (services/well_inventory_csv.py) see
+        # the same string this validator checked -- a stray "13n" used to pass
+        # here but fail case-sensitively at persist time.
+        return (value or "").strip().upper()
+
     @model_validator(mode="after")
     def validate_model(self):
         # verify utm in NM
