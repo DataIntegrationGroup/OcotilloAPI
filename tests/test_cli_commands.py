@@ -137,8 +137,9 @@ def test_refresh_materialized_views_rejects_invalid_identifier():
 
 def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
     class FakeGroup:
-        def __init__(self):
+        def __init__(self, release_status="draft"):
             self.project_area = None
+            self.release_status = release_status
 
     fake_group = FakeGroup()
 
@@ -236,8 +237,98 @@ def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
     assert "Created 1 group(s)." in result.output
     assert "Updated 1 group project area(s)." in result.output
     assert "Skipped 0 unchanged group(s)." in result.output
+    # The matched draft group plus the newly created one.
+    assert "Published 2 group(s) to the OGC layer." in result.output
     assert "Unmatched locations: Missing Group" in result.output
     assert fake_group.project_area is not None
+    assert fake_group.release_status == "public"
+
+
+def test_import_project_area_boundaries_preserves_curated_release_status(
+    monkeypatch,
+):
+    """A group someone deliberately made private stays private."""
+
+    class FakeGroup:
+        def __init__(self, release_status):
+            self.project_area = None
+            self.release_status = release_status
+
+    private_group = FakeGroup("private")
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr("cli.project_area_import.httpx.Client", FakeClient)
+    monkeypatch.setattr(
+        "cli.project_area_import._fetch_project_area_features",
+        lambda client, layer_url: [
+            {
+                "properties": {"location": "Private Group"},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-106.9, 33.9],
+                            [-106.7, 33.9],
+                            [-106.7, 34.1],
+                            [-106.9, 34.1],
+                            [-106.9, 33.9],
+                        ]
+                    ],
+                },
+            },
+        ],
+    )
+
+    class FakeScalarResult:
+        def __init__(self, groups):
+            self._groups = groups
+
+        def all(self):
+            return self._groups
+
+    class FakeSession:
+        def __init__(self):
+            self.added = []
+
+        def scalars(self, stmt):
+            return FakeScalarResult([private_group])
+
+        def add(self, obj):
+            self.added.append(obj)
+
+        def commit(self):
+            pass
+
+    class FakeSessionCtx:
+        def __enter__(self):
+            self.session = FakeSession()
+            return self.session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "cli.project_area_import.session_ctx",
+        lambda: FakeSessionCtx(),
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["import-project-area-boundaries"])
+
+    assert result.exit_code == 0, result.output
+    assert "Published 0 group(s) to the OGC layer." in result.output
+    # The boundary still updates -- only the release status is left alone.
+    assert private_group.project_area is not None
+    assert private_group.release_status == "private"
 
 
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
@@ -702,10 +793,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             {header}
             {row}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"

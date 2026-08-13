@@ -19,6 +19,15 @@ PROJECT_AREA_LAYER_URL = "".join(
 )
 PROJECT_AREA_PAGE_SIZE = 1000
 
+# Boundaries published on maps.nmt.edu are already public, so the groups they
+# land on belong in the ogc_project_areas view (release_status = 'public').
+# Without this the rows keep ReleaseMixin's "draft" default and the OGC layer
+# serves nothing.
+PUBLIC_RELEASE_STATUS = "public"
+# Only promote from the untouched default. "private" and "archived" are
+# deliberate curation decisions, and an import must not overturn them.
+PROMOTABLE_RELEASE_STATUSES = frozenset({"draft"})
+
 
 @dataclass(frozen=True)
 class ProjectAreaImportResult:
@@ -27,6 +36,7 @@ class ProjectAreaImportResult:
     updated: int
     created: int
     skipped: int
+    published: int
     unmatched_locations: tuple[str, ...]
 
 
@@ -95,6 +105,7 @@ def import_project_area_boundaries(
     updated = 0
     created = 0
     skipped = 0
+    published = 0
 
     with session_ctx() as session:
         for feature in features:
@@ -124,9 +135,11 @@ def import_project_area_boundaries(
                     name=location_name,
                     group_type=group_type,
                     project_area=project_area,
+                    release_status=PUBLIC_RELEASE_STATUS,
                 )
                 session.add(new_group)
                 created += 1
+                published += 1
                 matched += 1
                 continue
 
@@ -146,6 +159,13 @@ def import_project_area_boundaries(
                 else:
                     skipped += 1
 
+                # Publish on every match, not just on a geometry change: a
+                # group whose boundary is already current still has to reach
+                # the OGC layer, and earlier imports left these at "draft".
+                if group.release_status in PROMOTABLE_RELEASE_STATUSES:
+                    group.release_status = PUBLIC_RELEASE_STATUS
+                    published += 1
+
         session.commit()
 
     return ProjectAreaImportResult(
@@ -154,5 +174,6 @@ def import_project_area_boundaries(
         updated=updated,
         created=created,
         skipped=skipped,
+        published=published,
         unmatched_locations=tuple(sorted(set(unmatched_locations))),
     )

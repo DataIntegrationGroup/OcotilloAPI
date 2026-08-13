@@ -1352,6 +1352,7 @@ def import_project_area_boundaries_command(
     typer.echo(f"Created {result.created} group(s).")
     typer.echo(f"Updated {result.updated} group project area(s).")
     typer.echo(f"Skipped {result.skipped} unchanged group(s).")
+    typer.echo(f"Published {result.published} group(s) to the OGC layer.")
     if result.unmatched_locations:
         typer.echo(
             "Unmatched locations: " + ", ".join(result.unmatched_locations),
