@@ -1,0 +1,139 @@
+name: Data Migrations
+
+# Data migrations (data_migrations/migrations/) are not part of CD. The deploy
+# workflows only run `alembic upgrade head`, so a registered data migration sits
+# unapplied until someone runs it by hand against a live database -- which needs
+# Cloud SQL credentials most people do not have locally. This workflow runs them
+# with the same environment secrets the deploys already use.
+#
+# Start with action = status. It prints what is registered, what has been
+# applied, and when. It applies no migration, though it is not strictly
+# read-only: get_status() calls ensure_history_table(), so a database that has
+# never run one gets an empty data_migration_history table created.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      action:
+        description: "status (applies nothing) | run-all | run (single migration)"
+        type: choice
+        options:
+          - status
+          - run-all
+          - run
+        default: status
+      migration_id:
+        description: "Migration id -- required when action = run"
+        type: string
+        default: ""
+      include_repeatable:
+        description: "Include repeatable migrations (action = run-all)"
+        type: boolean
+        default: false
+      force:
+        description: "Re-run migrations already recorded as applied"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One run at a time per environment: these write to a live database, and two
+# concurrent runs could both pass the "already applied" check.
+concurrency:
+  group: data-migrations-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  data-migrations:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Validate inputs
+        run: |
+          if [ "${{ inputs.action }}" = "run" ] && [ -z "${{ inputs.migration_id }}" ]; then
+            echo "::error::action = run requires migration_id."
+            echo "::error::Run this workflow with action = status to list the registered ids."
+            exit 1
+          fi
+          if [ "${{ inputs.action }}" = "status" ] && [ "${{ inputs.force }}" = "true" ]; then
+            echo "::warning::force has no effect on a status check."
+          fi
+
+      - name: Check out source repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Install uv in container
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "latest"
+
+      - name: Authenticate to Google Cloud
+        uses: "google-github-actions/auth@v3"
+        with:
+          credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
+
+      - name: Report target
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Database:    ${{ vars.CLOUD_SQL_DATABASE }}"
+          echo "Action:      ${{ inputs.action }}"
+
+      # Runs before the action so the log shows the before/after pair on a
+      # single run, and so a status-only run needs no second step.
+      - name: Status before
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: uv run --no-dev oco data-migrations status
+
+      - name: Apply migrations
+        if: inputs.action != 'status'
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: |
+          set -euo pipefail
+
+          args=()
+          if [ "${{ inputs.action }}" = "run" ]; then
+            args=(run "${{ inputs.migration_id }}")
+            if [ "${{ inputs.force }}" = "true" ]; then
+              args+=(--force)
+            fi
+          else
+            args=(run-all)
+            if [ "${{ inputs.include_repeatable }}" = "true" ]; then
+              args+=(--include-repeatable)
+            fi
+            if [ "${{ inputs.force }}" = "true" ]; then
+              args+=(--force)
+            fi
+          fi
+
+          echo "oco data-migrations ${args[*]}"
+          uv run --no-dev oco data-migrations "${args[@]}"
+
+      - name: Status after
+        if: inputs.action != 'status'
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: uv run --no-dev oco data-migrations status
