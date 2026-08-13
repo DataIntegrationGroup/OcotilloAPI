@@ -47,7 +47,7 @@ curl http://localhost:8000/ogcapi/collections/locations
 
 ```bash
 curl "http://localhost:8000/ogcapi/collections/locations/items?limit=10&offset=0"
-curl "http://localhost:8000/ogcapi/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?limit=5"
 curl "http://localhost:8000/ogcapi/collections/springs/items?limit=5"
 curl "http://localhost:8000/ogcapi/collections/locations/items/123"
 ```
@@ -56,7 +56,7 @@ curl "http://localhost:8000/ogcapi/collections/locations/items/123"
 
 ```bash
 curl "http://localhost:8000/ogcapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
-curl "http://localhost:8000/ogcapi/collections/wells/items?datetime=2020-01-01/2024-01-01"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?datetime=2020-01-01/2024-01-01"
 ```
 
 ### Polygon filter (CQL2 text)

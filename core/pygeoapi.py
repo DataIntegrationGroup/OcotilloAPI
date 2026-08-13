@@ -267,6 +267,7 @@ def _thing_collections_block(
                     "id_field": "id",
                     "table": f"{table_prefix}{collection['id']}",
                     "geom_field": "point",
+                    "time_field": "first_visit_date",
                 }
             ],
         }
