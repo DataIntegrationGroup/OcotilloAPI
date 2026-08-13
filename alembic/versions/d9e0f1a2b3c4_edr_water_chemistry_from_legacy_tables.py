@@ -29,7 +29,10 @@ otherwise be a silent surprise:
 
 * No thing_type filter. ogc_major_chemistry_results restricts to
   thing_type = 'water well' because it is a wells layer; this is a chemistry
-  collection, so chemistry collected at a spring belongs in it.
+  collection, so chemistry collected at a spring belongs in it. thing_type is
+  carried as a column instead, so a consumer can tell a well from a spring
+  rather than having the distinction silently dropped -- the EDR provider
+  surfaces it on /locations features when the backing view has the column.
 * Publication is gated on thing.release_status = 'public' (the convention
   f4a5b6c7d8e9 established for the legacy-backed views) AND on
   NMA_Chemistry_SampleInfo."PublicRelease" not being explicitly false. The
@@ -48,6 +51,21 @@ Rows without a usable timestamp are dropped: EDR needs a time axis, and
 COALESCE(analysis date, collection date) is the best available. Field
 parameters carry no analysis date of their own, so they ride on the sample's
 CollectionDate.
+
+Both are MATERIALIZED views, matching ogc_major_chemistry_results and
+ogc_minor_chemistry_wells. A plain view would be re-planned on every request
+across a four-way UNION of the full legacy result tables, and the provider's
+get_fields() runs SELECT DISTINCT parameter_name, unit at provider
+construction -- a full scan per request, against tables that already hold far
+more than the pivot views' per-well row counts suggest. Indexes cover the
+provider's three filter columns (thing_id, datetime, parameter_name), and the
+unique index on id is what allows CONCURRENTLY refreshes.
+
+The cost is staleness: the nightly pg_cron job discovers every materialized
+view from the catalog (x2y3z4a5b6c7), so these refresh with the rest, and
+services/materialized_views.py lists them for `oco refresh-materialized-views`
+after an ad-hoc chemistry ingestion. That is the same freshness contract the
+existing chemistry layers already have.
 
 Revision ID: d9e0f1a2b3c4
 Revises: b7c8d9e0f1a2
@@ -187,7 +205,7 @@ def _create_water_chemistry_view(view_name: str, public_only: bool) -> str:
         else ""
     )
     return f"""
-        CREATE VIEW {view_name} AS
+        CREATE MATERIALIZED VIEW {view_name} AS
         WITH latest_location AS (
         {_LATEST_LOCATION_CTE}
         ),
@@ -198,6 +216,7 @@ def _create_water_chemistry_view(view_name: str, public_only: bool) -> str:
             results.id                          AS id,
             t.id                                AS thing_id,
             t.name                              AS station_name,
+            t.thing_type                        AS thing_type,
             ST_X(l.point)                       AS longitude,
             ST_Y(l.point)                       AS latitude,
             results.datetime                    AS datetime,
@@ -255,13 +274,37 @@ def _check_required_tables() -> None:
         )
 
 
+def _create_indexes(view_name: str) -> None:
+    # The unique index is what lets REFRESH MATERIALIZED VIEW CONCURRENTLY run
+    # (`oco refresh-materialized-views --concurrently`); Postgres refuses
+    # without one. id is unique by construction -- each family prefixes its own
+    # primary key.
+    op.execute(text(f"CREATE UNIQUE INDEX ux_{view_name}_id ON {view_name} (id)"))
+    # The provider filters on thing_id (locations / position), datetime
+    # (interval), and parameter_name (parameter-name), so each gets an index.
+    op.execute(text(f"CREATE INDEX ix_{view_name}_thing_id ON {view_name} (thing_id)"))
+    op.execute(text(f"CREATE INDEX ix_{view_name}_datetime ON {view_name} (datetime)"))
+    op.execute(
+        text(
+            f"CREATE INDEX ix_{view_name}_parameter_name "
+            f"ON {view_name} (parameter_name)"
+        )
+    )
+
+
 def upgrade() -> None:
     _check_required_tables()
 
     for view_name, public_only in ((PUBLIC_VIEW, True), (INTERNAL_VIEW, False)):
         _drop_view_or_materialized_view(view_name)
         op.execute(text(_create_water_chemistry_view(view_name, public_only)))
-        op.execute(text(f"COMMENT ON VIEW {view_name} IS '{VIEW_COMMENTS[view_name]}'"))
+        _create_indexes(view_name)
+        op.execute(
+            text(
+                f"COMMENT ON MATERIALIZED VIEW {view_name} IS "
+                f"'{VIEW_COMMENTS[view_name]}'"
+            )
+        )
 
 
 def downgrade() -> None:

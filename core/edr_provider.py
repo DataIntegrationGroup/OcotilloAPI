@@ -95,6 +95,12 @@ class WaterEDRProvider(BaseEDRProvider):
         self._fields = {}
         self.get_fields()
 
+        # Station metadata carried by some backing views but not others: the
+        # chemistry views (d9e0f1a2b3c4) span wells and springs and expose
+        # thing_type so a consumer can tell them apart. Detected rather than
+        # assumed, so a view without the column keeps working unchanged.
+        self._has_thing_type = self._has_column("thing_type")
+
     # ------------------------------------------------------------------ db
     def _connect(self):
         try:
@@ -116,6 +122,25 @@ class WaterEDRProvider(BaseEDRProvider):
         finally:
             if conn is not None:
                 conn.close()
+
+    def _has_column(self, column):
+        """Whether the backing relation exposes ``column``.
+
+        Reads pg_attribute rather than information_schema.columns: the
+        chemistry collections are backed by materialized views, which
+        information_schema does not list at all.
+        """
+        try:
+            rows = self._fetch(
+                "SELECT 1 FROM pg_attribute "
+                "WHERE attrelid = to_regclass(%s) AND attname = %s "
+                "AND attnum > 0 AND NOT attisdropped LIMIT 1",
+                [self.table, column],
+            )
+        except ProviderConnectionError:
+            # View may not exist yet (e.g. OpenAPI generation before migrate).
+            return False
+        return bool(rows)
 
     # -------------------------------------------------------------- fields
     def get_fields(self):
@@ -192,8 +217,11 @@ class WaterEDRProvider(BaseEDRProvider):
             bbox=bbox,
         )
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        columns = "thing_id, station_name, longitude, latitude"
+        if self._has_thing_type:
+            columns += ", thing_type"
         rows = self._fetch(
-            f"SELECT DISTINCT thing_id, station_name, longitude, latitude "  # noqa: S608
+            f"SELECT DISTINCT {columns} "  # noqa: S608 (trusted table/columns)
             f"FROM {self.table}{where} ORDER BY thing_id",
             params,
         )
@@ -207,11 +235,17 @@ class WaterEDRProvider(BaseEDRProvider):
                         "type": "Point",
                         "coordinates": [row["longitude"], row["latitude"]],
                     },
-                    "properties": {"name": row["station_name"]},
+                    "properties": self._station_properties(row),
                 }
                 for row in rows
             ],
         }
+
+    def _station_properties(self, row):
+        properties = {"name": row["station_name"]}
+        if self._has_thing_type:
+            properties["thing_type"] = row["thing_type"]
+        return properties
 
     def area(
         self, wkt=None, select_properties=None, datetime_=None, instance=None, **kwargs
