@@ -15,5 +15,9 @@ MATERIALIZED_VIEWS: tuple[str, ...] = (
     "ogc_water_well_summary",
     "ogc_major_chemistry_results",
     "ogc_minor_chemistry_wells",
+    # EDR chemistry coverages (d9e0f1a2b3c4). Same legacy source tables as the
+    # two pivot views above, at per-result grain.
+    "ogc_water_chemistry",
+    "ogc_internal_water_chemistry",
     "transducer_daily_data",
 )
