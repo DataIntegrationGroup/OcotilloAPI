@@ -31,6 +31,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from core.app import in_public_schema
 from core.disclaimer import (
     DISCLAIMER_CONTACT_EMAIL,
     DISCLAIMER_PARAGRAPHS,
@@ -84,6 +85,7 @@ def _render_html() -> str:
     )
 
 
+@in_public_schema
 @router.get(
     "/disclaimer",
     response_class=HTMLResponse,

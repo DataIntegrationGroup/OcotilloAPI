@@ -30,8 +30,18 @@ def _resolve_version() -> str:
 class Settings:
     version = _resolve_version()
 
-    def __init__(self):
-        self.mode = os.getenv("MODE", "")  # Default mode
+    @property
+    def mode(self) -> str:
+        """Deployment mode, read fresh from the environment on every access.
+
+        This used to be snapshotted in __init__. Settings() is instantiated
+        while core.app is imported, which happens before core.factory calls
+        load_dotenv() -- so whether MODE was visible depended on which module
+        happened to call load_dotenv() first. Reading it lazily makes the
+        value independent of import order, which matters because
+        core.permissions gates the authentication bypass on it.
+        """
+        return os.getenv("MODE", "")
 
     def get_enum(self, name: str):
         if name == "MODE":

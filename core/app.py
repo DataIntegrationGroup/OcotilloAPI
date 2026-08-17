@@ -27,6 +27,7 @@ from fastapi.openapi.docs import (
     get_swagger_ui_oauth2_redirect_html,
 )
 from fastapi.openapi.utils import get_openapi
+from fastapi.routing import iter_route_contexts
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -123,27 +124,32 @@ def create_base_app() -> FastAPI:
             routes=app.routes,
         )
 
-        # Keep only operations where the endpoint function is marked public.
+        # Collect the operations whose endpoint carries @in_public_schema.
+        #
+        # This walks iter_route_contexts() rather than app.routes. Routes added
+        # via app.include_router() are not flattened into app.routes -- they
+        # live inside opaque _IncludedRouter branches -- so the previous
+        # `next(r for r in app.routes if r.path == path)` lookup matched
+        # nothing but the few endpoints declared directly on `app`, and
+        # silently dropped every decorated router route from the public schema.
+        # iter_route_contexts() is the same helper get_openapi() itself walks,
+        # so prefixes resolve identically to the paths in `schema`.
+        public_operations = set()
+        for route_context in iter_route_contexts(app.routes):
+            if not getattr(route_context.endpoint, "_in_public_schema", False):
+                continue
+            route_path = route_context.path_format or route_context.path
+            for route_method in route_context.methods or ():
+                public_operations.add((route_path, route_method.lower()))
+
         new_paths = {}
         for path, path_item in schema["paths"].items():
             new_methods = {}
             for method, operation in path_item.items():
-                route = next(
-                    (
-                        r
-                        for r in app.routes
-                        if getattr(r, "path", None) == path
-                        and method.upper() in getattr(r, "methods", set())
-                    ),
-                    None,
-                )
-                if not route:
+                if (path, method.lower()) not in public_operations:
                     continue
-
-                endpoint = getattr(route, "endpoint", None)
-                if getattr(endpoint, "_is_public", False):
-                    operation["security"] = []
-                    new_methods[method] = operation
+                operation["security"] = []
+                new_methods[method] = operation
 
             if new_methods:
                 new_paths[path] = new_methods
@@ -224,7 +230,7 @@ def create_base_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/health", tags=["meta"])
-    @public_route
+    @in_public_schema
     def health(response: Response, session: Session = Depends(get_db_session)):
         # Ping the database so a 200 actually proves PostGIS is reachable, not
         # just that the process is up. Uptime monitors / status pages assert on
@@ -248,9 +254,18 @@ def create_base_app() -> FastAPI:
     return app
 
 
-def public_route(func):
-    """Mark a route as public for OpenAPI filtering."""
-    setattr(func, "_is_public", True)
+def in_public_schema(func):
+    """Advertise a route in the anonymous OpenAPI schema (/openapi.json).
+
+    Schema visibility only -- this grants no access and removes no dependency.
+    It was previously named `public_route`, which read like an authorization
+    decorator; two `/thing` endpoints carried it *and* a `viewer_dependency`,
+    so the public schema advertised operations that 401 for anonymous callers.
+
+    Apply it only to routes that genuinely have no auth dependency.
+    tests/test_authorization.py asserts the two sets match exactly.
+    """
+    setattr(func, "_in_public_schema", True)
     return func
 
 
