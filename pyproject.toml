@@ -89,7 +89,7 @@ dependencies = [
   "sqlalchemy-continuum==1.7.0",
   "sqlalchemy-searchable==2.1.0",
   "sqlalchemy-utils==0.42.1",
-  "sqlparse>=0.5.5",
+  "sqlparse>=0.6.0",
   "starlette==1.4.1",
   "typer==0.27.1",
   "typing-extensions==4.16.0",
