@@ -40,6 +40,15 @@ def initialize_runtime() -> None:
 
 def create_api_app():
     initialize_runtime()
+
+    # After initialize_runtime()'s load_dotenv(), so MODE and
+    # AUTHENTIK_DISABLE_AUTHENTICATION are both resolved. Raises
+    # AuthConfigurationError -- boot fails loudly rather than serving every
+    # endpoint anonymously.
+    from core.permissions import assert_auth_configuration
+
+    assert_auth_configuration()
+
     app = create_base_app()
     register_api_routes(app)
     from core.pygeoapi import mount_pygeoapi, mount_pygeoapi_internal

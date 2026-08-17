@@ -29,7 +29,6 @@ core/pygeoapi.py.
 """
 
 import json
-import os
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -77,18 +76,15 @@ class InternalOGCAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
-            if settings.mode == "production":
+        if permissions.authentication_disabled():
+            if settings.mode != permissions.BYPASS_ALLOWED_MODE:
                 # HTTPException(424) (what core.permissions.authenticated()
                 # raises for this same misconfiguration) means nothing from
                 # raw ASGI code -- send the response directly so a
-                # misconfigured production box degrades to "internal mount
-                # always 424s" rather than crashing the worker.
+                # misconfigured box degrades to "internal mount always 424s"
+                # rather than crashing the worker.
                 await _send_json(
-                    send,
-                    424,
-                    "Authentication is disabled in production mode. Set "
-                    "AUTHENTIK_DISABLE_AUTHENTICATION=0 to enable authentication.",
+                    send, 424, permissions.bypass_misconfiguration_detail()
                 )
                 return
             await self.app(scope, receive, send)

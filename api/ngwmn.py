@@ -16,6 +16,7 @@
 from fastapi import APIRouter
 from starlette.responses import Response
 
+from core.app import in_public_schema
 from core.dependencies import session_dependency
 from services.ngwmn_helper import (
     make_waterlevels_response,
@@ -25,7 +26,13 @@ from services.ngwmn_helper import (
 
 router = APIRouter(prefix="/ngwmn", tags=["NGWMN"])
 
+# These three routes are intentionally anonymous: the federal NGWMN harvester
+# polls them without credentials. @in_public_schema documents that (and lists
+# them in /openapi.json) so tests/test_authorization.py can tell an intentional
+# public route from an endpoint that simply forgot its `user:` dependency.
 
+
+@in_public_schema
 @router.get(
     "/waterlevels/{pointid}",
     summary="Get waterlevels for a given pointid in the NGWMN format",
@@ -35,6 +42,7 @@ def read_ngwmn_waterlevels(pointid: str, db: session_dependency):
     return Response(content=data, media_type="application/xml")
 
 
+@in_public_schema
 @router.get(
     "/wellconstruction/{pointid}",
     summary="Get wellconstruction for a given pointid in the NGWMN format",
@@ -44,6 +52,7 @@ def read_ngwmn_wellconstruction(pointid: str, db: session_dependency):
     return Response(content=data, media_type="application/xml")
 
 
+@in_public_schema
 @router.get(
     "/lithology/{pointid}",
     summary="Get lithology for a given pointid in the NGWMN format",

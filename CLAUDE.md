@@ -155,7 +155,30 @@ The system uses **Authentik** for OAuth2 authentication with role-based access c
 - **Editor**: Can modify existing records (includes Viewer permissions)
 - **Admin**: Can create new records (includes Editor + Viewer permissions)
 
+The hierarchy is enforced in code, via `authenticated(any_of=[...])` group lists —
+`Admin` satisfies an editor- or viewer-gated route without needing all three
+Authentik groups granted.
+
 **AMP-Specific Roles**: `AMPAdmin`, `AMPEditor`, `AMPViewer` for legacy AMPAPI integration
+
+**Role families are orthogonal**: general `Admin` confers nothing in the AMP or
+Lexicon families. Only tiers *within* a family nest.
+
+**Authorization is opt-in per endpoint** — a `user: <role>_dependency` parameter
+in the signature, not a router-level `dependencies=[...]`. Omitting it produces a
+fully public endpoint with no error. `tests/test_authorization.py` holds the
+allowlist of intentionally anonymous routes and fails on anything else. Note the
+annotation must be a *type annotation* (`user: viewer_dependency`), never a
+default value (`user=viewer_dependency`) — the latter silently disables the
+dependency and FastAPI treats it as a query parameter.
+
+**Development bypass**: `AUTHENTIK_DISABLE_AUTHENTICATION=1` is honored only when
+`MODE=development`. Any other `MODE` (including unset) makes
+`assert_auth_configuration()` abort startup.
+
+**`@in_public_schema`** (`core/app.py`) controls anonymous OpenAPI visibility
+only — it grants no access and removes no dependency. Apply it only to routes
+that genuinely have none.
 
 ### Database Configuration
 

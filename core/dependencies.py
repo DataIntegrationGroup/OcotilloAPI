@@ -34,26 +34,35 @@ Editor can do everything Viewer can do
 Admin, can do everything Editor and Viewer can do
     + create new objects
 
+That hierarchy is enforced here, by `any_of=` group lists rather than by
+Authentik group membership overlap: an Admin-only account satisfies an
+editor- or viewer-gated route because "Admin" appears in those lists. Before
+this was explicit, `authenticated(permissions=["Viewer"])` required the
+literal Viewer group, so the hierarchy held only as long as whoever
+provisioned the Authentik groups granted all three tiers to every admin.
+
+The three families below are deliberately orthogonal -- general `Admin` does
+not confer `AMPAdmin` or `LexiconAdmin`. Only tiers *within* a family nest.
 """
 
 # General Purpose Authentication/Permissions -----------------------------------
 
-admin_function = authenticated(permissions=["Admin"])
-editor_function = authenticated(permissions=["Editor"])
-viewer_function = authenticated(permissions=["Viewer"])
+admin_function = authenticated(any_of=["Admin"])
+editor_function = authenticated(any_of=["Admin", "Editor"])
+viewer_function = authenticated(any_of=["Admin", "Editor", "Viewer"])
 
 
 # AMP-Specific Authentication/Permissions --------------------------------------
 
-amp_admin_function = authenticated(permissions=["AMPAdmin"])
-amp_editor_function = authenticated(permissions=["AMPEditor"])
-amp_viewer_function = authenticated(permissions=["AMPViewer"])
+amp_admin_function = authenticated(any_of=["AMPAdmin"])
+amp_editor_function = authenticated(any_of=["AMPAdmin", "AMPEditor"])
+amp_viewer_function = authenticated(any_of=["AMPAdmin", "AMPEditor", "AMPViewer"])
 
 
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
-lexicon_admin_function = authenticated(permissions=["LexiconAdmin"])
-lexicon_editor_function = authenticated(permissions=["LexiconEditor"])
+lexicon_admin_function = authenticated(any_of=["LexiconAdmin"])
+lexicon_editor_function = authenticated(any_of=["LexiconAdmin", "LexiconEditor"])
 
 
 # OGC-Internal Authentication/Permissions --------------------------------------
@@ -63,7 +72,9 @@ lexicon_editor_function = authenticated(permissions=["LexiconEditor"])
 
 
 # Testing-Specific Authentication/Permissions ----------------------------------
-no_permission_function = authenticated(permissions=["NoPermission"])
+# A group nobody is ever granted, so this dependency always 403s. Used to
+# assert that group enforcement is actually wired up.
+no_permission_function = authenticated(any_of=["NoPermission"])
 
 
 # Permissions Dependencies -----------------------------------------------------

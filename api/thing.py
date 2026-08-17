@@ -27,7 +27,6 @@ from starlette.status import (
 )
 
 from api.pagination import CustomPage
-from core.app import public_route
 from core.dependencies import (
     session_dependency,
     admin_dependency,
@@ -349,7 +348,6 @@ def get_thing_id_links(
     return paginate(query=sql, conn=session)
 
 
-@public_route
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
 def get_thing_id_links(
     user: viewer_dependency,
@@ -362,7 +360,6 @@ def get_thing_id_links(
     return simple_get_by_id(session, ThingIdLink, link_id)
 
 
-@public_route
 @router.get("", summary="Get all things", status_code=HTTP_200_OK)
 def get_things(
     user: viewer_dependency,
