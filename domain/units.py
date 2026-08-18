@@ -42,4 +42,18 @@ def convert_m_to_ft(meters: float | None, ndigits: int = 6) -> float | None:
     return round(meters * METERS_TO_FEET, ndigits)
 
 
+CENTIMETERS_PER_METER = 100.0
+
+
+def convert_cm_to_ft(centimeters: float | None, ndigits: int = 6) -> float | None:
+    """Convert a length from centimeters to feet.
+
+    Diver-HUB reports water levels in centimeters while Ocotillo stores feet,
+    so every ingested reading passes through here.
+    """
+    if centimeters is None:
+        return None
+    return round(centimeters / CENTIMETERS_PER_METER * METERS_TO_FEET, ndigits)
+
+
 # ============= EOF =============================================

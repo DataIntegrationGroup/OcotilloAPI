@@ -1,0 +1,90 @@
+# Creates a Dagster+ branch deployment for a pull request, so ingestion changes
+# can be materialized against an isolated deployment before they reach prod.
+#
+# Path-filtered: most PRs in this repository touch only the API and should not
+# create a Dagster+ deployment at all.
+name: CD (Dagster+ branch deployment)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "automated_ingestion/**"
+      # The code location imports db/ models and domain/ rules in-process,
+      # so a change to either alters what this image runs even when no
+      # ingestion file moves. Without these, a domain fix merged to
+      # production would leave the pipeline running the old rule against
+      # the live database. The cost is that ordinary API changes to these
+      # directories also trigger a build; a stale code location is worse.
+      - "db/**"
+      - "domain/**"
+      - "dagster_cloud.yaml"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/CD_dagster_branch.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# One deployment per PR; a force-push supersedes the run it interrupts.
+concurrency:
+  group: dagster-branch-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dagster-branch-deploy:
+    runs-on: ubuntu-latest
+    # Forks cannot read the Dagster+ secrets, and a branch deployment from an
+    # untrusted fork would run our code against our infrastructure regardless.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    # The action's notify steps post build status as a PR comment and read the
+    # token from the workflow environment -- `env.GITHUB_TOKEN`, not the
+    # `secrets` context. Without this the run dies on an empty-token assertion
+    # before it ever reaches Dagster+, which reads as an auth failure but is
+    # not one.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v7.0.1
+
+      # parse_workspace performs its own `actions/checkout`, which cleans the
+      # working tree. It has to run *before* requirements.txt is generated, or
+      # the generated file is deleted before the deploy step can use it.
+      - name: Parse dagster_cloud.yaml
+        id: parse
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
+        with:
+          dagster_cloud_file: dagster_cloud.yaml
+
+      - name: Install uv in container
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      - name: Generate requirements.txt
+        run: |
+          uv export \
+            --format requirements-txt \
+            --no-emit-project \
+            --no-dev \
+            --group ingestion \
+            --output-file requirements.txt
+
+      # Runs on `closed` too: the action tears the branch deployment down when
+      # the PR is merged or abandoned, so stale deployments do not accumulate.
+      - name: Deploy to Dagster+ branch deployment
+        uses: dagster-io/dagster-cloud-action/actions/serverless_branch_deploy@v1.13.18
+        with:
+          organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
+          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          location: ${{ toJson(fromJson(steps.parse.outputs.build_info)[0]) }}
+          checkout_repo: false
+          # The action defaults to python:3.8-slim, which cannot install a
+          # lockfile resolved for requires-python >= 3.13 -- pip reports the
+          # pins as having no matching distribution rather than as a version
+          # conflict, which reads like a broken requirements file.
+          base_image: python:3.13-slim
