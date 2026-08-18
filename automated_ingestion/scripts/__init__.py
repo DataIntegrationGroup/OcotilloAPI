@@ -13,18 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""
-Reshaping that precedes adaptation.
-
-Less is needed here than the plan first assumed. The retired FROST pipeline
-suggested Van Essen returned parallel arrays that had to be zipped into
-records; the live API returns ``[{dateAndTime, level}]`` already, and selects
-datum and approval through query parameters rather than through which array a
-value came from.
-
-What remains for this module is timestamp normalisation and whatever
-per-record tidying the live responses turn out to need. Filled in under BDMS
-task 3.1, once the probe has run.
-"""
+"""One-off instruments. Nothing here is imported by the pipeline."""
 
 # ============= EOF =============================================

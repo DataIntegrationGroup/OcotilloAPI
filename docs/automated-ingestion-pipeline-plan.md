@@ -194,17 +194,24 @@ Land locations and readings untransformed in GCS as date-partitioned parquet. Ra
 
 ### 2.1 — Confirm the readings endpoint; finalize the source mapping
 
-**Unblocked.** The endpoint works; the 500s were a wrong path plus an oversized window (see Blocker). Mapping details inferred from retired FROST data can now be checked against live responses and against the Diver-HUB swagger.
+**The swagger is public** (`https://diver-hub.com/private/swagger/v1/swagger.json`) and reading it settled most of this without credentials. Full mapping in `docs/sources/san_acacia.md`; four corrections that invalidate parts of the original draft:
 
-- Authenticate: POST credentials to the login endpoint, hold the 1-hour JWT, re-acquire on expiry or on a 401. Credentials and token never committed and never logged.
-- Measure the window ceiling. Three months is known-good; find where it breaks so the chunk size is chosen rather than guessed. Record the number here.
-- Confirmed against live responses: `ts` format and timezone; `gs` unit is feet; `approvedWaterLevelsGs` and `unApprovedWaterLevelsGs` are the complete, non-overlapping set; whether `groundSurfaceData` elevation is needed and how it's time-scoped.
-- Reconcile the swagger against `docs/sources/san_acacia.md`: the locations endpoint and the `/api/api/` doubled segment were both taken from the old assumption and may not survive.
-- `drillingDepth` centimetres (÷ 30.48) confirmed, not back-calculated.
-- Fixture responses committed for tests, credentials scrubbed.
-- `docs/sources/san_acacia.md` copied into OcotilloAPI and corrected.
+- ✅ **No `/api/api/` segment, no `locations/sanacaciareach`.** Seven endpoints under `/api/v1/`. Reference data is `Projects` → `MonitoringPoints/ByProject/{id}`.
+- ✅ **No `gs`/`vrd` arrays.** `WaterLevels/ByMonitoringPoint` returns a flat `[{dateAndTime, level}]`. Datum and approval are *query parameters* (`reference`, `approved`), not fields to pick out of parallel arrays. The reshaping `transform.py` was scaffolded for does not exist.
+- ✅ **`DiverData` is not the series we want.** It returns `DataPoint` — pressure, temperature, conductivity, salinity — with no water level. It is what the known-good example URL fetches, which is why it looked like the readings endpoint.
+- ✅ **`MonitoringPoint` is `{id, name}` only.** No coordinates, no `drillingDepth`. The planned centimetre conversion and geometry mapping have no source here; both must come from the Ocotillo rows the points reconcile against.
 
-Datum and vendor-flag questions are already settled in the Epic — `vrd` is not ingested, and the vendor flag does not map to `review_status`.
+Built, and testable without the network:
+
+- ✅ `sources/san_acacia/client.py` — JWT auth refreshed against `validTo` with a skew, one forced re-login on a 401, and windowed fetches that halve on a 500 and refuse to shrink past a one-day floor.
+- ✅ `shared/windows.py` — the window arithmetic, kept pure so the tricky part is testable.
+- ✅ `scripts/probe_diverhub.py` — a one-off instrument that answers the remaining questions against the live API.
+
+⬜ **Run the probe.** It needs the credentials Ethan circulated. Until then:
+
+**`WaterLevelReference` is `enum [0,1,2,3]` with no names in the spec, and this is the highest-risk unknown in the epic.** Which value means ground surface is not derivable, and choosing wrong does not fail — it returns plausible numbers on the wrong datum and silently poisons every reading. `GROUND_SURFACE_REFERENCE` is `None` in code and the client will not guess. The probe samples all four side by side so a person can identify it against a well whose depth to water is known.
+
+Also still open: the window ceiling (three months works, the limit is unmeasured), whether `approved=true`/`false` partition or overlap, whether `dateAndTime` is marked UTC, and whether `level` is feet. That last one gates correctness rather than completeness, same as the datum.
 
 ### 2.2 — dlt resource: locations → GCS
 
