@@ -40,6 +40,15 @@ set_var() { echo "  $1"; $DG plus create env "$@" -y >/dev/null; }
 
 case "$PHASE" in
 storage)
+  # The image copies the repository to /opt/dagster/app but never installs it,
+  # so db/ and domain/ are importable only if that directory is on the path.
+  # The process that loads the code location has it; the process that executes a
+  # step does not reliably, which shows up as ModuleNotFoundError for db at
+  # execution while the location itself loads fine. Setting PYTHONPATH removes
+  # the guesswork instead of depending on how each process was launched.
+  echo "Import path:"
+  set_var PYTHONPATH /opt/dagster/app
+
   echo "Raw-zone buckets (different value per scope):"
   set_var INGESTION_GCS_BUCKET ocotillo-ingestion-production --scope full
   set_var INGESTION_GCS_BUCKET ocotillo-ingestion-staging --scope branch
