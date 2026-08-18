@@ -131,6 +131,16 @@ packages = [
 [tool.dagster]
 module_name = "automated_ingestion.defs.definitions"
 
+# Required by the `dg` CLI, which refuses to run outside a directory it
+# recognises as a project. `dagster_cloud.yaml` names the entry point
+# explicitly, so this does not affect what the deployed code location loads --
+# it only lets `dg plus` manage environment variables from this checkout.
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "automated_ingestion"
+
 # Bare `--cov` measures every imported module, which pulls the whole virtualenv
 # into the report. Scope it to first-party code instead. Keep this a single
 # source root -- listing each package separately makes coverage treat every

@@ -101,3 +101,40 @@ resource "google_storage_bucket_iam_member" "ingestion_object_admin" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.ingestion.email}"
 }
+
+# Database access for the ingestion service account.
+#
+# Only created when `cloud_sql_instance` is set, so the storage half of this
+# configuration can be applied before the database half is decided.
+#
+# These grants are what make IAM database authentication work. Without them the
+# Postgres role in automated_ingestion/sql/ingestion_role.sql exists but cannot
+# be reached: the connector fails while acquiring a token, which surfaces as an
+# authentication error and reads like a missing GRANT.
+resource "google_project_iam_member" "ingestion_cloudsql_client" {
+  count = var.cloud_sql_instance == null ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
+resource "google_project_iam_member" "ingestion_cloudsql_instance_user" {
+  count = var.cloud_sql_instance == null ? 0 : 1
+
+  project = var.project_id
+  role    = "roles/cloudsql.instanceUser"
+  member  = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
+# Registers the service account as a database user. The Postgres role itself,
+# and its grants, come from ingestion_role.sql -- this only makes the login
+# possible.
+resource "google_sql_user" "ingestion" {
+  count = var.cloud_sql_instance == null ? 0 : 1
+
+  name     = trimsuffix(google_service_account.ingestion.email, ".gserviceaccount.com")
+  instance = var.cloud_sql_instance
+  project  = var.project_id
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+}
