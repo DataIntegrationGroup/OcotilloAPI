@@ -215,20 +215,23 @@ Also still open: the window ceiling (three months works, the limit is unmeasured
 
 ### 2.2 — dlt resource: locations → GCS
 
-- `@dlt.resource(name="vanessen_locations")` on `GET /api/api/locations/sanacaciareach`; no pagination, all 33 in one response. `write_disposition="replace"`.
-- HTTP layer: timeouts, bounded retries with backoff, clear failure message. Doubled `/api/api/` segment preserved — confirmed, not a typo.
-- Asset `raw_san_acacia_locations` emits row-count metadata. Tested against fixture, no network.
+- ✅ `@dlt.resource(name="vanessen_locations")`, `write_disposition="replace"`, on `MonitoringPoints/ByProject/4317` — **not** the `locations/sanacaciareach` path in the original draft, which does not exist. One request, no pagination.
+- ✅ Asset `raw_san_acacia_locations` emits the point count, project id, and a sample of names. Tested against a stub, no network.
+- ✅ `replace` rather than `append`: this is a snapshot of what the vendor currently lists, and a point disappearing is information rather than something to accumulate.
+
+The payload is `{id, name}` only, so this cannot be a source of geometry or construction detail — it enumerates the points a reading fetch walks. **38 points, not the 33 the plan assumes**, still unexplained.
 
 ### 2.3 — dlt resource: readings → GCS, incremental
 
-- `@dlt.resource(name="vanessen_readings")` per monitoring point, dlt incremental cursor on reading timestamp, `write_disposition="append"`.
-- **Windowed requests.** `DiverData/ByMonitoringPoint/{id}` takes `startTime`/`endTime` as Unix seconds and 500s on an oversized span, so a fetch is always a sequence of bounded windows — never one open-ended call. This is true of the daily incremental run too, not just backfill: an entity whose cursor has fallen months behind must walk forward in chunks.
-- **Token refresh mid-run.** The JWT expires after an hour. Refresh on expiry and retry once on a 401; a multi-hour backfill must not die at minute 61.
-- Treat a 500 on a windowed request as a signal to halve the window and retry, not as a dead entity — the endpoint reports "too much data" that way.
-- `initial_start_date` in `.dlt/config.toml`, documented as a floor for entities with no cursor yet — never a backfill lever (`BACKFILL_STRATEGY.md` §2).
-- Vendor approved/unapproved flag preserved per row.
-- Per-entity failure doesn't abort the run; failures counted and surfaced as asset metadata.
-- Asset `raw_san_acacia_readings` emits rows-ingested and entities-failed. Tested against fixtures.
+- ✅ `@dlt.resource(name="vanessen_readings")`, `write_disposition="append"`, dlt incremental cursor on `dateAndTime`, walking each point from its watermark.
+- ✅ `INITIAL_START` (2015-01-01) documented as a floor for a point with no cursor, never a backfill lever.
+- ✅ Per-point failure isolation: one diver failing costs that diver's data for the run, not the other thirty-seven. Failures are collected into a list **the caller owns** — a dlt resource is a module-level object shared by every run, so per-run state stashed on it would have concurrent runs overwriting each other.
+- ✅ Asset `raw_san_acacia_readings` emits rows ingested, points attempted, points failed, and the failures themselves.
+- ✅ Nothing is converted on the way in. The raw zone stores the vendor's `level` in the vendor's centimetres on the vendor's datum, with `unit` and `reference` recorded alongside, so a mapping bug is a reprocess rather than a re-fetch.
+
+**Vendor approval needs two requests.** `approved` is a query parameter, not a response field, so the flag cannot be read off a row. Fetching `approved=true` and `approved=false` separately and concatenating would duplicate every reading if the two sets overlap — which is still unknown (open question 4). Instead the unfiltered series is authoritative and a second `approved=true` fetch supplies a set of timestamps used only to tag it. A failure of that second fetch leaves rows tagged `false` rather than losing them: an untagged reading is worth more than no reading, and the vendor flag is not Ocotillo's review status regardless.
+
+**Window span is measured, not inherited.** `READING_SPAN` is 365 days for this source rather than the cautious 90-day default in `shared/windows.py`, because probing showed `WaterLevels` serving 730 days and 18111 rows in one request. At 90 days a first run for a single point would issue four times the requests for no benefit. It sits at half the largest span observed to work, leaving headroom for a denser point than SO-0125.
 
 ---
 

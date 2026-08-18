@@ -14,11 +14,173 @@
 # limitations under the License.
 # ===============================================================================
 """
-dlt resources for the Van Essen API.
+dlt resources landing San Acacia in the GCS raw zone.
 
-Two resources: ``locations`` (33 wells, ``replace``, one call) and ``readings``
-(per-point, ``append``, incremental on the reading timestamp). Built under BDMS
-tasks 2.2 and 2.3; 2.3 waits on the vendor-side endpoint failure.
+Two resources, with deliberately different dispositions:
+
+* ``vanessen_locations`` -- the monitoring point roster, ``replace``. It is a
+  snapshot of what the vendor currently lists, and a point disappearing is
+  information we want to see rather than accumulate.
+* ``vanessen_readings`` -- the water level series, ``append``, incremental on
+  the reading timestamp. Appending is what makes Mode B replay possible: the
+  raw zone keeps what the vendor said at the time, not just what it says now.
+
+Nothing is transformed here. The raw zone stores the vendor's payload as it
+arrived, in the vendor's units and on the vendor's datum, so a mapping bug is a
+reprocess rather than a re-fetch. Conversion to Ocotillo's model happens in the
+adapter, downstream.
 """
+
+from collections.abc import Iterator
+from typing import Any
+
+import dlt
+
+from automated_ingestion.shared.gcs import RAW_LAYOUT, raw_zone_bucket
+from automated_ingestion.shared.windows import DAY
+from automated_ingestion.shared.source_registry import SourceDefinition, register
+from automated_ingestion.sources.san_acacia.client import (
+    GROUND_SURFACE_REFERENCE,
+    SOURCE_UNIT,
+    DiverHubClient,
+    DiverHubError,
+)
+
+PROJECT_ID = 4317
+"""Diver-HUB project ``SanAcaciaReach``. Confirmed by probing, not assumed."""
+
+READING_SPAN = 365 * DAY
+"""Window width for this source, measured rather than assumed.
+
+``WaterLevels`` served 730 days and 18111 rows in a single request when probed,
+so the generic 90-day default in ``shared/windows.py`` would quadruple the
+request count for no benefit -- a first run for one point covers a decade. This
+sits at half the largest span observed to work, leaving room for a denser point
+than SO-0125.
+"""
+
+INITIAL_START = "2015-01-01T00:00:00+00:00"
+"""Floor for a point that has never been ingested.
+
+A floor, never a backfill lever: moving it forward does not delete anything
+already landed, and moving it backward does not fetch history for a point whose
+cursor has advanced past it. Use a backfill job for that
+(``BACKFILL_STRATEGY.md`` section 2).
+"""
+
+SOURCE = register(
+    SourceDefinition(
+        key="san_acacia",
+        display_name="San Acacia Reach",
+        dataset_name="raw_sanacaciareach",
+    )
+)
+
+
+@dlt.resource(name="vanessen_locations", write_disposition="replace")
+def vanessen_locations(client: DiverHubClient) -> Iterator[dict[str, Any]]:
+    """The monitoring point roster.
+
+    One request, no pagination. The payload is ``{id, name}`` and nothing more
+    -- no coordinates, no construction detail -- so this cannot be the source
+    of a well's geometry. It exists to enumerate the points a reading fetch
+    walks, and to record what the vendor listed on a given day.
+    """
+    for point in client.monitoring_points(PROJECT_ID):
+        yield {
+            "monitoring_point_id": point["id"],
+            "name": point["name"],
+            "project_id": PROJECT_ID,
+        }
+
+
+@dlt.resource(name="vanessen_readings", write_disposition="append")
+def vanessen_readings(
+    client: DiverHubClient,
+    monitoring_points: list[dict[str, Any]],
+    end: int,
+    failures: list[dict[str, Any]],
+    cursor: dlt.sources.incremental[str] = dlt.sources.incremental(
+        "dateAndTime", initial_value=INITIAL_START
+    ),
+) -> Iterator[dict[str, Any]]:
+    """Water levels for every point, from each point's watermark to ``end``.
+
+    Failure is isolated per point. One diver returning a 500 for its whole
+    history should cost that diver's data for this run, not the other
+    thirty-seven -- so exceptions are caught here and appended to ``failures``
+    rather than raised.
+
+    ``failures`` is supplied by the caller rather than stashed on the resource:
+    a dlt resource is a module-level object shared by every run, so recording
+    per-run state on it would have one run overwriting another's.
+    """
+    from automated_ingestion.sources.san_acacia.client import _parse_timestamp
+
+    start = int(_parse_timestamp(cursor.last_value))
+
+    for point in monitoring_points:
+        point_id = point["monitoring_point_id"]
+        try:
+            approved_at = _approved_timestamps(client, point_id, start, end)
+            for row in client.water_levels(
+                point_id,
+                start,
+                end,
+                reference=GROUND_SURFACE_REFERENCE,
+                span=READING_SPAN,
+            ):
+                yield {
+                    "monitoring_point_id": point_id,
+                    "name": point["name"],
+                    "dateAndTime": row["dateAndTime"],
+                    "level": row["level"],
+                    "unit": SOURCE_UNIT,
+                    "reference": GROUND_SURFACE_REFERENCE,
+                    "vendor_approved": row["dateAndTime"] in approved_at,
+                }
+        except DiverHubError as exc:
+            failures.append({"monitoring_point_id": point_id, "error": str(exc)})
+
+
+def _approved_timestamps(
+    client: DiverHubClient, point_id: int, start: int, end: int
+) -> set[str]:
+    """Timestamps the vendor has marked approved.
+
+    ``approved`` is a request parameter rather than a response field, so the
+    flag has to be recovered by asking twice. We take the unfiltered series as
+    the authoritative row set and use this only to tag it -- fetching
+    ``approved=true`` and ``approved=false`` separately and concatenating would
+    duplicate every row if the two sets overlap, which is not yet known.
+
+    A failure here is not fatal: an untagged reading is worth more than no
+    reading, and the vendor flag is not Ocotillo's review status anyway.
+    """
+    try:
+        rows = client.water_levels(
+            point_id,
+            start,
+            end,
+            reference=GROUND_SURFACE_REFERENCE,
+            approved=True,
+            span=READING_SPAN,
+        )
+        return {row["dateAndTime"] for row in rows}
+    except DiverHubError:
+        return set()
+
+
+def build_pipeline(environment: str) -> Any:
+    """A dlt pipeline writing parquet to the raw zone for one environment."""
+    return dlt.pipeline(
+        pipeline_name=f"san_acacia_{environment}",
+        destination=dlt.destinations.filesystem(
+            bucket_url=f"gs://{raw_zone_bucket()}",
+            layout=RAW_LAYOUT,
+        ),
+        dataset_name=SOURCE.dataset_name,
+    )
+
 
 # ============= EOF =============================================
