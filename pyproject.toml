@@ -106,7 +106,30 @@ dependencies = [
 package = true
 
 [tool.setuptools]
-packages = ["alembic", "cli", "core", "data_migrations", "db", "domain", "schemas", "services", "transfers"]
+packages = [
+  "alembic",
+  "automated_ingestion",
+  "automated_ingestion.defs",
+  "automated_ingestion.defs.assets",
+  "automated_ingestion.defs.jobs",
+  "automated_ingestion.ocotillo",
+  "automated_ingestion.shared",
+  "automated_ingestion.sources",
+  "automated_ingestion.sources.san_acacia",
+  "cli",
+  "core",
+  "data_migrations",
+  "db",
+  "domain",
+  "schemas",
+  "services",
+  "transfers",
+]
+
+# Entry point for the `ocotillo-automated-ingestion` Dagster+ code location.
+# `dagster dev` and the Dagster+ agent both read this.
+[tool.dagster]
+module_name = "automated_ingestion.defs.definitions"
 
 # Bare `--cov` measures every imported module, which pulls the whole virtualenv
 # into the report. Scope it to first-party code instead. Keep this a single
@@ -119,6 +142,7 @@ relative_files = true
 omit = [
   ".venv/*",
   "alembic/*",
+  "automated_ingestion/tests/*",
   "docker/*",
   "features/*",
   "geoserver_iac/*",
@@ -172,6 +196,17 @@ dev = [
 cli = [
   "openpyxl==3.1.5",
   "google-api-python-client==2.198.0",
+]
+# Dagster+ code location dependencies. The API runtime never imports
+# `automated_ingestion`, so keeping these out of `dependencies` stops dagster
+# and its transitive tree from shipping in the API image. CI and the Dagster+
+# build install them explicitly with `uv sync --group ingestion`.
+ingestion = [
+  "dagster>=1.13.18",
+  "dagster-cloud>=1.13.18",
+  "dlt[filesystem,gs]>=1.30.0",
+  "gcsfs>=2026.8.0",
+  "pyarrow>=25.0.1",
 ]
 
 # timezone to use when rendering the date within the migration file
