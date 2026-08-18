@@ -180,6 +180,18 @@ dependency and FastAPI treats it as a query parameter.
 only — it grants no access and removes no dependency. Apply it only to routes
 that genuinely have none.
 
+**`/ogcapi-internal` is gated outside `Depends()`.** It is a raw Starlette
+Mount, so `core/internal_ogc_auth.py` gates it at the ASGI layer instead. It
+accepts a bearer Authentik JWT carrying `OGCInternal`, **or** a static API key
+presented as a bearer token, as the Basic password, or as `?token=`. Only the
+key digests are stored, as `label:sha256hex` entries in `INTERNAL_OGC_API_KEYS`
+— sourced in deployed environments from the Secret Manager secret
+`internal-ogc-api-keys` at deploy time, so revoking a key needs a redeploy.
+Never a GitHub secret. The static keys exist because
+ArcGIS Pro cannot send a bearer token at all and neither desktop client can
+refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
+changing the credential paths.
+
 ### Database Configuration
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):

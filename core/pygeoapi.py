@@ -196,7 +196,16 @@ def _internal_server_url() -> str:
     configured = os.environ.get("PYGEOAPI_INTERNAL_SERVER_URL")
     if configured:
         return configured.rstrip("/")
-    return f"http://localhost:8000{_internal_mount_path()}"
+    # Derived from the application root rather than hardcoded to localhost.
+    # PYGEOAPI_INTERNAL_SERVER_URL is set in no deploy config -- not
+    # app.template.yaml, not any of the three CD workflows -- so every
+    # deployed environment fell into this branch and pygeoapi stamped
+    # "http://localhost:8000/ogcapi-internal" into the `self` and `next` links
+    # of every collection and items response. QGIS and ArcGIS Pro follow those
+    # links to page, so both walked off to localhost after the first page.
+    # _app_base_url() reads PYGEOAPI_SERVER_URL, which every deploy already
+    # sets, and still resolves to http://localhost:8000 for local development.
+    return f"{_app_base_url()}{_internal_mount_path()}"
 
 
 def _app_base_url() -> str:
