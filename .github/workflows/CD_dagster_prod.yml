@@ -1,9 +1,16 @@
 # Deploys the `ocotillo-automated-ingestion` code location to the Dagster+ prod
 # deployment.
 #
-# Triggered on `production`, not `main`: `main` was abandoned in July 2025 and
-# the release flow runs feature -> staging -> production (docs/release-flow.md).
-# The plan document's reference to `main` predates that being checked.
+# "prod" here names the Dagster+ deployment, not the API's `production` branch.
+# It tracks `staging`, which is this repository's integration branch and the
+# only place `automated_ingestion/` currently exists -- `production` is still on
+# 1.2.2 and would never fire. This mirrors how `ocotillo-api-staging` follows
+# staging, and keeps the code location current with the work.
+#
+# Move this to `production` in the same change that first points the pipeline at
+# the production database. Until then a deploy here publishes code, not data:
+# the location has no database or vendor credentials, so the worst it can do is
+# fail to materialize.
 #
 # Path-filtered so an ordinary API change does not spend a Dagster+ build. The
 # filter includes pyproject.toml and uv.lock because the location's dependency
@@ -13,7 +20,7 @@ name: CD (Dagster+ prod)
 
 on:
   push:
-    branches: [production]
+    branches: [staging]
     paths:
       - "automated_ingestion/**"
       # The code location imports db/ models and domain/ rules in-process,
