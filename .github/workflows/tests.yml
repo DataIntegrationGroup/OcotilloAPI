@@ -93,9 +93,20 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
 
       - name: Run tests
-        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
+        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=term-missing --junitxml=junit.xml --ignore=tests/transfers
+
+      - name: Upload coverage to Codecov
+        # report_type defaults to "coverage"; the test-results upload below is a
+        # separate call because one action run sends one report type.
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v6
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload results to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v6
         with:
           report_type: test_results
