@@ -22,12 +22,13 @@ Per-source assets are declared in their own modules and gathered here so
 
 from dagster import AssetsDefinition
 
+from automated_ingestion.defs.assets.connectivity import database_connectivity
 from automated_ingestion.defs.assets.heartbeat import ingestion_heartbeat
 
 
 def all_assets() -> list[AssetsDefinition]:
     """Every asset the code location exposes."""
-    return [ingestion_heartbeat]
+    return [ingestion_heartbeat, database_connectivity]
 
 
 # ============= EOF =============================================

@@ -159,22 +159,30 @@ Both workflows generate `requirements.txt` with `uv export --group ingestion`, s
 
 ### 1.3 — Provision GCS buckets and ingestion service account
 
-- `ocotillo-ingestion-production` and `-staging`.
-- dlt layout `{table_name}/year={YYYY}/month={MM}/day={DD}/{load_id}.{file_id}.{ext}`, yielding `raw_sanacaciareach/vanessen_locations/…` and `…/vanessen_readings/…`.
-- SA with `roles/storage.objectAdmin` scoped to those buckets only, wired into the Dagster+ location env.
-- Lifecycle policy set, or deferred with the reason recorded.
+Terraform written in `automated_ingestion/iac/`; **not applied**. `terraform validate` and `fmt` pass, but no GCP credentials were available, so no resource exists yet.
 
-`services/gcs_helper.py` already uses `GCS_BUCKET_NAME` for user uploads — ingestion must not reuse that variable, or a misconfiguration writes into the uploads bucket.
+- ✅ `ocotillo-ingestion-production` and `-staging`, uniform bucket-level access, public access prevention enforced, `force_destroy = false`.
+- ✅ Service account `ocotillo-ingestion` with `roles/storage.objectAdmin` bound **on the two buckets**, not at project level. `objectAdmin` rather than `objectCreator` because a Mode B replay overwrites an existing object.
+- ✅ Lifecycle: NEARLINE at 30 days, COLDLINE at 365, and archived-version pruning past 3. Aged out rather than deleted — an old window is exactly what a historical replay reads.
+- ✅ `INGESTION_GCS_BUCKET` resolved by `shared/gcs.raw_zone_bucket()`, which raises rather than defaulting and explicitly rejects a value equal to `GCS_BUCKET_NAME`. `services/gcs_helper.py` uses that variable for user uploads; the two being confused would write raw vendor payloads into the uploads bucket, and would otherwise do so silently.
+- ⬜ `terraform apply`, then set `INGESTION_GCS_BUCKET` on the Dagster+ code location.
+
+The dlt layout `{table_name}/year={YYYY}/month={MM}/day={DD}/{load_id}.{file_id}.{ext}` is asserted by a test, because Mode B replay selects a window by prefix — the date has to be in the path, not inside the file.
 
 ### 1.4 — DB connectivity from Dagster+ with a least-privilege role
 
-Dagster+ Serverless is outside the VPC, so Cloud SQL's private IP is unreachable from it.
+Dagster+ Serverless is outside the VPC, so Cloud SQL's private IP is unreachable from it. Code written; **nothing run against a database**.
 
-- Preferred path: reuse `db/engine.py`'s `DB_DRIVER=cloudsql` mode (Cloud SQL Python Connector) — IAM auth, no VPC membership or public-IP allowlist.
-- Dedicated Postgres role: INSERT/UPDATE/SELECT on transducer, thing, location, deployment, lexicon tables only. Not the application role.
-- Credentials via Dagster+ env / Secret Manager, never committed.
-- Trivial asset proves connectivity from branch and prod; no connection leaks across runs.
-- Fallback documented: Hybrid agent in GCP.
+- ✅ `OcotilloDatabase` resource delegating to `db/engine.py`'s `DB_DRIVER=cloudsql` path rather than building a second engine. The import is lazy: `db.engine` builds its engine at import time, and a code location that needs a reachable database merely to *list* its assets breaks every time the database blips. A test asserts loading the definitions leaves `db.engine` unimported.
+- ✅ `database_connectivity` asset, read-only. Connectivity and grants are separable problems, and a write here would leave test rows in a real table.
+- ✅ Role DDL in `automated_ingestion/sql/ingestion_role.sql`, kept out of Alembic: roles and grants are per-environment infrastructure, not schema, and migrations do not run as a superuser.
+- ⬜ Run the DDL per environment; set `DB_DRIVER`, `CLOUD_SQL_*` on the code location; materialize the asset from both a branch and prod deployment.
+
+**The grant list is narrower than the draft assumed, and one part of it is non-obvious.** Writable: `transducer_observation`, `transducer_observation_block`, `deployment`, `sensor`, `parameter`. Read-only: `thing`, `thing_id_link`, `location`, and the three `lexicon_*` tables — `thing` and `location` deliberately *not* writable, because reconciling the 33 wells means matching rows that already exist. A well found missing is a decision for a human, not a row the pipeline invents.
+
+`parameter` is versioned by sqlalchemy-continuum, so inserting one also writes to `parameter_version` and `transaction`. Without those two grants the write fails on a table the code never names — the kind of error that costs an afternoon. (`transducer_observation` itself is not versioned; only `aquifer_system`, `geologic_formation`, `location`, `observation`, `parameter`, `regulatory_limit`, and `thing` are.) Sequence `USAGE` is granted explicitly, and no default privileges are set: a table added later stays invisible until someone grants it deliberately.
+
+Fallback if the connector path fails: Hybrid agent in GCP.
 
 ---
 

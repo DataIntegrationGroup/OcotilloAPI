@@ -24,7 +24,11 @@ definitions declared elsewhere in the package rather than declaring them here.
 from dagster import Definitions
 
 from automated_ingestion.defs.assets import all_assets
+from automated_ingestion.defs.resources import OcotilloDatabase
 
-defs = Definitions(assets=all_assets())
+defs = Definitions(
+    assets=all_assets(),
+    resources={"database": OcotilloDatabase()},
+)
 
 # ============= EOF =============================================

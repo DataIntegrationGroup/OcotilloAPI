@@ -31,4 +31,30 @@ BUCKET_ENV_VAR = "INGESTION_GCS_BUCKET"
 RAW_LAYOUT = "{table_name}/year={YYYY}/month={MM}/day={DD}/{load_id}.{file_id}.{ext}"
 """dlt filesystem layout for the raw zone."""
 
+
+def raw_zone_bucket() -> str:
+    """Name of the raw-zone bucket for this environment.
+
+    Raises rather than defaulting. A wrong bucket name is not a condition worth
+    guessing through: the failure would be a run that reports success while
+    writing nowhere useful, or worse, into a bucket that belongs to something
+    else.
+    """
+    import os
+
+    bucket = os.environ.get(BUCKET_ENV_VAR, "").strip()
+    if not bucket:
+        raise RuntimeError(
+            f"{BUCKET_ENV_VAR} is not set. The ingestion raw zone has no default; "
+            "set it on the Dagster+ code location to the bucket Terraform "
+            "created (see automated_ingestion/iac)."
+        )
+    if bucket == os.environ.get("GCS_BUCKET_NAME", "").strip():
+        raise RuntimeError(
+            f"{BUCKET_ENV_VAR} points at GCS_BUCKET_NAME, the API's user-upload "
+            "bucket. Raw vendor payloads must not be written there."
+        )
+    return bucket
+
+
 # ============= EOF =============================================
