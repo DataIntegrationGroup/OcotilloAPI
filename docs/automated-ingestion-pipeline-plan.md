@@ -140,13 +140,21 @@ Lives in this repo so the loader can import `db/` models and `domain/` rules rat
 
 ### 1.2 — Register as a Dagster+ code location with CI deploy
 
-- `dagster_cloud.yaml` declaring `ocotillo-automated-ingestion` → `automated_ingestion.defs.definitions`.
-- Prod (`main`) and branch-deployment (`pull_request`) workflows, modeled on Aqueduct's, same pinned action version.
-- `DAGSTER_CLOUD_API_TOKEN` and `ORGANIZATION_ID` secrets set.
-- Path-filtered to `automated_ingestion/**` so ordinary API PRs don't trigger a Dagster deploy.
-- Test PR yields a working branch deployment; merge yields a working prod location.
+Files written; nothing deployed yet — the secrets do not exist, so neither workflow has run.
 
-Confirm whether PEX fast deploys work with this dependency set or it falls back to Docker — determines build times.
+- ✅ `dagster_cloud.yaml` declaring `ocotillo-automated-ingestion` → `automated_ingestion.defs.definitions`, build directory `./`. The build directory is the repository root, not `automated_ingestion/`, because the loader imports `db/` and `domain/`.
+- ✅ `CD_dagster_prod.yml` and `CD_dagster_branch.yml`, both on `dagster-io/dagster-cloud-action@v1.13.18` — pinned to the same version as the installed dagster.
+- ✅ Path-filtered to `automated_ingestion/**`, `dagster_cloud.yaml`, `pyproject.toml`, and `uv.lock`. The last two matter: the location's dependency set is exported from them, so a lockfile bump changes the built image even when no ingestion file moves.
+- ⬜ `DAGSTER_CLOUD_API_TOKEN` and `DAGSTER_CLOUD_ORGANIZATION_ID` repository secrets.
+- ⬜ Test PR yields a working branch deployment; merge to `production` yields a working prod location.
+
+**Prod deploys from `production`, not `main`.** `main` was abandoned in July 2025 — it is 3,839 commits behind and is not part of the release flow (`docs/release-flow.md`). The `main` reference in the original draft was inherited from Aqueduct's layout without checking this repository's.
+
+**PEX vs Docker — answered: Docker.** `serverless_prod_deploy` and `serverless_branch_deploy` build with `docker/build-push-action` and a copied Dockerfile template; there is no PEX fast-deploy path in these actions. So build time is a full image build, and the dependency set matters: the image installs all 197 exported packages (the 135 runtime ones plus dagster, dlt, gcsfs, pyarrow). `pymssql` and `psycopg2-binary` are in that set and compile from source on some base images — the first real build is where that surfaces.
+
+**Ordering constraint, easy to break.** `utils/parse_workspace` runs its own `actions/checkout`, which cleans the working tree. It must run *before* `requirements.txt` is generated; putting the generation first silently deletes it, and the deploy fails on a missing file rather than on the real cause.
+
+Both workflows generate `requirements.txt` with `uv export --group ingestion`, since Dagster+ builds from a requirements file and the repository does not keep one under version control.
 
 ### 1.3 — Provision GCS buckets and ingestion service account
 
