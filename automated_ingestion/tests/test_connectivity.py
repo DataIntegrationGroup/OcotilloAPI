@@ -34,12 +34,27 @@ def test_database_resource_is_provided():
     assert "database" in defs.resources
 
 
-def test_loading_definitions_opens_no_connection():
-    # db.engine builds its engine at import time, so the guard that matters is
-    # that importing the definitions module has not imported it.
+def test_loading_definitions_does_not_import_db_engine():
+    # db.engine builds its engine at import time, so listing assets must not
+    # reach it. Checking sys.modules in-process would only observe whichever
+    # test imported it first, so ask a clean interpreter instead.
+    import subprocess
     import sys
 
-    assert "db.engine" not in sys.modules
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import automated_ingestion.defs.definitions as d; "
+            "import sys; "
+            "assert d.defs is not None; "
+            "print('db.engine' in sys.modules)",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False", result.stdout
 
 
 # ============= EOF =============================================

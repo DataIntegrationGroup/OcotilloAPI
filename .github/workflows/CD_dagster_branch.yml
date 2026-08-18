@@ -31,6 +31,14 @@ jobs:
     # untrusted fork would run our code against our infrastructure regardless.
     if: github.event.pull_request.head.repo.full_name == github.repository
 
+    # The action's notify steps post build status as a PR comment and read the
+    # token from the workflow environment -- `env.GITHUB_TOKEN`, not the
+    # `secrets` context. Without this the run dies on an empty-token assertion
+    # before it ever reaches Dagster+, which reads as an auth failure but is
+    # not one.
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Check out source repository
         uses: actions/checkout@v7.0.1
