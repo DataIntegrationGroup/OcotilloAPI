@@ -14,3 +14,9 @@ variable "bucket_location" {
   description = "Bucket location. US-CENTRAL1 keeps the raw zone in the same region as Cloud SQL, so replay reads do not cross regions."
   default     = "US-CENTRAL1"
 }
+
+variable "cloud_sql_instance" {
+  type        = string
+  description = "Cloud SQL instance name for the IAM database user. Leave null to skip the database grants entirely -- useful before the instance is known, or when using password authentication instead."
+  default     = null
+}

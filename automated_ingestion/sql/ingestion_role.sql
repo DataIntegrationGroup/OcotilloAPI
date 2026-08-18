@@ -11,16 +11,27 @@
 -- and NMW_* tables, so a bug in an adapter cannot corrupt data no ingestion
 -- path should ever reach.
 
--- Set the password out of band; do not commit it. It belongs in Secret
--- Manager alongside internal-ogc-api-keys.
---   CREATE ROLE ocotillo_ingestion LOGIN PASSWORD '...';
+-- IAM authentication is the configured path, and the reason is that it removes
+-- the credential rather than rotating it: Cloud SQL mints a short-lived token
+-- from the service account, so there is no password to store in Dagster+, in
+-- Secret Manager, or here.
 --
--- Or, preferred, use IAM database authentication and create the role for the
--- service account instead, so there is no password to rotate:
---   CREATE ROLE "ocotillo-ingestion@PROJECT.iam" WITH LOGIN;
---   GRANT cloudsqliamuser TO "ocotillo-ingestion@PROJECT.iam";
+-- The role name is the service account with the .gserviceaccount.com suffix
+-- stripped. That exact string is also what CLOUD_SQL_USER must be set to --
+-- db/engine.py passes it straight to the connector, and a plain role name there
+-- fails as an authentication error that reads like a missing grant.
+--
+--   CREATE ROLE "ocotillo-ingestion@waterdatainitiative-271000.iam" WITH LOGIN;
+--   GRANT cloudsqliamuser TO "ocotillo-ingestion@waterdatainitiative-271000.iam";
+--
+-- Password authentication, if IAM is ever unavailable. Set the password out of
+-- band and store it in Secret Manager; never commit it, and set
+-- CLOUD_SQL_IAM_AUTH=0 so the two settings agree.
+--
+--   CREATE ROLE ocotillo_ingestion LOGIN PASSWORD '...';
 
-\set role_name ocotillo_ingestion
+-- Set to match whichever role was created above.
+\set role_name "ocotillo-ingestion@waterdatainitiative-271000.iam"
 
 GRANT CONNECT ON DATABASE :"db_name" TO :"role_name";
 GRANT USAGE ON SCHEMA public TO :"role_name";

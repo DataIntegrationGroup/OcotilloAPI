@@ -14,6 +14,11 @@
 #     read -rs "DIVERHUB_PASSWORD?Diver-HUB password: "; echo
 #     export DIVERHUB_USERNAME DIVERHUB_PASSWORD
 #
+# Variables are scoped to this code location, not the deployment. If an earlier
+# run set them with --global, delete those deployment-level entries in the
+# Dagster+ UI afterwards -- otherwise both exist and which one wins is not
+# obvious from either place.
+#
 # Usage:
 #     ./automated_ingestion/scripts/set_code_location_env.sh storage
 #     ./automated_ingestion/scripts/set_code_location_env.sh vendor
@@ -28,7 +33,10 @@ set -euo pipefail
 DG="uv run --with dagster-dg-cli dg"
 PHASE="${1:-}"
 
-set_var() { echo "  $1"; $DG plus create env "$@" --global -y >/dev/null; }
+# No --global: that sets the variable at deployment level, where every other
+# code location in this deployment can read it. This deployment is shared, so
+# the vendor and database credentials stay scoped to this location.
+set_var() { echo "  $1"; $DG plus create env "$@" -y >/dev/null; }
 
 case "$PHASE" in
 storage)
@@ -49,16 +57,26 @@ database)
   echo "Cloud SQL connection:"
   set_var DB_DRIVER cloudsql
   set_var CLOUD_SQL_IP_TYPE public
-  set_var CLOUD_SQL_USER ocotillo_ingestion
   set_var CLOUD_SQL_INSTANCE_NAME --from-local-env
   set_var CLOUD_SQL_DATABASE --from-local-env
-  # Prefer IAM auth: it removes the password entirely, and ingestion_role.sql
-  # documents creating the role as "ocotillo-ingestion@PROJECT.iam" instead.
+
+  # CLOUD_SQL_USER means different things in the two auth modes, and db/engine.py
+  # passes it straight to the connector either way. Under IAM auth it must be the
+  # service account with the .gserviceaccount.com suffix stripped; a plain
+  # Postgres role name there fails as an authentication error that reads like a
+  # missing grant. Deriving it here keeps the two settings from contradicting
+  # each other.
   if [ -n "${CLOUD_SQL_PASSWORD:-}" ]; then
+    echo "  (password auth)"
+    set_var CLOUD_SQL_IAM_AUTH 0
+    set_var CLOUD_SQL_USER ocotillo_ingestion
     set_var CLOUD_SQL_PASSWORD --from-local-env
   else
-    echo "  CLOUD_SQL_PASSWORD unset -- assuming IAM auth"
+    IAM_SA="${INGESTION_SERVICE_ACCOUNT:-ocotillo-ingestion@waterdatainitiative-271000.iam.gserviceaccount.com}"
+    IAM_USER="${IAM_SA%.gserviceaccount.com}"
+    echo "  (IAM auth as ${IAM_USER})"
     set_var CLOUD_SQL_IAM_AUTH 1
+    set_var CLOUD_SQL_USER "$IAM_USER"
   fi
   ;;
 *)
