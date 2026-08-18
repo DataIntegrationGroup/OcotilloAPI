@@ -170,6 +170,19 @@ class DiverHubClient:
         path = f"MonitoringPoints/ByProject/{project_id}"
         return _expect_ok(self._get(path), path).json()
 
+    def manual_measurements(
+        self, monitoring_point_id: int, start: int, end: int
+    ) -> list[dict[str, Any]]:
+        """Manual readings, reported against top of casing.
+
+        Not ingested -- Ocotillo's manual-measurement path owns these. Fetched
+        only to identify which ``reference`` value is the TOC series, since the
+        swagger names the enum members not at all.
+        """
+        path = f"ManualMeasurements/ByMonitoringPoint/{monitoring_point_id}"
+        response = self._get(path, {"startTime": start, "endTime": end})
+        return _expect_ok(response, path).json()
+
     # -- series ------------------------------------------------------------
 
     def water_levels(

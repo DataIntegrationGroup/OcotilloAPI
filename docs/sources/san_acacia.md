@@ -1,7 +1,10 @@
 # Source: San Acacia Reach (Van Essen divers, Diver-HUB)
 
-The pilot source for automated ingestion: 33 monitoring points, one
-depth-to-groundwater series each. Historically flowed through the retired
+The pilot source for automated ingestion. Project **4317 `SanAcaciaReach`**,
+containing **38 monitoring points** named `SO-####` — the plan and the Aqueduct
+mapping both say 33, so five are unaccounted for and must be identified before
+3.2 reconciles anything. Ingestion never creates wells, so an unexpected point
+is a decision, not a row. Historically flowed through the retired
 FROST/`st2` stack; now flows nowhere.
 
 This document supersedes the mapping in `Aqueduct/docs/sources/san_acacia.md`,
@@ -42,27 +45,37 @@ difference cannot end a backfill. Implemented in
 Credentials live in Secret Manager, never in GitHub secrets and never in the
 repository. They are read from `DIVERHUB_USERNAME` / `DIVERHUB_PASSWORD`.
 
-### Windowing
+### Windowing — measured 2026-08-18
 
-`WaterLevels`, `DiverData`, `ManualMeasurements` and `AirPressure` all take
-`startTime` and `endTime` as **Unix seconds, UTC**, inclusive of both ends.
+All series endpoints take `startTime` and `endTime` as **Unix seconds, UTC**,
+inclusive of both ends.
 
-An oversized span returns **HTTP 500** — not a 413, not a pagination cursor.
-The 500s that stalled this work were this, not a vendor outage. A
-confirmed-good request:
+**The 500 is endpoint-specific, and `WaterLevels` — the endpoint we ingest —
+did not exhibit it.** Measured against point 39 (SO-0125):
 
-```
-GET /DiverData/ByMonitoringPoint/40?startTime=1767225600&endTime=1775001600
-```
+| Span back from now | `WaterLevels` |
+|---|---|
+| 90 d | ok, 0 rows |
+| 180 d | ok, 1054 rows |
+| 365 d | ok, 1054 rows |
+| 545 d | ok, 9302 rows |
+| 730 d | ok, **18111 rows** |
 
-That is roughly 1 Jan – 1 Apr. Consequently a fetch is always a sequence of
-bounded windows, and the right response to a 500 is to halve the window and
-retry rather than to mark the entity failed. This applies to the daily
-incremental run too, not only to backfill: an entity whose cursor has fallen
-months behind hits the same ceiling. See `automated_ingestion/shared/windows.py`.
+A fixed 30-day window slid back 0/1/2/3 years also succeeded every time, so
+there is no age-based cutoff on this endpoint either.
 
-**The exact ceiling is unmeasured.** Three months works. `probe_diverhub.py`
-widens until it breaks; record the result here when it has been run.
+`DiverData` is a different story: a 730-day request failed, and bisecting it
+ten times down to a **17-hour** window still returned 500. That is not a volume
+ceiling — a 17-hour window of raw diver data is trivial. The failing slice was
+the oldest part of the range, starting 2024-08-18. Whatever the cause, it is
+specific to `DiverData`, which we do not ingest.
+
+Practical consequence: the windowing machinery in
+`automated_ingestion/shared/windows.py` stays, because 18111 rows in one
+response is already large and the ceiling is untested above 730 days, but the
+halve-on-500 recovery is **not** a routine path for `WaterLevels`. Do not
+assume a 500 there means "too much data" without re-measuring; on `DiverData`
+that assumption is provably wrong.
 
 ## Field mapping
 
@@ -79,25 +92,47 @@ otherwise:
   `approved` (boolean) selects the vendor's approval state. The same point and
   time range returns different numbers depending on what was asked for.
 
-### WaterLevelReference — unresolved, and the highest-risk unknown here
+### WaterLevelReference — measured, not yet decided
 
-The swagger declares:
+The swagger declares `"WaterLevelReference": { "enum": [0, 1, 2, 3] }` with no
+names and no descriptions, so the meaning cannot be read off the spec.
 
-```json
-"WaterLevelReference": { "enum": [0, 1, 2, 3] }
-```
+Sampled for SO-0125 over 365 days — all four return **the same 1054 rows at the
+same timestamps**, differing only by a constant offset. They are one series
+expressed against four datums:
 
-No names, no descriptions. **Which value means depth below ground surface
-cannot be determined from the specification.**
+| `reference` | min | max | offset vs 0 |
+|---|---|---|---|
+| 0 | 199.356 | 250.697 | — |
+| 1 | 267.462 | 318.804 | +68.11 |
+| 2 | 139200.653 | 139251.994 | +139001.30 |
+| 3 | 222.005 | 273.347 | +22.65 |
 
-This matters more than the other open questions because getting it wrong does
-not fail. It returns plausible numbers on the wrong datum, and every ingested
-reading is silently wrong. `GROUND_SURFACE_REFERENCE` in `client.py` is
-therefore `None`, and the pipeline refuses to guess.
+Spread is identical to three decimals (51.34) across all four, confirming they
+are the same measurements re-referenced.
 
-Resolve it by running `probe_diverhub.py`, which samples all four values for
-one point side by side, and comparing against a well whose depth to water is
-independently known. Record the answer here and set the constant.
+**`reference=2` is an elevation, not a depth.** It is three orders of magnitude
+larger than the others. Read as centimetres it is 1392 m ≈ 4567 ft, which
+matches San Acacia's ground elevation — which in turn implies the unit
+throughout is **centimetres**, making 0/1/3 read as roughly 2–3 m depths.
+That is plausible for riparian piezometers and implausible as feet, but it is
+inference from one well, not a confirmed unit.
+
+**Which of 0, 1, 3 is ground surface is still undecided**, and min/max cannot
+settle it. `GROUND_SURFACE_REFERENCE` stays `None`.
+
+Two things resolve it, both automated in `probe_diverhub.py`:
+
+1. **Aligned-row comparison.** An elevation moves opposite to a depth, so
+   `elevation + depth` is constant while `depth − depth` is constant. Comparing
+   rows at the same timestamp separates them; comparing ranges cannot, because
+   an inversion and an offset produce the same spread.
+2. **`ManualMeasurements` as ground truth.** It reports `waterLevelToc` —
+   explicitly top of casing. Whichever reference tracks it *is* the TOC series,
+   and ground surface is the one shallower by the casing stickup. The +68.11
+   gap between references 0 and 1 is a plausible stickup (~0.7 m), which makes
+   that pair the likely GS/TOC candidates — but "likely" is not good enough for
+   a datum, since a wrong choice produces plausible numbers rather than an error.
 
 ### Monitoring points — thinner than expected
 
@@ -140,8 +175,8 @@ Settled, not to be relitigated per source:
 | # | Question | How to settle |
 |---|---|---|
 | 1 | Which `reference` value is ground surface? | `probe_diverhub.py`, compared against a known well |
-| 2 | What is the window ceiling? | `probe_diverhub.py` widens until 500 |
-| 3 | Which project id holds San Acacia, and is it really 33 points? | `probe_diverhub.py` |
+| 2 | ~~What is the window ceiling?~~ | **`WaterLevels` took 730 d / 18111 rows. The 500 is a `DiverData` problem** |
+| 3 | ~~Which project id, how many points?~~ | **Answered: 4317, 38 points (not 33)** |
 | 4 | Do `approved=true` and `approved=false` partition the series, or overlap? | Fetch both for one window and compare timestamps |
 | 5 | Is `dateAndTime` UTC in the response, and is it marked as such? | Inspect a live payload |
 | 6 | Is `level` in feet? | Compare against a known measurement |
