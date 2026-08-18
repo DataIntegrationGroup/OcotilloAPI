@@ -124,6 +124,9 @@ omit = [
   "geoserver_iac/*",
   "scripts/*",
   "tests/*",
+  # Legacy AMPAPI migration scripts. Run by hand against SQL Server, not
+  # exercised by the suite, and large enough to dominate the total.
+  "transfers/*",
 ]
 
 [tool.coverage.report]

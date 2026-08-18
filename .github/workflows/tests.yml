@@ -14,7 +14,12 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write
+
     env:
+      COVERAGE_FAIL_UNDER: "75"
       MODE: development
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
@@ -95,7 +100,7 @@ jobs:
       - name: Run tests
         # --cov-fail-under is set here rather than in pyproject so that running a
         # single test file locally does not fail on the whole-project total.
-        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=55 --junitxml=junit.xml --ignore=tests/transfers
+        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under="$COVERAGE_FAIL_UNDER" --junitxml=junit.xml --ignore=tests/transfers
 
       - name: Write coverage summary
         # Runs even when the coverage gate above fails, so the job summary shows
@@ -109,6 +114,23 @@ jobs:
             uv run coverage report
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment coverage summary on the pull request
+        # A comment failure must not red the build, and the GITHUB_TOKEN is
+        # read-only for pull requests opened from a fork.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr diff "$PR_NUMBER" --name-only > changed-files.txt
+          uv run python scripts/coverage_pr_comment.py \
+            --changed-files changed-files.txt \
+            --fail-under "$COVERAGE_FAIL_UNDER" > coverage-comment.md
+          gh pr comment "$PR_NUMBER" \
+            --body-file coverage-comment.md \
+            --edit-last --create-if-none
 
       - name: Upload coverage reports
         if: ${{ !cancelled() }}
