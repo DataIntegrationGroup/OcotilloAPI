@@ -16,9 +16,17 @@
 """
 San Acacia Reach -- 33 Van Essen divers, one depth-to-groundwater series each.
 
-The pilot source. Unauthenticated, small, and already mapped, so it exercises
-the whole path end to end without authentication or pagination complicating the
-first build. Readings land on the **ground-surface** datum (Van Essen's ``gs``
+The pilot source: small and already mapped, so it exercises the whole path end
+to end without a large or unfamiliar dataset complicating the first build.
+
+Readings come from the private Diver-HUB API, which shapes the extraction in
+two ways. Requests carry a JWT good for one hour, so anything long-running
+refreshes mid-run rather than authenticating once at the start. And
+``DiverData/ByMonitoringPoint/{id}`` returns HTTP 500 when asked for too wide a
+span instead of paginating, so reads are always bounded windows in Unix
+seconds -- roughly three months is known to work.
+
+Readings land on the **ground-surface** datum (Van Essen's ``gs``
 arrays, never ``vrd``), public but provisional, and always ``not reviewed`` --
 the vendor's own approval flag records what the vendor approved, not a Bureau
 review.

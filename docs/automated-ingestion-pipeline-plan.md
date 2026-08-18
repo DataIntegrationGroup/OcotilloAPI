@@ -15,9 +15,9 @@ Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet
 - **Public + provisional.** Visible from the first run, and marked provisional so no consumer mistakes an uncorrected diver series for a reviewed one. This matches what the retired FROST pipeline asserted for this source (`is_provisional: true`) — adopted deliberately here rather than inherited silently, which was the open question left in Aqueduct's mapping doc. It needs a schema change: `release_status` is one column, and its lexicon lists `public` and `provisional` as siblings, so visibility and maturity — two orthogonal axes — currently collide.
 - **Vendor approval flag ≠ Ocotillo review status.** Van Essen's `approvedWaterLevels*` records what *the vendor* approved. Ocotillo's `review_status` is `approved` / `not reviewed`, and `TransducerObservationBlock.reviewer_id` FKs a Bureau `Contact` — so `approved` asserts a Bureau human reviewed it. Mapping one onto the other would manufacture provenance that doesn't exist. All San Acacia blocks land `not reviewed`; the vendor flag is preserved as a separate per-row attribute.
 
-**Watch:** one external blocker (Van Essen's readings endpoint 500s, vendor-escalated) and two schema changes — a unique constraint on `transducer_observation`, and a new field because `release_status` cannot hold "public" and "provisional" at once.
+**Watch:** two schema changes — a unique constraint on `transducer_observation`, and a new field because `release_status` cannot hold "public" and "provisional" at once. The vendor blocker cleared on 2026-08-18: the readings endpoint works, but only through the private Diver-HUB API, only with a 1-hour JWT, and only in bounded time windows.
 
-**Sequencing:** Task 1 gates everything. Tasks 2 and 3 run largely in parallel after it. Only two sub-tasks actually block on the vendor.
+**Sequencing:** Task 1 gates everything. Tasks 2 and 3 run largely in parallel after it. Nothing is vendor-blocked any more.
 
 ## All tasks
 
@@ -29,9 +29,9 @@ Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet
 | 1.3 | GCS buckets + service account | `ocotillo-ingestion-{production,staging}`, date-partitioned layout | — |
 | 1.4 | DB connectivity + least-privilege role | Cloud SQL connector from serverless; scoped Postgres role | 1.2 |
 | **T2** | **Source extraction** | Van Essen API → GCS raw zone | T1 |
-| 2.1 | Confirm endpoint + finalize mapping | **Vendor-blocked.** Resolve 500s; confirm `ts`, units, fixtures | vendor |
+| 2.1 | Confirm endpoint + finalize mapping | **Unblocked.** Diver-HUB swagger, JWT login, measure the window ceiling | — |
 | 2.2 | dlt resource: locations | 33 wells, `replace`, one call, no pagination | 1.3 |
-| 2.3 | dlt resource: readings, incremental | Per-point fetch, dlt cursor, `append`, per-entity failure isolation | 2.1 (live only) |
+| 2.3 | dlt resource: readings, incremental | Windowed per-point fetch, dlt cursor, `append`, token refresh, failure isolation | 2.1 |
 | **T3** | **Domain mapping + load** | Van Essen records → Ocotillo Postgres | T1 |
 | 3.1 | Domain layer | Pure functions: units, datum, timestamps, geometry, external keys | — |
 | 3.2 | Bootstrap reference data | Reconcile 33 wells; seed parameter, sensor, deployments | 3.1 |
@@ -55,7 +55,7 @@ The Hydrograph Corrector UI exists and works (BDMS-1137 done), but has no automa
 
 New top-level `automated_ingestion/` package in OcotilloAPI, deployed as its own Dagster+ code location in the existing `nmbgmr-data-services` org. dlt extracts the Van Essen API to a GCS raw zone; a `domain/` layer maps to the Ocotillo model; a loader writes to Ocotillo Postgres over a direct DB connection. Watermark and backfill mechanics come from Aqueduct.
 
-San Acacia first: unauthenticated, 33 wells, one DTW series each, and already mapped in `Aqueduct/docs/sources/san_acacia.md`. What it establishes — source registry, per-source dlt pipeline, adapter, backfill job factory — every later source inherits.
+San Acacia first: 33 wells, one DTW series each, and already mapped in `Aqueduct/docs/sources/san_acacia.md`. It authenticates with a short-lived JWT and must be read in bounded time windows — both cheap enough here to establish the pattern before a harder source needs it. What it establishes — source registry, per-source dlt pipeline, adapter, backfill job factory — every later source inherits.
 
 **Ownership: OcotilloAPI.** Not a third Aqueduct source writing into Ocotillo. The loader writes over a direct database connection, which wants the `db/` SQLAlchemy models and `domain/` rules in-process rather than a duplicated schema in another repo. Aqueduct stays the FROST/SensorThings pipeline; this is Ocotillo's own. The two share code by porting (see below), not by importing.
 
@@ -94,9 +94,20 @@ San Acacia first: unauthenticated, 33 wells, one DTW series each, and already ma
 - Series render in the Hydrograph Corrector.
 - Domain mapping unit-tested with no database, per `ADR4.md`.
 
-### Blocker
+### Blocker — resolved 2026-08-18
 
-Van Essen `GET /api/api/monitoringPoint/{project}/{id}` — the only readings endpoint — returns **HTTP 500 for every ID tried**; escalated to the vendor. Everything except live-readings verification proceeds on recorded fixtures. Tracked in sub-task 2.1.
+The 500s were never a vendor outage. Two things were wrong on our side, both reported by Chase Martin:
+
+1. **Wrong API.** Readings come from the private Diver-HUB API — `GET https://diver-hub.com/private/api/v1/DiverData/ByMonitoringPoint/{id}` — not the doubled-segment `/api/api/monitoringPoint/{project}/{id}` path the earlier draft assumed. Swagger: `https://diver-hub.com/private/swagger/index.html`, which is now the authority over anything inferred from retired FROST data.
+2. **Window too large.** The endpoint 500s rather than paginating or erroring cleanly when asked for too much. A confirmed-good request is a ~3-month window in **Unix seconds**:
+
+   ```
+   https://diver-hub.com/private/api/v1/DiverData/ByMonitoringPoint/40?startTime=1767225600&endTime=1775001600
+   ```
+
+**Auth:** POST to the login endpoint with the credentials Ethan circulated; it returns a **JWT valid for one hour**. This overturns the "unauthenticated" assumption in the earlier draft and has two consequences: the token is a secret needing the same handling as the DB credentials, and any run outliving an hour — every backfill — must refresh mid-run rather than acquire once at start.
+
+**Still open:** the actual window ceiling. Three months works; the limit is unmeasured. Until it is, chunk conservatively and treat a 500 as "too much data" rather than a hard failure.
 
 ### Related
 
@@ -166,15 +177,17 @@ Land locations and readings untransformed in GCS as date-partitioned parquet. Ra
 
 ### 2.1 — Confirm the readings endpoint; finalize the source mapping
 
-Endpoint returns HTTP 500 for every ID; escalated to Van Essen. Some mapping details were inferred from retired FROST data, not the live API.
+**Unblocked.** The endpoint works; the 500s were a wrong path plus an oversized window (see Blocker). Mapping details inferred from retired FROST data can now be checked against live responses and against the Diver-HUB swagger.
 
-- Vendor escalation resolved, or a workaround agreed (vendor export, alternate endpoint, SFTP drop).
+- Authenticate: POST credentials to the login endpoint, hold the 1-hour JWT, re-acquire on expiry or on a 401. Credentials and token never committed and never logged.
+- Measure the window ceiling. Three months is known-good; find where it breaks so the chunk size is chosen rather than guessed. Record the number here.
 - Confirmed against live responses: `ts` format and timezone; `gs` unit is feet; `approvedWaterLevelsGs` and `unApprovedWaterLevelsGs` are the complete, non-overlapping set; whether `groundSurfaceData` elevation is needed and how it's time-scoped.
+- Reconcile the swagger against `docs/sources/san_acacia.md`: the locations endpoint and the `/api/api/` doubled segment were both taken from the old assumption and may not survive.
 - `drillingDepth` centimetres (÷ 30.48) confirmed, not back-calculated.
-- Fixture responses committed for tests.
+- Fixture responses committed for tests, credentials scrubbed.
 - `docs/sources/san_acacia.md` copied into OcotilloAPI and corrected.
 
-Datum and vendor-flag questions are already settled in the Epic — `vrd` is not ingested, and the vendor flag does not map to `review_status`. Blocks live verification of 2.3 and 4.2 only.
+Datum and vendor-flag questions are already settled in the Epic — `vrd` is not ingested, and the vendor flag does not map to `review_status`.
 
 ### 2.2 — dlt resource: locations → GCS
 
@@ -185,12 +198,13 @@ Datum and vendor-flag questions are already settled in the Epic — `vrd` is not
 ### 2.3 — dlt resource: readings → GCS, incremental
 
 - `@dlt.resource(name="vanessen_readings")` per monitoring point, dlt incremental cursor on reading timestamp, `write_disposition="append"`.
+- **Windowed requests.** `DiverData/ByMonitoringPoint/{id}` takes `startTime`/`endTime` as Unix seconds and 500s on an oversized span, so a fetch is always a sequence of bounded windows — never one open-ended call. This is true of the daily incremental run too, not just backfill: an entity whose cursor has fallen months behind must walk forward in chunks.
+- **Token refresh mid-run.** The JWT expires after an hour. Refresh on expiry and retry once on a 401; a multi-hour backfill must not die at minute 61.
+- Treat a 500 on a windowed request as a signal to halve the window and retry, not as a dead entity — the endpoint reports "too much data" that way.
 - `initial_start_date` in `.dlt/config.toml`, documented as a floor for entities with no cursor yet — never a backfill lever (`BACKFILL_STRATEGY.md` §2).
 - Vendor approved/unapproved flag preserved per row.
 - Per-entity failure doesn't abort the run; failures counted and surfaced as asset metadata.
 - Asset `raw_san_acacia_readings` emits rows-ingested and entities-failed. Tested against fixtures.
-
-Blocked on 2.1 for live verification.
 
 ---
 
