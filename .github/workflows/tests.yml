@@ -93,24 +93,33 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
 
       - name: Run tests
-        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=term-missing --junitxml=junit.xml --ignore=tests/transfers
+        # --cov-fail-under is set here rather than in pyproject so that running a
+        # single test file locally does not fail on the whole-project total.
+        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=55 --junitxml=junit.xml --ignore=tests/transfers
 
-      - name: Upload coverage to Codecov
-        # report_type defaults to "coverage"; the test-results upload below is a
-        # separate call because one action run sends one report type.
+      - name: Write coverage summary
+        # Runs even when the coverage gate above fails, so the job summary shows
+        # which modules dropped rather than only the failing total.
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v6
-        with:
-          files: coverage.xml
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          {
+            echo "## Coverage"
+            echo
+            echo '```'
+            uv run coverage report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload results to Codecov
+      - name: Upload coverage reports
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v6
+        uses: actions/upload-artifact@v4
         with:
-          report_type: test_results
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-${{ github.run_id }}
+          path: |
+            coverage.xml
+            htmlcov/
+            junit.xml
+          retention-days: 14
 
   bdd-tests:
     runs-on: ubuntu-latest
