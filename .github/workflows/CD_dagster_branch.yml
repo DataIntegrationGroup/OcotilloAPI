@@ -75,3 +75,8 @@ jobs:
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
           location: ${{ toJson(fromJson(steps.parse.outputs.build_info)[0]) }}
           checkout_repo: false
+          # The action defaults to python:3.8-slim, which cannot install a
+          # lockfile resolved for requires-python >= 3.13 -- pip reports the
+          # pins as having no matching distribution rather than as a version
+          # conflict, which reads like a broken requirements file.
+          base_image: python:3.13-slim
