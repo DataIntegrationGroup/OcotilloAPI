@@ -51,17 +51,39 @@ EXPIRY_SKEW_SECONDS = 60
 """Refresh this long before ``validTo``, so a request in flight at the boundary
 does not arrive expired."""
 
-GROUND_SURFACE_REFERENCE: int | None = None
+GROUND_SURFACE_REFERENCE = 3
 """Which ``WaterLevelReference`` value means depth below ground surface.
 
-The swagger declares the enum as ``[0, 1, 2, 3]`` with no names, so this cannot
-be derived from the specification -- it has to be observed against a well whose
-depth to water is independently known. Deliberately ``None`` until then:
-guessing wrong would not fail, it would silently record every reading on the
-wrong datum, which is the one error this pipeline must not make quietly.
+The swagger declares the enum as ``[0, 1, 2, 3]`` with no names, so this was
+determined by measurement rather than read off the specification. Probing
+SO-0125 showed all four values return the same rows at the same timestamps,
+related by constants that held identically across two windows eighteen months
+apart:
 
-Set it from the finding of `scripts/probe_diverhub.py`.
+    ref1 + ref0 = 518.160      ref3 + ref0 = 472.704      ref2 - ref0 = 139001.296
+
+``ref0`` and ``ref2`` rise with the water; ``ref1`` and ``ref3`` fall, so the
+latter pair are depths. ``ref1`` is deeper than ``ref3`` by a fixed 45.456 cm
+(1.49 ft) -- a casing stickup -- which makes ``ref1`` top of casing and ``ref3``
+ground surface. The reading checks out physically: ground surface lands at
+1394.74 m (4576 ft), right for San Acacia, and depth to water runs 2.2-4.7 m,
+right for a riparian piezometer.
+
+See ``docs/sources/san_acacia.md``. Do not change this without re-running
+``scripts/probe_diverhub.py``: the wrong value returns plausible numbers on the
+wrong datum rather than an error.
 """
+
+TOP_OF_CASING_REFERENCE = 1
+"""Depth below top of casing. Not ingested -- recorded so the value is not
+mistaken for ground surface, which it resembles to within a stickup."""
+
+ELEVATION_REFERENCE = 2
+"""Water-surface elevation above sea level. Not ingested."""
+
+SOURCE_UNIT = "cm"
+"""Diver-HUB reports centimeters; Ocotillo stores feet. Convert with
+``domain.units.convert_cm_to_ft`` -- never store a raw value."""
 
 
 class Response(Protocol):

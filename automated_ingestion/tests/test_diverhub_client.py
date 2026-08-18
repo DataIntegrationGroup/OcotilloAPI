@@ -166,12 +166,35 @@ def test_naive_valid_to_is_read_as_utc():
     assert naive == aware
 
 
-def test_ground_surface_reference_is_unset_until_confirmed():
-    # Guessing would not fail loudly; it would record every reading on the
-    # wrong datum. The constant stays None until someone observes it.
+def test_datum_constants_match_the_measured_relationships():
+    # Determined by probing, not read from the spec: ref0/ref2 rise with the
+    # water and ref1/ref3 fall, so the depths are 1 and 3, and ref1 is deeper
+    # than ref3 by a fixed casing stickup. Getting this wrong does not raise --
+    # it silently records every reading on the wrong datum.
     from automated_ingestion.sources.san_acacia import client as module
 
-    assert module.GROUND_SURFACE_REFERENCE is None
+    assert module.GROUND_SURFACE_REFERENCE == 3
+    assert module.TOP_OF_CASING_REFERENCE == 1
+    assert module.ELEVATION_REFERENCE == 2
+    assert module.GROUND_SURFACE_REFERENCE != module.TOP_OF_CASING_REFERENCE
+
+
+def test_source_unit_is_centimeters_not_feet():
+    # The vendor reports cm and Ocotillo stores ft. A value passed through
+    # unconverted is wrong by a factor of 30.48 and still looks like a plausible
+    # depth, which is exactly the kind of error that survives review.
+    from domain.units import convert_cm_to_ft
+    from automated_ingestion.sources.san_acacia import client as module
+
+    assert module.SOURCE_UNIT == "cm"
+    # SO-0125 on 2024-10-30: 471.518 cm below ground surface.
+    assert convert_cm_to_ft(471.518) == 15.469751
+
+
+def test_cm_conversion_passes_none_through():
+    from domain.units import convert_cm_to_ft
+
+    assert convert_cm_to_ft(None) is None
 
 
 # ============= EOF =============================================

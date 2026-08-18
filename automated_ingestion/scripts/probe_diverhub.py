@@ -229,7 +229,9 @@ def probe_datum_relationships(
 
     print("\n   Manual measurements (waterLevelToc = top of casing):")
     try:
-        manual = client.manual_measurements(point_id, start, end)
+        # Sparse by nature -- a few per year at best -- so search the whole
+        # record rather than the window used for the logged series.
+        manual = client.manual_measurements(point_id, end - 3650 * DAY, end)
     except DiverHubError as exc:
         print(f"     unavailable -- {exc}")
         return

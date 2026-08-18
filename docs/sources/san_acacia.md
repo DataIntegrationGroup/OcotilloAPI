@@ -92,47 +92,58 @@ otherwise:
   `approved` (boolean) selects the vendor's approval state. The same point and
   time range returns different numbers depending on what was asked for.
 
-### WaterLevelReference — measured, not yet decided
+### WaterLevelReference — resolved 2026-08-18
 
 The swagger declares `"WaterLevelReference": { "enum": [0, 1, 2, 3] }` with no
-names and no descriptions, so the meaning cannot be read off the spec.
+names, so this was determined by measurement.
 
-Sampled for SO-0125 over 365 days — all four return **the same 1054 rows at the
-same timestamps**, differing only by a constant offset. They are one series
-expressed against four datums:
+All four values return **the same rows at the same timestamps**, related by
+constants that held identically across two windows eighteen months apart:
 
-| `reference` | min | max | offset vs 0 |
+```
+ref1 + ref0 = 518.160        ref3 + ref0 = 472.704        ref2 - ref0 = 139001.296
+```
+
+A constant *sum* means the two move in opposite directions; a constant
+*difference* means they move together. So `ref0` and `ref2` rise with the water
+and `ref1`/`ref3` fall — the latter pair are depths. `ref1` is deeper than
+`ref3` by a fixed **45.456 cm (1.49 ft)**, which is a casing stickup.
+
+| Value | Meaning | Ingested |
+|---|---|---|
+| 0 | Water height above the diver | No |
+| **3** | **Depth below ground surface** | **Yes** |
+| 1 | Depth below top of casing | No |
+| 2 | Water-surface elevation above sea level | No |
+
+`GROUND_SURFACE_REFERENCE = 3`.
+
+Sample values for SO-0125, 2024-10-30T20:00:00Z:
+
+| ref0 | ref1 | ref2 | ref3 |
 |---|---|---|---|
-| 0 | 199.356 | 250.697 | — |
-| 1 | 267.462 | 318.804 | +68.11 |
-| 2 | 139200.653 | 139251.994 | +139001.30 |
-| 3 | 222.005 | 273.347 | +22.65 |
+| 1.186 | 516.974 | 139002.482 | 471.518 |
 
-Spread is identical to three decimals (51.34) across all four, confirming they
-are the same measurements re-referenced.
+The reading checks out physically. The sensor sits at 1390.01 m; ground surface
+is 4.727 m above it at **1394.74 m (4576 ft)**, right for San Acacia. Depth to
+water runs 4.72 m in October 2024 to 2.2–2.7 m in April 2026, right for a
+riparian piezometer.
 
-**`reference=2` is an elevation, not a depth.** It is three orders of magnitude
-larger than the others. Read as centimetres it is 1392 m ≈ 4567 ft, which
-matches San Acacia's ground elevation — which in turn implies the unit
-throughout is **centimetres**, making 0/1/3 read as roughly 2–3 m depths.
-That is plausible for riparian piezometers and implausible as feet, but it is
-inference from one well, not a confirmed unit.
+**Not independently corroborated.** `ManualMeasurements`, which reports
+`waterLevelToc` explicitly, returned nothing in the sampled window, so `ref1`
+being TOC is inferred from the stickup rather than confirmed against a measured
+one. The probe now searches ten years for a manual reading; a single one would
+close this.
 
-**Which of 0, 1, 3 is ground surface is still undecided**, and min/max cannot
-settle it. `GROUND_SURFACE_REFERENCE` stays `None`.
+### Units — centimetres, not feet
 
-Two things resolve it, both automated in `probe_diverhub.py`:
+`ref2` is only an elevation if the unit is centimetres: 139002 cm is 1390 m,
+which matches San Acacia, whereas any other unit puts the ground somewhere
+impossible. That fixes the unit for every value the API returns.
 
-1. **Aligned-row comparison.** An elevation moves opposite to a depth, so
-   `elevation + depth` is constant while `depth − depth` is constant. Comparing
-   rows at the same timestamp separates them; comparing ranges cannot, because
-   an inversion and an offset produce the same spread.
-2. **`ManualMeasurements` as ground truth.** It reports `waterLevelToc` —
-   explicitly top of casing. Whichever reference tracks it *is* the TOC series,
-   and ground surface is the one shallower by the casing stickup. The +68.11
-   gap between references 0 and 1 is a plausible stickup (~0.7 m), which makes
-   that pair the likely GS/TOC candidates — but "likely" is not good enough for
-   a datum, since a wrong choice produces plausible numbers rather than an error.
+**Ocotillo stores feet.** Convert with `domain.units.convert_cm_to_ft`
+(`/100 * 3.28084`). An unconverted value is wrong by a factor of 30.48 and
+still reads as a plausible depth, so it would survive review.
 
 ### Monitoring points — thinner than expected
 
@@ -174,12 +185,12 @@ Settled, not to be relitigated per source:
 
 | # | Question | How to settle |
 |---|---|---|
-| 1 | Which `reference` value is ground surface? | `probe_diverhub.py`, compared against a known well |
+| 1 | ~~Which `reference` value is ground surface?~~ | **Answered: 3.** Corroboration via `ManualMeasurements` still outstanding |
 | 2 | ~~What is the window ceiling?~~ | **`WaterLevels` took 730 d / 18111 rows. The 500 is a `DiverData` problem** |
 | 3 | ~~Which project id, how many points?~~ | **Answered: 4317, 38 points (not 33)** |
 | 4 | Do `approved=true` and `approved=false` partition the series, or overlap? | Fetch both for one window and compare timestamps |
 | 5 | Is `dateAndTime` UTC in the response, and is it marked as such? | Inspect a live payload |
-| 6 | Is `level` in feet? | Compare against a known measurement |
+| 6 | ~~Is `level` in feet?~~ | **No — centimetres.** Convert with `convert_cm_to_ft` |
 
 Questions 1 and 6 both gate correctness rather than completeness: wrong answers
 produce data that looks fine.
