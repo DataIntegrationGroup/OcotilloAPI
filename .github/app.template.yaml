@@ -34,6 +34,13 @@ env_variables:
   PYGEOAPI_POSTGRES_PASSWORD: |-
     ${PYGEOAPI_POSTGRES_PASSWORD}
   PYGEOAPI_SERVER_URL: "${PYGEOAPI_SERVER_URL}"
+  # Hashed static API keys for the authenticated /ogcapi-internal mount, as
+  # `label:sha256hex` entries, sourced from the Secret Manager secret
+  # `internal-ogc-api-keys`. Needed because ArcGIS Pro and QGIS cannot refresh
+  # an Authentik access token; see core/internal_ogc_auth.py and
+  # docs/internal-ogc-desktop-gis.md. Unset means bearer-JWT access only.
+  INTERNAL_OGC_API_KEYS: |-
+    ${INTERNAL_OGC_API_KEYS}
   CLOUD_SQL_IAM_AUTH: "${CLOUD_SQL_IAM_AUTH}"
   GCS_SERVICE_ACCOUNT_KEY: |-
     ${GCS_SERVICE_ACCOUNT_KEY}

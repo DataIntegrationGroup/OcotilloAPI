@@ -108,6 +108,30 @@ package = true
 [tool.setuptools]
 packages = ["alembic", "cli", "core", "data_migrations", "db", "domain", "schemas", "services", "transfers"]
 
+# Bare `--cov` measures every imported module, which pulls the whole virtualenv
+# into the report. Scope it to first-party code instead. Keep this a single
+# source root -- listing each package separately makes coverage treat every
+# entry as its own root, so `api/wells.py` is reported as `wells.py` and
+# collides with same-named modules in db/, schemas/, and services/.
+[tool.coverage.run]
+source = ["."]
+relative_files = true
+omit = [
+  ".venv/*",
+  "alembic/*",
+  "docker/*",
+  "features/*",
+  "geoserver_iac/*",
+  "scripts/*",
+  "tests/*",
+  # Legacy AMPAPI migration scripts. Run by hand against SQL Server, not
+  # exercised by the suite, and large enough to dominate the total.
+  "transfers/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+
 [project.scripts]
 oco = "cli.cli:cli"
 
