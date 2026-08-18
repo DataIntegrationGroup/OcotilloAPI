@@ -10,6 +10,14 @@ on:
     types: [opened, synchronize, reopened, closed]
     paths:
       - "automated_ingestion/**"
+      # The code location imports db/ models and domain/ rules in-process,
+      # so a change to either alters what this image runs even when no
+      # ingestion file moves. Without these, a domain fix merged to
+      # production would leave the pipeline running the old rule against
+      # the live database. The cost is that ordinary API changes to these
+      # directories also trigger a build; a stale code location is worse.
+      - "db/**"
+      - "domain/**"
       - "dagster_cloud.yaml"
       - "pyproject.toml"
       - "uv.lock"
