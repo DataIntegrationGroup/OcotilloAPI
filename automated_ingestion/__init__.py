@@ -29,22 +29,13 @@ the first source; ``shared/`` holds what later sources reuse.
 
 See ``docs/automated-ingestion-pipeline-plan.md``.
 
-Importing this package puts the repository root on ``sys.path``. That is
-unusual and deliberate. The Dagster+ image copies the repository to
-``/opt/dagster/app`` but never installs it -- the generated requirements omit
-the project, and the build template only runs ``pip install .`` when a
-``setup.py`` exists -- so ``db`` and ``domain`` are importable only while that
-directory happens to be on the path. It is, when Dagster loads the code
-location; it is not guaranteed in the separate process that executes a step,
-which is where the loader's imports actually run. Locally the editable install
-hides the difference entirely, so the failure appears only once deployed.
+The image installs this repository as a package (see
+``dagster_cloud_post_install.sh``), so ``db``, ``domain``, and the rest resolve
+from site-packages rather than from whatever happens to be on ``sys.path``. That
+matters because the process that loads the code location and the process that
+executes a step do not agree about the path, and the loader's imports run in the
+second one. Locally an editable install produces the same result, which is why
+the difference is invisible until deployment.
 """
-
-import sys as _sys
-from pathlib import Path as _Path
-
-_REPOSITORY_ROOT = _Path(__file__).resolve().parent.parent
-if str(_REPOSITORY_ROOT) not in _sys.path:
-    _sys.path.insert(0, str(_REPOSITORY_ROOT))
 
 # ============= EOF =============================================

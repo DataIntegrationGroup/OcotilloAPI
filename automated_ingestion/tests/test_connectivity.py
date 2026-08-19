@@ -57,23 +57,12 @@ def test_loading_definitions_does_not_import_db_engine():
     assert result.stdout.strip() == "False", result.stdout
 
 
-def test_importing_the_package_makes_the_repository_importable():
-    # The deployed image never installs this project, so `db` and `domain`
-    # resolve only if the repository root is on sys.path. Locally an editable
-    # install provides that and hides the difference, which is why this failed
-    # only once deployed -- the code location loaded fine and the step that
-    # imported db died.
-    import sys
-
-    import automated_ingestion
-
-    assert str(automated_ingestion._REPOSITORY_ROOT) in sys.path
-
-
 def test_db_imports_from_an_unrelated_working_directory():
     # Reproduces the deployed condition: a process whose cwd is not the
     # repository. The lazy imports in the resource and the connectivity asset
     # run at step execution, not at load, so this is the path that broke.
+    # In the image this passes because the repository is installed; locally
+    # because the editable install has the same effect.
     import subprocess
     import sys
 
