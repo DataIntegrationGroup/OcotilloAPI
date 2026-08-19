@@ -28,6 +28,7 @@ from core.dependencies import (
     session_dependency,
     amp_admin_dependency,
     amp_editor_dependency,
+    amp_staging_dependency,
     amp_viewer_dependency,
 )
 from db import Observation, Parameter
@@ -40,7 +41,12 @@ from schemas.observation import (
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
 )
-from schemas.transducer import TransducerObservationWithBlockResponse
+from schemas.transducer import (
+    DeletedTransducerObservationsResponse,
+    PublishedTransducerBlockResponse,
+    PublishTransducerBlock,
+    TransducerObservationWithBlockResponse,
+)
 from schemas.water_level_csv import WaterLevelBulkUploadResponse
 from services.crud_helper import model_deleter, model_adder
 from services.observation_helper import (
@@ -50,9 +56,29 @@ from services.observation_helper import (
     get_transducer_observations,
 )
 from services.query_helper import simple_get_by_id
+from services.transducer_helper import (
+    delete_transducer_observations,
+    publish_transducer_block,
+)
 from services.water_level_csv import bulk_upload_water_levels
 
 router = APIRouter(prefix="/observation", tags=["observation"])
+
+
+def _groundwater_level_parameter_id(session) -> int:
+    """
+    The lexicon id the transducer routes work in.
+
+    Looked up rather than configured so the publish, read, and delete routes
+    cannot drift onto different parameters.
+    """
+    return (
+        session.query(Parameter)
+        .filter(Parameter.parameter_name == "groundwater level")
+        .one()
+        .id
+    )
+
 
 """
 TODO
@@ -86,6 +112,33 @@ def add_water_chemistry_observation(
     This endpoint is currently a placeholder and does not implement any functionality.
     """
     return model_adder(session, Observation, obs_data, user=user)
+
+
+@router.post(
+    "/transducer-groundwater-level/block",
+    status_code=HTTP_201_CREATED,
+    summary="Publish a corrected transducer series as one block",
+)
+def publish_transducer_groundwater_level_block(
+    payload: PublishTransducerBlock,
+    session: session_dependency,
+    user: amp_staging_dependency,
+    replace_overlapping: bool = False,
+) -> PublishedTransducerBlockResponse:
+    """
+    Publish one corrected logger file as a single observation block.
+
+    The block's time span is derived from the measurements; the client does not
+    send it. Overlapping an existing block is a 409 listing the collisions --
+    pass `replace_overlapping=true` to supersede them, which deletes those
+    blocks and their readings in the same transaction.
+
+    Written by the hydrograph corrector in OcotilloUI. See
+    `docs/hydrograph-correction-publish.md`.
+    """
+    return publish_transducer_block(
+        session, payload, user=user, replace_overlapping=replace_overlapping
+    )
 
 
 @router.post(
@@ -155,17 +208,30 @@ def get_transducer_groundwater_level_observations(
     thing_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
 ) -> CustomPage[TransducerObservationWithBlockResponse]:
+    """
+    Retrieve transducer groundwater level observations paired with the block
+    that covers them.
 
-    groundwater_parameter_id = (
-        session.query(Parameter)
-        .filter(Parameter.parameter_name == "groundwater level")
-        .one()
-        .id
-    )
-
+    `sort` accepts `observation_datetime`, `value`, or `id`; `order` accepts
+    `asc` or `desc`. The default is newest first, so a client that wants the
+    latest stored reading for a well can ask for size 1.
+    """
+    # Keyword arguments deliberately: the helper's fourth positional parameter
+    # is `sensor_id`, so the previous positional call passed `start_time` as a
+    # sensor id (unused, silently dropped), `end_time` as `start_time`, and
+    # nothing as `end_time` -- an upper bound the caller asked for was ignored
+    # and the lower bound came from the wrong argument.
     return get_transducer_observations(
-        session, thing_id, groundwater_parameter_id, start_time, end_time
+        session,
+        thing_id=thing_id,
+        parameter_id=_groundwater_level_parameter_id(session),
+        start_time=start_time,
+        end_time=end_time,
+        sort=sort,
+        order=order,
     )
 
 
@@ -300,6 +366,40 @@ def get_observation_by_id(
 
 
 # DELETE =======================================================================
+
+
+@router.delete(
+    "/transducer-groundwater-level",
+    status_code=HTTP_200_OK,
+    summary="Delete transducer groundwater level observations in a time range",
+)
+def delete_transducer_groundwater_level_observations(
+    session: session_dependency,
+    user: amp_staging_dependency,
+    thing_id: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> DeletedTransducerObservationsResponse:
+    """
+    Delete every transducer groundwater level reading for a well inside a
+    closed time range, and reconcile the blocks that covered them: a block left
+    with no readings is deleted, one left with some has its span narrowed to
+    the survivors.
+
+    All three parameters are required -- there is deliberately no form of this
+    request that deletes everything for a well. Scoped exactly like the `GET`
+    on this path, so the set previewed there is the set removed here.
+
+    Irreversible, and it leaves the `transducer_daily_data` materialized view
+    stale until its next refresh.
+    """
+    return delete_transducer_observations(
+        session,
+        thing_id=thing_id,
+        parameter_id=_groundwater_level_parameter_id(session),
+        start_time=start_time,
+        end_time=end_time,
+    )
 
 
 @router.delete(

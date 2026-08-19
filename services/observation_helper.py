@@ -6,9 +6,9 @@ from typing import List
 from fastapi import Request, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select, desc
+from sqlalchemy import asc, select, desc
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_CONTENT
 
 from db import (
     Observation,
@@ -187,9 +187,52 @@ def get_transducer_observations(
 
         return response_items
 
-    query = query.order_by(TransducerObservation.observation_datetime.desc())
+    query = _sorted_transducer_query(query, sort, order)
 
     return paginate(query=query, conn=session, transformer=transformer)
+
+
+# Only columns that mean something to a client of this endpoint. A whitelist
+# rather than getattr on the model: the latter would expose every column,
+# including the legacy `nma_*` ones, as a public sort key.
+_TRANSDUCER_SORT_COLUMNS = {
+    "observation_datetime": TransducerObservation.observation_datetime,
+    "value": TransducerObservation.value,
+    "id": TransducerObservation.id,
+}
+
+
+def _sorted_transducer_query(query, sort: str | None, order: str | None):
+    """
+    Apply `sort`/`order` to a transducer observation query.
+
+    Defaults to newest first, which is what the list view wants and what a
+    client asking for the latest stored reading relies on. An unrecognised sort
+    field is rejected rather than ignored -- silently returning a differently
+    ordered page reads as data changing, not as a bad request.
+    """
+    if sort and sort not in _TRANSDUCER_SORT_COLUMNS:
+        raise PydanticStyleException(
+            status_code=HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=[
+                {
+                    "loc": ["query", "sort"],
+                    "msg": (
+                        f"Cannot sort by '{sort}'. Valid fields: "
+                        f"{', '.join(sorted(_TRANSDUCER_SORT_COLUMNS))}"
+                    ),
+                    "type": "value_error",
+                    "input": sort,
+                }
+            ],
+        )
+
+    column = _TRANSDUCER_SORT_COLUMNS.get(
+        sort or "observation_datetime", TransducerObservation.observation_datetime
+    )
+    ascending = (order or "desc").lower() == "asc"
+
+    return query.order_by(asc(column) if ascending else desc(column))
 
 
 def get_observations(

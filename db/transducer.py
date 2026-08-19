@@ -28,6 +28,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -62,6 +63,32 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     comment: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # Publish provenance. A corrected block is derived data -- the numbers in it
+    # are not what any instrument recorded -- so the file it came from and the
+    # operations applied to it are part of the record, not metadata about it. A
+    # reviewer who cannot see that a series was snapped to a manual measurement
+    # cannot review it.
+    source_file: Mapped[str] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Name of the logger file the corrected series was derived from",
+    )
+    source_kind: Mapped[str] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="What the source file measured: water_head or depth_to_water",
+    )
+    # A list of strings in applied order rather than a modelled correction
+    # entity: the corrector's operation set is still moving, and freezing it
+    # into columns now would mean a migration per new operation. The strings
+    # are written by the workbench and read by humans.
+    corrections: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Corrections applied to the source series, in applied order",
+    )
+
     reviewer_id: Mapped[str] = mapped_column(
         ForeignKey("contact.id", ondelete="CASCADE"),
         nullable=True,
@@ -81,8 +108,13 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
             "end_datetime",
             name="uq_transducer_block_thing_status_parameter_time",
         ),
+        # Non-strict: a block covering a single instant is legitimate -- a
+        # published file with one reading, or a block narrowed by a range
+        # delete until one observation survives. The block reader matches
+        # observations inclusively on both bounds, so a zero-width block still
+        # covers its reading.
         CheckConstraint(
-            "end_datetime > start_datetime", name="check_transuder_block_time_order"
+            "end_datetime >= start_datetime", name="check_transuder_block_time_order"
         ),
         Index(
             "ix_transducer_block_time",
@@ -136,6 +168,17 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
         DateTime(timezone=True), nullable=False, index=True
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Why this reading differs from what the sensor recorded. Present only on
+    # readings a correction actually moved, so a NULL note means the value is
+    # as measured -- which is the distinction review needs and which the legacy
+    # `nma_waterlevelscontinuous_*_notes` columns cannot carry, being scoped to
+    # one legacy source each.
+    note: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Per-reading correction annotation; NULL means the value is as measured",
+    )
 
     # How far through review this reading is, on USGS terms: provisional,
     # in review, approved. Orthogonal to `release_status`, which says who may

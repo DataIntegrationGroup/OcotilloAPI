@@ -59,6 +59,21 @@ amp_editor_function = authenticated(any_of=["AMPAdmin", "AMPEditor"])
 amp_viewer_function = authenticated(any_of=["AMPAdmin", "AMPEditor", "AMPViewer"])
 
 
+# Hydrograph-Corrector Staging Permissions -------------------------------------
+# The hydrograph corrector's publish and range-delete routes write and destroy
+# transducer records, and the workbench driving them is still being validated
+# against real logger files. `AMP.Staging` is its own group with no tier below
+# it and no AMP tier above it -- an AMPAdmin does not satisfy it. Nobody holds
+# it until it is granted in Authentik, so the routes ship dark and reachable
+# only by whoever is testing them.
+#
+# This is deliberately not a fourth rung on the AMP ladder. When the workbench
+# is trusted, these routes move to `amp_admin_dependency` and the group goes
+# away; leaving it as a tier would make that a schema change instead of a
+# one-line edit.
+amp_staging_function = authenticated(any_of=["AMP.Staging"])
+
+
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
 lexicon_admin_function = authenticated(any_of=["LexiconAdmin"])
@@ -88,6 +103,8 @@ lexicon_editor_dependency: TypeAlias = Annotated[dict, Depends(lexicon_editor_fu
 amp_admin_dependency: TypeAlias = Annotated[dict, Depends(amp_admin_function)]
 amp_editor_dependency: TypeAlias = Annotated[dict, Depends(amp_editor_function)]
 amp_viewer_dependency: TypeAlias = Annotated[dict, Depends(amp_viewer_function)]
+
+amp_staging_dependency: TypeAlias = Annotated[dict, Depends(amp_staging_function)]
 
 no_permission_dependency: TypeAlias = Annotated[dict, Depends(no_permission_function)]
 # ============= EOF =============================================
