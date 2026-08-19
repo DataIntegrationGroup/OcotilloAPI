@@ -99,18 +99,14 @@ def upgrade() -> None:
     # The legacy QC flag answers this question directly, so the maturity of
     # historical rows is a lookup rather than a guess. Done after the foreign
     # key so a bad value here would fail loudly rather than persist.
-    connection.execute(
-        sa.text(
-            """
+    connection.execute(sa.text("""
             UPDATE transducer_observation
                SET data_maturity = CASE
                      WHEN nma_waterlevelscontinuous_pressure_qced THEN 'approved'
                      ELSE 'provisional'
                    END
              WHERE nma_waterlevelscontinuous_pressure_qced IS NOT NULL
-            """
-        )
-    )
+            """))
 
 
 def downgrade() -> None:
