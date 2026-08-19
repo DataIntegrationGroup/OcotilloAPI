@@ -277,7 +277,12 @@ Reconciliation report built — `sources/san_acacia/reconcile.py` and `scripts/r
 - ✅ **Never picks a winner.** More than one candidate is `ambiguous` and escalates; none is `unmatched` and escalates. Ingestion does not create wells, and choosing between two plausible ones is the judgement that must not be automated.
 - ✅ `report.ready` is false unless *every* point resolved, and false for empty input. A partial load produces a series that looks complete and is not.
 - ✅ The script exits non-zero when anything needs a human, so it can gate a later step without relying on someone reading the output.
-- ⬜ Run it against staging and production and act on the result.
+- ✅ **Run against staging: all 38 points match by name. Nothing ambiguous, nothing unmatched, `ready = True`.** The wells already exist — SO-0125 is thing 2343, SO-0131 is 2369, and so on through 277 `SO-` wells in that database. So the seeding half creates no wells; it only needs the parameter, sensor, deployments and external identifiers.
+- ⬜ Run against production and confirm the same.
+
+**External-id matching is off by default, on evidence.** `thing_id_link` in staging holds 11,148 links from nine organization/relation pairs — NMBGMR (8,603), PLSS (7,052), an unattributed "Unknown" (4,825), NMOSE, USGS, NMED, TWDB — and they disagree with each other. `SO-0131` carries NMBGMR `BRN-E04B (shallow)` plus an unattributed `BRN-E04A`, while `SO-0132` carries NMBGMR `BRN-E04A (deep)` plus an unattributed `BRN-E04B`: the two sources swap which physical well is A and which is B. (`SO-0262`/`SO-0263` disagree more sharply still — NMBGMR calls them NRCS 3A/3B, the other source NRCS 2.)
+
+Matching `BRN-E04A` against that returns a single confident hit on `SO-0131`, contradicting NMBGMR, because the parenthetical suffix stops the collision registering as ambiguous. A wrong answer delivered confidently is worse than no answer, so the fallback is opt-in and a test pins the real rows.
 - ⬜ The seeding half: data migration creating missing `Location`/`Thing`, lexicon terms, DTW `Parameter`, `VanEssenDiver` `Sensor`, one `Deployment` per well, the vendor `uid` as external identifier, and `DataProvenance` for Van Essen-sourced attributes.
 
 ### 3.3 — Represent "public but provisional"

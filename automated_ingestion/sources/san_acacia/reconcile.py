@@ -125,16 +125,39 @@ def _normalize(value: str) -> str:
     return "".join(c for c in (value or "") if c.isalnum()).upper()
 
 
-def match_point(point: VendorPoint, candidates: Iterable[ThingCandidate]) -> Match:
-    """Decide one point against the wells it might be."""
+def match_point(
+    point: VendorPoint,
+    candidates: Iterable[ThingCandidate],
+    use_external_ids: bool = False,
+) -> Match:
+    """Decide one point against the wells it might be.
+
+    ``use_external_ids`` is off by default, for a specific reason.
+    ``thing_id_link`` holds identifiers from several organizations that disagree
+    with each other. In staging, ``SO-0131`` carries NMBGMR ``BRN-E04B
+    (shallow)`` plus an unattributed ``BRN-E04A``, while ``SO-0132`` carries
+    NMBGMR ``BRN-E04A (deep)`` plus an unattributed ``BRN-E04B`` -- the two
+    sources swap which physical well is A and which is B.
+
+    Matching ``BRN-E04A`` against that returns a single confident hit on
+    SO-0131, contradicting NMBGMR, because the parenthetical suffix stops the
+    collision registering as ambiguous. A wrong answer delivered confidently is
+    worse than no answer.
+
+    It costs nothing today: all 38 Diver-HUB points match Ocotillo wells by name.
+    """
     target = _normalize(point.name)
 
     by_name = [c for c in candidates if _normalize(c.name) == target]
-    by_external = [
-        c
-        for c in candidates
-        if any(_normalize(x) == target for x in c.external_ids) and c not in by_name
-    ]
+    by_external = (
+        [
+            c
+            for c in candidates
+            if any(_normalize(x) == target for x in c.external_ids) and c not in by_name
+        ]
+        if use_external_ids
+        else []
+    )
 
     # Name first: it is the identifier the Bureau uses, and an external id link
     # is a record of an association someone made, which may be older.
@@ -153,13 +176,17 @@ def match_point(point: VendorPoint, candidates: Iterable[ThingCandidate]) -> Mat
 
 
 def reconcile(
-    points: Iterable[VendorPoint], candidates: Iterable[ThingCandidate]
+    points: Iterable[VendorPoint],
+    candidates: Iterable[ThingCandidate],
+    use_external_ids: bool = False,
 ) -> ReconciliationReport:
     """Match every vendor point, reporting rather than resolving."""
     candidate_list = list(candidates)
     report = ReconciliationReport()
     for point in points:
-        report.matches.append(match_point(point, candidate_list))
+        report.matches.append(
+            match_point(point, candidate_list, use_external_ids=use_external_ids)
+        )
     return report
 
 

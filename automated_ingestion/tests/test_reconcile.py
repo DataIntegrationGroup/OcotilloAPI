@@ -52,16 +52,47 @@ def test_adjacent_identifier_is_not_a_match():
     assert match.kind is MatchKind.UNMATCHED
 
 
-def test_external_id_match_when_the_name_differs():
+def test_external_ids_are_ignored_by_default():
     match = match_point(
         POINT,
         [ThingCandidate(thing_id=9, name="Renamed Well", external_ids=("SO-0125",))],
+    )
+    assert match.kind is MatchKind.UNMATCHED
+
+
+def test_external_id_match_when_explicitly_enabled():
+    match = match_point(
+        POINT,
+        [ThingCandidate(thing_id=9, name="Renamed Well", external_ids=("SO-0125",))],
+        use_external_ids=True,
     )
     assert match.kind is MatchKind.EXTERNAL_ID
     assert match.thing_id == 9
 
 
+def test_external_ids_can_produce_a_confident_wrong_answer():
+    """Why external id matching is off by default. Real rows from staging.
+
+    SO-0131 and SO-0132 swap which physical well is A and which is B between
+    NMBGMR and the unattributed source. Matching BRN-E04A returns SO-0131 with
+    no hint of trouble, while NMBGMR asserts SO-0132 is BRN-E04A -- the
+    parenthetical suffix stops the collision registering as ambiguous.
+    """
+    candidates = [
+        ThingCandidate(2369, "SO-0131", ("BRN-E04B (shallow)", "BRN-E04A")),
+        ThingCandidate(2373, "SO-0132", ("BRN-E04A (deep)", "BRN-E04B")),
+    ]
+    enabled = match_point(
+        VendorPoint(999, "BRN-E04A"), candidates, use_external_ids=True
+    )
+    assert enabled.thing_id == 2369  # contradicts NMBGMR, and looks certain
+
+    default = match_point(VendorPoint(999, "BRN-E04A"), candidates)
+    assert default.kind is MatchKind.UNMATCHED  # escalates instead
+
+
 def test_name_wins_over_external_id():
+    # Only relevant when external ids are enabled.
     # The name is the identifier the Bureau uses now; a link records an
     # association someone made earlier, which may be stale.
     match = match_point(
@@ -70,6 +101,7 @@ def test_name_wins_over_external_id():
             ThingCandidate(thing_id=7, name="SO-0125"),
             ThingCandidate(thing_id=9, name="Other", external_ids=("SO-0125",)),
         ],
+        use_external_ids=True,
     )
     assert match.thing_id == 7
 
