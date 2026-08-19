@@ -171,8 +171,16 @@ def _approved_timestamps(
         return set()
 
 
-def build_pipeline(environment: str) -> Any:
-    """A dlt pipeline writing parquet to the raw zone for one environment."""
+def build_pipeline() -> Any:
+    """A dlt pipeline writing parquet to the raw zone.
+
+    The pipeline is named after the bucket it writes to rather than after a
+    separately supplied environment. Those were two sources of truth for one
+    fact, and they disagreed the first time this ran in Dagster+: a pipeline
+    called ``san_acacia_staging`` writing to the production bucket, because the
+    name came from a run tag that was absent and the bucket came from the
+    environment. Deriving one from the other makes that impossible.
+    """
     # gcsfs resolves Application Default Credentials the same way the Cloud SQL
     # connector does, and Serverless supplies none of its own.
     from automated_ingestion.shared.credentials import (
@@ -181,10 +189,11 @@ def build_pipeline(environment: str) -> Any:
 
     ensure_application_default_credentials()
 
+    bucket = raw_zone_bucket()
     return dlt.pipeline(
-        pipeline_name=f"san_acacia_{environment}",
+        pipeline_name=f"{SOURCE.key}_{bucket}",
         destination=dlt.destinations.filesystem(
-            bucket_url=f"gs://{raw_zone_bucket()}",
+            bucket_url=f"gs://{bucket}",
             layout=RAW_LAYOUT,
         ),
         dataset_name=SOURCE.dataset_name,

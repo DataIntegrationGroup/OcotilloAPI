@@ -107,6 +107,24 @@ resource "google_storage_bucket_iam_member" "ingestion_object_admin" {
   member = "serviceAccount:${google_service_account.ingestion.email}"
 }
 
+
+# objectAdmin covers objects and says nothing about the bucket itself, so it
+# does not include storage.buckets.get. gcsfs checks a bucket exists before
+# writing to it, that check is denied, and GCS reports a denial as absence --
+# so the pipeline fails with "Bucket does not exist" for a bucket that plainly
+# does.
+#
+# legacyBucketReader adds buckets.get and objects.list and nothing else. It is
+# the narrowest standard role that makes the existence check succeed; the
+# alternative, storage.admin, would also grant deletion of the bucket.
+resource "google_storage_bucket_iam_member" "ingestion_bucket_reader" {
+  for_each = google_storage_bucket.ingestion_raw
+
+  bucket = each.value.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.ingestion.email}"
+}
+
 # Database access for the ingestion service account.
 #
 # Only created when `cloud_sql_instance` is set, so the storage half of this
