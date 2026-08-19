@@ -1,1 +1,45 @@
+# Keep the build context to what the image actually runs.
+#
+# The tracked tree is ~13 MB; the context was ~316 MB, almost entirely .git.
+# CI clones full history, and every Dagster+ deploy was transferring it before
+# the first layer could build.
+
+# Version control. Nothing in the image reads git metadata.
+.git
+.github
+.gitignore
+
+# Python build and cache artifacts. Stale .pyc from a different interpreter is
+# worse than useless in an image built on a pinned base.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs and local tooling state.
 .venv
+.dg
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Local-only data from legacy transfer runs. Untracked, machine-specific, and
+# the largest thing on a developer checkout by an order of magnitude -- a local
+# `docker build` would otherwise ship ~900 MB of CSV cache.
+transfers/data/
+transfers/logs/
+transfers/metrics/
+
+# Test fixtures and BDD features. The image runs the code location, not the
+# suite; CI runs the suite outside the image.
+tests/
+features/
+
+# Editor and OS noise.
+.DS_Store
+.idea/
+.vscode/
