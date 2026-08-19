@@ -3,6 +3,21 @@
 #
 # Path-filtered: most PRs in this repository touch only the API and should not
 # create a Dagster+ deployment at all.
+#
+# ## Two deploy paths
+#
+# The default path builds no container image at all: it packages the
+# dependencies and the source into two PEX files and uploads them, so a source
+# change reuses the previously published deps.pex instead of rebuilding and
+# pushing several hundred megabytes to ECR. See
+# https://dagster.io/blog/fast-deploys-with-pex-and-docker. The deps.pex cache
+# is keyed per repository, not per deployment, so a PR that changes no
+# dependency reuses the one the last prod deploy published.
+#
+# Setting ENABLE_FAST_DEPLOYS to 'false' below switches the whole workflow back
+# to the Docker image build in the `dagster-branch-docker-deploy` job. Keep both
+# paths working, and keep this file's setting in step with CD_dagster_prod.yml --
+# the two share the deps.pex cache, and a PR built the other way just misses it.
 name: CD (Dagster+ branch deployment)
 
 on:
@@ -32,6 +47,22 @@ concurrency:
   group: dagster-branch-deploy-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+env:
+  # The PEX path targets `$DAGSTER_CLOUD_URL/<branch deployment>`, so this is the
+  # organization URL with no deployment path appended. The Docker path takes the
+  # organization id as an action input instead and ignores this.
+  DAGSTER_CLOUD_URL: https://${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}.dagster.cloud
+  DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+  # Read by actions/utils/prerun, which reports `pex-deploy` or `docker-deploy`
+  # and so decides which of the two jobs below runs.
+  ENABLE_FAST_DEPLOYS: "true"
+  # The PEX files are resolved for this interpreter only, and requires-python is
+  # >= 3.13. Anything lower makes the deps resolve fail with "no matching
+  # distribution", which reads like a broken requirements file rather than a
+  # version mismatch.
+  PYTHON_VERSION: "3.13"
+  DAGSTER_CLOUD_FILE: dagster_cloud.yaml
+
 jobs:
   dagster-branch-deploy:
     runs-on: ubuntu-latest
@@ -39,32 +70,125 @@ jobs:
     # untrusted fork would run our code against our infrastructure regardless.
     if: github.event.pull_request.head.repo.full_name == github.repository
 
-    # The action's notify steps post build status as a PR comment and read the
-    # token from the workflow environment -- `env.GITHUB_TOKEN`, not the
-    # `secrets` context. Without this the run dies on an empty-token assertion
-    # before it ever reaches Dagster+, which reads as an auth failure but is
-    # not one.
+    # The notify steps post build status as a PR comment and read the token from
+    # the workflow environment -- `env.GITHUB_TOKEN`, not the `secrets` context.
+    # Without this the run dies on an empty-token assertion before it ever
+    # reaches Dagster+, which reads as an auth failure but is not one.
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      # Set only on the Docker path. The fallback job keys off it being empty.
+      build_info: ${{ steps.parse.outputs.build_info }}
+
+    steps:
+      # Two jobs in one step. On a `closed` event it runs `ci
+      # branch-deployment`, which marks the branch deployment closed so stale
+      # deployments do not accumulate, and reports `skip` -- both deploy paths
+      # then do nothing. Otherwise it reads ENABLE_FAST_DEPLOYS and reports
+      # `pex-deploy` or `docker-deploy`.
+      #
+      # Its own checkout goes to prerun_checkout_dir, so it does not disturb the
+      # working tree either path sets up below.
+      - name: Prerun checks
+        id: prerun
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.18
+
+      # parse_workspace performs its own `actions/checkout`, which cleans the
+      # working tree -- fine here because the Docker path runs in a separate job
+      # that checks out again. Only its `build_info` output crosses the boundary.
+      - name: Parse dagster_cloud.yaml
+        if: steps.prerun.outputs.result == 'docker-deploy'
+        id: parse
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
+        with:
+          dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
+
+      # Checked out under a subdirectory because build_deploy_python_executable
+      # takes an absolute path to the location file and does not check out
+      # anything itself, so nothing later can clobber the generated
+      # requirements.txt.
+      - name: Check out source repository
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          path: project-repo
+
+      - name: Install uv
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      # `--group ingestion` adds dagster and dlt on top of the runtime
+      # dependencies; the runtime ones are needed too, because the loader
+      # imports `db/` and `domain/`.
+      #
+      # `--no-hashes` is required on this path and only on this path. The PEX
+      # builder unions requirements.txt with `[project].dependencies` from
+      # pyproject.toml, and those pins carry no hashes -- a hashed
+      # requirements.txt would put pip in --require-hashes mode, where every
+      # unhashed line is an error. Both sources resolve from the same uv.lock,
+      # so the duplicate pins agree and drop out.
+      - name: Generate requirements.txt
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        working-directory: project-repo
+        run: |
+          uv export \
+            --format requirements-txt \
+            --no-emit-project \
+            --no-dev \
+            --no-hashes \
+            --group ingestion \
+            --output-file requirements.txt
+
+      # Builds deps.pex and source.pex and publishes them, then creates or
+      # updates the branch deployment for this PR -- the action derives the
+      # deployment name from the pull_request event, so there is no `deployment`
+      # input to set here.
+      #
+      # On an ubuntu-24.04 runner deps.pex is built inside a python:3.13-slim
+      # container so the wheels match the serverless base image; source.pex is
+      # always built on the runner. That container only spins up when the
+      # dependency hash changes.
+      - name: Deploy to Dagster+ branch deployment
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.18
+        with:
+          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
+          build_output_dir: "$GITHUB_WORKSPACE/build"
+          python_version: ${{ env.PYTHON_VERSION }}
+
+  # Fallback path, reached only when ENABLE_FAST_DEPLOYS is 'false' above. This
+  # is the pre-PEX workflow unchanged, including the post-install hook in
+  # dagster_cloud_post_install.sh that the PEX path replaces with its own
+  # `uv pip install --no-deps .` of the repository.
+  dagster-branch-docker-deploy:
+    runs-on: ubuntu-latest
+    needs: dagster-branch-deploy
+    if: needs.dagster-branch-deploy.outputs.build_info
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        location: ${{ fromJSON(needs.dagster-branch-deploy.outputs.build_info) }}
 
     steps:
       - name: Check out source repository
         uses: actions/checkout@v7.0.1
-
-      # parse_workspace performs its own `actions/checkout`, which cleans the
-      # working tree. It has to run *before* requirements.txt is generated, or
-      # the generated file is deleted before the deploy step can use it.
-      - name: Parse dagster_cloud.yaml
-        id: parse
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
         with:
-          dagster_cloud_file: dagster_cloud.yaml
+          ref: ${{ github.head_ref }}
 
       - name: Install uv in container
         uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
+      # Dagster+ builds from a requirements.txt. Hashes are kept here: this path
+      # feeds the file straight to `pip install -r`, with nothing unhashed mixed
+      # in.
       - name: Generate requirements.txt
         run: |
           uv export \
@@ -74,17 +198,17 @@ jobs:
             --group ingestion \
             --output-file requirements.txt
 
-      # Runs on `closed` too: the action tears the branch deployment down when
-      # the PR is merged or abandoned, so stale deployments do not accumulate.
+      # checkout_repo is false because requirements.txt is generated above and
+      # a second checkout would discard it.
       - name: Deploy to Dagster+ branch deployment
         uses: dagster-io/dagster-cloud-action/actions/serverless_branch_deploy@v1.13.18
         with:
           organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-          location: ${{ toJson(fromJson(steps.parse.outputs.build_info)[0]) }}
+          location: ${{ toJson(matrix.location) }}
           checkout_repo: false
           # The action defaults to python:3.8-slim, which cannot install a
           # lockfile resolved for requires-python >= 3.13 -- pip reports the
           # pins as having no matching distribution rather than as a version
           # conflict, which reads like a broken requirements file.
-          base_image: python:3.13-slim
+          base_image: python:${{ env.PYTHON_VERSION }}-slim
