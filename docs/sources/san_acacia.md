@@ -1,10 +1,24 @@
 # Source: San Acacia Reach (Van Essen divers, Diver-HUB)
 
 The pilot source for automated ingestion. Project **4317 `SanAcaciaReach`**,
-containing **38 monitoring points** named `SO-####` — the plan and the Aqueduct
-mapping both say 33, so five are unaccounted for and must be identified before
-3.2 reconciles anything. Ingestion never creates wells, so an unexpected point
-is a decision, not a row. Historically flowed through the retired
+containing **38 monitoring points** named `SO-####`.
+
+**On the "33 wells" figure.** Earlier drafts of the plan said 33 and treated 38
+as a discrepancy to resolve. It is not one. The number came from Aqueduct's
+`docs/sources/san_acacia.md`, in a sentence describing an endpoint that no
+longer exists:
+
+> Pagination: none — `/locations/{projectName}` returns all 33 wells in one response.
+
+That document is also where the doubled `/api/api/` path, the claim that the
+source is unauthenticated, and the `gs`/`vrd` array payload came from — all four
+disproved against the live API. The count has no more standing than the rest of
+it: a FROST-era snapshot, not a Bureau record of how many wells the reach has.
+
+**38 is the live count.** Whether all 38 are in scope — some may be
+decommissioned, or belong to a neighbouring project — is a question about the
+well inventory, and the reconciliation report answers it concretely, per well,
+rather than by arguing about a total. Historically flowed through the retired
 FROST/`st2` stack; now flows nowhere.
 
 This document supersedes the mapping in `Aqueduct/docs/sources/san_acacia.md`,
@@ -203,7 +217,7 @@ Settled, not to be relitigated per source:
 |---|---|---|
 | 1 | ~~Which `reference` value is ground surface?~~ | **Answered: 3.** Corroboration via `ManualMeasurements` still outstanding |
 | 2 | ~~What is the window ceiling?~~ | **`WaterLevels` took 730 d / 18111 rows. The 500 is a `DiverData` problem** |
-| 3 | ~~Which project id, how many points?~~ | **Answered: 4317, 38 points (not 33)** |
+| 3 | ~~Which project id, how many points?~~ | **Answered: 4317, 38 points. The 33 was a stale figure, not a discrepancy** |
 | 4 | Do `approved=true` and `approved=false` partition the series, or overlap? | Fetch both for one window and compare timestamps |
 | 5 | Is `dateAndTime` UTC in the response, and is it marked as such? | Inspect a live payload |
 | 6 | ~~Is `level` in feet?~~ | **No — centimetres.** Convert with `convert_cm_to_ft` |

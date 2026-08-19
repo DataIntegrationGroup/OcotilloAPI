@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-Build the Bureau's first automated data ingestion pipeline, in the OcotilloAPI repo, so continuous depth-to-groundwater readings reach Ocotillo on a schedule instead of by hand. San Acacia Reach (33 Van Essen divers) is the pilot source; the structure it establishes is what every later source inherits.
+Build the Bureau's first automated data ingestion pipeline, in the OcotilloAPI repo, so continuous depth-to-groundwater readings reach Ocotillo on a schedule instead of by hand. San Acacia Reach (38 Van Essen divers) is the pilot source; the structure it establishes is what every later source inherits.
 
 Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet → **`domain/`** mapping → direct **Postgres** load. Watermark and backfill mechanics are ported from Aqueduct, with two deliberate improvements a relational destination allows: the watermark is read from Postgres rather than a GCS sidecar, and an upsert replaces Aqueduct's delete-then-repost (removing its known window where data goes temporarily missing).
 
@@ -30,11 +30,11 @@ Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet
 | 1.4 | DB connectivity + least-privilege role | Cloud SQL connector from serverless; scoped Postgres role | 1.2 |
 | **T2** | **Source extraction** | Van Essen API → GCS raw zone | T1 |
 | 2.1 | Confirm endpoint + finalize mapping | **Unblocked.** Diver-HUB swagger, JWT login, measure the window ceiling | — |
-| 2.2 | dlt resource: locations | 33 wells, `replace`, one call, no pagination | 1.3 |
+| 2.2 | dlt resource: locations | 38 wells, `replace`, one call, no pagination | 1.3 |
 | 2.3 | dlt resource: readings, incremental | Windowed per-point fetch, dlt cursor, `append`, token refresh, failure isolation | 2.1 |
 | **T3** | **Domain mapping + load** | Van Essen records → Ocotillo Postgres | T1 |
 | 3.1 | Domain layer | Pure functions: units, datum, timestamps, geometry, external keys | — |
-| 3.2 | Bootstrap reference data | Reconcile 33 wells; seed parameter, sensor, deployments | 3.1 |
+| 3.2 | Bootstrap reference data | Reconcile 38 wells; seed parameter, sensor, deployments | 3.1 |
 | 3.3 | Represent "public but provisional" | **Schema change.** `release_status` can't hold both axes | — |
 | 3.4 | Unique constraint + upsert loader | **Schema change.** `ON CONFLICT DO UPDATE`; makes backfill idempotent | 3.2, 3.3 |
 | 3.5 | Watermark from Postgres | `MAX(observation_datetime)` per series; no GCS sidecar | 3.4 |
@@ -51,11 +51,11 @@ Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet
 
 **Goal:** continuous depth-to-groundwater data lands in Ocotillo automatically, on a schedule, with no one hand-carrying files — starting with San Acacia Reach.
 
-The Hydrograph Corrector UI exists and works (BDMS-1137 done), but has no automatic supply of raw data. San Acacia Reach's 33 Van Essen divers historically flowed through the retired FROST/`st2` stack and now flow nowhere. This epic builds the supply. Correction, review, and publication workflows are **out of scope** and belong to their own epic.
+The Hydrograph Corrector UI exists and works (BDMS-1137 done), but has no automatic supply of raw data. San Acacia Reach's 38 Van Essen divers historically flowed through the retired FROST/`st2` stack and now flow nowhere. This epic builds the supply. Correction, review, and publication workflows are **out of scope** and belong to their own epic.
 
 New top-level `automated_ingestion/` package in OcotilloAPI, deployed as its own Dagster+ code location in the existing `nmbgmr-data-services` org. dlt extracts the Van Essen API to a GCS raw zone; a `domain/` layer maps to the Ocotillo model; a loader writes to Ocotillo Postgres over a direct DB connection. Watermark and backfill mechanics come from Aqueduct.
 
-San Acacia first: 33 wells, one DTW series each, and already mapped in `Aqueduct/docs/sources/san_acacia.md`. It authenticates with a short-lived JWT and must be read in bounded time windows — both cheap enough here to establish the pattern before a harder source needs it. What it establishes — source registry, per-source dlt pipeline, adapter, backfill job factory — every later source inherits.
+San Acacia first: 38 wells, one DTW series each, and already mapped in `Aqueduct/docs/sources/san_acacia.md`. It authenticates with a short-lived JWT and must be read in bounded time windows — both cheap enough here to establish the pattern before a harder source needs it. What it establishes — source registry, per-source dlt pipeline, adapter, backfill job factory — every later source inherits.
 
 **Ownership: OcotilloAPI.** Not a third Aqueduct source writing into Ocotillo. The loader writes over a direct database connection, which wants the `db/` SQLAlchemy models and `domain/` rules in-process rather than a duplicated schema in another repo. Aqueduct stays the FROST/SensorThings pipeline; this is Ocotillo's own. The two share code by porting (see below), not by importing.
 
@@ -89,7 +89,7 @@ San Acacia first: 33 wells, one DTW series each, and already mapped in `Aqueduct
 - Scheduled job runs end to end: Van Essen API → GCS parquet → domain mapping → Ocotillo Postgres.
 - Re-running over an already-loaded window: zero duplicates, zero errors.
 - Both backfill jobs exist, default `dry_run: true`, chunk by month, resume from last completed chunk.
-- 33 wells resolve to `Thing` records — matched or created, no duplicates.
+- 38 wells resolve to `Thing` records — matched, never created, no duplicates.
 - Readings are public, marked provisional, stored as DTW below ground surface in feet.
 - Series render in the Hydrograph Corrector.
 - Domain mapping unit-tested with no database, per `ADR4.md`.
@@ -178,7 +178,7 @@ Dagster+ Serverless is outside the VPC, so Cloud SQL's private IP is unreachable
 - ✅ Role DDL in `automated_ingestion/sql/ingestion_role.sql`, kept out of Alembic: roles and grants are per-environment infrastructure, not schema, and migrations do not run as a superuser.
 - ⬜ Run the DDL per environment; set `DB_DRIVER`, `CLOUD_SQL_*` on the code location; materialize the asset from both a branch and prod deployment.
 
-**The grant list is narrower than the draft assumed, and one part of it is non-obvious.** Writable: `transducer_observation`, `transducer_observation_block`, `deployment`, `sensor`, `parameter`. Read-only: `thing`, `thing_id_link`, `location`, and the three `lexicon_*` tables — `thing` and `location` deliberately *not* writable, because reconciling the 33 wells means matching rows that already exist. A well found missing is a decision for a human, not a row the pipeline invents.
+**The grant list is narrower than the draft assumed, and one part of it is non-obvious.** Writable: `transducer_observation`, `transducer_observation_block`, `deployment`, `sensor`, `parameter`. Read-only: `thing`, `thing_id_link`, `location`, and the three `lexicon_*` tables — `thing` and `location` deliberately *not* writable, because reconciling the 38 wells means matching rows that already exist. A well found missing is a decision for a human, not a row the pipeline invents.
 
 `parameter` is versioned by sqlalchemy-continuum, so inserting one also writes to `parameter_version` and `transaction`. Without those two grants the write fails on a table the code never names — the kind of error that costs an afternoon. (`transducer_observation` itself is not versioned; only `aquifer_system`, `geologic_formation`, `location`, `observation`, `parameter`, `regulatory_limit`, and `thing` are.) Sequence `USAGE` is granted explicitly, and no default privileges are set: a table added later stays invisible until someone grants it deliberately.
 
@@ -219,7 +219,7 @@ Also still open: the window ceiling (three months works, the limit is unmeasured
 - ✅ Asset `raw_san_acacia_locations` emits the point count, project id, and a sample of names. Tested against a stub, no network.
 - ✅ `replace` rather than `append`: this is a snapshot of what the vendor currently lists, and a point disappearing is information rather than something to accumulate.
 
-The payload is `{id, name}` only, so this cannot be a source of geometry or construction detail — it enumerates the points a reading fetch walks. **38 points, not the 33 the plan assumes**, still unexplained.
+The payload is `{id, name}` only, so this cannot be a source of geometry or construction detail — it enumerates the points a reading fetch walks. **38 points.** Earlier drafts said 33; that figure came from Aqueduct's stale mapping doc, not from a Bureau record — see 3.2.
 
 ### 2.3 — dlt resource: readings → GCS, incremental
 
@@ -237,9 +237,9 @@ The payload is `{id, name}` only, so this cannot be a source of geometry or cons
 
 # TASK 3 — Domain mapping and load into Ocotillo
 
-Where this stops resembling Aqueduct: the destination is a relational database with constraints and transactions, and mapping rules belong in `domain/` per `ADR4.md`. Three risks — matching 33 wells without duplicating them, representing "public but provisional" when the schema can't, and making the write idempotent so backfill is safe.
+Where this stops resembling Aqueduct: the destination is a relational database with constraints and transactions, and mapping rules belong in `domain/` per `ADR4.md`. Three risks — matching 38 wells without duplicating them, representing "public but provisional" when the schema can't, and making the write idempotent so backfill is safe.
 
-**Done when:** mapping rules are pure functions tested without a database; 33 wells resolve with no duplicates; data is public and separately marked provisional; `transducer_observation` has a unique constraint and the loader upserts against it; loading the same window twice leaves the row count unchanged; the watermark comes from Postgres.
+**Done when:** mapping rules are pure functions tested without a database; 38 wells resolve with no duplicates; data is public and separately marked provisional; `transducer_observation` has a unique constraint and the loader upserts against it; loading the same window twice leaves the row count unchanged; the watermark comes from Postgres.
 
 ### 3.1 — Domain layer: Van Essen record → Ocotillo model
 
@@ -266,14 +266,19 @@ The module docstring lists every value the mapping **invents** rather than reads
 
 ### 3.2 — Bootstrap reference data: reconcile wells, seed parameter, sensor, deployments
 
-Some of the 33 may already exist in Ocotillo under Bureau point IDs. Duplicates are the main risk — the `group_type` collision elsewhere in this database is the reminder that "looks new" isn't proof.
+Reconciliation report built — `sources/san_acacia/reconcile.py` and `scripts/reconcile_san_acacia.py`, 12 tests. The seeding half is not built.
 
-- Reconciliation report **first**: per well, whether a matching `Thing` exists — on name, on `monitoringPoints[].name` (e.g. `SO-0125`), and on coordinate proximity. Ambiguous matches escalate to a human, never auto-merge.
-- Data migration (existing `data_migrations/` runner, already supports dry-run) creates missing `Location`/`Thing`, links existing ones. Idempotent, dry-run-clean before running for real.
-- Lexicon terms, a DTW `Parameter`, and a `VanEssenDiver` `Sensor` created if absent.
-- One `Deployment` per well (thing → sensor), `recording_interval` ~5 min where known.
-- Van Essen `uid` (e.g. `sanacaciareach-40`) persisted as external identifier.
-- `DataProvenance` recorded for Van Essen-sourced well attributes: depth, coordinates, installation date.
+**The "33 wells" figure was wrong, and was never a blocker.** It came from Aqueduct's `docs/sources/san_acacia.md` — the same document that also supplied the doubled `/api/api/` path, the claim the source is unauthenticated, and the `gs`/`vrd` payload shape, all disproved against the live API. 38 is what the API returns. Whether all 38 are in scope is a question the per-well report answers concretely.
+
+**Coordinate proximity is not available.** This section called for matching on name, external id, *and* coordinate proximity. `MonitoringPoint` is `{id, name}` — no coordinates. That removes the only fuzzy signal and leaves two exact ones, which is a better position: every match is defensible rather than probabilistic.
+
+- ✅ Matching on name and on `thing_id_link.alternate_id`, normalized for case, spacing and punctuation so `SO-0125`, `so 0125` and `SO0125` compare equal. Still exact on significant characters — `SO-0126` stays a different well.
+- ✅ Name beats external id when both hit. The name is the identifier the Bureau uses now; a link records an association someone made earlier.
+- ✅ **Never picks a winner.** More than one candidate is `ambiguous` and escalates; none is `unmatched` and escalates. Ingestion does not create wells, and choosing between two plausible ones is the judgement that must not be automated.
+- ✅ `report.ready` is false unless *every* point resolved, and false for empty input. A partial load produces a series that looks complete and is not.
+- ✅ The script exits non-zero when anything needs a human, so it can gate a later step without relying on someone reading the output.
+- ⬜ Run it against staging and production and act on the result.
+- ⬜ The seeding half: data migration creating missing `Location`/`Thing`, lexicon terms, DTW `Parameter`, `VanEssenDiver` `Sensor`, one `Deployment` per well, the vendor `uid` as external identifier, and `DataProvenance` for Van Essen-sourced attributes.
 
 ### 3.3 — Represent "public but provisional"
 
