@@ -61,15 +61,13 @@ def upgrade() -> None:
         {"name": CATEGORY},
     )
     connection.execute(
-        sa.text(
-            """
+        sa.text("""
             INSERT INTO lexicon_term_category_association (term_id, category_id)
             SELECT t.id, c.id
             FROM lexicon_term t, lexicon_category c
             WHERE t.term = ANY(:terms) AND c.name = :category
             ON CONFLICT DO NOTHING
-            """
-        ),
+            """),
         {"terms": list(TERMS), "category": CATEGORY},
     )
 
