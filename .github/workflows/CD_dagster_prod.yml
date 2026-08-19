@@ -16,6 +16,20 @@
 # filter includes pyproject.toml and uv.lock because the location's dependency
 # set is exported from them, so a lockfile bump changes the built image even
 # when no ingestion source file does.
+#
+# ## Two deploy paths
+#
+# The default path builds no container image at all: it packages the
+# dependencies and the source into two PEX files and uploads them, so a source
+# change reuses the previously published deps.pex instead of rebuilding and
+# pushing several hundred megabytes to ECR. See
+# https://dagster.io/blog/fast-deploys-with-pex-and-docker.
+#
+# Setting ENABLE_FAST_DEPLOYS to 'false' below switches the whole workflow back
+# to the Docker image build in the `dagster-prod-docker-deploy` job. That job is
+# the escape hatch for anything the PEX path cannot express -- a dependency with
+# no Linux wheel that also fails to build from source, or a system package that
+# has to be installed with apt. Keep both paths working.
 name: CD (Dagster+ prod)
 
 on:
@@ -44,6 +58,22 @@ concurrency:
   group: dagster-prod-deploy
   cancel-in-progress: false
 
+env:
+  # The PEX path targets `$DAGSTER_CLOUD_URL/<deployment>`, so this is the
+  # organization URL with no deployment path appended. The Docker path takes the
+  # organization id as an action input instead and ignores this.
+  DAGSTER_CLOUD_URL: https://${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}.dagster.cloud
+  DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+  # Read by actions/utils/prerun, which reports `pex-deploy` or `docker-deploy`
+  # and so decides which of the two jobs below runs.
+  ENABLE_FAST_DEPLOYS: "true"
+  # The PEX files are resolved for this interpreter only, and requires-python is
+  # >= 3.13. Anything lower makes the deps resolve fail with "no matching
+  # distribution", which reads like a broken requirements file rather than a
+  # version mismatch.
+  PYTHON_VERSION: "3.13"
+  DAGSTER_CLOUD_FILE: dagster_cloud.yaml
+
 jobs:
   dagster-prod-deploy:
     runs-on: ubuntu-latest
@@ -54,29 +84,113 @@ jobs:
     # it would put an approval gate on routine merges once `production` requires
     # reviewers, which is a gate on the wrong thing: this publishes code, not
     # data.
+    outputs:
+      # Set only on the Docker path. The fallback job keys off it being empty.
+      build_info: ${{ steps.parse.outputs.build_info }}
+
+    steps:
+      # Reads ENABLE_FAST_DEPLOYS and emits `pex-deploy` or `docker-deploy`.
+      # Its own checkout goes to prerun_checkout_dir, so it does not disturb the
+      # working tree either path sets up below.
+      - name: Prerun checks
+        id: prerun
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.18
+
+      # parse_workspace performs its own `actions/checkout`, which cleans the
+      # working tree -- fine here because the Docker path runs in a separate job
+      # that checks out again. Only its `build_info` output crosses the boundary.
+      - name: Parse dagster_cloud.yaml
+        if: steps.prerun.outputs.result == 'docker-deploy'
+        id: parse
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
+        with:
+          dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
+
+      # Checked out under a subdirectory because build_deploy_python_executable
+      # takes an absolute path to the location file and does not check out
+      # anything itself, so nothing later can clobber the generated
+      # requirements.txt.
+      - name: Check out source repository
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: project-repo
+
+      - name: Install uv
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      # `--group ingestion` adds dagster and dlt on top of the runtime
+      # dependencies; the runtime ones are needed too, because the loader
+      # imports `db/` and `domain/`.
+      #
+      # `--no-hashes` is required on this path and only on this path. The PEX
+      # builder unions requirements.txt with `[project].dependencies` from
+      # pyproject.toml, and those pins carry no hashes -- a hashed
+      # requirements.txt would put pip in --require-hashes mode, where every
+      # unhashed line is an error. Both sources resolve from the same uv.lock,
+      # so the duplicate pins agree and drop out.
+      - name: Generate requirements.txt
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        working-directory: project-repo
+        run: |
+          uv export \
+            --format requirements-txt \
+            --no-emit-project \
+            --no-dev \
+            --no-hashes \
+            --group ingestion \
+            --output-file requirements.txt
+
+      # Builds deps.pex and source.pex and publishes them. deps.pex is keyed by
+      # a hash of the resolved requirements and cached per repository, so a run
+      # that changes only ingestion source skips the dependency build entirely.
+      #
+      # On an ubuntu-24.04 runner the action builds deps.pex inside a
+      # python:3.13-slim container so the wheels match the serverless base
+      # image; source.pex is always built on the runner. That container only
+      # spins up when the dependency hash changes.
+      - name: Deploy to Dagster+ prod
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.18
+        with:
+          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
+          build_output_dir: "$GITHUB_WORKSPACE/build"
+          python_version: ${{ env.PYTHON_VERSION }}
+          deployment: prod
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Fallback path, reached only when ENABLE_FAST_DEPLOYS is 'false' above. This
+  # is the pre-PEX workflow unchanged, including the post-install hook in
+  # dagster_cloud_post_install.sh that the PEX path replaces with its own
+  # `uv pip install --no-deps .` of the repository.
+  dagster-prod-docker-deploy:
+    runs-on: ubuntu-latest
+    needs: dagster-prod-deploy
+    if: needs.dagster-prod-deploy.outputs.build_info
+    strategy:
+      fail-fast: false
+      matrix:
+        location: ${{ fromJSON(needs.dagster-prod-deploy.outputs.build_info) }}
 
     steps:
       - name: Check out source repository
         uses: actions/checkout@v7.0.1
-
-      # parse_workspace performs its own `actions/checkout`, which cleans the
-      # working tree. It has to run *before* requirements.txt is generated, or
-      # the generated file is deleted before the deploy step can use it.
-      - name: Parse dagster_cloud.yaml
-        id: parse
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
         with:
-          dagster_cloud_file: dagster_cloud.yaml
+          ref: ${{ github.sha }}
 
       - name: Install uv in container
         uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
-      # Dagster+ builds from a requirements.txt, which the repo does not keep
-      # under version control. `--group ingestion` adds dagster and dlt on top
-      # of the runtime dependencies; the runtime ones are needed too, because
-      # the loader imports `db/` and `domain/`.
+      # Dagster+ builds from a requirements.txt. Hashes are kept here: this path
+      # feeds the file straight to `pip install -r`, with nothing unhashed mixed
+      # in.
       - name: Generate requirements.txt
         run: |
           uv export \
@@ -93,10 +207,12 @@ jobs:
         with:
           organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-          location: ${{ toJson(fromJson(steps.parse.outputs.build_info)[0]) }}
+          location: ${{ toJson(matrix.location) }}
           checkout_repo: false
           # The action defaults to python:3.8-slim, which cannot install a
           # lockfile resolved for requires-python >= 3.13 -- pip reports the
           # pins as having no matching distribution rather than as a version
           # conflict, which reads like a broken requirements file.
-          base_image: python:3.13-slim
+          base_image: python:${{ env.PYTHON_VERSION }}-slim
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
