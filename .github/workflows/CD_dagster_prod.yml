@@ -47,7 +47,13 @@ concurrency:
 jobs:
   dagster-prod-deploy:
     runs-on: ubuntu-latest
-    environment: production
+    # Deliberately not bound to the `production` GitHub environment. This job
+    # reads only repository-level DAGSTER_CLOUD_API_TOKEN and
+    # DAGSTER_CLOUD_ORGANIZATION_ID -- none of that environment's secrets -- and
+    # it runs on every push to `staging` that touches the code location. Binding
+    # it would put an approval gate on routine merges once `production` requires
+    # reviewers, which is a gate on the wrong thing: this publishes code, not
+    # data.
 
     steps:
       - name: Check out source repository
