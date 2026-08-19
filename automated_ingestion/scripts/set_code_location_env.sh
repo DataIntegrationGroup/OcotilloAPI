@@ -14,10 +14,9 @@
 #     read -rs "DIVERHUB_PASSWORD?Diver-HUB password: "; echo
 #     export DIVERHUB_USERNAME DIVERHUB_PASSWORD
 #
-# Variables are scoped to this code location, not the deployment. If an earlier
-# run set them with --global, delete those deployment-level entries in the
-# Dagster+ UI afterwards -- otherwise both exist and which one wins is not
-# obvious from either place.
+# Variables are set at deployment scope. See the comment on set_var for why
+# location scoping through dg does not work, and what to do instead if these
+# values must not be visible to the other code locations in this deployment.
 #
 # Usage:
 #     ./automated_ingestion/scripts/set_code_location_env.sh storage
@@ -34,10 +33,22 @@ set -euo pipefail
 DG="uv run --with dagster-dg-cli dg"
 PHASE="${1:-}"
 
-# No --global: that sets the variable at deployment level, where every other
-# code location in this deployment can read it. This deployment is shared, so
-# the vendor and database credentials stay scoped to this location.
-set_var() { echo "  $1"; $DG plus create env "$@" -y >/dev/null; }
+# --global sets the variable at deployment level. That is broader than ideal --
+# this deployment also hosts aqueduct_dagster_defs_definitions and
+# die-orchestration, which can then read these values -- but it is the scope
+# that actually reaches the container.
+#
+# Location scoping through dg does not work here: dg names the location from the
+# project (`OcotilloAPI`), not from `location_name` in dagster_cloud.yaml
+# (`ocotillo-automated-ingestion`), and `code_location_name` in [tool.dg.project]
+# is ignored for this command. Dagster+ accepts the unknown name without
+# complaint, so the variable shows as set in the UI and is absent in the
+# container -- which costs an afternoon to work out from a
+# DefaultCredentialsError.
+#
+# To scope properly, set the variable in the Dagster+ UI against
+# `ocotillo-automated-ingestion` instead.
+set_var() { echo "  $1"; $DG plus create env "$@" --global -y >/dev/null; }
 
 case "$PHASE" in
 storage)
@@ -72,8 +83,22 @@ vendor)
   set_var DIVERHUB_PASSWORD --from-local-env
   ;;
 database)
-  : "${CLOUD_SQL_INSTANCE_NAME:?export it first}"
+  : "${CLOUD_SQL_INSTANCE_NAME:?export it first, as PROJECT:REGION:INSTANCE}"
   : "${CLOUD_SQL_DATABASE:?export it first}"
+
+  # The connector wants the full connection name, not the instance name. A bare
+  # name is accepted by everything up to the point of connecting and then fails
+  # with a ValueError from deep inside the driver, several layers below anything
+  # this project wrote. Catch it here instead.
+  #   gcloud sql instances list --format='value(name,connectionName)'
+  case "$CLOUD_SQL_INSTANCE_NAME" in
+    *:*:*) ;;
+    *)
+      echo "error: CLOUD_SQL_INSTANCE_NAME must be PROJECT:REGION:INSTANCE," >&2
+      echo "       got '${CLOUD_SQL_INSTANCE_NAME}'." >&2
+      exit 65
+      ;;
+  esac
   echo "Cloud SQL connection:"
   set_var DB_DRIVER cloudsql
   set_var CLOUD_SQL_IP_TYPE public
