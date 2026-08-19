@@ -107,12 +107,20 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
     """
 
     __tablename__ = "transducer_observation"
+    # Unique rather than merely indexed: without a constraint to conflict on, a
+    # re-run can only avoid duplicates by deleting first, which leaves a window
+    # where the data is missing. With it the loader upserts and a repeated
+    # backfill is idempotent.
+    #
+    # Scoped to the deployment, not the thing: a deployment is a thing/sensor
+    # pairing, so two sensors on one well may legitimately report the same
+    # instant.
     __table_args__ = (
-        Index(
-            "ix_transducer_observation_deployment_parameter_datetime",
+        UniqueConstraint(
             "deployment_id",
             "parameter_id",
             "observation_datetime",
+            name="uq_transducer_observation_deployment_parameter_datetime",
         ),
     )
 
