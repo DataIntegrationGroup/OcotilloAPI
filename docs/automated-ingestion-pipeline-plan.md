@@ -287,13 +287,18 @@ Some of the 33 may already exist in Ocotillo under Bureau point IDs. Duplicates 
 
 ### 3.4 — Unique constraint on `transducer_observation` + idempotent upsert loader
 
-`db/transducer.py` defines only an index — no unique constraint, so nothing prevents inserting the same reading twice. That absence is what forces Aqueduct's delete-then-repost in FROST.
+Built. Migration `a1b2c3d4e5f6`, loader in `automated_ingestion/ocotillo/loader.py`, three tests against a real Postgres.
 
-- Alembic migration adds `UniqueConstraint(thing_id, parameter_id, observation_datetime)`. Existing duplicates found and resolved first — the migration must not fail on production data.
-- Loader batches and issues `INSERT … ON CONFLICT … DO UPDATE`, through the `db/` SQLAlchemy models, not raw SQL. Batch size tuned and documented; a full backfill month fits in memory; each batch commits in its own transaction.
-- `TransducerObservationBlock` rows created/extended for the loaded window, `review_status = "not reviewed"`.
-- Loader reports rows inserted, rows updated, adapter failures as Dagster metadata.
-- Test: loading the same window twice leaves the row count unchanged.
+**The constraint is on `deployment_id`, not `thing_id`.** This section named a column the table does not have — `TransducerObservation` carries `deployment_id`, and `thing_id` lives on `TransducerObservationBlock`. The existing index was already `(deployment_id, parameter_id, observation_datetime)`, so the constraint matches it. Semantically this is also the right scope: a deployment is a thing/sensor pairing, so two sensors on one well may legitimately report the same instant.
+
+- ✅ Migration drops the redundant index — the unique constraint creates its own on the same columns, and keeping both means two indexes maintained on every insert into the largest table in the schema. Verified up and down against a database with 88,666 observations.
+- ✅ `automated_ingestion/sql/find_duplicate_observations.sql` reports violations **before** the migration runs, since it fails on a table that already violates it and failing halfway through a production migration is worse than not starting. It separates redundant copies from groups whose `value` disagrees — the latter are not duplicates but conflicting measurements, and collapsing them silently would discard a reading.
+- ✅ Loader upserts with `ON CONFLICT DO UPDATE`, batching at 5,000 rows and committing per batch. **`DO UPDATE`, not `DO NOTHING`:** a vendor correction arriving as a no-op would leave the old value in place while the run reported success.
+- ✅ SQLAlchemy Core, not ORM objects, per `AGENTS.md` — instantiating a mapped class per observation is what turns a backfill into an hour-long run.
+- ✅ `ensure_block` widens an existing block rather than duplicating it, and defaults `review_status` to `not reviewed`.
+- ✅ Test: loading the same window twice leaves the row count unchanged. That claim depends on Postgres enforcing the constraint, so it runs against the real database rather than a stub.
+
+⬜ Run the duplicate report against production and staging before applying the migration. The local development database was clean — 0 duplicate groups in 88,666 rows — which is encouraging and not evidence about production.
 
 ### 3.5 — Watermark from Postgres
 
