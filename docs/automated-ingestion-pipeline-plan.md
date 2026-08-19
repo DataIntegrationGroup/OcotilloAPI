@@ -302,10 +302,22 @@ A forward-only pipeline isn't enough. `BACKFILL_STRATEGY.md` §3 lists twelve si
 
 ### 4.1 — Port shared backfill primitives from Aqueduct
 
-- `month_chunks()`, `ChunkResult`, `sum_chunk_results()`, `parse_backfill_date()`, `validate_date_order()`, `attach_run_timestamp()`, `sanitize_run_key()`, `resolve_location_ids()`, `chunk_key()`, `BackfillCheckpointStore` → `automated_ingestion/shared/backfill.py`. `atomic_write_json_with_retry()` → `shared/gcs.py`.
-- `ChunkResult` adjusted for Postgres: `rows_upserted` replaces `observations_posted`/`observations_deleted`.
-- Aqueduct's tests ported alongside and passing.
-- Each docstring notes provenance and what changed, so the two can be diffed later.
+Built. `automated_ingestion/shared/backfill.py`, 27 tests, all pure — no database, no network.
+
+**Written from the described shape, not copied.** The Aqueduct checkout available here was an empty directory skeleton, so these were rebuilt from this plan's description rather than ported line by line. Each docstring records provenance and what differs, so the two can still be diffed by someone with both open.
+
+- ✅ `month_chunks`, `Chunk`, `ChunkResult`, `sum_chunk_results`, `parse_backfill_date`, `validate_date_order`, `attach_run_timestamp`, `sanitize_run_key`, `chunk_key`, `resolve_location_ids`, `CheckpointStore` + `InMemoryCheckpointStore`, `pending_chunks`.
+- ⬜ `atomic_write_json_with_retry()` and a GCS-backed checkpoint store — deferred until 4.2 needs persistence. The interface is in place so the logic is testable without object storage.
+
+**`ChunkResult` counts `rows_upserted`,** replacing Aqueduct's `observations_posted` / `observations_deleted`. Not a rename: Aqueduct deletes a window and re-posts it because FROST has no constraint to conflict on, so it has two numbers and a window during which the data is missing. With 3.4's constraint Ocotillo upserts — one number, no window.
+
+Behaviour worth knowing:
+
+- **Chunk edges are clipped, not widened.** A window starting mid-month yields a first chunk starting mid-month, because widening would fetch data the operator did not ask for.
+- **An empty or reversed window is rejected.** A backfill that reports success having done nothing is indistinguishable from one that worked, and the operator would not learn they typed the dates backwards.
+- **An unknown `location_id` fails the run, naming every bad id.** Kept from Aqueduct deliberately: silently backfilling nothing looks exactly like backfilling successfully, and the gap is still there weeks later.
+- **Run keys are sanitized** before becoming path segments. One containing a slash would write checkpoints into a directory of its own, and a resumed run would not find them. Marking under `march gap` and resuming under `march-gap` finds the same checkpoint.
+- **A naive date is read as UTC**, so the same run config means the same window on every machine.
 
 ### 4.2 — Backfill Mode A (refetch)
 
