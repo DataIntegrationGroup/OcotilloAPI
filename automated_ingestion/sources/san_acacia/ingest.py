@@ -50,7 +50,7 @@ def raw_san_acacia_locations(context: AssetExecutionContext) -> Output[int]:
 
     client = _client()
     points = list(client.monitoring_points(PROJECT_ID))
-    pipeline = build_pipeline(context.run.tags.get("environment", "staging"))
+    pipeline = build_pipeline()
     pipeline.run(vanessen_locations(client))
 
     context.log.info("landed %s monitoring points", len(points))
@@ -84,7 +84,7 @@ def raw_san_acacia_readings(context: AssetExecutionContext) -> Output[int]:
     ]
     end = int(datetime.now(tz=timezone.utc).timestamp())
 
-    pipeline = build_pipeline(context.run.tags.get("environment", "staging"))
+    pipeline = build_pipeline()
     failures: list[dict[str, Any]] = []
     info = pipeline.run(vanessen_readings(client, points, end, failures))
     rows = _row_count(info)

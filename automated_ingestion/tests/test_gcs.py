@@ -59,4 +59,19 @@ def test_layout_partitions_by_date():
     assert "day={DD}" in RAW_LAYOUT
 
 
+def test_pipeline_name_follows_the_bucket(monkeypatch):
+    # The name and the destination must not be able to disagree. They did once:
+    # a pipeline called san_acacia_staging wrote to the production bucket,
+    # because the name came from an absent run tag and the bucket from the
+    # environment.
+    monkeypatch.setenv(BUCKET_ENV_VAR, "ocotillo-ingestion-production")
+    monkeypatch.delenv("GCS_BUCKET_NAME", raising=False)
+    monkeypatch.setenv("INGESTION_GCP_CREDENTIALS_JSON", "")
+
+    from automated_ingestion.sources.san_acacia.dlt_pipeline import build_pipeline
+
+    pipeline = build_pipeline()
+    assert "ocotillo-ingestion-production" in pipeline.pipeline_name
+
+
 # ============= EOF =============================================
