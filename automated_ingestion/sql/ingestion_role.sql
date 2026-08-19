@@ -13,25 +13,48 @@
 
 -- IAM authentication is the configured path, and the reason is that it removes
 -- the credential rather than rotating it: Cloud SQL mints a short-lived token
--- from the service account, so there is no password to store in Dagster+, in
--- Secret Manager, or here.
+-- from the service account, so there is no password to store anywhere.
 --
--- The role name is the service account with the .gserviceaccount.com suffix
--- stripped. That exact string is also what CLOUD_SQL_USER must be set to --
--- db/engine.py passes it straight to the connector, and a plain role name there
--- fails as an authentication error that reads like a missing grant.
+-- **The role already exists.** Registering the service account as a Cloud SQL
+-- IAM user creates the Postgres role automatically -- Terraform does that via
+-- google_sql_user.ingestion. Confirmed with:
 --
---   CREATE ROLE "ocotillo-ingestion@waterdatainitiative-271000.iam" WITH LOGIN;
---   GRANT cloudsqliamuser TO "ocotillo-ingestion@waterdatainitiative-271000.iam";
+--   gcloud sql users list --instance=dataservices
+--   ...
+--   ocotillo-ingestion@waterdatainitiative-271000.iam  CLOUD_IAM_SERVICE_ACCOUNT
 --
--- Password authentication, if IAM is ever unavailable. Set the password out of
--- band and store it in Secret Manager; never commit it, and set
--- CLOUD_SQL_IAM_AUTH=0 so the two settings agree.
+-- So this script only grants. Do not add a CREATE ROLE: it would fail, and
+-- reaching for one is a sign the Terraform half has not been applied.
 --
---   CREATE ROLE ocotillo_ingestion LOGIN PASSWORD '...';
+-- Run it as a superuser, passing both names -- nothing is hardcoded, because
+-- the instance hosts `ocotillo` and `ocotillo-staging` and running the wrong
+-- one is silent:
+--
+--   psql "host=... dbname=ocotillo user=postgres" \
+--     -v db_name=ocotillo \
+--     -v role_name=ocotillo-ingestion@waterdatainitiative-271000.iam \
+--     -f automated_ingestion/sql/ingestion_role.sql
+--
+-- The role name has an @ and dots, so every reference below uses :"role_name",
+-- which quotes it as an identifier. An unquoted one is a syntax error.
+--
+-- Password authentication, if IAM is ever unavailable: create the role by hand,
+-- store the password in Secret Manager, set CLOUD_SQL_IAM_AUTH=0, and pass
+-- -v role_name=ocotillo_ingestion instead.
 
--- Set to match whichever role was created above.
-\set role_name "ocotillo-ingestion@waterdatainitiative-271000.iam"
+\if :{?db_name}
+\else
+\echo 'ERROR: pass -v db_name=<database>. The instance hosts more than one.'
+\quit
+\endif
+
+\if :{?role_name}
+\else
+\echo 'ERROR: pass -v role_name=<role>. See the header for the IAM role name.'
+\quit
+\endif
+
+\echo 'Granting to' :"role_name" 'on' :"db_name"
 
 GRANT CONNECT ON DATABASE :"db_name" TO :"role_name";
 GRANT USAGE ON SCHEMA public TO :"role_name";
