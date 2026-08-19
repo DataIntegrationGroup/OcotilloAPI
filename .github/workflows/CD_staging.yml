@@ -63,6 +63,22 @@ jobs:
         run: |
           uv run --no-dev alembic upgrade head
 
+      # Data migrations are deliberately not applied here -- they change content
+      # rather than structure, are often irreversible, and applying one is a
+      # decision made in the Data Migrations workflow. This only reports, so a
+      # merged migration cannot sit unnoticed. It never fails the deploy: the
+      # deploy worked, and a pipeline that goes red for something else is a
+      # pipeline people learn to ignore.
+      - name: Report pending data migrations
+        env:
+          DB_DRIVER: "cloudsql"
+          CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+          CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+          CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+          CLOUD_SQL_IAM_AUTH: true
+        run: |
+          uv run --no-dev python -m scripts.report_pending_data_migrations
+
       - name: Ensure envsubst is available
         run: |
           if ! command -v envsubst >/dev/null 2>&1; then
