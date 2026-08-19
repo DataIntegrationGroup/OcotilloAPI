@@ -243,16 +243,26 @@ Where this stops resembling Aqueduct: the destination is a relational database w
 
 ### 3.1 — Domain layer: Van Essen record → Ocotillo model
 
-Per `ADR4.md`, `domain/` imports nothing from `api/`, `db/`, `schemas/`, `services/`, and no fastapi/sqlalchemy/pydantic/httpx.
+Built. `domain/van_essen.py` plus `sources/san_acacia/adapter.py`, 28 tests, no database and no network.
 
-`domain/van_essen.py`, pure functions:
-- `drillingDepth` cm → ft (÷ 30.48), reusing `domain/units.py` where it fits
-- reading timestamp → tz-aware UTC `datetime`
-- `gs` reading → DTW below ground surface, feet (datum fixed — see Epic)
-- `lat`/`lng` → WGS84 point (SRID 4326)
-- deterministic external key per well and per series, so repeat runs resolve to the same records
+**Scope is smaller than this section originally claimed.** The draft called for converting `drillingDepth` from centimetres and building a WGS84 point from `lat`/`lng`. The live `MonitoringPoint` payload is `{id, name}` — no depth, no coordinates — so those functions would have had no input. Well geometry and construction come from the Ocotillo records a point reconciles against, which is consistent with ingestion never creating wells.
 
-Plus an adapter in Aqueduct's `BaseAdapter` shape, with the same per-record failure isolation: a bad record is logged and counted, never fatal. Domain errors subclass `ValueError`, matching the CSV importers' per-row contract. Tests need no database and no network. Every value the mapping *invents* rather than reads is listed in the module docstring with its justification.
+What the layer actually does:
+
+- ✅ Reading timestamp → timezone-aware UTC. A naive value is read as UTC, since the API documents UTC and does not always mark it; reading it as local would shift every observation by the machine's offset, and differently on a laptop than in a container.
+- ✅ Centimetres → feet via `domain/units.convert_cm_to_ft`.
+- ✅ Deterministic external keys, built from the vendor's **numeric** id rather than the name. `SO-0125` is a Bureau point id and can be corrected; the numeric id is what a re-run must resolve to the same record. The series key names the datum, because a point may later carry temperature or conductivity — both already in the vendor's raw payload.
+- ✅ Errors subclass `ValueError`, matching the per-row contract the CSV importers expect.
+- ✅ ADR4 layering verified by test rather than by inspection: importing `domain.van_essen` pulls in no `fastapi`, `sqlalchemy`, `pydantic`, `httpx`, `db`, `api`, `schemas`, or `services`.
+
+**The adapter refuses two things outright**, both because accepting them would produce plausible numbers rather than an error:
+
+- A row whose `reference` is not 3. The datum is chosen at request time and cannot be recovered from the row.
+- A row whose `unit` is not `cm`. Converting a value whose unit is not what it claims is wrong by a factor of 30.48 and still reads as a plausible depth.
+
+Per-record failures are collected, not raised: one unparseable reading costs that reading, not the series.
+
+The module docstring lists every value the mapping **invents** rather than reads — the datum, the unit, and the timezone — since inventing is where a mapping goes quietly wrong.
 
 ### 3.2 — Bootstrap reference data: reconcile wells, seed parameter, sensor, deployments
 
