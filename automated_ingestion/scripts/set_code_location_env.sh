@@ -83,8 +83,22 @@ vendor)
   set_var DIVERHUB_PASSWORD --from-local-env
   ;;
 database)
-  : "${CLOUD_SQL_INSTANCE_NAME:?export it first}"
+  : "${CLOUD_SQL_INSTANCE_NAME:?export it first, as PROJECT:REGION:INSTANCE}"
   : "${CLOUD_SQL_DATABASE:?export it first}"
+
+  # The connector wants the full connection name, not the instance name. A bare
+  # name is accepted by everything up to the point of connecting and then fails
+  # with a ValueError from deep inside the driver, several layers below anything
+  # this project wrote. Catch it here instead.
+  #   gcloud sql instances list --format='value(name,connectionName)'
+  case "$CLOUD_SQL_INSTANCE_NAME" in
+    *:*:*) ;;
+    *)
+      echo "error: CLOUD_SQL_INSTANCE_NAME must be PROJECT:REGION:INSTANCE," >&2
+      echo "       got '${CLOUD_SQL_INSTANCE_NAME}'." >&2
+      exit 65
+      ;;
+  esac
   echo "Cloud SQL connection:"
   set_var DB_DRIVER cloudsql
   set_var CLOUD_SQL_IP_TYPE public
