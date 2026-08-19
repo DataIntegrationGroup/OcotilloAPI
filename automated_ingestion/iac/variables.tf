@@ -11,8 +11,8 @@ variable "region" {
 
 variable "bucket_location" {
   type        = string
-  description = "Bucket location. US-CENTRAL1 keeps the raw zone in the same region as Cloud SQL, so replay reads do not cross regions."
-  default     = "US-CENTRAL1"
+  description = "Bucket location. Must match the Cloud SQL region so replay reads do not cross regions and pay egress. The dataservices instance is in us-west4."
+  default     = "US-WEST4"
 }
 
 variable "cloud_sql_instance" {
