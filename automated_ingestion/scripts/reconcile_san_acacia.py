@@ -62,15 +62,14 @@ def _candidates(prefix: str) -> list[ThingCandidate]:
     from sqlalchemy import select
 
     from db.engine import session_ctx
-    from db.thing import Thing
-    from db.thing_id_link import ThingIDLink
+    from db.thing import Thing, ThingIdLink
 
     with session_ctx() as session:
         things = session.execute(
             select(Thing.id, Thing.name).where(Thing.name.ilike(f"{prefix}%"))
         ).all()
         links = session.execute(
-            select(ThingIDLink.thing_id, ThingIDLink.alternate_id)
+            select(ThingIdLink.thing_id, ThingIdLink.alternate_id)
         ).all()
 
     by_thing: dict[int, list[str]] = {}
