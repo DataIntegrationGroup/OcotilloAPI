@@ -1,0 +1,51 @@
+# Materializes the heartbeat asset on a Dagster+ deployment, on demand.
+#
+# This is the run-time half of the deploy check. CD_dagster_*.yml prove the
+# agent can load the code location; the loader is not the process that executes
+# a step, and the two do not necessarily agree about sys.path, so loading
+# cleanly does not prove a step can import `db` or `domain`. Materializing
+# `ingestion_heartbeat` does. It touches no database, no network and no GCS, so a
+# failure here is a packaging or deployment problem and nothing else.
+#
+# Dispatch-only. It costs a Dagster+ run, and the interesting time to spend one
+# is after a deploy that changed how the code location is packaged -- not on
+# every push.
+#
+# `deployment` takes a branch deployment id (the hex name in the Dagster+ URL,
+# which CD_dagster_branch.yml prints as "Deploying to branch deployment: ...")
+# or `prod`. Run it against the ref whose deployment you are testing: the job
+# must exist in the deployed code location, not just on the branch.
+name: Smoke test (Dagster+ code location)
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "Dagster+ deployment: a branch deployment id, or 'prod'"
+        required: true
+        default: "prod"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dagster-smoke-${{ github.event.inputs.deployment }}
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      # wait: true makes the action poll the run and fail the step if the run
+      # fails, so the workflow result is the materialization result rather than
+      # just "a run was launched".
+      - name: Materialize ingestion_heartbeat
+        uses: dagster-io/dagster-cloud-action/actions/launch_job@v1.13.18
+        with:
+          organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
+          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          location_name: ocotillo-automated-ingestion
+          deployment: ${{ github.event.inputs.deployment }}
+          job_name: ingestion_heartbeat_check
+          wait: "true"
+          interval: "10"
