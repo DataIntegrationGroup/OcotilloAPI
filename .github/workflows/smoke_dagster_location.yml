@@ -1,0 +1,74 @@
+# Materializes the heartbeat asset on a Dagster+ deployment, on demand.
+#
+# This is the run-time half of the deploy check. CD_dagster_*.yml prove the
+# agent can load the code location; the loader is not the process that executes
+# a step, and the two do not necessarily agree about sys.path, so loading
+# cleanly does not prove a step can import `db` or `domain`. Materializing
+# `ingestion_heartbeat` does. It touches no database, no network and no GCS, so a
+# failure here is a packaging or deployment problem and nothing else.
+#
+# Dispatch-only, and mainly for `prod`: CD_dagster_branch.yml already runs this
+# same job against a branch deployment as the last step of every PEX deploy, so
+# on a PR the check happens without anyone asking. This workflow is the way to
+# ask for it anywhere else -- after a prod deploy, or against a branch
+# deployment that was deployed before this check existed.
+#
+# Note a GitHub constraint: `workflow_dispatch` is only offered for workflows
+# present on the default branch, so this is not runnable from a feature branch.
+#
+# `deployment` takes a branch deployment id (the hex name in the Dagster+ URL,
+# which CD_dagster_branch.yml prints as "Deploying to branch deployment: ...")
+# or `prod`. Run it against the ref whose deployment you are testing: the job
+# must exist in the deployed code location, not just on the branch.
+name: Smoke test (Dagster+ code location)
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "Dagster+ deployment: a branch deployment id, or 'prod'"
+        required: true
+        default: "prod"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dagster-smoke-${{ github.event.inputs.deployment }}
+  cancel-in-progress: false
+
+env:
+  DAGSTER_CLOUD_URL: https://${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}.dagster.cloud
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      # The vendor's `launch_job` action is not used here, for the reason spelled
+      # out in CD_dagster_branch.yml: neither it nor `dagster-cloud job launch`
+      # exits nonzero on a failed run, so `wait: true` waits without gating.
+      # Requiring the success line is what makes this workflow's result mean
+      # something.
+      - name: Materialize ingestion_heartbeat
+        env:
+          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          DEPLOYMENT: ${{ github.event.inputs.deployment }}
+        run: |
+          set -uo pipefail
+          out=$(uvx --from "dagster-cloud-cli==1.13.18" \
+            dagster-cloud job launch \
+            --url "$DAGSTER_CLOUD_URL" \
+            --deployment "$DEPLOYMENT" \
+            --location ocotillo-automated-ingestion \
+            --job ingestion_heartbeat_check \
+            --wait --interval 10 2>&1 | tee /dev/stderr)
+          case "$out" in
+            *"finished successfully"*) ;;
+            *) echo "::error title=Heartbeat failed::ingestion_heartbeat did not finish successfully on $DEPLOYMENT"
+               exit 1 ;;
+          esac
