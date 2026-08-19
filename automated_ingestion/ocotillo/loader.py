@@ -119,6 +119,14 @@ def load_observations(
     table = TransducerObservation.__table__
 
     for batch in _batched(records, batch_size):
+        result.rows_seen += len(batch)
+
+        # One row per instant within a statement. Postgres refuses an
+        # ON CONFLICT DO UPDATE that would touch the same row twice in one
+        # command, and a source can repeat a reading -- overlapping fetch
+        # windows, or a vendor logging the same instant twice. Keeping the last
+        # occurrence matches the upsert's own rule: a later value wins.
+        deduplicated = {record.observation_datetime: record for record in batch}
         rows = [
             {
                 "deployment_id": deployment_id,
@@ -128,9 +136,10 @@ def load_observations(
                 "release_status": release_status,
                 "data_maturity": data_maturity,
             }
-            for record in batch
+            for record in deduplicated.values()
         ]
-        result.rows_seen += len(rows)
+        if not rows:
+            continue
 
         statement = insert(table).values(rows)
         # DO UPDATE rather than DO NOTHING: a vendor may correct a reading, and
