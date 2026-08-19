@@ -114,4 +114,80 @@ def test_batches_commit_separately(loader_target):
         assert _count(session, deployment_id) == 25
 
 
+def test_loaded_readings_are_provisional_by_default(loader_target):
+    # USGS publishes unapproved records as provisional. A diver reading is that
+    # until somebody reviews it.
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(session, _records(1), deployment_id, parameter_id, "draft")
+        row = session.execute(
+            select(
+                TransducerObservation.data_maturity,
+                TransducerObservation.release_status,
+            ).where(TransducerObservation.deployment_id == deployment_id)
+        ).one()
+        assert row.data_maturity == "provisional"
+
+
+def test_public_and_provisional_can_both_be_true(loader_target):
+    # The reason this is a second column: release_status lists public and
+    # provisional as siblings, so one column could not express both.
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(session, _records(1), deployment_id, parameter_id, "public")
+        row = session.execute(
+            select(
+                TransducerObservation.data_maturity,
+                TransducerObservation.release_status,
+            ).where(TransducerObservation.deployment_id == deployment_id)
+        ).one()
+        assert (row.release_status, row.data_maturity) == ("public", "provisional")
+
+
+def test_a_correction_refreshes_maturity_too(loader_target):
+    # Re-loading an approved value must not leave the earlier maturity behind.
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(session, _records(1), deployment_id, parameter_id, "draft")
+        load_observations(
+            session,
+            _records(1, value=99.0),
+            deployment_id,
+            parameter_id,
+            "draft",
+            data_maturity="approved",
+        )
+        row = session.execute(
+            select(
+                TransducerObservation.value, TransducerObservation.data_maturity
+            ).where(TransducerObservation.deployment_id == deployment_id)
+        ).one()
+        assert (row.value, row.data_maturity) == (99.0, "approved")
+
+
+def test_maturity_must_be_a_lexicon_term(loader_target):
+    # The column is a foreign key onto lexicon_term, so a typo is rejected by
+    # the database rather than stored and puzzled over later.
+    #
+    # DatabaseError rather than IntegrityError: pg8000 reports a foreign key
+    # violation as a ProgrammingError, and SQLAlchemy preserves that. Both
+    # descend from DatabaseError, so this catches the violation without
+    # asserting which driver is underneath.
+    import pytest
+    from sqlalchemy.exc import DatabaseError
+
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        with pytest.raises(DatabaseError):
+            load_observations(
+                session,
+                _records(1),
+                deployment_id,
+                parameter_id,
+                "draft",
+                data_maturity="probational",
+            )
+        session.rollback()
+
+
 # ============= EOF =============================================

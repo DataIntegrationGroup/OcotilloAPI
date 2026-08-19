@@ -289,13 +289,26 @@ Matching `BRN-E04A` against that returns a single confident hit on `SO-0131`, co
 
 ### 3.3 — Represent "public but provisional"
 
-`release_status` is one scalar column and its lexicon category holds `public` and `provisional` as siblings, so both cannot be set. Visibility and maturity are orthogonal axes.
+Built. Migration `b2c3d4e5f6a7` adds `data_maturity` to `transducer_observation`.
 
-- Decide the representation. Recommended: keep `release_status = "public"` for visibility, add an explicit maturity field (`is_provisional` boolean, or a `data_maturity` lexicon term) on `TransducerObservation` / `TransducerObservationBlock`. Rejected alternative: overloading `review_status`, which means Bureau review and carries a `reviewer_id` FK.
-- Follow the Model Change Workflow in `CLAUDE.md`: db model → schemas → alembic migration → tests → transfer scripts.
-- Provisional state is visible wherever the data surfaces — API responses and the Hydrograph Corrector.
-- Check the blast radius of `release_status = "public"` before shipping: `services/ngwmn_helper.py` filters `Thing.release_status == "public"` for NGWMN publication. Confirm San Acacia data becoming public is intended there too.
-- Existing rows keep their current behavior; the migration has a defined default.
+**Decided: a `data_maturity` lexicon term, not an `is_provisional` boolean.** A boolean can only say provisional or not, and review is a progression rather than a switch.
+
+**Terms follow USGS usage** — `provisional`, `in review`, `approved`. `provisional` and `approved` are what USGS publishes against ("provisional data subject to revision" is the standard caveat on unapproved records). `in review` is the intermediate state from the Aquarius approval levels USGS uses for continuous time series (Working / In Review / Approved); Aquarius' `Working` is folded into `provisional`, because to a consumer the two are indistinguishable.
+
+- ✅ `release_status` keeps meaning visibility; `data_maturity` means trust. A reading can be `public` **and** `provisional` at once, which one column could not express — its lexicon lists them as siblings. There is a test asserting exactly that pair.
+- ✅ `DataMaturity` enum, built from `core/lexicon.json` like every other status enum. That file is the source of truth the enums read; the migration seeds the database to match.
+- ✅ Exposed on `TransducerObservationResponse` and accepted on `CreateTransducerObservation`, both nullable.
+- ✅ The loader defaults new readings to `provisional`, and an upsert refreshes maturity along with value — a corrected reading arriving as approved must not keep the older maturity.
+- ✅ The column is a foreign key onto `lexicon_term`, so a typo is rejected by the database. Tested.
+- ✅ Migration verified up and down against a database with 88,666 observations.
+
+**Existing rows are backfilled from the legacy QC flag.** `transducer_observation` already carries `nma_waterlevelscontinuous_pressure_qced`, the AMPAPI field recording whether a reading was quality controlled — the same question `data_maturity` asks. True becomes `approved`, false becomes `provisional`. All 88,666 rows in the development database are `qced = true`, so they land as `approved`.
+
+Rows where that flag is NULL stay NULL: they did not come from the NMA transducer tables, so there is no evidence either way.
+
+`provisional` and `approved` already existed as terms: `lexicon_term.term` is globally unique and categories share terms through an association table, so only `in review` is new. That means `approved` is now shared by `review_status` and `data_maturity`. They are asking different questions — `review_status` on the block records that a Bureau human reviewed it and carries a `reviewer_id`, while `data_maturity` describes the reading's revision state — and the shared vocabulary is how this lexicon is designed to work.
+
+⬜ Blast radius still to check: `services/ngwmn_helper.py` filters `Thing.release_status == "public"` for NGWMN publication. San Acacia data becoming public needs to be intended there too.
 
 ### 3.4 — Unique constraint on `transducer_observation` + idempotent upsert loader
 

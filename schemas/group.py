@@ -27,6 +27,7 @@ class ValidateGroup(BaseModel):
     project_area: str | None = None
     description: str | None = None
     parent_group_id: int | None = None
+    group_type: GroupType | None = None
 
     @field_validator("project_area")
     def validate_area_is_wkt(cls, wkt):
