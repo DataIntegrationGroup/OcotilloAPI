@@ -141,6 +141,7 @@ directory_type = "project"
 [tool.dg.project]
 root_module = "automated_ingestion"
 
+
 # Bare `--cov` measures every imported module, which pulls the whole virtualenv
 # into the report. Scope it to first-party code instead. Keep this a single
 # source root -- listing each package separately makes coverage treat every
