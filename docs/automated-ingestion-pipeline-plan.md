@@ -302,10 +302,18 @@ Built. Migration `a1b2c3d4e5f6`, loader in `automated_ingestion/ocotillo/loader.
 
 ### 3.5 — Watermark from Postgres
 
-- Keep Aqueduct's `WatermarkStore` interface; Postgres implementation returns `MAX(observation_datetime)` for a `(thing_id, parameter_id)`, read in the same session as the write. No GCS sidecar for normal runs.
-- Backfill never advances the normal watermark implicitly — inherent with upsert, but asserted in a test.
-- In-memory implementation kept for tests. First-ever run for a series falls back to the `initial_start_date` floor.
-- Divergence from Aqueduct recorded in the module docstring, so it reads as a decision not an oversight.
+Built. `automated_ingestion/shared/watermark.py`, seven tests.
+
+- ✅ `PostgresWatermarkStore` returns `MAX(observation_datetime)` for the series, read through the loader's own session so it reflects that session's committed state rather than another connection's snapshot.
+- ✅ `InMemoryWatermarkStore` for tests and for reasoning about a run without a database.
+- ✅ `resolve_start` falls back to the `initial_start_date` floor only for a series that has never been loaded. A test asserts a floor *ahead* of the watermark does not win either — the floor is not a backfill lever in any direction.
+- ✅ The divergence from Aqueduct is in the module docstring, so it reads as a decision rather than an oversight.
+
+**Keyed by thing, not deployment.** This section said `(thing_id, parameter_id)` and that turns out to be right for a reason worth stating: observations carry `deployment_id`, but a series outlives its hardware. Replacing a diver creates a new deployment for the same well, and a watermark keyed to the deployment would report nothing for the new one and re-fetch the entire history. The query joins through `deployment` to ask the question the pipeline actually has.
+
+**Why derive rather than store.** A stored watermark is a second source of truth about what was loaded, and the two drift — a half-succeeded load, or a sidecar write that fails after the rows commit, leaves it claiming more or less than the data holds. Aqueduct stores one because FROST cannot be queried cheaply for a maximum; Postgres can.
+
+The payoff is that "backfill never advances the normal watermark" stops being a rule to enforce and becomes a property that cannot be violated: re-loading a window behind the maximum cannot move a maximum forward. Asserted anyway, in two directions — older data, and the same window twice.
 
 ---
 
