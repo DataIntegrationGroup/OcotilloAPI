@@ -18,6 +18,7 @@ from enum import Enum
 from services.lexicon_helper import build_enum_from_lexicon_category
 
 ActivityType: type[Enum] = build_enum_from_lexicon_category("activity_type")
+DataMaturity: type[Enum] = build_enum_from_lexicon_category("data_maturity")
 AddressType: type[Enum] = build_enum_from_lexicon_category("address_type")
 AnalysisMethodType: type[Enum] = build_enum_from_lexicon_category(
     "analysis_method_type"

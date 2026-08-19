@@ -243,12 +243,17 @@
     {
       "name": "lithology",
       "description": null
+    },
+    {
+      "name": "data_maturity",
+      "description": "How far through review a measurement is, on USGS terms. Orthogonal to release_status, which controls visibility rather than trust."
     }
   ],
   "terms": [
     {
       "categories": [
-        "review_status"
+        "review_status",
+        "data_maturity"
       ],
       "term": "approved",
       "definition": "approved"
@@ -1762,7 +1767,8 @@
     },
     {
       "categories": [
-        "release_status"
+        "release_status",
+        "data_maturity"
       ],
       "term": "provisional",
       "definition": "provisional version"
@@ -8495,6 +8501,13 @@
       ],
       "term": "Data not field checked, but considered reliable",
       "definition": "Data were not field checked but are considered reliable"
+    },
+    {
+      "categories": [
+        "data_maturity"
+      ],
+      "term": "in review",
+      "definition": "Under review and not yet approved. Intermediate state from the USGS Aquarius approval levels used for continuous records."
     }
   ]
 }

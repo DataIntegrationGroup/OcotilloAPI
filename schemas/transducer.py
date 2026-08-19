@@ -17,7 +17,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from core.enums import ReviewStatus
+from core.enums import DataMaturity, ReviewStatus
 from schemas import BaseResponseModel, BaseCreateModel
 
 
@@ -34,6 +34,9 @@ class TransducerObservationResponse(BaseResponseModel):
     observation_datetime: datetime
     parameter_id: int
     deployment_id: int
+    # Nullable: readings loaded before the field existed do not state a
+    # maturity, and asserting one for them would be an invention.
+    data_maturity: DataMaturity | None
 
 
 class TransducerObservationWithBlockResponse(BaseModel):
@@ -47,6 +50,7 @@ class CreateTransducerObservation(BaseCreateModel):
     deployment_id: int
     value: float
     observation_datetime: datetime
+    data_maturity: DataMaturity | None = None
 
 
 # ============= EOF =============================================

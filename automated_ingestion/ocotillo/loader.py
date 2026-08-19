@@ -71,6 +71,16 @@ def _batched(records: Iterable[Any], size: int) -> Iterator[list[Any]]:
         yield batch
 
 
+DEFAULT_DATA_MATURITY = "provisional"
+"""Maturity for a freshly ingested reading.
+
+USGS publishes unapproved records as provisional -- "provisional data subject to
+revision" -- and that is what a diver reading is until somebody reviews it.
+Orthogonal to ``release_status``: San Acacia data is public *and* provisional,
+which is why this is a second column rather than another value in the first.
+"""
+
+
 def load_observations(
     session: Any,
     records: Iterable[Any],
@@ -78,6 +88,7 @@ def load_observations(
     parameter_id: int,
     release_status: str,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    data_maturity: str = DEFAULT_DATA_MATURITY,
 ) -> LoadResult:
     """Upsert observations, committing per batch.
 
@@ -100,6 +111,7 @@ def load_observations(
                 "observation_datetime": record.observation_datetime,
                 "value": record.value,
                 "release_status": release_status,
+                "data_maturity": data_maturity,
             }
             for record in batch
         ]
@@ -115,7 +127,10 @@ def load_observations(
                 "parameter_id",
                 "observation_datetime",
             ],
-            set_={"value": statement.excluded.value},
+            set_={
+                "value": statement.excluded.value,
+                "data_maturity": statement.excluded.data_maturity,
+            },
         )
         session.execute(statement)
         session.commit()
