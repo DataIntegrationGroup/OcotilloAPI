@@ -59,6 +59,17 @@ sits at half the largest span observed to work, leaving room for a denser point
 than SO-0125.
 """
 
+LOADER_FILE_FORMAT = "parquet"
+"""Raw-zone file format.
+
+dlt writes gzipped JSONL unless told otherwise, and the first live run landed
+that way. Parquet is what Mode B replay assumes: replay reads the raw zone
+filtered on event time, and a columnar format with real types lets that read a
+window without decompressing and parsing every record. It also preserves the
+distinction between a null and a missing field, which JSONL round-trips less
+reliably.
+"""
+
 INITIAL_START = "2015-01-01T00:00:00+00:00"
 """Floor for a point that has never been ingested.
 
