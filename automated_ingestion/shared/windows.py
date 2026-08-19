@@ -74,10 +74,17 @@ def iter_windows(start: int, end: int, span: int = DEFAULT_SPAN) -> Iterator[Win
         raise ValueError(f"Window span must be positive, got {span}.")
     if end < start:
         raise ValueError(f"End {end} precedes start {start}.")
+    # Windows must not share a boundary. Diver-HUB's ranges are inclusive at
+    # both ends -- "from start time up to and including end time" -- so
+    # [0, span] and [span, 2*span] both return the reading logged exactly at
+    # `span`. That duplicate reaches the loader in one batch and Postgres
+    # rejects the statement: "ON CONFLICT DO UPDATE command cannot affect row a
+    # second time".
     cursor = start
     while cursor < end:
-        yield Window(cursor, min(cursor + span, end))
-        cursor += span
+        chunk_end = min(cursor + span, end)
+        yield Window(cursor, chunk_end)
+        cursor = chunk_end + 1
 
 
 # ============= EOF =============================================

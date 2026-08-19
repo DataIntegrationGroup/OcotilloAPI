@@ -268,4 +268,36 @@ def test_rows_with_no_recorded_maturity_still_update(loader_target):
         assert value == 99.0
 
 
+def test_duplicate_instants_in_one_batch_do_not_break_the_statement(loader_target):
+    """Reproduces the first live run's failure.
+
+    Postgres rejects an ON CONFLICT DO UPDATE that would touch the same row
+    twice in one command:
+
+        ON CONFLICT DO UPDATE command cannot affect row a second time
+
+    The existing idempotency test loads the same window in two separate
+    statements, which Postgres allows, so it could not catch this. A source can
+    repeat an instant -- overlapping fetch windows did, and a vendor may log one
+    twice.
+    """
+    deployment_id, parameter_id = loader_target
+    duplicated = _records(3) + _records(3, value=99.0)
+
+    with session_ctx() as session:
+        result = load_observations(
+            session, duplicated, deployment_id, parameter_id, "draft"
+        )
+        assert _count(session, deployment_id) == 3
+        assert result.rows_seen == 6
+
+        # The later value wins, matching the upsert's own rule.
+        values = session.scalars(
+            select(TransducerObservation.value)
+            .where(TransducerObservation.deployment_id == deployment_id)
+            .order_by(TransducerObservation.observation_datetime)
+        ).all()
+        assert values[0] == 99.0
+
+
 # ============= EOF =============================================
