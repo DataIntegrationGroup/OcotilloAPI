@@ -290,7 +290,9 @@ Built. Migration `b2c3d4e5f6a7` adds `data_maturity` to `transducer_observation`
 - ✅ The column is a foreign key onto `lexicon_term`, so a typo is rejected by the database. Tested.
 - ✅ Migration verified up and down against a database with 88,666 observations.
 
-**Existing rows are left NULL, not defaulted.** Backfilling 88,666 legacy observations to `provisional` would assert something about NMA data nobody has checked — some may be approved. NULL reads as "not stated", which is true.
+**Existing rows are backfilled from the legacy QC flag.** `transducer_observation` already carries `nma_waterlevelscontinuous_pressure_qced`, the AMPAPI field recording whether a reading was quality controlled — the same question `data_maturity` asks. True becomes `approved`, false becomes `provisional`. All 88,666 rows in the development database are `qced = true`, so they land as `approved`.
+
+Rows where that flag is NULL stay NULL: they did not come from the NMA transducer tables, so there is no evidence either way.
 
 `provisional` and `approved` already existed as terms: `lexicon_term.term` is globally unique and categories share terms through an association table, so only `in review` is new. That means `approved` is now shared by `review_status` and `data_maturity`. They are asking different questions — `review_status` on the block records that a Bureau human reviewed it and carries a `reviewer_id`, while `data_maturity` describes the reading's revision state — and the shared vocabulary is how this lexicon is designed to work.
 

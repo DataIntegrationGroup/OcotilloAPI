@@ -16,10 +16,14 @@ approval levels USGS uses for continuous time series (Working / In Review /
 Approved); Aquarius' `Working` is folded into `provisional` because the two are
 indistinguishable to a consumer.
 
-**Existing rows are left NULL rather than defaulted.** Backfilling 88,000+
-observations to `provisional` would assert something about legacy NMA data that
-nobody has checked -- some of it may well be approved. NULL reads as "not
-stated", which is true.
+Existing rows are backfilled from the legacy AMPAPI QC flag,
+`nma_waterlevelscontinuous_pressure_qced`, which records exactly this: whether a
+reading has been quality controlled. True becomes `approved`, false becomes
+`provisional`.
+
+Rows where that flag is NULL stay NULL. Those did not come from the NMA
+transducer tables, so there is no evidence either way, and NULL reads as "not
+stated" -- which is true, where guessing would not be.
 """
 
 import sqlalchemy as sa
@@ -90,6 +94,22 @@ def upgrade() -> None:
         ["data_maturity"],
         ["term"],
         onupdate="CASCADE",
+    )
+
+    # The legacy QC flag answers this question directly, so the maturity of
+    # historical rows is a lookup rather than a guess. Done after the foreign
+    # key so a bad value here would fail loudly rather than persist.
+    connection.execute(
+        sa.text(
+            """
+            UPDATE transducer_observation
+               SET data_maturity = CASE
+                     WHEN nma_waterlevelscontinuous_pressure_qced THEN 'approved'
+                     ELSE 'provisional'
+                   END
+             WHERE nma_waterlevelscontinuous_pressure_qced IS NOT NULL
+            """
+        )
     )
 
 
