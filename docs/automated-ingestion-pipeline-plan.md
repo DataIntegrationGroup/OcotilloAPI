@@ -419,11 +419,14 @@ Covers raw already in GCS with only the mapping wrong: adapter or unit bug, newl
 
 ### 4.4 — Schedule, observability, alerting
 
-- `san_acacia_schedule` runs the daily pipeline; cron avoids contention with existing Dagster+ jobs in the org, recorded in the source registry.
-- Dagster logs bridge into the repo's existing logging setup, so ingestion failures surface where the team already looks. Confirm which error-tracking destination is current before wiring this — do not assume the repo's existing integrations are live.
-- A failed run notifies someone — not discovered via a stale hydrograph.
-- Every run emits rows ingested, rows upserted, entities processed, entities failed, adapter failures, resulting watermark per series.
-- A zero-new-rows run succeeds and is distinguishable in the logs from a failure.
+Schedule built. `defs/jobs/san_acacia.py` — `san_acacia_ingest` over the whole `san_acacia` asset group, on `san_acacia_weekly`.
+
+- ✅ **Weekly, not daily.** These are five-minute diver readings nobody watches in real time, the vendor's endpoint answers 500 when pushed, and the watermark makes the interval a question of freshness rather than correctness — a missed week is caught up by the next run, not lost.
+- ✅ Mondays 05:00 **America/Denver**, not UTC. The wells, the people reading the data and the working day are in one timezone; a schedule drifting an hour twice a year would be the surprising choice. After midnight so a run covers whole days, early enough that a failure is visible at the start of the week.
+- ✅ Selected **by group**, so an asset added to `san_acacia` joins the schedule without touching the job. A test asserts the selection resolves to exactly the three ingest assets and excludes `ingestion_heartbeat` and `database_connectivity` — a group-name typo would otherwise produce a schedule that runs happily and ingests nothing.
+- ✅ `RetryPolicy(max_retries=2, delay=60)` covers a dropped request or a token expiring mid-run. Two attempts, not more: a persistent 500 means the window is wrong or the endpoint is unwell, and hammering it makes both worse.
+- ✅ **`DefaultScheduleStatus.STOPPED`.** Turning it on starts writing to Ocotillo, and the first run for the 24 wells without history fetches back to `INITIAL_START`. That should be a decision taken once, not a consequence of a merge.
+- ⬜ Observability and alerting — log bridge, failure notification, run metadata.
 
 ### 4.5 — Documentation
 

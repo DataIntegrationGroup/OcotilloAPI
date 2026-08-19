@@ -24,10 +24,16 @@ definitions declared elsewhere in the package rather than declaring them here.
 from dagster import Definitions
 
 from automated_ingestion.defs.assets import all_assets
+from automated_ingestion.defs.jobs.san_acacia import (
+    san_acacia_job,
+    san_acacia_weekly_schedule,
+)
 from automated_ingestion.defs.resources import OcotilloDatabase
 
 defs = Definitions(
     assets=all_assets(),
+    jobs=[san_acacia_job],
+    schedules=[san_acacia_weekly_schedule],
     resources={"database": OcotilloDatabase()},
 )
 
