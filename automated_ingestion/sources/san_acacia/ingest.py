@@ -43,6 +43,7 @@ def _client() -> DiverHubClient:
 def raw_san_acacia_locations(context: AssetExecutionContext) -> Output[int]:
     """Land the point roster in the raw zone."""
     from automated_ingestion.sources.san_acacia.dlt_pipeline import (
+        LOADER_FILE_FORMAT,
         PROJECT_ID,
         build_pipeline,
         vanessen_locations,
@@ -51,7 +52,7 @@ def raw_san_acacia_locations(context: AssetExecutionContext) -> Output[int]:
     client = _client()
     points = list(client.monitoring_points(PROJECT_ID))
     pipeline = build_pipeline()
-    pipeline.run(vanessen_locations(client))
+    pipeline.run(vanessen_locations(client), loader_file_format=LOADER_FILE_FORMAT)
 
     context.log.info("landed %s monitoring points", len(points))
     return Output(
@@ -72,6 +73,7 @@ def raw_san_acacia_locations(context: AssetExecutionContext) -> Output[int]:
 def raw_san_acacia_readings(context: AssetExecutionContext) -> Output[int]:
     """Land water levels for every point, isolating per-point failure."""
     from automated_ingestion.sources.san_acacia.dlt_pipeline import (
+        LOADER_FILE_FORMAT,
         PROJECT_ID,
         build_pipeline,
         vanessen_readings,
@@ -86,7 +88,10 @@ def raw_san_acacia_readings(context: AssetExecutionContext) -> Output[int]:
 
     pipeline = build_pipeline()
     failures: list[dict[str, Any]] = []
-    info = pipeline.run(vanessen_readings(client, points, end, failures))
+    info = pipeline.run(
+        vanessen_readings(client, points, end, failures),
+        loader_file_format=LOADER_FILE_FORMAT,
+    )
     rows = _row_count(info)
 
     if failures:

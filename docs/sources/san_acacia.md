@@ -77,6 +77,22 @@ halve-on-500 recovery is **not** a routine path for `WaterLevels`. Do not
 assume a 500 there means "too much data" without re-measuring; on `DiverData`
 that assumption is provably wrong.
 
+## Raw zone format
+
+Parquet, date-partitioned:
+
+```
+raw_sanacaciareach/vanessen_readings/year=2026/month=08/day=19/<load_id>.<file_id>.parquet
+```
+
+dlt writes gzipped JSONL unless told otherwise, and the first live run landed
+that way before this was set. Parquet is what Mode B replay assumes: replay
+reads the raw zone filtered on event time, and a columnar format with real types
+lets it read a window without decompressing and parsing every record.
+
+Objects written before this change are `.jsonl.gz`. dlt reads both, so they do
+not need migrating, but a replay spanning that boundary reads two formats.
+
 ## Field mapping
 
 ### Water levels — the ingested series
