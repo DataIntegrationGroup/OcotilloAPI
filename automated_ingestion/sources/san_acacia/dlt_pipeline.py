@@ -173,6 +173,14 @@ def _approved_timestamps(
 
 def build_pipeline(environment: str) -> Any:
     """A dlt pipeline writing parquet to the raw zone for one environment."""
+    # gcsfs resolves Application Default Credentials the same way the Cloud SQL
+    # connector does, and Serverless supplies none of its own.
+    from automated_ingestion.shared.credentials import (
+        ensure_application_default_credentials,
+    )
+
+    ensure_application_default_credentials()
+
     return dlt.pipeline(
         pipeline_name=f"san_acacia_{environment}",
         destination=dlt.destinations.filesystem(
