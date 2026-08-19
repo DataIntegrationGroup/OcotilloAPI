@@ -89,12 +89,27 @@ def load_observations(
     release_status: str,
     batch_size: int = DEFAULT_BATCH_SIZE,
     data_maturity: str = DEFAULT_DATA_MATURITY,
+    overwrite_approved: bool = False,
 ) -> LoadResult:
     """Upsert observations, committing per batch.
 
     ``records`` are ``ObservationRecord`` values from an adapter; resolving a
     source's point identifier to a deployment belongs to reference-data
     bootstrapping, not here, so the caller supplies the ids.
+
+    ``overwrite_approved`` guards data somebody has already reviewed. By default
+    a row whose ``data_maturity`` is ``approved`` is left alone: the upsert exists
+    so a vendor correction can revise *our* provisional readings, not so a
+    re-fetch can quietly replace Bureau-approved history with a vendor's numbers
+    and downgrade it to provisional.
+
+    This is not hypothetical. Fourteen of the thirty-eight San Acacia wells
+    already hold 542,161 approved observations from the AMPAPI transfer, running
+    to August 2022. A Mode A backfill over that window would have overwritten
+    every one of them.
+
+    Setting it to True is a deliberate act: it says the incoming data is better
+    than what was reviewed, which is a judgement a person should make.
     """
     from sqlalchemy.dialects.postgresql import insert
 
@@ -121,17 +136,26 @@ def load_observations(
         # DO UPDATE rather than DO NOTHING: a vendor may correct a reading, and
         # a correction arriving as a no-op would leave the old value in place
         # while the run reported success.
-        statement = statement.on_conflict_do_update(
-            index_elements=[
+        conflict_kwargs: dict[str, Any] = {
+            "index_elements": [
                 "deployment_id",
                 "parameter_id",
                 "observation_datetime",
             ],
-            set_={
+            "set_": {
                 "value": statement.excluded.value,
                 "data_maturity": statement.excluded.data_maturity,
             },
-        )
+        }
+        if not overwrite_approved:
+            # IS DISTINCT FROM rather than != so NULL maturity still updates:
+            # a row with no recorded status has not been reviewed, and treating
+            # unknown as approved would freeze 394,086 legacy rows against every
+            # future correction.
+            conflict_kwargs["where"] = table.c.data_maturity.is_distinct_from(
+                "approved"
+            )
+        statement = statement.on_conflict_do_update(**conflict_kwargs)
         session.execute(statement)
         session.commit()
 
