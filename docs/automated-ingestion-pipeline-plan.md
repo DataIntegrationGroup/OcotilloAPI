@@ -287,6 +287,18 @@ Matching `BRN-E04A` against that returns a single confident hit on `SO-0131`, co
 **This is production data, not a staging artifact.** The same contradictions are in both. They are worth someone's attention independently of this pipeline: `SO-0131`/`SO-0132` and `SO-0262`/`SO-0263` are paired shallow/deep piezometers whose A/B designations disagree between identifier sources, and a swap there means a shallow series attributed to a deep well. Ingestion is unaffected — the vendor names points `SO-####` and Ocotillo agrees on those — but anyone reasoning about these wells through the `BRN-`/`NRCS` names is working from two incompatible answers.
 - ⬜ The seeding half: data migration creating missing `Location`/`Thing`, lexicon terms, DTW `Parameter`, `VanEssenDiver` `Sensor`, one `Deployment` per well, the vendor `uid` as external identifier, and `DataProvenance` for Van Essen-sourced attributes.
 
+### 3.2 seeding — nothing needed, measured 2026-08-19
+
+The plan expected to create wells, a parameter, a sensor and deployments. Checked against staging: **all of it already exists.**
+
+- All 38 wells have deployments — 108 open ones between them, because a deployment is a piece of equipment rather than a measured property. SO-0140 carries three: a `DiverLink` (telemetry), a `Pressure Transducer` (the reading), and a `Diver Cable`. `Barometer` appears elsewhere.
+- The parameter exists: id 1, `groundwater level`, `default_unit = ft` — which is what the adapter emits, so the centimetre conversion in `domain/van_essen.py` lands in the right unit.
+- Existing observations for these wells already use that parameter.
+
+**So the series is chosen, not created.** `sources/san_acacia/resolve.py` picks the open `Pressure Transducer` deployment. Across the 38 wells that resolves cleanly for **35**; **2** have two open transducers and **1** (SO-0246) has none. Those three are skipped and reported rather than guessed at — taking the lower id would be a silent decision about equipment.
+
+A *removed* transducer is not used as a fallback. Writing current readings against retired equipment would look like success while being wrong.
+
 ### 3.3 — Represent "public but provisional"
 
 Built. Migration `b2c3d4e5f6a7` adds `data_maturity` to `transducer_observation`.
