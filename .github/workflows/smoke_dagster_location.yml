@@ -7,9 +7,14 @@
 # `ingestion_heartbeat` does. It touches no database, no network and no GCS, so a
 # failure here is a packaging or deployment problem and nothing else.
 #
-# Dispatch-only. It costs a Dagster+ run, and the interesting time to spend one
-# is after a deploy that changed how the code location is packaged -- not on
-# every push.
+# Dispatch-only, and mainly for `prod`: CD_dagster_branch.yml already runs this
+# same job against a branch deployment as the last step of every PEX deploy, so
+# on a PR the check happens without anyone asking. This workflow is the way to
+# ask for it anywhere else -- after a prod deploy, or against a branch
+# deployment that was deployed before this check existed.
+#
+# Note a GitHub constraint: `workflow_dispatch` is only offered for workflows
+# present on the default branch, so this is not runnable from a feature branch.
 #
 # `deployment` takes a branch deployment id (the hex name in the Dagster+ URL,
 # which CD_dagster_branch.yml prints as "Deploying to branch deployment: ...")

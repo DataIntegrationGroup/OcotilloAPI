@@ -160,6 +160,43 @@ jobs:
           build_output_dir: "$GITHUB_WORKSPACE/build"
           python_version: ${{ env.PYTHON_VERSION }}
 
+      # Materializing the heartbeat is the run-time half of the check. The steps
+      # above prove the agent can load the code location; the loader is not the
+      # process that executes a step, and the two do not necessarily agree about
+      # sys.path, so loading cleanly does not prove a step can import `db` or
+      # `domain`. This does. The asset touches no database, no network and no
+      # GCS, so a failure here is a packaging problem and nothing else -- which
+      # is worth one Dagster+ run on a PR that already changed how the code
+      # location is packaged.
+      #
+      # The deployment name has to be asked for rather than assumed: it is
+      # derived from the branch, and the deploy action does not report it. This
+      # is the same `ci branch-deployment` call the deploy makes internally, and
+      # it is idempotent -- it returns the existing deployment for this PR.
+      - name: Resolve branch deployment name
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        id: branch_deployment
+        run: |
+          name=$(uvx --from "dagster-cloud-cli==1.13.18" \
+            dagster-cloud ci branch-deployment project-repo)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Branch deployment: $name"
+
+      # wait: true makes the action poll the run and fail this step if the run
+      # fails, so a green check means the asset materialized rather than just
+      # that a run was launched.
+      - name: Materialize ingestion_heartbeat
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        uses: dagster-io/dagster-cloud-action/actions/launch_job@v1.13.18
+        with:
+          organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
+          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          location_name: ocotillo-automated-ingestion
+          deployment: ${{ steps.branch_deployment.outputs.name }}
+          job_name: ingestion_heartbeat_check
+          wait: "true"
+          interval: "10"
+
   # Fallback path, reached only when ENABLE_FAST_DEPLOYS is 'false' above. This
   # is the pre-PEX workflow unchanged, including the post-install hook in
   # dagster_cloud_post_install.sh that the PEX path replaces with its own
