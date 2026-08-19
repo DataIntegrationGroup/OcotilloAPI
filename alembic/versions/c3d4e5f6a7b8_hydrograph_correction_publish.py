@@ -24,6 +24,12 @@ narrowed by a range delete until one observation survives. The block reader
 matches observations inclusively on both bounds, so a zero-width block still
 covers its reading. Loosening a check constraint cannot invalidate existing
 rows.
+
+That check also gets its name spelled right on the way through. It was created
+as `check_transuder_block_time_order` -- no `c` -- and since Postgres cannot
+alter a check in place, the drop-and-recreate this migration already performs
+is the free moment to fix it. The old name is dropped and the new one created;
+no separate RENAME is needed.
 """
 
 import sqlalchemy as sa
@@ -35,9 +41,14 @@ down_revision = "b2c3d4e5f6a7"
 branch_labels = None
 depends_on = None
 
-# Spelled as it exists in the database, typo included -- renaming it here would
-# leave deployed environments with a constraint this migration cannot find.
-TIME_ORDER_CONSTRAINT = "check_transuder_block_time_order"
+# The name as created by the initial migration, misspelled. Drops and
+# downgrades have to use it verbatim: `op.drop_constraint` matches on the name
+# in the live database, so correcting the spelling anywhere it is used to
+# *find* the constraint would make the statement a no-op target and fail.
+LEGACY_TIME_ORDER_CONSTRAINT = "check_transuder_block_time_order"
+
+# What it is called from this migration forward.
+TIME_ORDER_CONSTRAINT = "check_transducer_block_time_order"
 
 
 def upgrade() -> None:
@@ -81,8 +92,11 @@ def upgrade() -> None:
         ),
     )
 
+    # Dropped under the old name, recreated under the new one: the rename and
+    # the relaxation are the same statement pair, so there is no window where
+    # the table is unconstrained beyond the one this already needs.
     op.drop_constraint(
-        TIME_ORDER_CONSTRAINT, "transducer_observation_block", type_="check"
+        LEGACY_TIME_ORDER_CONSTRAINT, "transducer_observation_block", type_="check"
     )
     op.create_check_constraint(
         TIME_ORDER_CONSTRAINT,
@@ -105,7 +119,7 @@ def downgrade() -> None:
         TIME_ORDER_CONSTRAINT, "transducer_observation_block", type_="check"
     )
     op.create_check_constraint(
-        TIME_ORDER_CONSTRAINT,
+        LEGACY_TIME_ORDER_CONSTRAINT,
         "transducer_observation_block",
         "end_datetime > start_datetime",
     )

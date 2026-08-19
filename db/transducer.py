@@ -114,7 +114,7 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
         # observations inclusively on both bounds, so a zero-width block still
         # covers its reading.
         CheckConstraint(
-            "end_datetime >= start_datetime", name="check_transuder_block_time_order"
+            "end_datetime >= start_datetime", name="check_transducer_block_time_order"
         ),
         Index(
             "ix_transducer_block_time",

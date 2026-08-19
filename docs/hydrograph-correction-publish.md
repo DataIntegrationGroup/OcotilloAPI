@@ -80,6 +80,13 @@ reading becomes zero-width, which the `end_datetime >= start_datetime` check
 constraint allows on purpose (migration `c3d4e5f6a7b8`) and which the inclusive
 reader still covers.
 
+That same migration renames the constraint from `check_transuder_...` to
+`check_transducer_...`. Postgres cannot alter a check in place, so the
+drop-and-recreate the relaxation already required was the free moment to fix
+the spelling. The downgrade puts the old name back, so anything reaching for
+the constraint by name has to pick the spelling that matches the revision it is
+running against.
+
 **This leaves the `transducer_daily_data` materialized view stale** until its
 next scheduled refresh. Nothing here refreshes it — a full refresh on every
 delete would cost far more than the correctness it buys between nightly runs.
