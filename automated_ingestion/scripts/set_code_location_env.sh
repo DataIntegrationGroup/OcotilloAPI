@@ -21,6 +21,7 @@
 #
 # Usage:
 #     ./automated_ingestion/scripts/set_code_location_env.sh storage
+#     ./automated_ingestion/scripts/set_code_location_env.sh credentials
 #     ./automated_ingestion/scripts/set_code_location_env.sh vendor
 #     ./automated_ingestion/scripts/set_code_location_env.sh database
 #
@@ -52,6 +53,16 @@ storage)
   echo "Raw-zone buckets (different value per scope):"
   set_var INGESTION_GCS_BUCKET ocotillo-ingestion-production --scope full
   set_var INGESTION_GCS_BUCKET ocotillo-ingestion-staging --scope branch
+  ;;
+credentials)
+  : "${INGESTION_GCP_CREDENTIALS_JSON:?export the service account key JSON, not a path}"
+  # Serverless runs outside GCP, so there is no metadata server and nothing
+  # supplies Application Default Credentials. Both the Cloud SQL connector and
+  # gcsfs need them. Mint the key with:
+  #   gcloud iam service-accounts keys create /dev/stdout \
+  #     --iam-account ocotillo-ingestion@waterdatainitiative-271000.iam.gserviceaccount.com
+  echo "GCP credentials (key JSON read from this shell, not echoed):"
+  set_var INGESTION_GCP_CREDENTIALS_JSON --from-local-env
   ;;
 vendor)
   : "${DIVERHUB_USERNAME:?export it first, see the header}"
@@ -89,7 +100,7 @@ database)
   fi
   ;;
 *)
-  echo "usage: $0 {storage|vendor|database}" >&2
+  echo "usage: $0 {storage|credentials|vendor|database}" >&2
   exit 64
   ;;
 esac

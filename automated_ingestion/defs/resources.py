@@ -39,6 +39,16 @@ class OcotilloDatabase(ConfigurableResource):
     @contextmanager
     def session(self) -> Iterator[object]:
         """Yield a SQLAlchemy session, rolled back and closed on the way out."""
+        # Credentials first: db.engine builds its Cloud SQL connector at import
+        # time, and the connector resolves Application Default Credentials right
+        # then. Serverless has none until they are written to disk, so doing this
+        # afterwards would be too late.
+        from automated_ingestion.shared.credentials import (
+            ensure_application_default_credentials,
+        )
+
+        ensure_application_default_credentials()
+
         # Imported lazily: importing db.engine builds an engine from the
         # environment at import time, which should happen when a run asks for a
         # session, not when Dagster loads the code location to list assets.
