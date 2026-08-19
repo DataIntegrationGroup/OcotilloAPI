@@ -70,13 +70,29 @@ distinction between a null and a missing field, which JSONL round-trips less
 reliably.
 """
 
-INITIAL_START = "2015-01-01T00:00:00+00:00"
+INITIAL_START = "2024-01-01T00:00:00+00:00"
 """Floor for a point that has never been ingested.
 
-A floor, never a backfill lever: moving it forward does not delete anything
-already landed, and moving it backward does not fetch history for a point whose
-cursor has advanced past it. Use a backfill job for that
-(``BACKFILL_STRATEGY.md`` section 2).
+Diver-HUB serves nothing before late 2024. Probing six points put their earliest
+reading at 2024-10-08 and 2024-11-10, which matches the deployments on these
+wells being installed 2024-11-25 -- the vendor project was populated then.
+
+The floor sits at 2024-01-01 rather than at the earliest observed reading,
+because only six of the thirty-eight points were probed and a well with slightly
+earlier data should not be silently truncated. Nine months of margin costs one
+extra empty window; guessing too late loses real readings.
+
+It was 2015-01-01, chosen before anyone knew what the vendor retains. At a
+365-day span that made a first run walk about twelve windows per well, ten of
+them guaranteed empty, against an endpoint that answers 500 when pushed.
+
+Still a floor, never a backfill lever: lowering it will not re-fetch history for
+a series whose watermark has advanced past it (`shared/watermark.py`), and there
+is no history before 2024 to fetch.
+
+**The record has a gap.** The fourteen wells carrying AMPAPI data stop in August
+2022 and the vendor starts in late 2024, so roughly twenty-seven months are
+missing and cannot be recovered from this source.
 """
 
 SOURCE = register(

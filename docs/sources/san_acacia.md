@@ -107,6 +107,38 @@ lets it read a window without decompressing and parsing every record.
 Objects written before this change are `.jsonl.gz`. dlt reads both, so they do
 not need migrating, but a replay spanning that boundary reads two formats.
 
+
+## Retention and the gap in the record
+
+Diver-HUB serves nothing before late 2024. Probing six points put their earliest
+reading at **2024-10-08** and **2024-11-10** — matching the deployments on these
+wells, installed **2024-11-25**. The vendor project was populated then.
+
+Ocotillo already holds AMPAPI transducer data for fourteen of these wells,
+ending **2022-08-03**.
+
+**So the two sources never overlap, and roughly twenty-seven months are missing
+from the record.** That gap cannot be filled from Diver-HUB. If the divers were
+logging through it, the readings are somewhere else.
+
+Two consequences:
+
+- **The datum comparison is impossible.** Comparing the vendor's readings
+  against Ocotillo's existing values at matching timestamps was the plan for
+  confirming `reference=3` against real data. There are no matching timestamps.
+  Attempted on SO-0125 (Feb 2022) and SO-0245 (Jul–Aug 2022); the vendor
+  returned zero rows for both windows at every reference. The case for
+  `reference=3` therefore rests on the probe evidence — the elevation
+  cross-check and the 1.49 ft stickup — not on agreement with what is stored.
+- **No datum mixing can occur on a normal run.** Each series resumes from its
+  own watermark, and the vendor has nothing to return before 2024, so the two
+  bodies of data stay separate by construction rather than by care.
+
+`INITIAL_START` is 2024-01-01 as a result: nine months of margin below the
+earliest observed reading, since only six of thirty-eight points were probed.
+That takes a first run from twelve windows per well to three — 228 requests
+across all thirty-eight instead of 912.
+
 ## Field mapping
 
 ### Water levels — the ingested series
