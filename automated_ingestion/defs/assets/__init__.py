@@ -27,6 +27,7 @@ from automated_ingestion.defs.assets.heartbeat import ingestion_heartbeat
 from automated_ingestion.sources.san_acacia.ingest import (
     raw_san_acacia_locations,
     raw_san_acacia_readings,
+    san_acacia_observations,
 )
 
 
@@ -37,6 +38,7 @@ def all_assets() -> list[AssetsDefinition]:
         database_connectivity,
         raw_san_acacia_locations,
         raw_san_acacia_readings,
+        san_acacia_observations,
     ]
 
 
