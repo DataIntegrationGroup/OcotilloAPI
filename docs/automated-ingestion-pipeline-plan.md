@@ -325,6 +325,20 @@ Built. Migration `a1b2c3d4e5f6`, loader in `automated_ingestion/ocotillo/loader.
 
 ⬜ Run the duplicate report against production and staging before applying the migration. The local development database was clean — 0 duplicate groups in 88,666 rows — which is encouraging and not evidence about production.
 
+### Existing San Acacia data — measured 2026-08-19
+
+Ocotillo already holds transducer observations for **14 of the 38 wells**: 542,161 rows from the AMPAPI transfer, running 2016-07-08 to **2022-08-03**. They carry a real QC status, so `data_maturity` backfilled them as `approved`.
+
+Consequences, all of which the earlier plan assumed away:
+
+- **The watermark starts at 2022-08-03 for those 14**, not the 2015 floor, so a normal run fetches a four-year gap rather than a decade. The other 24 wells do start at the floor.
+- **A backfill would have overwritten them.** The upsert's `DO UPDATE` was written for vendor corrections to our own provisional readings; against approved AMPAPI history it would have replaced 542,161 reviewed values with vendor numbers *and* downgraded them to provisional. `load_observations` now refuses to touch an `approved` row unless `overwrite_approved=True` is passed deliberately.
+- **A datum comparison is still owed.** Those rows came from AMPAPI under whatever convention that pipeline used; ours are Diver-HUB ground-surface centimetres converted to feet. Before any window overlapping 2016–2022 is loaded, a few coinciding timestamps should be compared. Same failure shape as the `WaterLevelReference` question: plausible numbers, wrong meaning.
+
+Rows with `NULL` maturity still update. Unknown is not approved, and treating it as such would freeze the 394,086 legacy rows that have no QC record against every future correction.
+
+**The wider table**, for context: 2,180,989 approved, 7,351 provisional, 394,086 NULL. The NULL cohort is 176 deployments on a single parameter spanning 2016 to February 2025 with no AMPAPI provenance at all — a separate network, and **none of the 38 San Acacia wells are in it**. Worth identifying independently of this work.
+
 ### 3.5 — Watermark from Postgres
 
 Built. `automated_ingestion/shared/watermark.py`, seven tests.

@@ -190,4 +190,82 @@ def test_maturity_must_be_a_lexicon_term(loader_target):
         session.rollback()
 
 
+def test_approved_rows_are_not_overwritten(loader_target):
+    # 14 of the 38 San Acacia wells already hold 542,161 approved observations
+    # from the AMPAPI transfer. A backfill over that window must not replace
+    # reviewed values with a vendor's numbers.
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(
+            session,
+            _records(1, value=10.0),
+            deployment_id,
+            parameter_id,
+            "draft",
+            data_maturity="approved",
+        )
+        load_observations(
+            session, _records(1, value=99.0), deployment_id, parameter_id, "draft"
+        )
+        row = session.execute(
+            select(
+                TransducerObservation.value, TransducerObservation.data_maturity
+            ).where(TransducerObservation.deployment_id == deployment_id)
+        ).one()
+        assert (row.value, row.data_maturity) == (10.0, "approved")
+
+
+def test_approved_rows_can_be_overwritten_deliberately(loader_target):
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(
+            session,
+            _records(1, value=10.0),
+            deployment_id,
+            parameter_id,
+            "draft",
+            data_maturity="approved",
+        )
+        load_observations(
+            session,
+            _records(1, value=99.0),
+            deployment_id,
+            parameter_id,
+            "draft",
+            overwrite_approved=True,
+        )
+        value = session.scalar(
+            select(TransducerObservation.value).where(
+                TransducerObservation.deployment_id == deployment_id
+            )
+        )
+        assert value == 99.0
+
+
+def test_rows_with_no_recorded_maturity_still_update(loader_target):
+    # 394,086 legacy rows have NULL maturity. Unknown is not approved, and
+    # treating it as such would freeze them against every future correction.
+    deployment_id, parameter_id = loader_target
+    with session_ctx() as session:
+        load_observations(
+            session, _records(1, value=10.0), deployment_id, parameter_id, "draft"
+        )
+        session.execute(
+            TransducerObservation.__table__.update()
+            .where(TransducerObservation.deployment_id == deployment_id)
+            .values(data_maturity=None)
+        )
+        session.commit()
+
+        load_observations(
+            session, _records(1, value=99.0), deployment_id, parameter_id, "draft"
+        )
+        value = session.scalar(
+            select(TransducerObservation.value).where(
+                TransducerObservation.deployment_id == deployment_id
+            )
+        )
+        assert value == 99.0
+
+
 # ============= EOF =============================================
