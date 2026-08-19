@@ -30,8 +30,13 @@ locals {
 resource "google_storage_bucket" "ingestion_raw" {
   for_each = local.environments
 
-  name     = "ocotillo-ingestion-${each.key}"
-  project  = var.project_id
+  name    = "ocotillo-ingestion-${each.key}"
+  project = var.project_id
+
+  # Bucket location is immutable: changing it replaces the bucket. That is
+  # tolerable only while the raw zone is empty. Once a backfill has landed,
+  # moving regions means copying objects across and re-pointing the pipeline,
+  # not editing this line.
   location = var.bucket_location
 
   # The raw zone is the replay source for Mode B backfill: reprocessing a
