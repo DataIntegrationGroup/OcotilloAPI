@@ -37,20 +37,38 @@ concurrency:
   group: dagster-smoke-${{ github.event.inputs.deployment }}
   cancel-in-progress: false
 
+env:
+  DAGSTER_CLOUD_URL: https://${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}.dagster.cloud
+
 jobs:
   heartbeat:
     runs-on: ubuntu-latest
     steps:
-      # wait: true makes the action poll the run and fail the step if the run
-      # fails, so the workflow result is the materialization result rather than
-      # just "a run was launched".
-      - name: Materialize ingestion_heartbeat
-        uses: dagster-io/dagster-cloud-action/actions/launch_job@v1.13.18
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
         with:
-          organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
-          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-          location_name: ocotillo-automated-ingestion
-          deployment: ${{ github.event.inputs.deployment }}
-          job_name: ingestion_heartbeat_check
-          wait: "true"
-          interval: "10"
+          version: "latest"
+
+      # The vendor's `launch_job` action is not used here, for the reason spelled
+      # out in CD_dagster_branch.yml: neither it nor `dagster-cloud job launch`
+      # exits nonzero on a failed run, so `wait: true` waits without gating.
+      # Requiring the success line is what makes this workflow's result mean
+      # something.
+      - name: Materialize ingestion_heartbeat
+        env:
+          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          DEPLOYMENT: ${{ github.event.inputs.deployment }}
+        run: |
+          set -uo pipefail
+          out=$(uvx --from "dagster-cloud-cli==1.13.18" \
+            dagster-cloud job launch \
+            --url "$DAGSTER_CLOUD_URL" \
+            --deployment "$DEPLOYMENT" \
+            --location ocotillo-automated-ingestion \
+            --job ingestion_heartbeat_check \
+            --wait --interval 10 2>&1 | tee /dev/stderr)
+          case "$out" in
+            *"finished successfully"*) ;;
+            *) echo "::error title=Heartbeat failed::ingestion_heartbeat did not finish successfully on $DEPLOYMENT"
+               exit 1 ;;
+          esac

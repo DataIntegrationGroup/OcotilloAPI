@@ -182,20 +182,39 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "Branch deployment: $name"
 
-      # wait: true makes the action poll the run and fail this step if the run
-      # fails, so a green check means the asset materialized rather than just
-      # that a run was launched.
+      # Deliberately not the vendor's `launch_job` action, and the success
+      # assertion is deliberately our own.
+      #
+      # `launch_job` documents `wait: true` as "the action will wait for the run
+      # to finish and fail if the run fails". It does wait, but it cannot fail:
+      # its run.sh captures the CLI output in a command substitution and never
+      # checks the exit code, deciding success by whether it can regex a run id
+      # out of the text. Underneath, `dagster-cloud job launch --wait` reports a
+      # failed run with `ui.error(...)` -- and `ui.error` only *returns* an
+      # exception rather than raising it, so the CLI exits 0 too. A failed
+      # materialization would have produced a green check on both counts.
+      #
+      # So call the CLI directly and require the success line. Matching on output
+      # is not lovely, but it is the only signal either layer actually emits.
       - name: Materialize ingestion_heartbeat
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: dagster-io/dagster-cloud-action/actions/launch_job@v1.13.18
-        with:
-          organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
-          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-          location_name: ocotillo-automated-ingestion
-          deployment: ${{ steps.branch_deployment.outputs.name }}
-          job_name: ingestion_heartbeat_check
-          wait: "true"
-          interval: "10"
+        env:
+          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          DEPLOYMENT: ${{ steps.branch_deployment.outputs.name }}
+        run: |
+          set -uo pipefail
+          out=$(uvx --from "dagster-cloud-cli==1.13.18" \
+            dagster-cloud job launch \
+            --url "$DAGSTER_CLOUD_URL" \
+            --deployment "$DEPLOYMENT" \
+            --location ocotillo-automated-ingestion \
+            --job ingestion_heartbeat_check \
+            --wait --interval 10 2>&1 | tee /dev/stderr)
+          case "$out" in
+            *"finished successfully"*) ;;
+            *) echo "::error title=Heartbeat failed::ingestion_heartbeat did not finish successfully on $DEPLOYMENT"
+               exit 1 ;;
+          esac
 
   # Fallback path, reached only when ENABLE_FAST_DEPLOYS is 'false' above. This
   # is the pre-PEX workflow unchanged, including the post-install hook in
