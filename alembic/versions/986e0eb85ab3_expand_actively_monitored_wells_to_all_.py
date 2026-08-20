@@ -11,14 +11,15 @@ Revises: c3d4e5f6a7b8
 Create Date: 2026-08-20 10:55:25.697907
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
-revision: str = '986e0eb85ab3'
-down_revision: Union[str, Sequence[str], None] = 'c3d4e5f6a7b8'
+revision: str = "986e0eb85ab3"
+down_revision: Union[str, Sequence[str], None] = "c3d4e5f6a7b8"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,7 +42,8 @@ def _drop_view_or_materialized_view(view_name: str) -> None:
 
 def _create_actively_monitored_wells_view(all_groups: bool) -> str:
     group_filter = (
-        "" if all_groups
+        ""
+        if all_groups
         else "lower(trim(g.name)) = 'water level network'\n          AND "
     )
     return f"""
@@ -84,7 +86,8 @@ def _create_actively_monitored_wells_view(all_groups: bool) -> str:
 
 def _create_internal_actively_monitored_wells_view(all_groups: bool) -> str:
     group_filter = (
-        "" if all_groups
+        ""
+        if all_groups
         else "lower(trim(g.name)) = 'water level network'\n          AND "
     )
     return f"""
