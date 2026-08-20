@@ -6,7 +6,7 @@ This directory contains automated tests (unit, integration, transfer, and API be
 
 - `tests/unit/`: focused unit tests
 - `tests/integration/`: cross-component tests
-- `tests/transfers/`: transfer-focused tests
+- `tests/transfers/`: transfer-focused tests for the deprecated `transfers/` scripts; excluded from CI (see `tests/transfers/README.md`)
 - `tests/features/`: BDD-style feature tests
 
 ## Running tests

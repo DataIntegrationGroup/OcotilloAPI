@@ -2,9 +2,35 @@
 
 This directory contains legacy-to-target ETL transfer logic.
 
+## Status: deprecated
+
+Both legacy migration drivers are frozen. Do not add new migrations to either:
+
+- `transfers/transfer.py` -- the NM_Aquifer (AMPAPI, SQL Server) driver.
+- `transfers/transfer_geothermal.py` -- the NM_Wells (geothermal) driver, plus
+  its `nmw_mirror_transfer.py`, `nmw_sql_dump.py`, and `export_nmw_csvs.py`
+  supporting modules.
+
+Their top-level entry points raise `DeprecationWarning`. They are kept runnable
+because the tables they populate (`NMA_*`, `NMW_*`) are still read by live API
+routes, so backfills and re-runs must remain possible -- but they receive no new
+features.
+
+Consequently their tests live in `tests/transfers/` and do **not** gate CI
+(`.github/workflows/tests.yml` runs pytest with `--ignore=tests/transfers`), and
+`transfers/*` is omitted from the coverage total in `pyproject.toml`. Run them by
+hand with `uv run pytest tests/transfers`.
+
+Still live and *not* deprecated:
+
+- `services/scoped_transfer.py` and the `oco scoped-transfer` command, which
+  import the individual NM_Aquifer transferers directly.
+- `transfers/seed_geothermal.py`, a dev/test seeder that generates fake data
+  rather than reading a legacy source.
+
 ## Main orchestration
 
-- `transfers/transfer.py`
+- `transfers/transfer.py` (deprecated)
 
 ## Important supporting modules
 

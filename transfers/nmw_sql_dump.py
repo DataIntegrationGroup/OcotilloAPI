@@ -13,7 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Parse a SQL Server data-dump ``.sql`` file into per-table CSVs.
+"""DEPRECATED: parse a SQL Server data-dump ``.sql`` file into per-table CSVs.
+
+Part of the frozen NM_Wells migration path; see the deprecation note in
+``transfers/transfer_geothermal.py``. Kept runnable for re-runs of the NM_Wells
+dump load, but it gets no new features and its tests no longer gate CI.
 
 ``INSERT [dbo].[<table>] (<cols>) VALUES (<vals>)[, (<vals>) ...]`` statements
 (SSMS "Generate Scripts -> data" / bcp INSERT mode) are split with ``sqlparse``
