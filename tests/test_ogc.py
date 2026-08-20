@@ -559,6 +559,55 @@ def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
         session.commit()
 
 
+def test_ogc_actively_monitored_wells_includes_wells_from_other_groups(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.commit()
+
+        group = Group(
+            name="Test Other Group",
+            group_type="Monitoring Plan",
+            release_status="public",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        status_history = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add(status_history)
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT group_id, group_name, group_type "
+                "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert row.group_id == group.id
+        assert row.group_name == "Test Other Group"
+        assert row.group_type == "Monitoring Plan"
+
+        session.delete(status_history)
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
 def test_ogc_collections(ogc_client):
     response = ogc_client.get("/ogcapi/collections")
     assert response.status_code == 200
