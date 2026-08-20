@@ -23,7 +23,7 @@ decisions to ``domain.hydrograph``, persist the result. See
 
 from datetime import datetime
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.orm import Session
 from starlette.status import (
     HTTP_404_NOT_FOUND,
@@ -31,7 +31,7 @@ from starlette.status import (
     HTTP_422_UNPROCESSABLE_CONTENT,
 )
 
-from db import Parameter, Thing
+from db import Thing
 from db.deployment import Deployment
 from db.transducer import TransducerObservation, TransducerObservationBlock
 from domain.hydrograph import (
@@ -90,6 +90,32 @@ def _enum_value(value):
     return getattr(value, "value", value)
 
 
+def _lock_series(session: Session, thing_id: int, parameter_id: int) -> None:
+    """
+    Serialize writers against one well's series for the rest of the transaction.
+
+    Both the publish overlap check and the delete reconciliation read state,
+    decide, and then write -- and neither decision survives a concurrent writer.
+    Two publishes with different timestamps but overlapping spans each see no
+    existing block and both commit, because the unique constraints only catch
+    identical spans and identical readings; the inclusive reader then has two
+    blocks claiming the same instants. Two deletes each compute survivors from
+    a snapshot the other is invalidating, and the later update can widen a block
+    back over readings the earlier one removed.
+
+    An advisory lock rather than row locks: on publish there is no row to lock
+    yet -- the conflict is with a block that does not exist -- so the thing being
+    guarded is the (well, parameter) series itself, not any row. Transaction
+    scoped, so it releases on commit or rollback with no unlock path to forget.
+    Publish and delete take the same key in the same order, so they serialize
+    against each other and cannot deadlock against one another.
+    """
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:thing_id, :parameter_id)"),
+        {"thing_id": thing_id, "parameter_id": parameter_id},
+    )
+
+
 def _deployment_ids_for_thing(session: Session, thing_id: int) -> list[int]:
     return list(
         session.scalars(
@@ -128,6 +154,7 @@ def _overlapping_blocks(
 def publish_transducer_block(
     session: Session,
     payload,
+    parameter_id: int,
     user=None,
     replace_overlapping: bool = False,
 ) -> PublishedTransducerBlockResponse:
@@ -136,6 +163,10 @@ def publish_transducer_block(
 
     The block's span is derived from the readings -- a client-supplied span
     wider than the data would attach unrelated readings to the block.
+
+    ``parameter_id`` is the parameter this route is scoped to, resolved by the
+    caller; the payload's own ``parameter_id`` is checked against it rather than
+    trusted.
     """
     thing = session.get(Thing, payload.thing_id)
     if thing is None:
@@ -143,12 +174,19 @@ def publish_transducer_block(
             "thing_id", payload.thing_id, f"Thing {payload.thing_id} not found"
         )
 
-    parameter = session.get(Parameter, payload.parameter_id)
-    if parameter is None:
-        raise _not_found(
-            "parameter_id",
+    # The read and delete routes on this path resolve the groundwater level
+    # parameter themselves, so a block published under any other parameter would
+    # be invisible to both -- a 201 for data that can then never be listed or
+    # removed here. The field stays in the request because the contract has the
+    # client state it explicitly rather than inherit a server-side default; it
+    # is validated, not obeyed.
+    if payload.parameter_id != parameter_id:
+        raise _unprocessable(
+            ["body", "parameter_id"],
             payload.parameter_id,
-            f"Parameter {payload.parameter_id} not found",
+            f"This route publishes parameter {parameter_id} only; the read and "
+            f"delete routes on this path would not see parameter "
+            f"{payload.parameter_id}",
         )
 
     span_start, span_end = derive_block_span(
@@ -156,6 +194,10 @@ def publish_transducer_block(
     )
 
     deployment_id = _resolve_deployment(session, payload, span_start, span_end)
+
+    # Everything from here reads state and then writes based on it, so no other
+    # writer may touch this series until the transaction ends.
+    _lock_series(session, payload.thing_id, payload.parameter_id)
 
     existing = _overlapping_blocks(
         session, payload.thing_id, payload.parameter_id, span_start, span_end
@@ -373,6 +415,8 @@ def delete_transducer_observations(
         validate_delete_range(start_time, end_time)
     except HydrographError as err:
         raise _unprocessable(["query", "end_time"], end_time.isoformat(), str(err))
+
+    _lock_series(session, thing_id, parameter_id)
 
     deployment_ids = _deployment_ids_for_thing(session, thing_id)
     if not deployment_ids:

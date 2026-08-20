@@ -20,14 +20,15 @@ Both are gated on `AMP.Staging`, which nobody holds in Authentik yet -- these
 tests override that dependency, so they cover the behaviour, not the grant.
 """
 
+import threading
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core.dependencies import amp_staging_function, amp_viewer_function
 from db import Deployment, Sensor, Thing, TransducerObservation
-from db.engine import session_ctx
+from db.engine import engine, session_ctx
 from db.transducer import TransducerObservationBlock
 from main import app
 from tests import client, get_parameter_id, override_authentication
@@ -464,6 +465,17 @@ def test_an_unknown_sort_field_is_rejected_rather_than_ignored(published_well):
     assert response.status_code == 422
 
 
+def test_an_unknown_order_is_rejected_rather_than_silently_descending(published_well):
+    # `ascending` is the obvious near-miss for `asc`, and it used to return 200
+    # with the rows in exactly the opposite order to the one asked for.
+    thing_id, _ = published_well
+
+    response = client.get(READ_URL, params={"thing_id": thing_id, "order": "ascending"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", "order"]
+
+
 # --------------------------------------------------------------------------
 # deployment resolution at the service boundary
 #
@@ -491,12 +503,28 @@ def test_unknown_deployment_is_a_404(published_well):
     assert response.json()["detail"][0]["loc"] == ["body", "deployment_id"]
 
 
-def test_unknown_parameter_is_a_404(published_well):
+def test_a_parameter_this_route_does_not_serve_is_rejected(published_well):
+    # A block published under another parameter would be invisible to the read
+    # and delete routes on this path, which resolve groundwater level
+    # themselves -- a 201 for data that could then never be listed or removed
+    # here.
+    thing_id, _ = published_well
+    other_parameter_id = get_parameter_id("pH", "Field Parameter")
+
+    response = client.post(
+        PUBLISH_URL, json=_payload(thing_id, parameter_id=other_parameter_id)
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "parameter_id"]
+
+
+def test_an_unknown_parameter_is_rejected_too(published_well):
     thing_id, _ = published_well
 
     response = client.post(PUBLISH_URL, json=_payload(thing_id, parameter_id=-1))
 
-    assert response.status_code == 404
+    assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", "parameter_id"]
 
 
@@ -608,3 +636,40 @@ def test_a_review_status_outside_the_lexicon_is_rejected(published_well):
         error["loc"][:2] == ["body", "review_status"]
         for error in response.json()["detail"]
     )
+
+
+def test_publish_waits_for_a_concurrent_writer_on_the_same_series(published_well):
+    """
+    The overlap check reads state and then writes based on it, so it is only
+    correct if no other writer can slip between the two. Hold the series lock
+    from another connection and the publish must block rather than proceed on a
+    snapshot that is already stale.
+    """
+    thing_id, _ = published_well
+    parameter_id = _groundwater_level_parameter_id()
+    result = {}
+
+    def publish():
+        result["response"] = client.post(PUBLISH_URL, json=_payload(thing_id))
+
+    blocker = engine.connect()
+    try:
+        blocker.execute(
+            text("SELECT pg_advisory_xact_lock(:thing_id, :parameter_id)"),
+            {"thing_id": thing_id, "parameter_id": parameter_id},
+        )
+
+        worker = threading.Thread(target=publish, daemon=True)
+        worker.start()
+        worker.join(timeout=3)
+        assert worker.is_alive(), "publish did not wait for the series lock"
+
+        # Releasing the transaction releases the lock.
+        blocker.rollback()
+
+        worker.join(timeout=30)
+        assert not worker.is_alive(), "publish never completed after the lock lifted"
+    finally:
+        blocker.close()
+
+    assert result["response"].status_code == 201, result["response"].text

@@ -201,6 +201,8 @@ _TRANSDUCER_SORT_COLUMNS = {
     "id": TransducerObservation.id,
 }
 
+_TRANSDUCER_SORT_ORDERS = {"asc", "desc"}
+
 
 def _sorted_transducer_query(query, sort: str | None, order: str | None):
     """
@@ -227,12 +229,31 @@ def _sorted_transducer_query(query, sort: str | None, order: str | None):
             ],
         )
 
+    normalized_order = (order or "desc").lower()
+    if normalized_order not in _TRANSDUCER_SORT_ORDERS:
+        # Rejected for the same reason an unknown sort field is: anything other
+        # than `asc` used to fall through to descending, so `order=ascending`
+        # returned 200 with the opposite of what was asked for.
+        raise PydanticStyleException(
+            status_code=HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=[
+                {
+                    "loc": ["query", "order"],
+                    "msg": (
+                        f"Cannot order by '{order}'. Valid values: "
+                        f"{', '.join(sorted(_TRANSDUCER_SORT_ORDERS))}"
+                    ),
+                    "type": "value_error",
+                    "input": order,
+                }
+            ],
+        )
+
     column = _TRANSDUCER_SORT_COLUMNS.get(
         sort or "observation_datetime", TransducerObservation.observation_datetime
     )
-    ascending = (order or "desc").lower() == "asc"
 
-    return query.order_by(asc(column) if ascending else desc(column))
+    return query.order_by(asc(column) if normalized_order == "asc" else desc(column))
 
 
 def get_observations(

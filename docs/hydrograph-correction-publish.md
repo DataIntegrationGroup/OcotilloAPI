@@ -46,6 +46,30 @@ transaction.
 - **Per-reading `note`** is set only where a correction moved the value, so NULL
   means "as measured" rather than "unknown".
 
+- **`parameter_id` is validated, not obeyed.** The client states it explicitly,
+  per the contract, but the route checks it against the parameter the route is
+  scoped to. The read and delete routes on this path resolve groundwater level
+  themselves, so a block accepted under any other parameter would be a 201 for
+  data neither of them could ever list or remove.
+
+### Concurrency
+
+Both write paths read state, decide, and then write based on what they read, so
+each takes a transaction-scoped advisory lock on `(thing_id, parameter_id)`
+first — `pg_advisory_xact_lock`.
+
+Without it, two publishes with different timestamps but overlapping spans each
+see no existing block and both commit: the unique constraints only catch
+identical spans and identical readings, and the inclusive reader then has two
+blocks claiming the same instants. Two range deletes each compute survivors from
+a snapshot the other is invalidating, and the later update can widen a block back
+over readings the earlier one removed.
+
+An advisory lock rather than row locks because on publish there is no row to
+lock — the conflict is with a block that does not exist yet — so what needs
+guarding is the series, not a row. Both paths take the same key, so they
+serialize against each other and cannot deadlock against one another.
+
 ### Overlap
 
 An existing block for the same well and parameter whose span shares any instant
@@ -101,8 +125,11 @@ delete would cost far more than the correctness it buys between nightly runs.
   keyword-only now.
 - The read route honours `sort` (`observation_datetime`, `value`, `id`) and
   `order` (`asc`/`desc`), defaulting to newest first. An unrecognised sort field
-  is a 422 rather than being ignored — silently returning a differently ordered
-  page reads as the data changing, not as a bad request.
+  or order is a 422 rather than being ignored — silently returning a differently
+  ordered page reads as the data changing, not as a bad request. `order` matters
+  particularly here: anything other than `asc` used to fall through to
+  descending, so the near-miss `order=ascending` returned 200 with the rows in
+  exactly the opposite order to the one asked for.
 
 ## Not built
 

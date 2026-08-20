@@ -137,7 +137,11 @@ def publish_transducer_groundwater_level_block(
     `docs/hydrograph-correction-publish.md`.
     """
     return publish_transducer_block(
-        session, payload, user=user, replace_overlapping=replace_overlapping
+        session,
+        payload,
+        parameter_id=_groundwater_level_parameter_id(session),
+        user=user,
+        replace_overlapping=replace_overlapping,
     )
 
 
