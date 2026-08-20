@@ -164,6 +164,12 @@ Authentik groups granted.
 **Role families are orthogonal**: general `Admin` confers nothing in the AMP or
 Lexicon families. Only tiers *within* a family nest.
 
+**`AMP.Staging`** is a standalone group, not a fourth AMP tier — `AMPAdmin`
+does not satisfy it. It gates the hydrograph corrector's publish and range-delete
+routes while the workbench is being validated against real logger files, so they
+ship dark. Read **`docs/hydrograph-correction-publish.md`** before changing
+them.
+
 **Authorization is opt-in per endpoint** — a `user: <role>_dependency` parameter
 in the signature, not a router-level `dependencies=[...]`. Omitting it produces a
 fully public endpoint with no error. `tests/test_authorization.py` holds the
