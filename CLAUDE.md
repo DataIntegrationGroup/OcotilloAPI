@@ -77,9 +77,15 @@ POSTGRES_PASSWORD=<password>
 ```
 
 ### Data Migration
+Both legacy transfer drivers are **deprecated** (see `transfers/README.md`); they
+raise `DeprecationWarning` and take no new migrations, but stay runnable for
+backfills.
 ```bash
-# Transfer data from legacy AMPAPI (NM_Aquifer) to new schema
+# NM_Aquifer (AMPAPI) -> new schema. Deprecated.
 python -m transfers.transfer
+
+# NM_Wells (geothermal) Phase-1 staging mirror. Deprecated.
+python -m transfers.transfer_geothermal
 ```
 
 ## Architecture
@@ -290,6 +296,24 @@ GitHub Actions workflows (`.github/workflows/`):
 - **release.yml**: Sentry release tracking
 
 ## Legacy System Migration
+
+**Deprecated.** Both legacy drivers are frozen -- `transfers/transfer.py`
+(NM_Aquifer/AMPAPI) and `transfers/transfer_geothermal.py` (NM_Wells, with
+`nmw_mirror_transfer.py`, `nmw_sql_dump.py`, `export_nmw_csvs.py`). Entry points
+raise `DeprecationWarning`. Do not add new migrations to either. They remain
+runnable because live API routes still read the `NMA_*` and `NMW_*` tables.
+Read **`transfers/README.md`** before touching this layer.
+
+Their tests live in `tests/transfers/` and **do not gate CI** --
+`.github/workflows/tests.yml` runs pytest with `--ignore=tests/transfers`, and
+`transfers/*` is omitted from coverage in `pyproject.toml`. Run them by hand:
+`uv run pytest tests/transfers`. Tests for the `NMA_*`/`NMW_*` ORM models
+(`db/nma_legacy.py`, `db/nmw_legacy.py`) stay in `tests/` proper and still gate
+CI, since live routes depend on those models.
+
+Still live, *not* deprecated: `services/scoped_transfer.py` and the
+`oco scoped-transfer` command, which import the individual NM_Aquifer
+transferers directly.
 
 **Source**: AMPAPI (SQL Server, `NM_Aquifer` schema)
 **Target**: OcotilloAPI (PostgreSQL + PostGIS)

@@ -100,6 +100,9 @@ jobs:
       - name: Run tests
         # --cov-fail-under is set here rather than in pyproject so that running a
         # single test file locally does not fail on the whole-project total.
+        # --ignore=tests/transfers excludes the deprecated NM_Aquifer / NM_Wells
+        # transfer tests; those scripts are frozen and run by hand against SQL
+        # Server, so they must not gate a pull request. See transfers/README.md.
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under="$COVERAGE_FAIL_UNDER" --junitxml=junit.xml --ignore=tests/transfers
 
       - name: Write coverage summary
