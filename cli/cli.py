@@ -1359,6 +1359,40 @@ def import_project_area_boundaries_command(
         )
 
 
+@cli.command("load-critical-minerals-workbook")
+def load_critical_minerals_workbook_command(
+    file_path: str = typer.Option(
+        ...,
+        "--file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Path to the McLemoreMasterChem .xlsx critical-minerals workbook.",
+    ),
+):
+    """
+    mirror the McLemore critical-minerals workbook into the CM_legacy staging
+    tables. Every sheet is copied unchanged -- including the ChemicalData, GIS
+    and QAQC sheets, which disagree with each other -- and each sheet's rows
+    replace whatever was loaded for it before. Values are not parsed; see
+    docs/critical-minerals-legacy-mirror.md.
+    """
+    from db.engine import session_ctx
+    from services.cm_legacy_mirror import load_cm_workbook
+
+    with session_ctx() as session:
+        result = load_cm_workbook(file_path, session)
+        session.commit()
+
+    typer.echo(f"Mirrored {result.total_rows} row(s) from {file_path}:")
+    width = max(len(sheet) for sheet in result.rows_by_sheet)
+    for sheet, count in result.rows_by_sheet.items():
+        typer.echo(f"  {sheet:<{width}} | {count:>6}")
+    for warning in result.warnings:
+        typer.echo(f"warning: {warning}", err=True)
+
+
 if __name__ == "__main__":
     cli()
 

@@ -315,6 +315,23 @@ Still live, *not* deprecated: `services/scoped_transfer.py` and the
 `oco scoped-transfer` command, which import the individual NM_Aquifer
 transferers directly.
 
+### Critical minerals mirror (`CM_legacy`)
+
+`db/cm_legacy.py` + `services/cm_legacy_mirror.py` mirror the McLemore Earth MRI
+critical-minerals chemistry workbook into `CM_*` tables
+(`oco load-critical-minerals-workbook --file ...`). Phase 1 staging only; no
+transform into the Ocotillo model yet. Every column is a `String` because the
+workbook stores censored analyte values as text (`<0.1`) and carries `#VALUE!`
+errors.
+
+The workbook's `ChemicalData`, `GIS` and `QAQC` sheets share a column set and
+mirror into one table behind a `source_sheet` discriminator. **`GIS` is a stale
+fork of `ChemicalData`, not a location-enriched copy** — each sheet holds values
+the other lacks, so reading one `source_sheet` alone silently drops data.
+Reconciliation is deliberately deferred. Read
+**`docs/critical-minerals-legacy-mirror.md`** before querying or extending this
+layer.
+
 **Source**: AMPAPI (SQL Server, `NM_Aquifer` schema)
 **Target**: OcotilloAPI (PostgreSQL + PostGIS)
 
