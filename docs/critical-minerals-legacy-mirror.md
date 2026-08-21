@@ -139,7 +139,7 @@ loadable without dropping cells. Parsing value-plus-qualifier (cross-checked
 against `CM_DetectionLimits`), casting dates, and reprojecting coordinates are
 all transform work.
 
-Cell rendering rules (`_cell_to_text`): dates become ISO-8601 rather than Excel
+Cell rendering rules (`cell_to_text`): dates become ISO-8601 rather than Excel
 serials, numbers keep Python's round-trippable `repr`, blank and whitespace-only
 cells become NULL rather than `''`, and everything else passes through
 stripped.
