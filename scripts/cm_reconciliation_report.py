@@ -116,14 +116,30 @@ class Sheet:
 
 
 def read_sheet(workbook: Any, name: str, columns: dict[str, str]) -> Sheet:
+    if name not in workbook.sheetnames:
+        raise ValueError(f"workbook is missing the {name!r} sheet")
+
     header_row_number, first_data_row_number = CHEMISTRY_SHEET_LAYOUT[name]
     rows = list(workbook[name].iter_rows(values_only=True))
+    if len(rows) < header_row_number:
+        raise ValueError(f"sheet {name!r} has no header row {header_row_number}")
+
     header = rows[header_row_number - 1]
-    index_to_column = {
-        index: columns[normalize_header(cell)]
-        for index, cell in enumerate(header)
-        if cell is not None and normalize_header(cell) in columns
-    }
+    index_to_column: dict[int, str] = {}
+    unknown: list[str] = []
+    for index, cell in enumerate(header):
+        text = cell_to_text(cell)
+        if text is None:
+            continue
+        column = columns.get(normalize_header(text))
+        if column is None:
+            unknown.append(text)
+        else:
+            index_to_column[index] = column
+
+    if unknown:
+        raise ValueError(f"sheet {name!r} has unmapped header(s): {unknown[:10]}")
+
     records: list[dict[str, str | None]] = []
     row_numbers: list[int] = []
     for offset, row in enumerate(rows[first_data_row_number - 1 :]):
