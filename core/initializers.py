@@ -45,7 +45,15 @@ def init_parameter(path: str = None) -> None:
         default_parameter = json.load(f)
 
     with session_ctx() as session:
+        # A parameter is identified by name and matrix, so skip the ones already
+        # stored instead of letting every re-run trip the unique constraint.
+        existing = set(
+            session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+        )
+
         for param in default_parameter:
+            if (param["parameter_name"], param["matrix"]) in existing:
+                continue
             try:
                 parameter_obj = Parameter(
                     parameter_name=param["parameter_name"],
