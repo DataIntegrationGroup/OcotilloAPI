@@ -207,7 +207,7 @@ class BaseThingResponse(BaseResponseModel):
     name: str
     site_name: str | None = None
     thing_type: str
-    current_location: LocationGeoJSONResponse
+    current_location: LocationGeoJSONResponse | None = None
     first_visit_date: PastOrTodayDate | None
     groups: list[GroupResponse] = []
     monitoring_status: str | None
