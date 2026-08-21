@@ -225,8 +225,10 @@ def register_api_routes(app):
     from api.feedback import router as feedback_router
     from api.disclaimer import router as disclaimer_router
     from api.geothermal import router as geothermal_router
+    from api.chemisty import router as chemistry_router
 
     app.include_router(asset_router)
+    app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
     app.include_router(disclaimer_router)
