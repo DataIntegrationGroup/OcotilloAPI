@@ -327,12 +327,24 @@ def load_cm_workbook(source_file: Path | str, session: Session) -> CMMirrorLoadR
         raise CMWorkbookError(f"workbook not found: {source_file}")
 
     workbook = openpyxl.load_workbook(source_file, read_only=True, data_only=True)
+
+    required_sheets = {
+        "DetectionLimits",
+        "References",
+        "MineralSystems",
+        "world",
+        "world_ref",
+        *METADATA_SHEETS,
+    }
+    missing = sorted(required_sheets - set(workbook.sheetnames))
+    if missing:
+        workbook.close()
+        raise CMWorkbookError(f"workbook is missing required sheet(s): {missing}")
+
     try:
         result = CMMirrorLoadResult()
         result.rows_by_sheet.update(_load_chemistry_sheets(workbook, session))
-        result.rows_by_sheet["DetectionLimits"] = _load_detection_limits(
-            workbook, session
-        )
+        result.rows_by_sheet["DetectionLimits"] = _load_detection_limits(workbook, session)
         result.rows_by_sheet["References"] = _load_citations(
             workbook, session, "References", CM_References
         )
