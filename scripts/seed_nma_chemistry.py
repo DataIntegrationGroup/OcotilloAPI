@@ -189,9 +189,7 @@ def select_candidates(
         )
     }
 
-    rows = src.execute(
-        text(
-            """
+    rows = src.execute(text("""
             select si.id, si."nma_SamplePtID", si.thing_id, t.thing_type
             from "NMA_Chemistry_SampleInfo" si
             join thing t on t.id = si.thing_id
@@ -201,9 +199,7 @@ def select_candidates(
               and exists (select 1 from "NMA_MinorTraceChemistry" mt
                           where mt.chemistry_sample_info_id = si.id)
             order by si.id
-            """
-        )
-    ).mappings()
+            """)).mappings()
 
     candidates = []
     skipped_seeded = 0
