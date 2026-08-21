@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
@@ -34,6 +35,13 @@ class WaterChemistryResultResponse(BaseModel):
     value: float | None = None
     unit: str | None = None
     observation_datetime: datetime
+    # Which legacy table the result came from. A field measurement was read at
+    # the wellhead and a lab one was not, which is the distinction an
+    # owner-facing report has to draw -- and the legacy tables are the only
+    # place that distinction is recorded.
+    result_kind: Literal["major", "minor", "radionuclide", "field", "unknown"] = (
+        "unknown"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

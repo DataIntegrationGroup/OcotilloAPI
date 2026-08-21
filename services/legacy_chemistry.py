@@ -177,4 +177,28 @@ def canonical_parameter_name(symbol: str | None) -> str | None:
     return _LEGACY_ANALYTE_NAMES_LOWER.get(trimmed.lower(), trimmed)
 
 
+# The view's text ids are prefixed with the legacy table they came from. That
+# prefix is the only record of whether a result was read in the field or by a
+# lab, so it is translated into something a client can read rather than being
+# left for each client to parse out of an id.
+_RESULT_KINDS = {
+    "maj": "major",
+    "min": "minor",
+    "rad": "radionuclide",
+    "fld": "field",
+}
+
+
+def result_kind(result_id: str | None) -> str:
+    """Which legacy chemistry table a view row came from."""
+    if not result_id:
+        return "unknown"
+
+    prefix, _, remainder = result_id.partition("-")
+    if not remainder:
+        return "unknown"
+
+    return _RESULT_KINDS.get(prefix, "unknown")
+
+
 # ============= EOF =============================================

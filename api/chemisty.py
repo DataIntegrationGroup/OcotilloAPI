@@ -23,7 +23,7 @@ from api.pagination import CustomPage
 from core.dependencies import amp_viewer_dependency, session_dependency
 from db.chemistry_views import WaterChemistryResultsView
 from schemas.chemistry import WaterChemistryResultResponse
-from services.legacy_chemistry import canonical_parameter_name
+from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 # from services.validation.chemistry import validate_analyte
 
@@ -101,7 +101,10 @@ def get_water_chemistry_results(
         # drinking water standard without knowing the legacy vocabulary.
         return [
             WaterChemistryResultResponse.model_validate(row).model_copy(
-                update={"parameter_name": canonical_parameter_name(row.parameter_name)}
+                update={
+                    "parameter_name": canonical_parameter_name(row.parameter_name),
+                    "result_kind": result_kind(row.id),
+                }
             )
             for row in rows
         ]

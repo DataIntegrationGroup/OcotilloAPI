@@ -17,7 +17,7 @@
 
 import pytest
 
-from services.legacy_chemistry import canonical_parameter_name
+from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 
 @pytest.mark.parametrize(
@@ -69,6 +69,29 @@ def test_passes_through_unknown_and_empty_values():
     assert canonical_parameter_name("NotAnAnalyte") == "NotAnAnalyte"
     assert canonical_parameter_name("") == ""
     assert canonical_parameter_name(None) is None
+
+
+@pytest.mark.parametrize(
+    "result_id, expected",
+    [
+        ("maj-1", "major"),
+        ("min-19198", "minor"),
+        ("rad-7", "radionuclide"),
+        ("fld-42", "field"),
+    ],
+)
+def test_reads_the_source_table_off_the_id(result_id, expected):
+    """A field measurement was read at the wellhead and a lab one was not.
+
+    The view's id prefix is the only place that survives, so a client is told
+    which it is rather than being left to parse an id.
+    """
+    assert result_kind(result_id) == expected
+
+
+@pytest.mark.parametrize("result_id", ["", None, "1234", "unprefixed-", "zzz-1"])
+def test_unrecognized_ids_report_an_unknown_source(result_id):
+    assert result_kind(result_id) == "unknown"
 
 
 # ============= EOF =============================================
