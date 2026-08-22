@@ -14,6 +14,7 @@ runtime config files already exist on disk by the time a test runs.
 """
 
 import os
+import re
 import sys
 
 from core import pygeoapi
@@ -134,3 +135,39 @@ def test_hidden_layers_are_internal_only():
     # The thing-type layers that stay public are on both mounts; the two
     # catalogs otherwise differ (the geothermal layers are public-only).
     assert {"water_wells", "springs"}.issubset(public_ids & internal_ids)
+
+
+# Wording that says nothing to a consumer reading the catalog cold: internal
+# data-model vocabulary, or a description that only restates the layer name.
+PLACEHOLDER_TERMS = ("todo", "tbd", "xxx", "placeholder", "example.com", "lorem")
+
+
+def test_every_collection_description_explains_the_layer():
+    # A description has to tell a non-specialist how the layer was derived and
+    # what it is for -- not repeat the title. Short entries are the failure
+    # mode this guards: they are what the catalog shipped with before.
+    for module in _load_both():
+        for name, resource in module.api_.config["resources"].items():
+            description = resource.get("description", "")
+            lowered = description.lower()
+            assert len(description) >= 200, f"{name} description is too thin"
+            assert not any(
+                term in lowered for term in PLACEHOLDER_TERMS
+            ), f"{name} description contains placeholder wording"
+            assert description.rstrip().endswith(
+                "."
+            ), f"{name} description is not a complete sentence"
+            # YAML folds a line break into a space, so a hyphenated word split
+            # across lines ("measuring-\npoint") reaches consumers as
+            # "measuring- point". Wrap on whitespace only.
+            assert not re.search(
+                r"\w- \w", description
+            ), f"{name} description has a hyphenated word split across lines"
+
+            keywords = resource.get("keywords", [])
+            assert len(keywords) >= 4, f"{name} has too few keywords"
+            assert len(set(keywords)) == len(keywords), f"{name} repeats a keyword"
+            for keyword in keywords:
+                assert re.fullmatch(
+                    r"[a-z0-9]+(?:-[a-z0-9]+)*", keyword
+                ), f"{name} keyword {keyword!r} is not a lowercase hyphenated token"
