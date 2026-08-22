@@ -146,9 +146,16 @@ class WaterEDRProvider(BaseEDRProvider):
 
     # -------------------------------------------------------------- fields
     def get_fields(self):
-        """Return the parameter-name fields present in the backing view."""
+        """Return the parameter-name fields present in the backing view.
+
+        Each call hands back fresh per-field dicts. pygeoapi's
+        get_collection_schema mutates what a provider returns in place --
+        popping ``format``, assigning ``x-ogc-role`` -- so returning the
+        cached dicts themselves would let one request's edits accumulate on
+        the next one's response.
+        """
         if self._fields:
-            return self._fields
+            return {name: dict(field) for name, field in self._fields.items()}
         try:
             rows = self._fetch(
                 f"SELECT DISTINCT parameter_name, unit "  # noqa: S608 (trusted table)
@@ -167,7 +174,7 @@ class WaterEDRProvider(BaseEDRProvider):
         # name rather than column name. Parameter names are read out of the
         # data, so an undocumented analyte keeps its generated title.
         self._fields = describe_fields(self.table, self._fields)
-        return self._fields
+        return {name: dict(field) for name, field in self._fields.items()}
 
     @property
     def fields(self):
