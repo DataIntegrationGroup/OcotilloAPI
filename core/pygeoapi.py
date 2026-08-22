@@ -74,6 +74,11 @@ THING_COLLECTIONS = [
             "Feature records that do not match another defined thing type."
         ),
         "keywords": ["other"],
+        # "Thing" is internal data-model vocabulary and "other" names no
+        # recognisable feature class, so this layer is not published on the
+        # public mount (BDMS-979). Staff GIS clients still reach it through
+        # /ogcapi-internal, and ogc_other_things is retained either way.
+        "internal_only": True,
     },
     {
         "id": "outfalls_wastewater_return_flow",
@@ -247,9 +252,12 @@ def _thing_collections_block(
     user: str,
     password_placeholder: str,
     table_prefix: str = "ogc_",
+    include_internal_only: bool = False,
 ) -> str:
     resources: dict[str, dict] = {}
     for collection in THING_COLLECTIONS:
+        if collection.get("internal_only") and not include_internal_only:
+            continue
         resources[collection["id"]] = {
             "type": "collection",
             "title": collection["title"],
@@ -384,6 +392,7 @@ def _write_config(
     table_prefix: str = "ogc_",
     template_path: Path | None = None,
     include_edr: bool = False,
+    include_internal_only: bool = False,
 ) -> None:
     host, port, dbname, user, password_placeholder = _pygeoapi_db_settings()
     template = (template_path or _template_path()).read_text(encoding="utf-8")
@@ -394,6 +403,7 @@ def _write_config(
         user=user,
         password_placeholder=password_placeholder,
         table_prefix=table_prefix,
+        include_internal_only=include_internal_only,
     )
     if include_edr:
         # EDR collections (core/edr_provider.py), backed by
@@ -564,6 +574,7 @@ def mount_pygeoapi_internal(app: FastAPI) -> None:
         table_prefix="ogc_internal_",
         template_path=_internal_template_path(),
         include_edr=True,
+        include_internal_only=True,
     )
     _generate_openapi(config_path, openapi_path)
     _assert_server_settings_match(_pygeoapi_dir() / "pygeoapi-config.yml", config_path)

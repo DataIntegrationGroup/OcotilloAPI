@@ -51,7 +51,6 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | meteorological_stations       |
       | diversions_surface_water      |
       | lakes_ponds_reservoirs        |
-      | other_things                  |
       | water_well_summary            |
       | depth_to_water_trend_wells    |
       | water_elevation_wells         |
@@ -59,15 +58,14 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | minor_chemistry_wells         |
       | latest_tds_wells              |
       | actively_monitored_wells      |
-      | avg_tds_wells                 |
-      | latest_depth_to_water_wells   |
-      | locations                     |
       | project_areas                 |
     Then each response contains only records where release_status is "public"
     And no response contains a record where release_status is "private"
     And no response contains a record where release_status is "draft"
-    # other_things above: A1 must apply the filter to its view, but A18 removes
-    # other_things from the catalog — run this scenario before A18 is applied
+    # other_things, avg_tds_wells, latest_depth_to_water_wells and locations
+    # are not listed above: A16/A17/A18 took them off the public catalog, so a
+    # public client can no longer request their items. A1's filter still
+    # applies to their views, which the SQL-level scenarios above cover.
 
   @backend @ogc-exposure @sprint-1 @high-priority @A1 @production
   Scenario: project_areas returns 56 rows after all records are updated to public
@@ -237,10 +235,9 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | lakes_ponds_reservoirs            |
       | soil_gas_sample_locations         |
       | outfalls_wastewater_return_flow   |
-      | other_things                      |
     Then each feature includes a last_observation_date property
-    # other_things above: included in Group A view template, but A18 removes it
-    # from the catalog — run this scenario before A18 is applied
+    # other_things is not listed: it is in the Group A view template, but A18
+    # took it off the public catalog — it is only reachable on /ogcapi-internal.
 
   @backend @ogc-data-currency @sprint-1 @medium-priority @A13
   Scenario: last_observation_date is NULL for things with no associated observations
@@ -256,11 +253,10 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | lakes_ponds_reservoirs            |
       | soil_gas_sample_locations         |
       | outfalls_wastewater_return_flow   |
-      | other_things                      |
     When a client requests those features
     Then each feature's last_observation_date property is null
-    # other_things above: included in Group A view template, but A18 removes it
-    # from the catalog — run this scenario before A18 is applied
+    # other_things is not listed: it is in the Group A view template, but A18
+    # took it off the public catalog — it is only reachable on /ogcapi-internal.
 
   @backend @ogc-data-currency @sprint-1 @medium-priority @A13
   Scenario: Consumers can filter Group A layers by last_observation_date
@@ -276,30 +272,29 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | lakes_ponds_reservoirs          |
       | soil_gas_sample_locations       |
       | outfalls_wastewater_return_flow |
-      | other_things                    |
     When a client requests items from each of those layers with filter
       """
       last_observation_date > '2021-01-01'
       """
     Then only features with a last_observation_date of "2023-06-01" are returned from each layer
-    # other_things above: included in Group A view template, but A18 removes it
-    # from the catalog — run this scenario before A18 is applied
+    # other_things is not listed: it is in the Group A view template, but A18
+    # took it off the public catalog — it is only reachable on /ogcapi-internal.
 
   # ---------------------------------------------------------------------------
   # A16 — Hide avg_tds_wells and latest_depth_to_water_wells from public catalog
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A16
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A16 @production
   Scenario: avg_tds_wells is absent from the public collections catalog
     When a client requests /ogcapi/collections
     Then the response does not include a collection with id avg_tds_wells
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A16
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A16 @production
   Scenario: latest_depth_to_water_wells is absent from the public collections catalog
     When a client requests /ogcapi/collections
     Then the response does not include a collection with id latest_depth_to_water_wells
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A16
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A16 @production
   Scenario: Backing matviews for hidden layers are retained in the database
     Given avg_tds_wells and latest_depth_to_water_wells have been removed from the service catalog
     When the database schema is inspected
@@ -310,12 +305,12 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A17 — Hide locations layer from the public catalog
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A17
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A17 @production
   Scenario: locations is absent from the public collections catalog
     When a client requests /ogcapi/collections
     Then the response does not include a collection with id locations
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A17
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A17 @production
   Scenario: Underlying locations table is retained in the database after catalog removal
     Given the locations entry has been removed from the service configuration
     When the database schema is inspected
@@ -325,22 +320,21 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A18 — Remove other_things from the public catalog
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-naming @sprint-1 @medium-priority @A18
+  @backend @ogc-naming @sprint-1 @medium-priority @A18 @production
   Scenario: other_things is absent from the public collections catalog
     When a client requests /ogcapi/collections
     Then the response does not include a collection with id other_things
 
-  @backend @ogc-naming @sprint-1 @medium-priority @A18
-  Scenario: other_things backing view is dropped when no internal usage exists
-    Given the other_things view has zero references in the application codebase
-    When the cleanup is applied
-    Then the other_things backing view does not exist in the database schema
-
-  @backend @ogc-naming @sprint-1 @medium-priority @A18
-  Scenario: other_things backing view is retained when internal usage exists
+  # The A18 review found internal usage: /ogcapi-internal still publishes the
+  # layer to staff GIS clients off ogc_internal_other_things, and the public
+  # ogc_other_things view is still built by the shared Group A view template.
+  # Both views are therefore retained.
+  @backend @ogc-naming @sprint-1 @medium-priority @A18 @production
+  Scenario: other_things backing views are retained because the internal mount uses them
     Given the other_things view has at least one reference in the application codebase
-    When the cleanup is applied
+    When the database schema is inspected
     Then the other_things backing view still exists in the database schema
+    And the internal other_things backing view still exists in the database schema
 
   # ---------------------------------------------------------------------------
   # A22 — Verify NULL measuring_point_height assumption for water level layers

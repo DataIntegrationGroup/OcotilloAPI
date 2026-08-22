@@ -109,3 +109,28 @@ def test_loading_a_mount_restores_config_env_vars():
 
     after = {key: os.environ.get(key) for key in pygeoapi._PYGEOAPI_ENV_KEYS}
     assert after == before
+
+
+# Layers hidden from the public catalog but still served to staff GIS
+# clients on /ogcapi-internal: locations duplicates the thing-type layers
+# (BDMS-978), avg_tds_wells and latest_depth_to_water_wells are misleading
+# or redundant (BDMS-977), other_things is internal vocabulary (BDMS-979).
+INTERNAL_ONLY_COLLECTIONS = {
+    "locations",
+    "avg_tds_wells",
+    "latest_depth_to_water_wells",
+    "other_things",
+}
+
+
+def test_hidden_layers_are_internal_only():
+    public_module, internal_module = _load_both()
+
+    public_ids = set(public_module.api_.config["resources"])
+    internal_ids = set(internal_module.api_.config["resources"])
+
+    assert public_ids.isdisjoint(INTERNAL_ONLY_COLLECTIONS)
+    assert INTERNAL_ONLY_COLLECTIONS.issubset(internal_ids)
+    # The thing-type layers that stay public are on both mounts; the two
+    # catalogs otherwise differ (the geothermal layers are public-only).
+    assert {"water_wells", "springs"}.issubset(public_ids & internal_ids)
