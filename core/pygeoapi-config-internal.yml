@@ -361,15 +361,17 @@ resources:
     title: Actively Monitored Wells
     description: >-
       The wells being measured today, rather than every well ever recorded.
-      A well appears here only if it belongs to the Water Level Network
-      group and its most recent monitoring-status entry reads "Currently
-      monitored"; the summary statistics attached to each one are the same
-      water-level figures published in water_well_summary. Use it to see the
-      live monitoring network -- where measurements are still being
-      collected, and where coverage is thin.
+      A well appears here when its most recent monitoring-status entry reads
+      "Currently monitored", whichever monitoring group it belongs to; the
+      summary statistics attached to each one are the same water-level
+      figures published in water_well_summary. A well belonging to several
+      groups still appears once, with every membership listed in group_ids,
+      group_names and group_types. Use it to see the live monitoring network
+      -- where measurements are still being collected, and where coverage is
+      thin.
     keywords: [
-      water-wells, monitoring, water-level-network, actively-monitored,
-      monitoring-network, groundwater-level
+      water-wells, monitoring, actively-monitored, monitoring-network,
+      monitoring-status, groundwater-level
     ]
     extents:
       spatial:
