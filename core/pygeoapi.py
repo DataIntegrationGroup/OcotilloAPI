@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 import yaml
 from fastapi import FastAPI
 
+from core.pygeoapi_patches import apply_queryables_patch
+
 # Consumed by pygeoapi at import time only; see _load_pygeoapi_app.
 _PYGEOAPI_ENV_KEYS = ("PYGEOAPI_CONFIG", "PYGEOAPI_OPENAPI")
 
@@ -651,6 +653,11 @@ def _load_pygeoapi_app(instance: str, config_path: Path, openapi_path: Path):
     # handlers of the app already built for the first one -- both mounts end
     # up serving whichever config was loaded last. Give each mount its own
     # module object so the two sets of globals can never alias.
+    # Before the module is executed, so the mount's handlers resolve the
+    # patched queryables function. Idempotent and process-wide by nature:
+    # pygeoapi.api.itemtypes is one module object shared by both mounts.
+    apply_queryables_patch()
+
     module_name = "pygeoapi.starlette_app"
     spec = find_spec(module_name)
     if spec is None or spec.loader is None:
