@@ -2044,3 +2044,16 @@ minor_chemistry_wells:
       Units the titanium (total) value is reported in, as the laboratory
       recorded them.
 
+
+# EDR collections. Keys here are parameter names read out of the data, not
+# column names -- ogc_waterlevels stamps a single literal, while
+# ogc_water_chemistry carries the analyte text exactly as the laboratory
+# recorded it, so most chemistry parameters take a generated title.
+waterlevels:
+  groundwater level:
+    title: Groundwater level
+    description: >-
+      Depth from the measuring point down to the water table, as measured by
+      hand during a site visit or logged automatically by a pressure
+      transducer left in the well. Larger values mean the water table is
+      further below the surface.

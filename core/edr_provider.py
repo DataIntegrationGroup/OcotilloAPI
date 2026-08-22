@@ -46,6 +46,8 @@ from pygeoapi.provider.base import (
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
 
+from core.ogc_field_metadata import describe_fields, table_entries
+
 LOGGER = logging.getLogger(__name__)
 
 GEOGRAPHIC_CRS = {
@@ -161,6 +163,10 @@ class WaterEDRProvider(BaseEDRProvider):
                 "title": row["parameter_name"],
                 "x-ogc-unit": row["unit"],
             }
+        # Same prose source as the feature collections, keyed by parameter
+        # name rather than column name. Parameter names are read out of the
+        # data, so an undocumented analyte keeps its generated title.
+        self._fields = describe_fields(self.table, self._fields)
         return self._fields
 
     @property
@@ -344,6 +350,10 @@ class WaterEDRProvider(BaseEDRProvider):
         )
 
     # ------------------------------------------------------- coveragejson
+    def _parameter_documentation(self, parameter_name):
+        """Documented title/description for one EDR parameter, or ``{}``."""
+        return table_entries(self.table).get(parameter_name, {})
+
     def _coverage_collection(self, rows):
         if not rows:
             raise ProviderNoDataError("No data found")
@@ -355,10 +365,17 @@ class WaterEDRProvider(BaseEDRProvider):
             stations.setdefault(row["thing_id"], []).append(row)
             name = row["parameter_name"]
             if name not in parameters:
+                # A CoverageJSON client reads observedProperty.label for the
+                # display name and description for the explanation; both were
+                # the raw parameter name before the field metadata existed.
+                entry = self._parameter_documentation(name)
                 parameters[name] = {
                     "type": "Parameter",
-                    "description": {"en": name},
-                    "observedProperty": {"id": name, "label": {"en": name}},
+                    "description": {"en": entry.get("description", name)},
+                    "observedProperty": {
+                        "id": name,
+                        "label": {"en": entry.get("title", name)},
+                    },
                     "unit": {"symbol": row["unit"], "label": {"en": row["unit"]}},
                 }
 
