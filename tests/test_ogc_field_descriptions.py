@@ -341,3 +341,70 @@ def test_edr_falls_back_for_an_undocumented_analyte():
     parameter = coverage["parameters"]["Some Unmapped Analyte"]
     assert parameter["observedProperty"]["label"]["en"] == "Some Unmapped Analyte"
     assert parameter["description"]["en"] == "Some Unmapped Analyte"
+
+
+# ---------------------------------------------------------- enumerated values
+
+
+def test_schema_publishes_enumerated_values(ogc_client):
+    # pygeoapi's HTML schema view renders `enum` as its "Values" column, and
+    # nothing fills it in: the SQL provider reports only type and format, and
+    # implements no get_domains(). These come from the YAML.
+    properties = ogc_client.get(
+        "/ogcapi/collections/depth_to_water_trend_wells/schema"
+    ).json()["properties"]
+
+    assert properties["trend_category"]["enum"] == [
+        "increasing",
+        "decreasing",
+        "stable",
+        "not enough data",
+    ]
+
+
+def test_queryables_publishes_enumerated_values(ogc_client):
+    properties = ogc_client.get(
+        "/ogcapi/collections/depth_to_water_trend_wells/queryables"
+    ).json()["properties"]
+
+    assert "not enough data" in properties["trend_category"]["enum"]
+
+
+def test_lexicon_backed_enums_come_from_the_lexicon(ogc_client):
+    from core.ogc_field_metadata import lexicon_terms
+
+    properties = ogc_client.get("/ogcapi/collections/water_wells/schema").json()[
+        "properties"
+    ]
+
+    assert properties["well_pump_type"]["enum"] == lexicon_terms("well_pump_type")
+    assert properties["well_construction_method"]["enum"] == lexicon_terms(
+        "well_construction_method"
+    )
+    assert properties["release_status"]["enum"] == lexicon_terms("release_status")
+
+
+def test_enum_lexicon_key_is_expanded_not_published(ogc_client):
+    # The YAML shorthand must not reach the client.
+    properties = ogc_client.get("/ogcapi/collections/water_wells/schema").json()[
+        "properties"
+    ]
+
+    assert "enum-lexicon" not in properties["well_pump_type"]
+
+
+def test_enum_entries_validate_against_the_lexicon():
+    # A category with no terms is a typo, and it must fail at load rather than
+    # publish an empty Values column.
+    import pytest as _pytest
+
+    from core.ogc_field_metadata import _validate
+
+    with _pytest.raises(ValueError, match="no terms"):
+        _validate(
+            {"water_wells": {"well_pump_type": {"title": "x", "enum-lexicon": "nope"}}},
+            "test.yml",
+        )
+
+    with _pytest.raises(ValueError, match="non-empty list"):
+        _validate({"water_wells": {"a_column": {"title": "x", "enum": []}}}, "test.yml")

@@ -37,7 +37,12 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 # Keys taken from the provider's field entry when the handler dropped them.
-DOCUMENTATION_KEYS = ("title", "description", "x-ogc-unit", "x-ogc-unitLang")
+DOCUMENTATION_KEYS = ("title", "description", "x-ogc-unit", "x-ogc-unitLang", "enum")
+
+# Keys the handler may have filled in itself, which we must not overwrite --
+# ?profile=actual-domain asks for the live values in the data, and those beat
+# our authored vocabulary.
+PRESERVED_KEYS = frozenset({"enum"})
 
 _QUERYABLES_PATCHED = False
 
@@ -75,8 +80,11 @@ def _merge_documentation(payload: str, fields: dict) -> str:
             continue
         for key in DOCUMENTATION_KEYS:
             value = field.get(key)
-            if value is not None:
-                prop[key] = value
+            if value is None:
+                continue
+            if key in PRESERVED_KEYS and prop.get(key):
+                continue
+            prop[key] = value
 
     return json.dumps(document, indent=4)
 

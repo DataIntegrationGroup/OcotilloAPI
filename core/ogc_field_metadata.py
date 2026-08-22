@@ -27,6 +27,7 @@ Read ``docs/ogc-field-descriptions.md`` before changing the shape of the YAML
 or upgrading pygeoapi.
 """
 
+import json
 import logging
 from pathlib import Path
 
@@ -48,16 +49,47 @@ ALLOWED_KEYS = frozenset(
         "x-ogc-unit",
         "x-ogc-unitLang",
         "x-ogc-propertySeq",
+        # JSON Schema's own keyword. pygeoapi's HTML renders it as the schema
+        # table's "Values" column, and its queryables handler emits it too.
+        "enum",
+        # Names a category in core/lexicon.json, expanded to `enum` on the way
+        # out so a controlled vocabulary is not duplicated here.
+        "enum-lexicon",
     }
 )
 
 DEFAULTS_KEY = "_defaults"
 
+LEXICON_KEY = "enum-lexicon"
+
 _CACHE = None
+_LEXICON_CACHE = None
 
 
 def _metadata_path() -> Path:
     return Path(__file__).resolve().parent / "ogc-field-descriptions.yml"
+
+
+def _lexicon_path() -> Path:
+    return Path(__file__).resolve().parent / "lexicon.json"
+
+
+def lexicon_terms(category: str) -> list:
+    """Terms in one core/lexicon.json category, in file order.
+
+    The lexicon file seeds the database's controlled vocabularies, so reading
+    it here keeps one source of truth for an enumerated column's valid values
+    -- and keeps this module free of any database dependency.
+    """
+    global _LEXICON_CACHE
+    if _LEXICON_CACHE is None:
+        raw = json.loads(_lexicon_path().read_text(encoding="utf-8"))
+        by_category: dict[str, list] = {}
+        for term in raw.get("terms", []):
+            for name in term.get("categories", []):
+                by_category.setdefault(name, []).append(term["term"])
+        _LEXICON_CACHE = by_category
+    return list(_LEXICON_CACHE.get(category, []))
 
 
 def _validate(raw: dict, path: Path) -> dict:
@@ -79,6 +111,17 @@ def _validate(raw: dict, path: Path) -> dict:
                 raise ValueError(
                     f"{path}: {table}.{field} has unsupported keys "
                     f"{sorted(unknown)}; allowed keys are {sorted(ALLOWED_KEYS)}."
+                )
+            values = entry.get("enum")
+            if values is not None and (not isinstance(values, list) or not values):
+                raise ValueError(
+                    f"{path}: {table}.{field} enum must be a non-empty list."
+                )
+            category = entry.get(LEXICON_KEY)
+            if category is not None and not lexicon_terms(category):
+                raise ValueError(
+                    f"{path}: {table}.{field} names lexicon category "
+                    f"{category!r}, which has no terms in core/lexicon.json."
                 )
     return raw
 
@@ -136,6 +179,13 @@ def describe_fields(table: str, fields: dict) -> dict:
         entry = entries.get(name)
         if entry:
             for key, value in entry.items():
+                if key == LEXICON_KEY:
+                    # Expanded here rather than stored, so the vocabulary stays
+                    # defined in one place. An entry may still pin a literal
+                    # `enum` instead when the column's values are set by the
+                    # view's own SQL rather than by the lexicon.
+                    annotated.setdefault("enum", lexicon_terms(value))
+                    continue
                 annotated[key] = value
         else:
             annotated.setdefault("title", default_title(name))

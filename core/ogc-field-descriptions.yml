@@ -29,12 +29,14 @@ _defaults:
     description: >-
       Controlled-vocabulary type of the monitoring point, such as water well,
       spring, or meteorological station.
+    enum-lexicon: thing_type
   release_status:
     title: Release status
     description: >-
       Publication state of the record. Only records marked public appear on
       the public /ogcapi mount; the authenticated internal mount also carries
       private and draft records.
+    enum-lexicon: release_status
   first_visit_date:
     title: First visit date
     description: Date of the earliest Bureau visit on record for this feature.
@@ -86,11 +88,13 @@ _defaults:
     description: >-
       How the well was constructed, such as air rotary, cable tool, or dug,
       from a controlled vocabulary.
+    enum-lexicon: well_construction_method
   well_pump_type:
     title: Pump type
     description: >-
       Type of pump installed in the well, such as submersible or windmill,
       from a controlled vocabulary.
+    enum-lexicon: well_pump_type
   well_pump_depth:
     title: Pump intake depth
     description: Depth from ground surface to the pump intake.
@@ -238,6 +242,7 @@ water_well_summary:
       How the ground-surface elevation was determined, such as GPS survey or
       read from a digital elevation model. Governs how much precision the
       elevation deserves.
+    enum-lexicon: collection_method
   formation_zone:
     title: Formation zone
     description: Geologic formation the well draws from, as recorded for the well.
@@ -281,6 +286,7 @@ actively_monitored_wells:
     description: >-
       How the ground-surface elevation was determined, such as GPS survey or
       read from a digital elevation model.
+    enum-lexicon: collection_method
   formation_zone:
     title: Formation zone
     description: Geologic formation the well draws from, as recorded for the well.
@@ -355,6 +361,7 @@ depth_to_water_trend_wells:
       Plain-language reading of the slope: increasing (water table falling
       faster than 0.25 ft/yr), decreasing (rising faster than 0.25 ft/yr),
       stable, or not enough data.
+    enum: [increasing, decreasing, stable, not enough data]
 
 water_elevation_wells:
   observation_id:
@@ -494,6 +501,7 @@ geothermal_wells_bht:
     description: >-
       Unit the converted temperatures are reported in. Always Celsius; see
       temp_unit_source for what the readings arrived as.
+    enum: [C]
   temp_unit_source:
     title: Source temperature units
     description: >-
@@ -546,6 +554,7 @@ geothermal_wells_temperature_profile:
     description: >-
       Unit the converted temperatures are reported in. Always Celsius; see
       temp_unit_source for what the readings arrived as.
+    enum: [C]
   temp_unit_source:
     title: Source temperature units
     description: >-

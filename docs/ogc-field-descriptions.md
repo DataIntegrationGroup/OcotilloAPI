@@ -46,8 +46,40 @@ per-table entry wins over it — which matters for a name like `description`,
 whose meaning differs between `locations` and `project_areas`.
 
 Allowed keys: `title`, `description`, `x-ogc-unit`, `x-ogc-unitLang`,
-`x-ogc-propertySeq`. Anything else fails validation at load. Types and formats
-come from the provider's reflection and must never be set here.
+`x-ogc-propertySeq`, `enum`, `enum-lexicon`. Anything else fails validation at
+load. Types and formats come from the provider's reflection and must never be
+set here.
+
+### Enumerated values
+
+`enum` is what pygeoapi's HTML schema view renders as its **Values** column,
+and nothing else fills it in — the SQL provider reports only `type` and
+`format`, and implements no `get_domains()`, so `?profile=actual-domain` has
+nothing to offer either.
+
+Two ways to set it, and the distinction matters:
+
+```yaml
+trend_category:
+  enum: [increasing, decreasing, stable, not enough data]   # set by the view's SQL
+
+well_pump_type:
+  enum-lexicon: well_pump_type                              # a controlled vocabulary
+```
+
+Use a literal `enum` only when the view's own SQL decides the values — a `CASE`
+expression or a stamped literal. Use `enum-lexicon` for anything the lexicon
+governs; it names a category in `core/lexicon.json` and is expanded on the way
+out, so the vocabulary is never copied. A category with no terms fails
+validation at load rather than publishing an empty column.
+
+`enum` is a JSON Schema constraint, not a sample: it says these are the *valid*
+values. Do not populate it from `SELECT DISTINCT` — a value absent from today's
+data is not thereby invalid.
+
+On `/queryables` an `enum` pygeoapi produced itself wins over the authored one,
+so `?profile=actual-domain` still reports the live domain where a provider
+supports it.
 
 ### Adding a field
 
