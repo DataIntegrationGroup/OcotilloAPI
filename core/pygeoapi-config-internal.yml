@@ -65,7 +65,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -95,7 +95,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -127,7 +127,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -161,7 +161,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -199,7 +199,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -234,7 +234,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -272,7 +272,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -309,7 +309,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -344,7 +344,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -377,7 +377,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -404,7 +404,7 @@ resources:
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}

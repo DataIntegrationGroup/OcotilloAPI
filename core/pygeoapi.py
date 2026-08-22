@@ -429,7 +429,7 @@ def _thing_collections_block(
             "providers": [
                 {
                     "type": "feature",
-                    "name": "PostgreSQL",
+                    "name": "core.feature_provider.DescribedPostgreSQLProvider",
                     "data": {
                         "host": host,
                         "port": port,
