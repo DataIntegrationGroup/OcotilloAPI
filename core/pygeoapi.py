@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 import yaml
 from fastapi import FastAPI
 
+from core.pygeoapi_patches import apply_queryables_patch
+
 # Consumed by pygeoapi at import time only; see _load_pygeoapi_app.
 _PYGEOAPI_ENV_KEYS = ("PYGEOAPI_CONFIG", "PYGEOAPI_OPENAPI")
 
@@ -19,91 +21,227 @@ THING_COLLECTIONS = [
         "title": "Water Wells",
         "thing_type": "water well",
         "description": (
-            "Groundwater wells used for monitoring, production, and "
-            "hydrogeologic investigations."
+            "Groundwater wells: drilled or dug access points into an aquifer, "
+            "used for monitoring, production, and hydrogeologic investigation. "
+            "Each feature is one well from the monitoring-point register, placed "
+            "at the most recent location recorded for it, and carries the "
+            "construction details held for it -- total and hole depth, casing "
+            "diameter and depth, completion date, driller, construction method, "
+            "pump type and depth, and the geologic formation it is completed in. "
+            "This is the starting point for groundwater work: the water-level and "
+            "chemistry layers are all derived from these same wells."
         ),
-        "keywords": ["well", "groundwater", "water-well"],
+        "keywords": [
+            "water-wells",
+            "wells",
+            "groundwater",
+            "aquifer",
+            "monitoring-points",
+            "well-construction",
+        ],
     },
     {
         "id": "springs",
         "title": "Springs",
         "thing_type": "spring",
         "description": (
-            "Natural spring features and associated spring monitoring points."
+            "Springs: places where groundwater reaches the land surface under its "
+            "own pressure, without pumping. Each feature is one spring from the "
+            "monitoring-point register, placed at the most recent location "
+            "recorded for it. Use it to map natural groundwater discharge, the "
+            "groundwater contribution to streamflow, and the water sources that "
+            "support desert ecosystems."
         ),
-        "keywords": ["springs", "groundwater-discharge"],
+        "keywords": [
+            "springs",
+            "groundwater-discharge",
+            "monitoring-points",
+            "surface-water",
+            "seeps",
+        ],
     },
     {
         "id": "diversions_surface_water",
         "title": "Surface Water Diversions",
         "thing_type": "diversion of surface water, etc.",
         "description": (
-            "Diversion structures such as ditches, canals, and intake points."
+            "Surface-water diversions: structures that take water out of a "
+            "stream, river, or canal -- ditches, acequias, headgates and intakes. "
+            "Each feature is one diversion from the monitoring-point register, "
+            "placed at the most recent location recorded for it. Use it to see "
+            "where surface water is withdrawn and to pair those points with "
+            "downstream flow records."
         ),
-        "keywords": ["surface-water", "diversion"],
+        "keywords": [
+            "surface-water",
+            "diversion",
+            "ditches",
+            "acequias",
+            "headgates",
+            "monitoring-points",
+        ],
     },
     {
         "id": "ephemeral_streams",
         "title": "Ephemeral Streams",
         "thing_type": "ephemeral stream",
         "description": (
-            "Stream reaches that flow only in direct response to "
-            "precipitation events."
+            "Ephemeral stream reaches: channels that carry water only in direct "
+            "response to rain or snowmelt and are dry the rest of the year. Each "
+            "feature is one monitored reach from the register, placed at the most "
+            "recent location recorded for it. Use it for flash-flow and "
+            "storm-response work, and to distinguish these channels from reaches "
+            "that flow year-round."
         ),
-        "keywords": ["ephemeral-stream", "surface-water"],
+        "keywords": [
+            "ephemeral-stream",
+            "surface-water",
+            "intermittent-flow",
+            "storm-response",
+            "monitoring-points",
+        ],
     },
     {
         "id": "lakes_ponds_reservoirs",
         "title": "Lakes, Ponds, and Reservoirs",
         "thing_type": "lake, pond or reservoir",
-        "description": "Surface-water bodies monitored as feature locations.",
-        "keywords": ["lake", "pond", "reservoir", "surface-water"],
+        "description": (
+            "Standing bodies of surface water monitored as sites -- natural "
+            "lakes, ponds, and built reservoirs. Each feature is one water body "
+            "from the monitoring-point register, placed at the most recent "
+            "location recorded for it. Use it for storage and surface-water "
+            "quality work, and as context for nearby groundwater levels."
+        ),
+        "keywords": [
+            "lake",
+            "pond",
+            "reservoir",
+            "surface-water",
+            "storage",
+            "monitoring-points",
+        ],
     },
     {
         "id": "meteorological_stations",
         "title": "Meteorological Stations",
         "thing_type": "meteorological station",
-        "description": "Weather and climate monitoring station locations.",
-        "keywords": ["meteorological-station", "weather"],
+        "description": (
+            "Weather and climate stations: sites that record conditions such as "
+            "precipitation, temperature, and evaporation. Each feature is one "
+            "station from the monitoring-point register, placed at the most "
+            "recent location recorded for it. Use it to relate groundwater and "
+            "streamflow behaviour to the weather that drives it."
+        ),
+        "keywords": [
+            "meteorological-station",
+            "weather",
+            "climate",
+            "precipitation",
+            "monitoring-points",
+        ],
     },
     {
         "id": "other_things",
         "title": "Other Thing Types",
         "thing_type": "other",
         "description": (
-            "Feature records that do not match another defined thing type."
+            "Monitoring points that do not fall into any of the defined feature "
+            "types. Each feature is one such point from the register, placed at "
+            "the most recent location recorded for it. The set is small and "
+            "mixed, with no shared meaning between its members, so it is "
+            "published only on the internal mount for staff triage -- typically "
+            "to find records that need reclassifying."
         ),
-        "keywords": ["other"],
+        "keywords": [
+            "other",
+            "unclassified",
+            "monitoring-points",
+            "internal",
+            "triage",
+        ],
+        # "Thing" is internal data-model vocabulary and "other" names no
+        # recognisable feature class, so this layer is not published on the
+        # public mount (BDMS-979). Staff GIS clients still reach it through
+        # /ogcapi-internal, and ogc_other_things is retained either way.
+        "internal_only": True,
     },
     {
         "id": "outfalls_wastewater_return_flow",
         "title": "Outfalls and Return Flow",
         "thing_type": "outfall of wastewater or return flow",
-        "description": "Outfall and return-flow monitoring points.",
-        "keywords": ["outfall", "return-flow", "surface-water"],
+        "description": (
+            "Outfalls and return flow: points where treated wastewater or unused "
+            "irrigation water re-enters a stream or channel. Each feature is one "
+            "outfall from the monitoring-point register, placed at the most "
+            "recent location recorded for it. Use it in water-quality work, where "
+            "these points mark deliberate inputs to a watercourse."
+        ),
+        "keywords": [
+            "outfall",
+            "return-flow",
+            "wastewater",
+            "surface-water",
+            "water-quality",
+            "monitoring-points",
+        ],
     },
     {
         "id": "perennial_streams",
         "title": "Perennial Streams",
         "thing_type": "perennial stream",
-        "description": ("Stream reaches with continuous or near-continuous flow."),
-        "keywords": ["perennial-stream", "surface-water"],
+        "description": (
+            "Perennial stream reaches: channels that flow year-round in most "
+            "years, sustained between storms by groundwater discharge. Each "
+            "feature is one monitored reach from the register, placed at the most "
+            "recent location recorded for it. Use it for base-flow and "
+            "surface-water/groundwater interaction work."
+        ),
+        "keywords": [
+            "perennial-stream",
+            "surface-water",
+            "base-flow",
+            "streamflow",
+            "monitoring-points",
+        ],
     },
     {
         "id": "rock_sample_locations",
         "title": "Rock Sample Locations",
         "thing_type": "rock sample location",
-        "description": ("Locations where rock samples were collected or documented."),
-        "keywords": ["rock-sample"],
+        "description": (
+            "Places where rock samples were collected or outcrop geology was "
+            "documented. Each feature is one sample location from the "
+            "monitoring-point register, placed at the most recent location "
+            "recorded for it. Use it to find where physical samples backing "
+            "geologic mapping and laboratory analysis came from."
+        ),
+        "keywords": [
+            "rock-sample",
+            "geology",
+            "sample-location",
+            "outcrop",
+            "monitoring-points",
+        ],
     },
     {
         "id": "soil_gas_sample_locations",
         "title": "Soil Gas Sample Locations",
         "thing_type": "soil gas sample location",
         "description": (
-            "Locations where soil gas measurements or samples were collected."
+            "Places where gas held in the pore space of soil was sampled. Each "
+            "feature is one sample location from the monitoring-point register, "
+            "placed at the most recent location recorded for it. Soil gas is used "
+            "to detect vapours rising from buried contamination or from geologic "
+            "sources, so these points usually mark contamination or "
+            "resource-exploration surveys."
         ),
-        "keywords": ["soil-gas", "sample-location"],
+        "keywords": [
+            "soil-gas",
+            "sample-location",
+            "vapour-survey",
+            "contamination",
+            "monitoring-points",
+        ],
     },
 ]
 
@@ -115,11 +253,25 @@ EDR_COLLECTIONS = [
         "id": "waterlevels",
         "title": "Water Levels",
         "description": (
-            "Depth-to-water observations (manual readings and continuous "
-            "transducer time series) served as OGC API - EDR coverages. "
-            "Each transducer deployment is exposed as an EDR instance."
+            "Depth-to-water through time at each well, served as time series "
+            "rather than as one point per well. Two kinds of record are combined: "
+            "manual measurements taken by field staff during a visit, and "
+            "continuous records from pressure transducers left down the well, "
+            "which log automatically at a fixed interval. Each transducer "
+            "deployment is exposed as its own EDR instance, so a well's record "
+            "can be read deployment by deployment or as a whole. Use it to plot "
+            "hydrographs and to see how water levels respond to pumping, "
+            "recharge, and drought."
         ),
-        "keywords": ["groundwater", "water-level", "depth-to-water", "edr"],
+        "keywords": [
+            "groundwater",
+            "water-level",
+            "depth-to-water",
+            "time-series",
+            "hydrograph",
+            "transducer",
+            "edr",
+        ],
         "table": "ogc_waterlevels",
         "instance_field": "deployment_id",
     },
@@ -127,10 +279,22 @@ EDR_COLLECTIONS = [
         "id": "water_chemistry",
         "title": "Water Chemistry",
         "description": (
-            "Water-chemistry analyses keyed by analyte, served as OGC API - "
-            "EDR coverages."
+            "Water-chemistry analyses through time, one record per analyte per "
+            "sample, served as time series. The layer draws together the major, "
+            "minor and trace, and field-parameter analysis records from the "
+            "legacy chemistry tables, keyed by the analyte name as the laboratory "
+            "recorded it. Use it to follow one constituent at one site over time "
+            "-- the chemistry feature layers, by contrast, give the latest value "
+            "for every analyte at once."
         ),
-        "keywords": ["water-chemistry", "analyte", "edr"],
+        "keywords": [
+            "water-chemistry",
+            "water-quality",
+            "analyte",
+            "time-series",
+            "laboratory-results",
+            "edr",
+        ],
         "table": "ogc_water_chemistry",
         "instance_field": None,
     },
@@ -247,9 +411,12 @@ def _thing_collections_block(
     user: str,
     password_placeholder: str,
     table_prefix: str = "ogc_",
+    include_internal_only: bool = False,
 ) -> str:
     resources: dict[str, dict] = {}
     for collection in THING_COLLECTIONS:
+        if collection.get("internal_only") and not include_internal_only:
+            continue
         resources[collection["id"]] = {
             "type": "collection",
             "title": collection["title"],
@@ -264,7 +431,7 @@ def _thing_collections_block(
             "providers": [
                 {
                     "type": "feature",
-                    "name": "PostgreSQL",
+                    "name": "core.feature_provider.DescribedPostgreSQLProvider",
                     "data": {
                         "host": host,
                         "port": port,
@@ -384,6 +551,7 @@ def _write_config(
     table_prefix: str = "ogc_",
     template_path: Path | None = None,
     include_edr: bool = False,
+    include_internal_only: bool = False,
 ) -> None:
     host, port, dbname, user, password_placeholder = _pygeoapi_db_settings()
     template = (template_path or _template_path()).read_text(encoding="utf-8")
@@ -394,6 +562,7 @@ def _write_config(
         user=user,
         password_placeholder=password_placeholder,
         table_prefix=table_prefix,
+        include_internal_only=include_internal_only,
     )
     if include_edr:
         # EDR collections (core/edr_provider.py), backed by
@@ -484,6 +653,11 @@ def _load_pygeoapi_app(instance: str, config_path: Path, openapi_path: Path):
     # handlers of the app already built for the first one -- both mounts end
     # up serving whichever config was loaded last. Give each mount its own
     # module object so the two sets of globals can never alias.
+    # Before the module is executed, so the mount's handlers resolve the
+    # patched queryables function. Idempotent and process-wide by nature:
+    # pygeoapi.api.itemtypes is one module object shared by both mounts.
+    apply_queryables_patch()
+
     module_name = "pygeoapi.starlette_app"
     spec = find_spec(module_name)
     if spec is None or spec.loader is None:
@@ -564,6 +738,7 @@ def mount_pygeoapi_internal(app: FastAPI) -> None:
         table_prefix="ogc_internal_",
         template_path=_internal_template_path(),
         include_edr=True,
+        include_internal_only=True,
     )
     _generate_openapi(config_path, openapi_path)
     _assert_server_settings_match(_pygeoapi_dir() / "pygeoapi-config.yml", config_path)

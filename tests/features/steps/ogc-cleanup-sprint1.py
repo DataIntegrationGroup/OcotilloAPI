@@ -858,6 +858,78 @@ def step_then_no_collection_id_prefixed(context, prefix):
 
 
 # ---------------------------------------------------------------------------
+# A16/A17/A18 -- Layers hidden from the public catalog, backing relations kept
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "avg_tds_wells and latest_depth_to_water_wells have been removed from the "
+    "service catalog"
+)
+@given("the locations entry has been removed from the service configuration")
+@given("the other_things view has at least one reference in the application codebase")
+def step_given_layer_hidden_from_public_catalog(context):
+    # No-op marker: the catalog is core/pygeoapi-config.yml and
+    # core.pygeoapi.THING_COLLECTIONS, both artifacts under test rather than
+    # runtime state to arrange. Same treatment as the A1/A2/A11 givens.
+    pass
+
+
+@then("the response does not include a collection with id {collection_id}")
+def step_then_response_excludes_collection_id(context, collection_id):
+    payload = context.response.json()
+    ids = {collection["id"] for collection in payload["collections"]}
+    assert collection_id not in ids, (
+        f"{collection_id} is still published on the public catalog; "
+        f"collections: {sorted(ids)}"
+    )
+
+
+@then("the materialized view for {layer_id} exists in the database schema")
+def step_then_matview_for_layer_exists(context, layer_id):
+    relation = f"ogc_{layer_id}"
+    assert relation in context.schema_relations, (
+        f"{relation} is missing -- A16 hides the layer from the catalog but "
+        "keeps its materialized view for internal use"
+    )
+
+
+@then("the locations table still exists")
+def step_then_locations_table_still_exists(context):
+    # context.schema_relations covers views and materialized views only, so
+    # the base table needs its own lookup.
+    with session_ctx() as session:
+        relkind = session.execute(
+            text(
+                "SELECT c.relkind FROM pg_class c "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'public' AND c.relname = 'location'"
+            )
+        ).scalar_one_or_none()
+    assert relkind == "r", (
+        "the location table is missing -- A17 hides the layer from the "
+        f"catalog but keeps the underlying table (relkind={relkind!r})"
+    )
+
+
+def _assert_other_things_view_exists(context, relation):
+    assert relation in context.schema_relations, (
+        f"{relation} is missing -- A18 hides other_things from the public "
+        "catalog but /ogcapi-internal still serves the layer"
+    )
+
+
+@then("the other_things backing view still exists in the database schema")
+def step_then_other_things_view_still_exists(context):
+    _assert_other_things_view_exists(context, "ogc_other_things")
+
+
+@then("the internal other_things backing view still exists in the database schema")
+def step_then_internal_other_things_view_still_exists(context):
+    _assert_other_things_view_exists(context, "ogc_internal_other_things")
+
+
+# ---------------------------------------------------------------------------
 # A2 -- Replace OGC server metadata placeholders in pygeoapi-config.yml
 # ---------------------------------------------------------------------------
 

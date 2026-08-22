@@ -1,0 +1,2068 @@
+# Per-field documentation for the OGC collections.
+#
+# Keyed by backing relation with the ogc_/ogc_internal_ prefix stripped, so the
+# public and internal mounts share one entry per view. `_defaults` applies to
+# every table; a per-table entry wins over it.
+#
+# Allowed keys per field: title, description, x-ogc-unit, x-ogc-unitLang,
+# x-ogc-propertySeq. Types and formats come from provider reflection, never
+# from here.
+#
+# Say what the value means and what its datum or convention is -- not how the
+# view is assembled. That belongs in the collection description.
+#
+# See docs/ogc-field-descriptions.md.
+
+_defaults:
+  id:
+    title: Feature ID
+    description: >-
+      Stable identifier for this feature within the collection. Unique inside
+      the collection, not across collections.
+  name:
+    title: Name
+    description: >-
+      Name or identifier the monitoring point is known by, as recorded by the
+      Bureau.
+  thing_type:
+    title: Feature type
+    description: >-
+      Controlled-vocabulary type of the monitoring point, such as water well,
+      spring, or meteorological station.
+    enum-lexicon: thing_type
+  release_status:
+    title: Release status
+    description: >-
+      Publication state of the record. Only records marked public appear on
+      the public /ogcapi mount; the authenticated internal mount also carries
+      private and draft records.
+    enum-lexicon: release_status
+  first_visit_date:
+    title: First visit date
+    description: Date of the earliest Bureau visit on record for this feature.
+  nma_pk_welldata:
+    title: Legacy NM_Aquifer well key
+    description: >-
+      Primary key of this feature's record in the legacy NM_Aquifer WellData
+      table, kept so migrated rows can be traced back to their source.
+  elevation:
+    title: Ground-surface elevation
+    description: >-
+      Surveyed elevation of the ground surface at the feature, in metres above
+      the NAVD 88 vertical datum.
+    x-ogc-unit: https://qudt.org/vocab/unit/M
+    x-ogc-unitLang: QUDT
+  well_depth:
+    title: Well depth
+    description: >-
+      Total depth of the finished well, from ground surface to the bottom of
+      the well.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  hole_depth:
+    title: Borehole depth
+    description: >-
+      Depth of the drilled hole, from ground surface to the bottom of the
+      borehole. Usually deeper than the finished well.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  well_casing_diameter:
+    title: Casing diameter
+    description: Inside diameter of the well casing.
+    x-ogc-unit: https://qudt.org/vocab/unit/IN
+    x-ogc-unitLang: QUDT
+  well_casing_depth:
+    title: Casing depth
+    description: >-
+      Depth from ground surface to the bottom of the well casing.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  well_completion_date:
+    title: Completion date
+    description: Date the well was finished, where it is known.
+  well_driller_name:
+    title: Driller
+    description: Name of the driller or drilling company that constructed the well.
+  well_construction_method:
+    title: Construction method
+    description: >-
+      How the well was constructed, such as air rotary, cable tool, or dug,
+      from a controlled vocabulary.
+    enum-lexicon: well_construction_method
+  well_pump_type:
+    title: Pump type
+    description: >-
+      Type of pump installed in the well, such as submersible or windmill,
+      from a controlled vocabulary.
+    enum-lexicon: well_pump_type
+  well_pump_depth:
+    title: Pump intake depth
+    description: Depth from ground surface to the pump intake.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  formation_completion_code:
+    title: Completion formation
+    description: >-
+      Geologic formation the well is completed in -- the formation it draws
+      from, not the full sequence of rock it passes through.
+  nma_formation_zone:
+    title: Legacy formation zone
+    description: >-
+      Formation zone exactly as recorded in the legacy NM_Aquifer WellData
+      table, kept unedited alongside the controlled-vocabulary value.
+  county:
+    title: County
+    description: New Mexico county the feature falls in.
+  state:
+    title: State
+    description: State the feature falls in.
+  api:
+    title: API number
+    description: >-
+      American Petroleum Institute well number, the standard unique identifier
+      for a drilled well in the United States.
+  well_name:
+    title: Well name
+    description: Name the well is recorded under in the legacy NM_Wells database.
+  well_num:
+    title: Well number
+    description: Operator's number for the well within its lease or unit.
+  well_data_id:
+    title: Legacy NM_Wells well key
+    description: >-
+      Identifier of the well's record in the legacy NM_Wells database, kept so
+      rows can be traced back to their source.
+  total_depth:
+    title: Total depth
+    description: Total drilled depth of the well, as reported on its record.
+  source_id:
+    title: Source ID
+    description: >-
+      Identifier of the publication or data submission the record came from,
+      in the legacy NM_Wells source register.
+  entry_date:
+    title: Record entry date
+    description: Date the record was entered into the legacy NM_Wells database.
+  lat_dd83:
+    title: Latitude (NAD 83)
+    description: Latitude in decimal degrees on the NAD 83 datum.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG
+    x-ogc-unitLang: QUDT
+  long_dd83:
+    title: Longitude (NAD 83)
+    description: Longitude in decimal degrees on the NAD 83 datum.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG
+    x-ogc-unitLang: QUDT
+  lat_dd27:
+    title: Latitude (NAD 27)
+    description: >-
+      Latitude in decimal degrees on the older NAD 27 datum, as originally
+      recorded. Positions differ from NAD 83 by roughly 100 metres.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG
+    x-ogc-unitLang: QUDT
+  long_dd27:
+    title: Longitude (NAD 27)
+    description: >-
+      Longitude in decimal degrees on the older NAD 27 datum, as originally
+      recorded. Positions differ from NAD 83 by roughly 100 metres.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG
+    x-ogc-unitLang: QUDT
+  elev_gl:
+    title: Ground-level elevation
+    description: Elevation of the ground surface at the well head.
+  elev_kb:
+    title: Kelly bushing elevation
+    description: >-
+      Elevation of the kelly bushing, the point on the drilling rig that
+      drilled depths were measured from. Typically several metres above ground
+      level.
+  elev_unspc:
+    title: Elevation (unspecified datum)
+    description: >-
+      Elevation recorded without a stated reference point, so it may be ground
+      level or a drilling datum.
+  depth_unit:
+    title: Depth unit
+    description: Unit the depths on this record are reported in.
+  temp_unit:
+    title: Temperature unit
+    description: Unit the temperatures on this record are reported in.
+
+locations:
+  nma_pk_location:
+    title: Legacy NM_Aquifer location key
+    description: >-
+      Primary key of this site's record in the legacy NM_Aquifer Location
+      table, kept so migrated rows can be traced back to their source.
+  description:
+    title: Site description
+    description: Free-text description of the site.
+  quad_name:
+    title: USGS quadrangle
+    description: Name of the USGS 7.5-minute topographic quadrangle the site falls in.
+  nma_location_notes:
+    title: Location notes
+    description: >-
+      Notes about the site carried over from NM_Aquifer, typically covering
+      access and how to find it on the ground.
+  nma_coordinate_notes:
+    title: Coordinate notes
+    description: >-
+      Notes on how the coordinates were obtained -- GPS, digitised from a map,
+      or derived from a legal description.
+  nma_data_reliability:
+    title: Data reliability
+    description: >-
+      Legacy rating of how much confidence to place in the site's recorded
+      position.
+  nma_date_created:
+    title: Legacy record created
+    description: Date the site record was created in NM_Aquifer.
+  nma_site_date:
+    title: Site date
+    description: Date associated with the site itself in NM_Aquifer, where one was recorded.
+
+project_areas:
+  name:
+    title: Project name
+    description: Name of the Bureau project the area belongs to.
+  description:
+    title: Project description
+    description: Free-text description of the project.
+  group_type:
+    title: Group type
+    description: >-
+      Kind of grouping the record represents, such as a project or a
+      geographic area.
+
+water_well_summary:
+  elevation_method:
+    title: Elevation method
+    description: >-
+      How the ground-surface elevation was determined, such as GPS survey or
+      read from a digital elevation model. Governs how much precision the
+      elevation deserves.
+    enum-lexicon: collection_method
+  formation_zone:
+    title: Formation zone
+    description: Geologic formation the well draws from, as recorded for the well.
+  total_water_levels:
+    title: Water-level measurement count
+    description: >-
+      Number of manual groundwater-level measurements behind this row's
+      statistics. Small counts make the range and trend unreliable.
+  last_water_level:
+    title: Latest water level
+    description: >-
+      Most recent groundwater-level measurement, as a depth below ground
+      surface. Reported in the units of the source reading, which is feet for
+      almost the whole record; unlike water_elevation_wells this layer does
+      not convert metric readings.
+  last_water_level_datetime:
+    title: Latest measurement time
+    description: Date and time of the most recent groundwater-level measurement.
+  min_water_level:
+    title: Shallowest water level
+    description: >-
+      Smallest depth below ground surface on record -- the high-water mark,
+      since a smaller depth means water nearer the surface.
+  max_water_level:
+    title: Deepest water level
+    description: >-
+      Largest depth below ground surface on record -- the low-water mark,
+      since a larger depth means water further down.
+  water_level_trend_ft_per_year:
+    title: Water-level trend
+    description: >-
+      Slope of a straight line fitted through the well's depth-to-water
+      measurements over time, in feet per year. Positive means depth is
+      increasing, so the water table is falling; negative means it is rising.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT-PER-YR
+    x-ogc-unitLang: QUDT
+
+actively_monitored_wells:
+  elevation_method:
+    title: Elevation method
+    description: >-
+      How the ground-surface elevation was determined, such as GPS survey or
+      read from a digital elevation model.
+    enum-lexicon: collection_method
+  formation_zone:
+    title: Formation zone
+    description: Geologic formation the well draws from, as recorded for the well.
+  total_water_levels:
+    title: Water-level measurement count
+    description: Number of manual groundwater-level measurements on record for the well.
+  last_water_level:
+    title: Latest water level
+    description: >-
+      Most recent groundwater-level measurement, as a depth below ground
+      surface, in the units of the source reading.
+  last_water_level_datetime:
+    title: Latest measurement time
+    description: Date and time of the most recent groundwater-level measurement.
+  min_water_level:
+    title: Shallowest water level
+    description: Smallest depth below ground surface on record for the well.
+  max_water_level:
+    title: Deepest water level
+    description: Largest depth below ground surface on record for the well.
+  water_level_trend_ft_per_year:
+    title: Water-level trend
+    description: >-
+      Slope of a straight line fitted through the well's depth-to-water
+      measurements over time, in feet per year. Positive means the water table
+      is falling.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT-PER-YR
+    x-ogc-unitLang: QUDT
+  group_id:
+    title: Network ID
+    description: Identifier of the monitoring network the well belongs to.
+  group_name:
+    title: Network name
+    description: >-
+      Name of the monitoring network the well belongs to. Always the Water
+      Level Network in this collection.
+  group_type:
+    title: Network type
+    description: Kind of grouping the network record represents.
+
+depth_to_water_trend_wells:
+  record_count:
+    title: Measurement count
+    description: >-
+      Number of groundwater-level measurements the trend was fitted to. Below
+      10 measurements -- or below 4 spanning less than two years -- the trend
+      is reported as not enough data.
+  first_observation_datetime:
+    title: First measurement time
+    description: Date and time of the earliest measurement used in the fit.
+  last_observation_datetime:
+    title: Latest measurement time
+    description: Date and time of the most recent measurement used in the fit.
+  span_years:
+    title: Record span
+    description: >-
+      Years between the first and last measurement used in the fit. A steep
+      slope over a short span is weak evidence of a real trend.
+    x-ogc-unit: https://qudt.org/vocab/unit/YR
+    x-ogc-unitLang: QUDT
+  slope_ft_per_year:
+    title: Trend slope
+    description: >-
+      Slope of a straight line fitted through depth to water below ground
+      surface over time, in feet per year. Positive means depth is increasing,
+      so the water table is falling.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT-PER-YR
+    x-ogc-unitLang: QUDT
+  trend_category:
+    title: Trend category
+    description: >-
+      Plain-language reading of the slope: increasing (water table falling
+      faster than 0.25 ft/yr), decreasing (rising faster than 0.25 ft/yr),
+      stable, or not enough data.
+    enum: [increasing, decreasing, stable, not enough data]
+
+water_elevation_wells:
+  observation_id:
+    title: Measurement ID
+    description: Identifier of the groundwater-level measurement this row was calculated from.
+  observation_datetime:
+    title: Measurement time
+    description: Date and time the groundwater level was measured.
+  elevation_m:
+    title: Ground-surface elevation
+    description: >-
+      Surveyed elevation of the ground surface at the well, in metres above
+      the NAVD 88 vertical datum.
+    x-ogc-unit: https://qudt.org/vocab/unit/M
+    x-ogc-unitLang: QUDT
+  depth_to_water_below_ground_surface_ft:
+    title: Depth to water
+    description: >-
+      Distance from ground surface down to the water table at the time of
+      measurement. Metric readings are converted to feet, and a reading with
+      no recorded measuring-point height is treated as taken at ground level.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  water_elevation_ft:
+    title: Water-table elevation
+    description: >-
+      Height of the water table above sea level: ground-surface elevation
+      converted to feet, minus the depth to water. Comparable between wells
+      standing at different ground elevations.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+
+latest_depth_to_water_wells:
+  observation_id:
+    title: Measurement ID
+    description: Identifier of the groundwater-level measurement this row reports.
+  observation_datetime:
+    title: Measurement time
+    description: Date and time the groundwater level was measured.
+  depth_to_water_reference:
+    title: Depth to water from reference point
+    description: >-
+      Depth to water as read in the field, measured down from the measuring
+      point rather than from the ground.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  measuring_point_height:
+    title: Measuring-point height
+    description: >-
+      Height of the measuring point -- usually the top of the well casing --
+      above ground surface. Subtracted from the field reading to give a depth
+      below ground surface; a reading with no recorded height is treated as
+      taken at ground level.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  depth_to_water_bgs:
+    title: Depth to water below ground surface
+    description: >-
+      Distance from ground surface down to the water table, after subtracting
+      the measuring-point height from the field reading.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+
+latest_tds_wells:
+  major_chemistry_id:
+    title: Analysis ID
+    description: Identifier of the laboratory result this row reports.
+  latest_tds_observation_date:
+    title: Analysis date
+    description: >-
+      Date the reported TDS result was analysed, or the date the sample was
+      collected where no analysis date was recorded.
+  latest_tds_value:
+    title: Total dissolved solids
+    description: >-
+      Most recent measured concentration of dissolved mineral matter in the
+      water. Higher values mean saltier water; drinking-water guidance sits
+      around 500 mg/L.
+  latest_tds_units:
+    title: TDS units
+    description: >-
+      Units the TDS value is reported in, as the laboratory recorded them --
+      usually milligrams per litre.
+
+avg_tds_wells:
+  tds_observation_count:
+    title: Analysis count
+    description: >-
+      Number of TDS results the average was taken over. Across the catalog
+      this averages about 1.9, so most rows average one or two samples.
+  avg_tds_value:
+    title: Average total dissolved solids
+    description: >-
+      Arithmetic mean of every TDS result on record for the well, without
+      weighting by date. Read alongside the analysis count before relying on
+      it.
+  first_tds_observation_date:
+    title: First analysis date
+    description: Date of the earliest TDS result included in the average.
+  last_tds_observation_date:
+    title: Latest analysis date
+    description: Date of the most recent TDS result included in the average.
+
+geothermal_wells_bht:
+  bht_count:
+    title: Reading count
+    description: Number of bottom-hole temperature readings recorded for the well.
+  max_bht:
+    title: Highest bottom-hole temperature (as recorded)
+    description: >-
+      Highest bottom-hole temperature on record for the well, in the units the
+      source recorded it in. Use max_bht_c for a comparable value.
+  min_bht:
+    title: Lowest bottom-hole temperature (as recorded)
+    description: >-
+      Lowest bottom-hole temperature on record for the well, in the units the
+      source recorded it in. Use min_bht_c for a comparable value.
+  max_bht_c:
+    title: Highest bottom-hole temperature
+    description: >-
+      Highest bottom-hole temperature on record for the well, converted to
+      degrees Celsius.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG_C
+    x-ogc-unitLang: QUDT
+  min_bht_c:
+    title: Lowest bottom-hole temperature
+    description: >-
+      Lowest bottom-hole temperature on record for the well, converted to
+      degrees Celsius.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG_C
+    x-ogc-unitLang: QUDT
+  max_bht_depth:
+    title: Deepest reading depth
+    description: Depth of the deepest bottom-hole temperature reading for the well.
+  temp_unit:
+    title: Temperature unit
+    description: >-
+      Unit the converted temperatures are reported in. Always Celsius; see
+      temp_unit_source for what the readings arrived as.
+    enum: [C]
+  temp_unit_source:
+    title: Source temperature units
+    description: >-
+      Units the underlying readings were recorded in, comma-separated where
+      the well's readings did not agree.
+  temp_unit_mixed:
+    title: Mixed source units
+    description: >-
+      True when the well's readings arrived in more than one temperature unit,
+      which is a sign the source record needs review.
+  unconvertible_count:
+    title: Unconvertible reading count
+    description: >-
+      Number of readings that could not be converted to Celsius because their
+      unit was missing or unrecognised. These are excluded from the minimum
+      and maximum.
+
+geothermal_wells_temperature_profile:
+  reading_count:
+    title: Reading count
+    description: Number of temperature-versus-depth readings logged in the well.
+  min_depth:
+    title: Shallowest reading depth
+    description: Depth of the shallowest temperature reading in the profile.
+  max_depth:
+    title: Deepest reading depth
+    description: Depth of the deepest temperature reading in the profile.
+  min_temp:
+    title: Lowest temperature (as recorded)
+    description: >-
+      Lowest temperature in the profile, in the units the source recorded it
+      in. Use min_temp_c for a comparable value.
+  max_temp:
+    title: Highest temperature (as recorded)
+    description: >-
+      Highest temperature in the profile, in the units the source recorded it
+      in. Use max_temp_c for a comparable value.
+  min_temp_c:
+    title: Lowest temperature
+    description: Lowest temperature in the profile, converted to degrees Celsius.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG_C
+    x-ogc-unitLang: QUDT
+  max_temp_c:
+    title: Highest temperature
+    description: Highest temperature in the profile, converted to degrees Celsius.
+    x-ogc-unit: https://qudt.org/vocab/unit/DEG_C
+    x-ogc-unitLang: QUDT
+  temp_unit:
+    title: Temperature unit
+    description: >-
+      Unit the converted temperatures are reported in. Always Celsius; see
+      temp_unit_source for what the readings arrived as.
+    enum: [C]
+  temp_unit_source:
+    title: Source temperature units
+    description: >-
+      Units the underlying readings were recorded in, comma-separated where
+      the well's readings did not agree.
+  temp_unit_mixed:
+    title: Mixed source units
+    description: >-
+      True when the well's readings arrived in more than one temperature unit,
+      which is a sign the source record needs review.
+  unconvertible_count:
+    title: Unconvertible reading count
+    description: >-
+      Number of readings that could not be converted to Celsius because their
+      unit was missing or unrecognised.
+  series:
+    title: Temperature-depth profile
+    description: >-
+      The whole profile as a list of readings, each carrying a depth, the
+      temperature as recorded, and the temperature converted to Celsius.
+
+bht_measurements:
+  operator:
+    title: Operator
+    description: Company operating the well when the record was made.
+  well_type:
+    title: Well type
+    description: Purpose the well was drilled for, such as oil, gas, or observation.
+  well_tvd:
+    title: True vertical depth
+    description: >-
+      Vertical depth of the well, which is shorter than the drilled length for
+      a deviated hole.
+  completion_date:
+    title: Completion date
+    description: Date the well was finished.
+  current_status:
+    title: Current status
+    description: Latest recorded status of the well, such as producing or plugged.
+  cuttings:
+    title: Cuttings held
+    description: >-
+      Whether rock cuttings from the well are held in the Bureau's subsurface
+      library.
+  core_exists:
+    title: Core held
+    description: Whether a rock core from the well is held in the Bureau's subsurface library.
+  bht_depth:
+    title: Reading depth
+    description: Depth the bottom-hole temperature was measured at.
+  bht:
+    title: Bottom-hole temperature
+    description: >-
+      Temperature measured at the bottom of the hole, in the units recorded by
+      the source.
+  hours_since_circulation:
+    title: Hours since circulation
+    description: >-
+      Time between the last circulation of drilling fluid and the reading.
+      Drilling fluid cools the rock, so a reading taken soon after circulation
+      is too low; this figure decides whether it can be corrected.
+    x-ogc-unit: https://qudt.org/vocab/unit/HR
+    x-ogc-unitLang: QUDT
+  date_measured:
+    title: Measurement date
+    description: Date the temperature was measured.
+
+temp_depth_measurements:
+  sample_fm:
+    title: Formation
+    description: Geologic formation at the depth the reading was taken.
+  loc_acc_val:
+    title: Location accuracy
+    description: Recorded accuracy of the well's coordinates.
+  entered_by:
+    title: Entered by
+    description: Person who entered the record into the legacy NM_Wells database.
+  depth:
+    title: Reading depth
+    description: Depth below the reference datum the temperature was measured at.
+  temp:
+    title: Temperature
+    description: Temperature measured at this depth, in the units recorded by the source.
+  sample_date:
+    title: Measurement date
+    description: Date the temperature was measured.
+
+heat_flow:
+  elevation_m:
+    title: Elevation
+    description: Well elevation converted to metres.
+    x-ogc-unit: https://qudt.org/vocab/unit/M
+    x-ogc-unitLang: QUDT
+  depth_units:
+    title: Depth units
+    description: Units the depths on this record were originally reported in.
+  total_depth_m:
+    title: Total depth (metres)
+    description: Total drilled depth of the well converted to metres.
+    x-ogc-unit: https://qudt.org/vocab/unit/M
+    x-ogc-unitLang: QUDT
+  from_depth:
+    title: Interval top
+    description: Depth to the top of the interval the determination covers.
+  to_depth:
+    title: Interval base
+    description: Depth to the bottom of the interval the determination covers.
+  therml_cond:
+    title: Thermal conductivity (as published)
+    description: >-
+      How readily the rock conducts heat, in the units it was published in.
+      Use tc_si for a comparable value.
+  tcond_range:
+    title: Thermal conductivity range
+    description: Published spread of conductivity values for the interval.
+  tcond_error:
+    title: Thermal conductivity error
+    description: Published uncertainty on the conductivity value.
+  tcond_unit:
+    title: Thermal conductivity unit
+    description: >-
+      Unit the published conductivity is in. TCU denotes the older thermal
+      conductivity unit, mcal/cm-s-degC.
+  tc_si:
+    title: Thermal conductivity
+    description: >-
+      Thermal conductivity converted to SI units, watts per metre-kelvin.
+      Typical rock sits between 1 and 5.
+    x-ogc-unit: https://qudt.org/vocab/unit/W-PER-M-K
+    x-ogc-unitLang: QUDT
+  sample_type:
+    title: Sample type
+    description: What the conductivity was measured on, such as core or cuttings.
+  num_samples:
+    title: Sample count
+    description: Number of samples the conductivity value was measured from.
+  therml_grad:
+    title: Thermal gradient
+    description: >-
+      How fast temperature rises with depth over the interval, in the units it
+      was published in. Continental crust averages roughly 25 degrees Celsius
+      per kilometre.
+  tgrad_range:
+    title: Thermal gradient range
+    description: Published spread of gradient values for the interval.
+  tg_error:
+    title: Thermal gradient error
+    description: Published uncertainty on the gradient value.
+  grad_unit:
+    title: Thermal gradient unit
+    description: Unit the published gradient is in.
+  heat_flow:
+    title: Heat flow (as published)
+    description: >-
+      Rate at which heat escapes through the ground over this interval, in the
+      units it was published in. Use heat_flow_si for a comparable value.
+  ht_flow_unit:
+    title: Heat flow unit
+    description: >-
+      Unit the published heat flow is in. HFU denotes the older heat flow
+      unit, equal to 41.84 milliwatts per square metre.
+  heat_flow_si:
+    title: Heat flow
+    description: >-
+      Heat flow converted to SI units, milliwatts per square metre. Continental
+      averages sit near 65; values well above that mark geothermal interest.
+    x-ogc-unit: https://qudt.org/vocab/unit/MilliW-PER-M2
+    x-ogc-unitLang: QUDT
+  ht_flow_est:
+    title: Estimated heat flow (as published)
+    description: >-
+      Heat flow the author estimated rather than measured, in the units it was
+      published in.
+  ht_flow_est_si:
+    title: Estimated heat flow
+    description: >-
+      Author-estimated heat flow converted to milliwatts per square metre.
+    x-ogc-unit: https://qudt.org/vocab/unit/MilliW-PER-M2
+    x-ogc-unitLang: QUDT
+  quality:
+    title: Quality rating
+    description: >-
+      The publication's own assessment of how much confidence the
+      determination deserves.
+  first_auth:
+    title: First author
+    description: First author of the publication the determination came from.
+  pub_year:
+    title: Publication year
+    description: Year the determination was published.
+  title:
+    title: Publication title
+    description: Title of the publication the determination came from.
+  journal:
+    title: Journal
+    description: Journal or report series the determination was published in.
+  volume:
+    title: Volume
+    description: Volume of the journal or report series.
+  page_no:
+    title: Pages
+    description: Page range of the publication.
+
+dst:
+  dst_name:
+    title: Test name
+    description: Name recorded for the drill stem test.
+  dst_operator:
+    title: Testing contractor
+    description: Company that ran the drill stem test.
+  dst_number:
+    title: Test number
+    description: Sequence number of this test within the well.
+  dst_date:
+    title: Test date
+    description: Date the drill stem test was run.
+  from_depth:
+    title: Interval top
+    description: Depth to the top of the tested interval.
+  to_depth:
+    title: Interval base
+    description: Depth to the bottom of the tested interval.
+  target_fm:
+    title: Target formation
+    description: Geologic formation the test was aimed at.
+  packer_from:
+    title: Upper packer depth
+    description: >-
+      Depth of the upper packer, the seal that isolates the tested interval
+      from the rest of the hole.
+  packer_to:
+    title: Lower packer depth
+    description: Depth of the lower packer sealing the bottom of the tested interval.
+  srf_choke_sz:
+    title: Surface choke size
+    description: >-
+      Size of the choke at surface, which limits how fast fluid is allowed to
+      flow during the test.
+  bot_choke_sz:
+    title: Bottom choke size
+    description: Size of the choke at the bottom of the string.
+  prs_gage_dpt:
+    title: Pressure gauge depth
+    description: Depth the pressure gauge was set at.
+  pipe_dia:
+    title: Pipe diameter
+    description: Diameter of the drill pipe used for the test.
+  pipe_length:
+    title: Pipe length
+    description: Length of drill pipe run for the test.
+  flow_history:
+    title: Flow history
+    description: >-
+      The operations logged during the test, in order -- opening the tool,
+      flow periods, and shut-in periods.
+  init_flow:
+    title: Initial flow pressure
+    description: Pressure recorded at the start of the first flow period.
+  flw_prs_in_min:
+    title: Initial flow duration
+    description: Length of the first flow period, in minutes.
+    x-ogc-unit: https://qudt.org/vocab/unit/MIN
+    x-ogc-unitLang: QUDT
+  fin_flow:
+    title: Final flow pressure
+    description: Pressure recorded at the end of the last flow period.
+  flw_prs_fin_min:
+    title: Final flow duration
+    description: Length of the last flow period, in minutes.
+    x-ogc-unit: https://qudt.org/vocab/unit/MIN
+    x-ogc-unitLang: QUDT
+  prs_init_clsd_in:
+    title: Initial shut-in pressure
+    description: >-
+      Pressure built up during the first shut-in period, after the tool was
+      closed and fluid stopped flowing.
+  in_sht_in_min:
+    title: Initial shut-in duration
+    description: Length of the first shut-in period, in minutes.
+    x-ogc-unit: https://qudt.org/vocab/unit/MIN
+    x-ogc-unitLang: QUDT
+  fin_shut_in:
+    title: Final shut-in pressure
+    description: >-
+      Pressure built up during the last shut-in period. Usually the closest
+      available estimate of true formation pressure.
+  fn_sht_in_min:
+    title: Final shut-in duration
+    description: Length of the last shut-in period, in minutes.
+    x-ogc-unit: https://qudt.org/vocab/unit/MIN
+    x-ogc-unitLang: QUDT
+  hydrost_prs_in:
+    title: Initial hydrostatic pressure
+    description: >-
+      Pressure of the fluid column in the hole before the test, used as a
+      reference for the flowing pressures.
+  hyd_st_prs_fl:
+    title: Final hydrostatic pressure
+    description: Pressure of the fluid column in the hole at the end of the test.
+  press_units:
+    title: Pressure units
+    description: Units the pressures on this record are reported in.
+  blanked_off:
+    title: Blanked off
+    description: Whether the tested interval was blanked off during the test.
+  fm_temp:
+    title: Formation temperature
+    description: Temperature recorded for the formation during the test.
+
+# ---------------------------------------------------------------------------
+# Chemistry analyte columns below are generated by
+# cli/generate_chemistry_field_descriptions.py and reviewed by hand. Re-run it
+# when the analyte lists in the ogc_* view migrations change.
+# ---------------------------------------------------------------------------
+major_chemistry_results:
+  location_id:
+    title: Location ID
+    description: >-
+      Identifier of the location record the well's coordinates came from.
+
+  analyte_count:
+    title: Analyte count
+    description: >-
+      Number of distinct analytes with a value in this row. A low count
+      means the well has only been analysed for part of the suite.
+
+  latest_chemistry_date:
+    title: Latest analysis date
+    description: >-
+      Date of the most recent result in this row. Analytes are carried
+      forward independently, so an individual value may be older than this
+      date.
+
+  tds:
+    title: Total dissolved solids
+    description: >-
+      Total mass of dissolved mineral matter in the water -- in plain
+      terms, how salty it is. Drinking-water guidance sits around 500
+      mg/L.
+
+  tds_units:
+    title: Total dissolved solids units
+    description: >-
+      Units the total dissolved solids value is reported in, as the
+      laboratory recorded them.
+
+  calcium:
+    title: Calcium
+    description: >-
+      Dissolved calcium concentration in the most recent sample analysed
+      for it.
+
+  calcium_units:
+    title: Calcium units
+    description: >-
+      Units the calcium value is reported in, as the laboratory recorded
+      them.
+
+  calcium_total:
+    title: Calcium (total)
+    description: >-
+      Total calcium concentration -- the unfiltered determination, which
+      counts calcium bound to suspended particles as well as the dissolved
+      fraction.
+
+  calcium_total_units:
+    title: Calcium (total) units
+    description: >-
+      Units the calcium (total) value is reported in, as the laboratory
+      recorded them.
+
+  magnesium:
+    title: Magnesium
+    description: >-
+      Dissolved magnesium concentration in the most recent sample analysed
+      for it.
+
+  magnesium_units:
+    title: Magnesium units
+    description: >-
+      Units the magnesium value is reported in, as the laboratory recorded
+      them.
+
+  magnesium_total:
+    title: Magnesium (total)
+    description: >-
+      Total magnesium concentration -- the unfiltered determination, which
+      counts magnesium bound to suspended particles as well as the
+      dissolved fraction.
+
+  magnesium_total_units:
+    title: Magnesium (total) units
+    description: >-
+      Units the magnesium (total) value is reported in, as the laboratory
+      recorded them.
+
+  sodium:
+    title: Sodium
+    description: >-
+      Dissolved sodium concentration in the most recent sample analysed
+      for it.
+
+  sodium_units:
+    title: Sodium units
+    description: >-
+      Units the sodium value is reported in, as the laboratory recorded
+      them.
+
+  sodium_total:
+    title: Sodium (total)
+    description: >-
+      Total sodium concentration -- the unfiltered determination, which
+      counts sodium bound to suspended particles as well as the dissolved
+      fraction.
+
+  sodium_total_units:
+    title: Sodium (total) units
+    description: >-
+      Units the sodium (total) value is reported in, as the laboratory
+      recorded them.
+
+  potassium:
+    title: Potassium
+    description: >-
+      Dissolved potassium concentration in the most recent sample analysed
+      for it.
+
+  potassium_units:
+    title: Potassium units
+    description: >-
+      Units the potassium value is reported in, as the laboratory recorded
+      them.
+
+  potassium_total:
+    title: Potassium (total)
+    description: >-
+      Total potassium concentration -- the unfiltered determination, which
+      counts potassium bound to suspended particles as well as the
+      dissolved fraction.
+
+  potassium_total_units:
+    title: Potassium (total) units
+    description: >-
+      Units the potassium (total) value is reported in, as the laboratory
+      recorded them.
+
+  sodium_plus_potassium:
+    title: Sodium plus potassium
+    description: >-
+      Combined sodium and potassium concentration, reported together where
+      the laboratory did not separate them.
+
+  sodium_plus_potassium_units:
+    title: Sodium plus potassium units
+    description: >-
+      Units the sodium plus potassium value is reported in, as the
+      laboratory recorded them.
+
+  bicarbonate:
+    title: Bicarbonate
+    description: >-
+      Dissolved bicarbonate concentration in the most recent sample
+      analysed for it.
+
+  bicarbonate_units:
+    title: Bicarbonate units
+    description: >-
+      Units the bicarbonate value is reported in, as the laboratory
+      recorded them.
+
+  carbonate:
+    title: Carbonate
+    description: >-
+      Dissolved carbonate concentration in the most recent sample analysed
+      for it.
+
+  carbonate_units:
+    title: Carbonate units
+    description: >-
+      Units the carbonate value is reported in, as the laboratory recorded
+      them.
+
+  sulfate:
+    title: Sulfate
+    description: >-
+      Dissolved sulfate concentration in the most recent sample analysed
+      for it.
+
+  sulfate_units:
+    title: Sulfate units
+    description: >-
+      Units the sulfate value is reported in, as the laboratory recorded
+      them.
+
+  chloride:
+    title: Chloride
+    description: >-
+      Dissolved chloride concentration in the most recent sample analysed
+      for it.
+
+  chloride_units:
+    title: Chloride units
+    description: >-
+      Units the chloride value is reported in, as the laboratory recorded
+      them.
+
+  ion_balance:
+    title: Ion balance
+    description: >-
+      Percentage difference between the total positive and total negative
+      charge in the analysis. Charge must balance in reality, so a figure
+      far from zero means the analysis is incomplete or in error.
+
+  ion_balance_units:
+    title: Ion balance units
+    description: >-
+      Units the ion balance value is reported in, as the laboratory
+      recorded them.
+
+  total_anions:
+    title: Total anions
+    description: >-
+      Sum of the negatively charged dissolved constituents in the
+      analysis.
+
+  total_anions_units:
+    title: Total anions units
+    description: >-
+      Units the total anions value is reported in, as the laboratory
+      recorded them.
+
+  total_cations:
+    title: Total cations
+    description: >-
+      Sum of the positively charged dissolved constituents in the
+      analysis.
+
+  total_cations_units:
+    title: Total cations units
+    description: >-
+      Units the total cations value is reported in, as the laboratory
+      recorded them.
+
+  alkalinity:
+    title: Alkalinity
+    description: >-
+      The water's capacity to neutralise acid, reported as an equivalent
+      mass of calcium carbonate. Mostly supplied by bicarbonate and
+      carbonate.
+
+  alkalinity_units:
+    title: Alkalinity units
+    description: >-
+      Units the alkalinity value is reported in, as the laboratory
+      recorded them.
+
+  hardness:
+    title: Hardness
+    description: >-
+      Combined calcium and magnesium content, reported as an equivalent
+      mass of calcium carbonate. What determines whether water is 'hard'.
+
+  hardness_units:
+    title: Hardness units
+    description: >-
+      Units the hardness value is reported in, as the laboratory recorded
+      them.
+
+  specific_conductance:
+    title: Specific conductance
+    description: >-
+      How well the water conducts electricity, which rises with dissolved
+      mineral content. Used as a fast field proxy for total dissolved
+      solids.
+
+  specific_conductance_units:
+    title: Specific conductance units
+    description: >-
+      Units the specific conductance value is reported in, as the
+      laboratory recorded them.
+
+  ph:
+    title: pH
+    description: >-
+      Acidity of the water on the 0-14 scale, where 7 is neutral.
+      Unitless. Most New Mexico groundwater falls between 7 and 8.5.
+
+  ph_units:
+    title: pH units
+    description: >-
+      Units the ph value is reported in, as the laboratory recorded them.
+
+  nitrate:
+    title: Nitrate
+    description: >-
+      Dissolved nitrate concentration, usually from fertiliser, septic
+      systems, or livestock. The drinking-water limit is 10 mg/L as
+      nitrogen.
+
+  nitrate_units:
+    title: Nitrate units
+    description: >-
+      Units the nitrate value is reported in, as the laboratory recorded
+      them.
+
+  fluoride:
+    title: Fluoride
+    description: >-
+      Dissolved fluoride concentration. Beneficial in small amounts; the
+      drinking-water limit is 4 mg/L.
+
+  fluoride_units:
+    title: Fluoride units
+    description: >-
+      Units the fluoride value is reported in, as the laboratory recorded
+      them.
+
+  silica:
+    title: Silica
+    description: >-
+      Dissolved silica concentration, weathered out of silicate rock.
+      Useful for estimating the temperature water last equilibrated at.
+
+  silica_units:
+    title: Silica units
+    description: >-
+      Units the silica value is reported in, as the laboratory recorded
+      them.
+
+minor_chemistry_wells:
+  location_id:
+    title: Location ID
+    description: >-
+      Identifier of the location record the well's coordinates came from.
+
+  analyte_count:
+    title: Analyte count
+    description: >-
+      Number of distinct analytes with a value in this row. A low count
+      means the well has only been analysed for part of the suite.
+
+  latest_chemistry_date:
+    title: Latest analysis date
+    description: >-
+      Date of the most recent result in this row. Analytes are carried
+      forward independently, so an individual value may be older than this
+      date.
+
+  h2r:
+    title: Deuterium ratio
+    description: >-
+      Ratio of heavy to ordinary hydrogen in the water, reported as
+      per-mil difference from ocean water. Fingerprints where the water
+      fell as precipitation.
+
+  h2r_units:
+    title: Deuterium ratio units
+    description: >-
+      Units the deuterium ratio value is reported in, as the laboratory
+      recorded them.
+
+  o18r:
+    title: Oxygen-18 ratio
+    description: >-
+      Ratio of heavy to ordinary oxygen in the water, reported as per-mil
+      difference from ocean water. Read with the deuterium ratio to trace
+      the water's origin and evaporation history.
+
+  o18r_units:
+    title: Oxygen-18 ratio units
+    description: >-
+      Units the oxygen-18 ratio value is reported in, as the laboratory
+      recorded them.
+
+  c13r:
+    title: Carbon-13 ratio
+    description: >-
+      Ratio of carbon-13 to carbon-12 in the water's dissolved carbon,
+      reported as per-mil difference from a standard. Helps identify where
+      the carbon came from, which is needed to correct a carbon-14 age.
+
+  c13r_units:
+    title: Carbon-13 ratio units
+    description: >-
+      Units the carbon-13 ratio value is reported in, as the laboratory
+      recorded them.
+
+  c14:
+    title: Carbon-14
+    description: >-
+      Carbon-14 remaining in the water's dissolved carbon, as a percentage
+      of the modern atmospheric level. The basis for dating groundwater up
+      to roughly 40,000 years old.
+
+  c14_units:
+    title: Carbon-14 units
+    description: >-
+      Units the carbon-14 value is reported in, as the laboratory recorded
+      them.
+
+  c14_years:
+    title: Carbon-14 age
+    description: >-
+      Apparent age of the water in years, calculated from its carbon-14
+      content. Uncorrected for carbon picked up from rock, so treat it as
+      an upper bound.
+
+  c14_years_units:
+    title: Carbon-14 age units
+    description: >-
+      Units the carbon-14 age value is reported in, as the laboratory
+      recorded them.
+
+  fluoride:
+    title: Fluoride
+    description: >-
+      Dissolved fluoride concentration. Beneficial in small amounts; the
+      drinking-water limit is 4 mg/L.
+
+  fluoride_units:
+    title: Fluoride units
+    description: >-
+      Units the fluoride value is reported in, as the laboratory recorded
+      them.
+
+  barium:
+    title: Barium
+    description: >-
+      Dissolved barium concentration in the most recent sample analysed
+      for it.
+
+  barium_units:
+    title: Barium units
+    description: >-
+      Units the barium value is reported in, as the laboratory recorded
+      them.
+
+  barium_total:
+    title: Barium (total)
+    description: >-
+      Total barium concentration -- the unfiltered determination, which
+      counts barium bound to suspended particles as well as the dissolved
+      fraction.
+
+  barium_total_units:
+    title: Barium (total) units
+    description: >-
+      Units the barium (total) value is reported in, as the laboratory
+      recorded them.
+
+  copper:
+    title: Copper
+    description: >-
+      Dissolved copper concentration in the most recent sample analysed
+      for it.
+
+  copper_units:
+    title: Copper units
+    description: >-
+      Units the copper value is reported in, as the laboratory recorded
+      them.
+
+  copper_total:
+    title: Copper (total)
+    description: >-
+      Total copper concentration -- the unfiltered determination, which
+      counts copper bound to suspended particles as well as the dissolved
+      fraction.
+
+  copper_total_units:
+    title: Copper (total) units
+    description: >-
+      Units the copper (total) value is reported in, as the laboratory
+      recorded them.
+
+  zinc:
+    title: Zinc
+    description: >-
+      Dissolved zinc concentration in the most recent sample analysed for
+      it.
+
+  zinc_units:
+    title: Zinc units
+    description: >-
+      Units the zinc value is reported in, as the laboratory recorded
+      them.
+
+  zinc_total:
+    title: Zinc (total)
+    description: >-
+      Total zinc concentration -- the unfiltered determination, which
+      counts zinc bound to suspended particles as well as the dissolved
+      fraction.
+
+  zinc_total_units:
+    title: Zinc (total) units
+    description: >-
+      Units the zinc (total) value is reported in, as the laboratory
+      recorded them.
+
+  molybdenum:
+    title: Molybdenum
+    description: >-
+      Dissolved molybdenum concentration in the most recent sample
+      analysed for it.
+
+  molybdenum_units:
+    title: Molybdenum units
+    description: >-
+      Units the molybdenum value is reported in, as the laboratory
+      recorded them.
+
+  molybdenum_total:
+    title: Molybdenum (total)
+    description: >-
+      Total molybdenum concentration -- the unfiltered determination,
+      which counts molybdenum bound to suspended particles as well as the
+      dissolved fraction.
+
+  molybdenum_total_units:
+    title: Molybdenum (total) units
+    description: >-
+      Units the molybdenum (total) value is reported in, as the laboratory
+      recorded them.
+
+  silica:
+    title: Silica
+    description: >-
+      Dissolved silica concentration, weathered out of silicate rock.
+      Useful for estimating the temperature water last equilibrated at.
+
+  silica_units:
+    title: Silica units
+    description: >-
+      Units the silica value is reported in, as the laboratory recorded
+      them.
+
+  silicon:
+    title: Silicon
+    description: >-
+      Dissolved silicon concentration in the most recent sample analysed
+      for it.
+
+  silicon_units:
+    title: Silicon units
+    description: >-
+      Units the silicon value is reported in, as the laboratory recorded
+      them.
+
+  silicon_total:
+    title: Silicon (total)
+    description: >-
+      Total silicon concentration -- the unfiltered determination, which
+      counts silicon bound to suspended particles as well as the dissolved
+      fraction.
+
+  silicon_total_units:
+    title: Silicon (total) units
+    description: >-
+      Units the silicon (total) value is reported in, as the laboratory
+      recorded them.
+
+  manganese:
+    title: Manganese
+    description: >-
+      Dissolved manganese concentration in the most recent sample analysed
+      for it.
+
+  manganese_units:
+    title: Manganese units
+    description: >-
+      Units the manganese value is reported in, as the laboratory recorded
+      them.
+
+  manganese_total:
+    title: Manganese (total)
+    description: >-
+      Total manganese concentration -- the unfiltered determination, which
+      counts manganese bound to suspended particles as well as the
+      dissolved fraction.
+
+  manganese_total_units:
+    title: Manganese (total) units
+    description: >-
+      Units the manganese (total) value is reported in, as the laboratory
+      recorded them.
+
+  iron:
+    title: Iron
+    description: >-
+      Dissolved iron concentration in the most recent sample analysed for
+      it.
+
+  iron_units:
+    title: Iron units
+    description: >-
+      Units the iron value is reported in, as the laboratory recorded
+      them.
+
+  iron_total:
+    title: Iron (total)
+    description: >-
+      Total iron concentration -- the unfiltered determination, which
+      counts iron bound to suspended particles as well as the dissolved
+      fraction.
+
+  iron_total_units:
+    title: Iron (total) units
+    description: >-
+      Units the iron (total) value is reported in, as the laboratory
+      recorded them.
+
+  strontium:
+    title: Strontium
+    description: >-
+      Dissolved strontium concentration in the most recent sample analysed
+      for it.
+
+  strontium_units:
+    title: Strontium units
+    description: >-
+      Units the strontium value is reported in, as the laboratory recorded
+      them.
+
+  strontium_total:
+    title: Strontium (total)
+    description: >-
+      Total strontium concentration -- the unfiltered determination, which
+      counts strontium bound to suspended particles as well as the
+      dissolved fraction.
+
+  strontium_total_units:
+    title: Strontium (total) units
+    description: >-
+      Units the strontium (total) value is reported in, as the laboratory
+      recorded them.
+
+  chromium:
+    title: Chromium
+    description: >-
+      Dissolved chromium concentration in the most recent sample analysed
+      for it.
+
+  chromium_units:
+    title: Chromium units
+    description: >-
+      Units the chromium value is reported in, as the laboratory recorded
+      them.
+
+  chromium_total:
+    title: Chromium (total)
+    description: >-
+      Total chromium concentration -- the unfiltered determination, which
+      counts chromium bound to suspended particles as well as the
+      dissolved fraction.
+
+  chromium_total_units:
+    title: Chromium (total) units
+    description: >-
+      Units the chromium (total) value is reported in, as the laboratory
+      recorded them.
+
+  boron:
+    title: Boron
+    description: >-
+      Dissolved boron concentration in the most recent sample analysed for
+      it.
+
+  boron_units:
+    title: Boron units
+    description: >-
+      Units the boron value is reported in, as the laboratory recorded
+      them.
+
+  boron_total:
+    title: Boron (total)
+    description: >-
+      Total boron concentration -- the unfiltered determination, which
+      counts boron bound to suspended particles as well as the dissolved
+      fraction.
+
+  boron_total_units:
+    title: Boron (total) units
+    description: >-
+      Units the boron (total) value is reported in, as the laboratory
+      recorded them.
+
+  uranium:
+    title: Uranium
+    description: >-
+      Dissolved uranium concentration. Naturally present near
+      uranium-bearing rock and regulated in drinking water at 0.030 mg/L.
+
+  uranium_units:
+    title: Uranium units
+    description: >-
+      Units the uranium value is reported in, as the laboratory recorded
+      them.
+
+  uranium_total:
+    title: Uranium (total)
+    description: >-
+      Total uranium concentration -- the unfiltered determination, which
+      counts uranium bound to suspended particles as well as the dissolved
+      fraction.
+
+  uranium_total_units:
+    title: Uranium (total) units
+    description: >-
+      Units the uranium (total) value is reported in, as the laboratory
+      recorded them.
+
+  lithium:
+    title: Lithium
+    description: >-
+      Dissolved lithium concentration in the most recent sample analysed
+      for it.
+
+  lithium_units:
+    title: Lithium units
+    description: >-
+      Units the lithium value is reported in, as the laboratory recorded
+      them.
+
+  lithium_total:
+    title: Lithium (total)
+    description: >-
+      Total lithium concentration -- the unfiltered determination, which
+      counts lithium bound to suspended particles as well as the dissolved
+      fraction.
+
+  lithium_total_units:
+    title: Lithium (total) units
+    description: >-
+      Units the lithium (total) value is reported in, as the laboratory
+      recorded them.
+
+  silver:
+    title: Silver
+    description: >-
+      Dissolved silver concentration in the most recent sample analysed
+      for it.
+
+  silver_units:
+    title: Silver units
+    description: >-
+      Units the silver value is reported in, as the laboratory recorded
+      them.
+
+  silver_total:
+    title: Silver (total)
+    description: >-
+      Total silver concentration -- the unfiltered determination, which
+      counts silver bound to suspended particles as well as the dissolved
+      fraction.
+
+  silver_total_units:
+    title: Silver (total) units
+    description: >-
+      Units the silver (total) value is reported in, as the laboratory
+      recorded them.
+
+  antimony:
+    title: Antimony
+    description: >-
+      Dissolved antimony concentration in the most recent sample analysed
+      for it.
+
+  antimony_units:
+    title: Antimony units
+    description: >-
+      Units the antimony value is reported in, as the laboratory recorded
+      them.
+
+  antimony_total:
+    title: Antimony (total)
+    description: >-
+      Total antimony concentration -- the unfiltered determination, which
+      counts antimony bound to suspended particles as well as the
+      dissolved fraction.
+
+  antimony_total_units:
+    title: Antimony (total) units
+    description: >-
+      Units the antimony (total) value is reported in, as the laboratory
+      recorded them.
+
+  beryllium:
+    title: Beryllium
+    description: >-
+      Dissolved beryllium concentration in the most recent sample analysed
+      for it.
+
+  beryllium_units:
+    title: Beryllium units
+    description: >-
+      Units the beryllium value is reported in, as the laboratory recorded
+      them.
+
+  beryllium_total:
+    title: Beryllium (total)
+    description: >-
+      Total beryllium concentration -- the unfiltered determination, which
+      counts beryllium bound to suspended particles as well as the
+      dissolved fraction.
+
+  beryllium_total_units:
+    title: Beryllium (total) units
+    description: >-
+      Units the beryllium (total) value is reported in, as the laboratory
+      recorded them.
+
+  lead:
+    title: Lead
+    description: >-
+      Dissolved lead concentration in the most recent sample analysed for
+      it.
+
+  lead_units:
+    title: Lead units
+    description: >-
+      Units the lead value is reported in, as the laboratory recorded
+      them.
+
+  lead_total:
+    title: Lead (total)
+    description: >-
+      Total lead concentration -- the unfiltered determination, which
+      counts lead bound to suspended particles as well as the dissolved
+      fraction.
+
+  lead_total_units:
+    title: Lead (total) units
+    description: >-
+      Units the lead (total) value is reported in, as the laboratory
+      recorded them.
+
+  thallium:
+    title: Thallium
+    description: >-
+      Dissolved thallium concentration in the most recent sample analysed
+      for it.
+
+  thallium_units:
+    title: Thallium units
+    description: >-
+      Units the thallium value is reported in, as the laboratory recorded
+      them.
+
+  thallium_total:
+    title: Thallium (total)
+    description: >-
+      Total thallium concentration -- the unfiltered determination, which
+      counts thallium bound to suspended particles as well as the
+      dissolved fraction.
+
+  thallium_total_units:
+    title: Thallium (total) units
+    description: >-
+      Units the thallium (total) value is reported in, as the laboratory
+      recorded them.
+
+  bromide:
+    title: Bromide
+    description: >-
+      Dissolved bromide concentration. Read against chloride, it
+      distinguishes seawater-derived salinity from dissolved halite.
+
+  bromide_units:
+    title: Bromide units
+    description: >-
+      Units the bromide value is reported in, as the laboratory recorded
+      them.
+
+  selenium:
+    title: Selenium
+    description: >-
+      Dissolved selenium concentration in the most recent sample analysed
+      for it.
+
+  selenium_units:
+    title: Selenium units
+    description: >-
+      Units the selenium value is reported in, as the laboratory recorded
+      them.
+
+  selenium_total:
+    title: Selenium (total)
+    description: >-
+      Total selenium concentration -- the unfiltered determination, which
+      counts selenium bound to suspended particles as well as the
+      dissolved fraction.
+
+  selenium_total_units:
+    title: Selenium (total) units
+    description: >-
+      Units the selenium (total) value is reported in, as the laboratory
+      recorded them.
+
+  vanadium:
+    title: Vanadium
+    description: >-
+      Dissolved vanadium concentration in the most recent sample analysed
+      for it.
+
+  vanadium_units:
+    title: Vanadium units
+    description: >-
+      Units the vanadium value is reported in, as the laboratory recorded
+      them.
+
+  vanadium_total:
+    title: Vanadium (total)
+    description: >-
+      Total vanadium concentration -- the unfiltered determination, which
+      counts vanadium bound to suspended particles as well as the
+      dissolved fraction.
+
+  vanadium_total_units:
+    title: Vanadium (total) units
+    description: >-
+      Units the vanadium (total) value is reported in, as the laboratory
+      recorded them.
+
+  aluminum:
+    title: Aluminum
+    description: >-
+      Dissolved aluminum concentration in the most recent sample analysed
+      for it.
+
+  aluminum_units:
+    title: Aluminum units
+    description: >-
+      Units the aluminum value is reported in, as the laboratory recorded
+      them.
+
+  aluminum_total:
+    title: Aluminum (total)
+    description: >-
+      Total aluminum concentration -- the unfiltered determination, which
+      counts aluminum bound to suspended particles as well as the
+      dissolved fraction.
+
+  aluminum_total_units:
+    title: Aluminum (total) units
+    description: >-
+      Units the aluminum (total) value is reported in, as the laboratory
+      recorded them.
+
+  arsenic:
+    title: Arsenic
+    description: >-
+      Dissolved arsenic concentration. Naturally elevated in parts of New
+      Mexico and regulated in drinking water at 0.010 mg/L.
+
+  arsenic_units:
+    title: Arsenic units
+    description: >-
+      Units the arsenic value is reported in, as the laboratory recorded
+      them.
+
+  arsenic_total:
+    title: Arsenic (total)
+    description: >-
+      Total arsenic concentration -- the unfiltered determination, which
+      counts arsenic bound to suspended particles as well as the dissolved
+      fraction.
+
+  arsenic_total_units:
+    title: Arsenic (total) units
+    description: >-
+      Units the arsenic (total) value is reported in, as the laboratory
+      recorded them.
+
+  nickel:
+    title: Nickel
+    description: >-
+      Dissolved nickel concentration in the most recent sample analysed
+      for it.
+
+  nickel_units:
+    title: Nickel units
+    description: >-
+      Units the nickel value is reported in, as the laboratory recorded
+      them.
+
+  nickel_total:
+    title: Nickel (total)
+    description: >-
+      Total nickel concentration -- the unfiltered determination, which
+      counts nickel bound to suspended particles as well as the dissolved
+      fraction.
+
+  nickel_total_units:
+    title: Nickel (total) units
+    description: >-
+      Units the nickel (total) value is reported in, as the laboratory
+      recorded them.
+
+  cadmium:
+    title: Cadmium
+    description: >-
+      Dissolved cadmium concentration in the most recent sample analysed
+      for it.
+
+  cadmium_units:
+    title: Cadmium units
+    description: >-
+      Units the cadmium value is reported in, as the laboratory recorded
+      them.
+
+  cadmium_total:
+    title: Cadmium (total)
+    description: >-
+      Total cadmium concentration -- the unfiltered determination, which
+      counts cadmium bound to suspended particles as well as the dissolved
+      fraction.
+
+  cadmium_total_units:
+    title: Cadmium (total) units
+    description: >-
+      Units the cadmium (total) value is reported in, as the laboratory
+      recorded them.
+
+  cobalt:
+    title: Cobalt
+    description: >-
+      Dissolved cobalt concentration in the most recent sample analysed
+      for it.
+
+  cobalt_units:
+    title: Cobalt units
+    description: >-
+      Units the cobalt value is reported in, as the laboratory recorded
+      them.
+
+  cobalt_total:
+    title: Cobalt (total)
+    description: >-
+      Total cobalt concentration -- the unfiltered determination, which
+      counts cobalt bound to suspended particles as well as the dissolved
+      fraction.
+
+  cobalt_total_units:
+    title: Cobalt (total) units
+    description: >-
+      Units the cobalt (total) value is reported in, as the laboratory
+      recorded them.
+
+  phosphate:
+    title: Phosphate
+    description: >-
+      Dissolved phosphate concentration in the most recent sample analysed
+      for it.
+
+  phosphate_units:
+    title: Phosphate units
+    description: >-
+      Units the phosphate value is reported in, as the laboratory recorded
+      them.
+
+  nitrite:
+    title: Nitrite
+    description: >-
+      Dissolved nitrite concentration, an intermediate stage in the
+      breakdown of nitrogen compounds.
+
+  nitrite_units:
+    title: Nitrite units
+    description: >-
+      Units the nitrite value is reported in, as the laboratory recorded
+      them.
+
+  nitrate:
+    title: Nitrate
+    description: >-
+      Dissolved nitrate concentration, usually from fertiliser, septic
+      systems, or livestock. The drinking-water limit is 10 mg/L as
+      nitrogen.
+
+  nitrate_units:
+    title: Nitrate units
+    description: >-
+      Units the nitrate value is reported in, as the laboratory recorded
+      them.
+
+  nitrate_as_n:
+    title: Nitrate as nitrogen
+    description: >-
+      Nitrate concentration expressed as the mass of nitrogen alone, which
+      is how the 10 mg/L drinking-water limit is written. Roughly a
+      quarter of the same sample reported as nitrate.
+
+  nitrate_as_n_units:
+    title: Nitrate as nitrogen units
+    description: >-
+      Units the nitrate as nitrogen value is reported in, as the
+      laboratory recorded them.
+
+  thorium:
+    title: Thorium
+    description: >-
+      Dissolved thorium concentration in the most recent sample analysed
+      for it.
+
+  thorium_units:
+    title: Thorium units
+    description: >-
+      Units the thorium value is reported in, as the laboratory recorded
+      them.
+
+  thorium_total:
+    title: Thorium (total)
+    description: >-
+      Total thorium concentration -- the unfiltered determination, which
+      counts thorium bound to suspended particles as well as the dissolved
+      fraction.
+
+  thorium_total_units:
+    title: Thorium (total) units
+    description: >-
+      Units the thorium (total) value is reported in, as the laboratory
+      recorded them.
+
+  tin:
+    title: Tin
+    description: >-
+      Dissolved tin concentration in the most recent sample analysed for
+      it.
+
+  tin_units:
+    title: Tin units
+    description: >-
+      Units the tin value is reported in, as the laboratory recorded them.
+
+  tin_total:
+    title: Tin (total)
+    description: >-
+      Total tin concentration -- the unfiltered determination, which
+      counts tin bound to suspended particles as well as the dissolved
+      fraction.
+
+  tin_total_units:
+    title: Tin (total) units
+    description: >-
+      Units the tin (total) value is reported in, as the laboratory
+      recorded them.
+
+  mercury:
+    title: Mercury
+    description: >-
+      Dissolved mercury concentration in the most recent sample analysed
+      for it.
+
+  mercury_units:
+    title: Mercury units
+    description: >-
+      Units the mercury value is reported in, as the laboratory recorded
+      them.
+
+  mercury_total:
+    title: Mercury (total)
+    description: >-
+      Total mercury concentration -- the unfiltered determination, which
+      counts mercury bound to suspended particles as well as the dissolved
+      fraction.
+
+  mercury_total_units:
+    title: Mercury (total) units
+    description: >-
+      Units the mercury (total) value is reported in, as the laboratory
+      recorded them.
+
+  titanium:
+    title: Titanium
+    description: >-
+      Dissolved titanium concentration in the most recent sample analysed
+      for it.
+
+  titanium_units:
+    title: Titanium units
+    description: >-
+      Units the titanium value is reported in, as the laboratory recorded
+      them.
+
+  titanium_total:
+    title: Titanium (total)
+    description: >-
+      Total titanium concentration -- the unfiltered determination, which
+      counts titanium bound to suspended particles as well as the
+      dissolved fraction.
+
+  titanium_total_units:
+    title: Titanium (total) units
+    description: >-
+      Units the titanium (total) value is reported in, as the laboratory
+      recorded them.
+
+
+# EDR collections. Keys here are parameter names read out of the data, not
+# column names -- ogc_waterlevels stamps a single literal, while
+# ogc_water_chemistry carries the analyte text exactly as the laboratory
+# recorded it, so most chemistry parameters take a generated title.
+waterlevels:
+  groundwater level:
+    title: Groundwater level
+    description: >-
+      Depth from the measuring point down to the water table, as measured by
+      hand during a site visit or logged automatically by a pressure
+      transducer left in the well. Larger values mean the water table is
+      further below the surface.

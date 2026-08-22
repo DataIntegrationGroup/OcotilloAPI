@@ -565,7 +565,6 @@ def test_ogc_collections(ogc_client):
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
     assert {
-        "locations",
         "water_wells",
         "springs",
         "latest_tds_wells",
@@ -577,6 +576,19 @@ def test_ogc_collections(ogc_client):
         "actively_monitored_wells",
         "project_areas",
     }.issubset(ids)
+    # Hidden from the public catalog: locations duplicates the thing-type
+    # layers (BDMS-978), avg_tds_wells averages ~1.9 observations per well
+    # and latest_depth_to_water_wells repeats water_well_summary
+    # (BDMS-977), and other_things is internal vocabulary (BDMS-979). The
+    # backing relations are retained and still served on /ogcapi-internal.
+    assert ids.isdisjoint(
+        {
+            "locations",
+            "avg_tds_wells",
+            "latest_depth_to_water_wells",
+            "other_things",
+        }
+    )
 
 
 def test_ogc_new_collection_items_endpoints(ogc_client):
@@ -603,16 +615,6 @@ def test_ogc_project_areas_items_expose_groups_with_project_areas(ogc_client, gr
     payload = response.json()
     ids = {str(feature["id"]) for feature in payload["features"]}
     assert str(group.id) in ids
-
-
-@pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
-def test_ogc_locations_items_bbox(location):
-    bbox = "-107.95,33.80,-107.94,33.81"
-    response = ogc_client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["type"] == "FeatureCollection"
-    assert payload["numberReturned"] >= 1
 
 
 def test_ogc_wells_items_and_item(ogc_client, water_well_thing):

@@ -39,22 +39,21 @@ hits to `/_ah/warmup`.
 curl http://localhost:8000/ogcapi
 curl http://localhost:8000/ogcapi/conformance
 curl http://localhost:8000/ogcapi/collections
-curl http://localhost:8000/ogcapi/collections/locations
+curl http://localhost:8000/ogcapi/collections/water_wells
 ```
 
 ### Items (GeoJSON)
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?limit=10&offset=0"
-curl "http://localhost:8000/ogcapi/collections/water_wells/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?limit=10&offset=0"
 curl "http://localhost:8000/ogcapi/collections/springs/items?limit=5"
-curl "http://localhost:8000/ogcapi/collections/locations/items/123"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items/123"
 ```
 
 ### BBOX + datetime filters
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?bbox=-107.9,33.8,-107.8,33.9"
 curl "http://localhost:8000/ogcapi/collections/water_wells/items?datetime=2020-01-01/2024-01-01"
 ```
 
@@ -63,7 +62,7 @@ curl "http://localhost:8000/ogcapi/collections/water_wells/items?datetime=2020-0
 Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
 ```
 
 ### OpenAPI UI

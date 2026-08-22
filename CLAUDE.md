@@ -204,6 +204,17 @@ ArcGIS Pro cannot send a bearer token at all and neither desktop client can
 refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
 changing the credential paths.
 
+### OGC field descriptions
+
+Per-column `title`/`description`/unit for every collection lives in
+`core/ogc-field-descriptions.yml`, keyed by backing relation, and is published
+on `/schema` and `/queryables` through `core/feature_provider.py` and a wrapper
+over pygeoapi's queryables handler. The feature leans on unpinned behaviour of
+the pinned pygeoapi version — most sharply, `BaseProvider.fields` returns
+`self._fields` and never calls `get_fields()`. Read
+**`docs/ogc-field-descriptions.md`** before changing field metadata or
+upgrading pygeoapi.
+
 ### Database Configuration
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):

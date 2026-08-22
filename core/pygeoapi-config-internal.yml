@@ -50,15 +50,22 @@ resources:
   locations:
     type: collection
     title: Locations
-    description: Geographic locations and site coordinates used by Ocotillo features.
-    keywords: [locations]
+    description: >-
+      The raw geographic location records that every monitoring point hangs
+      off -- one feature per surveyed site, with its elevation, county,
+      quadrangle, and the notes recorded about how the coordinates were
+      obtained and how reliable they are. Most consumers want a feature-type
+      layer such as water_wells instead, which pairs the same coordinates
+      with what is actually monitored there; this layer is kept for staff
+      work that needs the location record itself.
+    keywords: [locations, sites, coordinates, elevation, county, data-reliability]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -73,15 +80,22 @@ resources:
   latest_depth_to_water_wells:
     type: collection
     title: Latest Depth to Water (Water Wells)
-    description: Most recent depth-to-water below ground surface observation for each water well.
-    keywords: [water-wells, groundwater-level, depth-to-water-bgs, latest]
+    description: >-
+      The most recent depth-to-water reading for each well, measured below
+      ground surface -- the measured depth minus the height of the measuring
+      point above ground, with readings that have no recorded
+      measuring-point height treated as taken at ground level.
+      water_well_summary publishes the same latest reading alongside the
+      count, range and trend of the whole record, so this layer is kept only
+      for staff clients that already depend on its narrower shape.
+    keywords: [water-wells, groundwater-level, depth-to-water, latest-value, below-ground-surface]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -96,15 +110,24 @@ resources:
   avg_tds_wells:
     type: collection
     title: Average TDS (Water Wells)
-    description: Average total dissolved solids (TDS) from major chemistry results for each water well.
-    keywords: [water-wells, chemistry, tds, total-dissolved-solids, average]
+    description: >-
+      The arithmetic mean of all total dissolved solids (TDS) results on
+      record for each water well. Treat with care: across the catalog the
+      average rests on about 1.9 analyses per well, so for many wells it is
+      a mean of one or two samples taken years apart and is not a reliable
+      summary of the well's water quality. Prefer latest_tds_wells, which
+      reports a single dated result.
+    keywords: [
+      water-wells, chemistry, tds, total-dissolved-solids, average,
+      low-sample-count, use-with-caution
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -119,15 +142,26 @@ resources:
   latest_tds_wells:
     type: collection
     title: Latest TDS (Water Wells)
-    description: Most recent total dissolved solids (TDS) result from major chemistry for each water well.
-    keywords: [water-wells, chemistry, tds, total-dissolved-solids, latest]
+    description: >-
+      Total dissolved solids (TDS) measures how much mineral matter is
+      dissolved in the water -- in plain terms, how salty it is. This layer
+      reads every laboratory major-chemistry analysis on record for each
+      water well, keeps only the TDS results, and publishes the single most
+      recent one per well, dated by its analysis date or, where that is
+      missing, by the date the sample was collected. Use it for a current
+      statewide picture of groundwater salinity without working through each
+      well's full analysis history.
+    keywords: [
+      water-wells, water-quality, chemistry, tds, total-dissolved-solids,
+      salinity, latest-value, groundwater
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -142,15 +176,30 @@ resources:
   depth_to_water_trend_wells:
     type: collection
     title: Depth to Water Trend (Water Wells)
-    description: Trend classification for depth to water based on slope in feet per year.
-    keywords: [water-wells, groundwater-level, depth-to-water, trend, slope]
+    description: >-
+      Shows whether the water table beneath each well has been falling,
+      rising, or holding steady. Every manual groundwater-level measurement
+      for the well is converted to a depth below ground surface -- the
+      measured depth minus the height of the measuring point above ground,
+      with readings that have no recorded measuring-point height treated as
+      taken at ground level -- and a straight line is fitted through those
+      depths over time. The slope of that line in feet per year is reported
+      as increasing (water table falling faster than 0.25 ft/yr), decreasing
+      (rising faster than 0.25 ft/yr), or stable. Wells with fewer than 10
+      measurements, or fewer than 4 spanning less than two years, are
+      labelled "not enough data" rather than given a trend the record cannot
+      support.
+    keywords: [
+      water-wells, groundwater-level, depth-to-water, trend, slope,
+      feet-per-year, declining-water-levels, aquifer-condition
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -165,15 +214,27 @@ resources:
   water_elevation_wells:
     type: collection
     title: Water Elevation (Water Wells)
-    description: Most recent water elevation per well calculated as elevation minus depth to water below ground surface.
-    keywords: [water-wells, groundwater-level, water-elevation, depth-to-water]
+    description: >-
+      Gives the height of the water table above sea level at each well, so
+      that levels can be compared between wells standing at different ground
+      elevations. The most recent groundwater-level measurement is converted
+      to feet, the height of the measuring point above ground is subtracted
+      to give the depth below ground surface (readings with no recorded
+      measuring-point height are treated as taken at ground level), and that
+      depth is subtracted from the surveyed ground-surface elevation at the
+      well. Use it to map the shape of the water table or to work out which
+      way groundwater is flowing.
+    keywords: [
+      water-wells, groundwater-level, water-table-elevation, water-elevation,
+      depth-to-water, above-sea-level, groundwater-flow
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -188,15 +249,30 @@ resources:
   water_well_summary:
     type: collection
     title: Water Well Summary
-    description: Summary metrics per water well, including latest, min/max, and trend for water levels.
-    keywords: [water-wells, summary, groundwater-level, trend]
+    description: >-
+      One row per water well, condensing that well's entire manual
+      groundwater-level record into a few numbers: how many measurements
+      exist, the most recent one and its date, the shallowest and deepest
+      ever recorded, and the long-term trend as a straight-line slope in
+      feet per year. Depths are below ground surface -- the measured depth
+      minus the height of the measuring point above ground, with readings
+      that have no recorded measuring-point height treated as taken at
+      ground level. Each row also carries the well's depth, its surveyed
+      ground elevation and how that elevation was determined, and the
+      geologic zone the well is completed in. Wells with no water-level
+      measurements at all are left out. Use it as the at-a-glance record for
+      a well before digging into individual readings.
+    keywords: [
+      water-wells, summary, groundwater-level, water-level-history, trend,
+      well-depth, elevation, at-a-glance
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -211,15 +287,29 @@ resources:
   major_chemistry_results:
     type: collection
     title: Major Chemistry (Water Wells)
-    description: Latest major chemistry analyte values for water wells, represented as static analyte columns.
-    keywords: [water-wells, chemistry, analytes, major-chemistry]
+    description: >-
+      The major dissolved constituents that make up most of the chemistry of
+      groundwater -- calcium, magnesium, sodium, potassium, bicarbonate,
+      carbonate, sulfate and chloride -- alongside TDS, pH, hardness,
+      alkalinity and specific conductance. Laboratory records name the same
+      analyte in many different ways, so this layer first maps those names
+      and symbols onto one canonical set, then keeps the most recent result
+      for each analyte at each well and lays the values out as fixed
+      columns, each with its own units column. Analytes at one well may come
+      from different sampling dates; the reported chemistry date is the most
+      recent among them. Use it to compare water chemistry between wells or
+      to screen against drinking-water standards.
+    keywords: [
+      water-wells, water-quality, chemistry, major-ions, analytes, calcium,
+      sodium, chloride, sulfate, ph, hardness
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -234,15 +324,27 @@ resources:
   minor_chemistry_wells:
     type: collection
     title: Minor Chemistry (Water Wells)
-    description: Latest minor/trace chemistry analyte values for water wells, represented as static analyte columns.
-    keywords: [water-wells, chemistry, analytes, minor-chemistry, trace-chemistry]
+    description: >-
+      Trace elements and isotopes measured in groundwater -- arsenic,
+      uranium, lead, iron, manganese, boron, lithium and dozens more, plus
+      the stable isotopes and carbon-14 used to work out how long water has
+      been underground. Built the same way as the major chemistry layer:
+      legacy laboratory records are mapped onto one canonical analyte set,
+      the most recent result for each analyte at each well is kept, and the
+      values are laid out as fixed columns each with its own units column.
+      Use it for contaminant screening and for questions about the age and
+      origin of groundwater.
+    keywords: [
+      water-wells, water-quality, chemistry, trace-elements, minor-chemistry,
+      isotopes, arsenic, uranium, carbon-14, contaminants
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -257,15 +359,25 @@ resources:
   actively_monitored_wells:
     type: collection
     title: Actively Monitored Wells
-    description: Wells in the collaborative network currently flagged as actively monitored.
-    keywords: [water-wells, monitoring, collaborative-network, actively-monitored]
+    description: >-
+      The wells being measured today, rather than every well ever recorded.
+      A well appears here only if it belongs to the Water Level Network
+      group and its most recent monitoring-status entry reads "Currently
+      monitored"; the summary statistics attached to each one are the same
+      water-level figures published in water_well_summary. Use it to see the
+      live monitoring network -- where measurements are still being
+      collected, and where coverage is thin.
+    keywords: [
+      water-wells, monitoring, water-level-network, actively-monitored,
+      monitoring-network, groundwater-level
+    ]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
@@ -280,15 +392,19 @@ resources:
   project_areas:
     type: collection
     title: Project Areas
-    description: Project groups with polygon project-area boundaries.
-    keywords: [project-areas, groups, boundaries]
+    description: >-
+      The study-area boundaries of Bureau projects, as polygons. Any project
+      group that has a mapped boundary is published here with its name and
+      description. Use it to see which part of New Mexico a project covers,
+      or to clip the other layers to a project's footprint.
+    keywords: [project-areas, study-areas, boundaries, polygons, projects, groups]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
-        name: PostgreSQL
+        name: core.feature_provider.DescribedPostgreSQLProvider
         data:
           host: {postgres_host}
           port: {postgres_port}
