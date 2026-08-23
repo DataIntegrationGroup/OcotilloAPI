@@ -779,3 +779,54 @@ def test_ogc_polygon_within_filter(location):
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
+
+
+def test_ogc_waterlevels_excludes_readings_from_a_non_public_well(
+    water_well_thing, groundwater_level_observation
+):
+    """A well that is not public publishes no water levels, even public ones.
+
+    ogc_waterlevels used to filter on the reading's own release_status alone,
+    so a draft or private well still published its public readings -- with the
+    well's name and coordinates attached. ogc_water_chemistry already required
+    the parent thing to be public; baba91fe5e83 brought water levels onto the
+    same rule.
+    """
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.execute(
+            text("UPDATE thing SET release_status = 'draft' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        session.commit()
+
+        reading_id = f"m-{groundwater_level_observation.id}"
+
+        public_rows = session.execute(
+            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
+        assert not public_rows, "a non-public well leaked a reading to /ogcapi"
+
+        # The internal mount is where staff see non-public records; it must
+        # keep carrying them.
+        internal_rows = session.execute(
+            text("SELECT id FROM ogc_internal_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
+        assert internal_rows, "the internal mirror stopped carrying the reading"
+
+        # Public well, public reading: published again.
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        session.commit()
+
+        assert session.execute(
+            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
