@@ -1,4 +1,4 @@
-@backend @edr
+@backend @edr @production
 Feature: OGC API - EDR delivery of water-level and water-chemistry data
   As a consumer of Bureau observational data
   I want to query groundwater levels and water chemistry through the standard

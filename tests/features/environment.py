@@ -527,6 +527,15 @@ def add_edr_water_data(context, session, well, deployment):
 
     lex_term = "(SELECT term FROM lexicon_term LIMIT 1)"
 
+    # Wells seed as 'draft', but ogc_water_chemistry gates on the *thing's*
+    # release status as well as the sample's, so a draft well publishes no
+    # chemistry at all. Promote this one well -- the fixture exists to give
+    # the EDR collections something to serve.
+    session.execute(
+        text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+        {"tid": well.id},
+    )
+
     # Promote the seeded transducer data to public and give the deployment a
     # bounded window + recording interval so it reads as an EDR instance.
     session.execute(
@@ -595,6 +604,37 @@ def add_edr_water_data(context, session, well, deployment):
             {"sid": sid, "pid": pid, "dt": dt, "val": value, "st": status},
         )
 
+    # ogc_water_chemistry is built from the legacy NMA_* chemistry tables
+    # (d9e0f1a2b3c4), not from observation: nothing populates the
+    # observation -> sample -> parameter chain with analyte data. Seeding
+    # only observations left the EDR chemistry collection empty, which is
+    # why its scenarios failed with 400 (pH not a known parameter) and 204.
+    for public_release, ph_value in ((True, 7.1), (False, 99.0)):
+        sample_info_id = session.execute(
+            text(
+                'INSERT INTO "NMA_Chemistry_SampleInfo" '
+                '(thing_id, "CollectionDate", "PublicRelease", '
+                '"nma_SamplePointID") '
+                "VALUES (:tid, '2022-06-01T00:00:00Z', :pub, 'EDR-TEST') "
+                "RETURNING id"
+            ),
+            {"tid": well.id, "pub": public_release},
+        ).scalar()
+        session.execute(
+            text(
+                'INSERT INTO "NMA_FieldParameters" '
+                '(chemistry_sample_info_id, "FieldParameter", "SampleValue", '
+                "\"Units\") VALUES (:csi, 'pH', :val, 'std units')"
+            ),
+            {"csi": sample_info_id, "val": ph_value},
+        )
+
+    session.commit()
+
+    # Materialized view: without a refresh the rows just inserted are
+    # invisible to every chemistry query.
+    session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_chemistry"))
+    session.execute(text("REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry"))
     session.commit()
 
 
