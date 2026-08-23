@@ -229,8 +229,7 @@ def gis_index(request: Request, f: Annotated[str | None, Query()] = None) -> Res
         f'<td><a href="arcgis/layers/{layer.id}.lyrx">.lyrx</a></td></tr>'
         for layer in load_curated_layers()
     )
-    return HTMLResponse(
-        f"""<!doctype html><html><head><meta charset="utf-8">
+    return HTMLResponse(f"""<!doctype html><html><head><meta charset="utf-8">
 <title>Desktop GIS downloads</title></head>
 <body style="{_PAGE_STYLE}">
 <h1>Using our OGC layers in QGIS and ArcGIS Pro</h1>
@@ -261,8 +260,7 @@ OGC API - EDR time series at <code>{base}/collections/waterlevels</code> and
 <code>{base}/collections/water_chemistry</code>. Neither QGIS nor ArcGIS Pro
 can read EDR, so the layers above carry the same measurements summarised per
 site instead.</p>
-</body></html>"""
-    )
+</body></html>""")
 
 
 # ============= EOF =============================================
