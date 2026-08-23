@@ -319,3 +319,37 @@ def test_field_filter_trims_aliases_to_the_views_real_columns():
         "featureTable"
     ]["fieldDescriptions"]
     assert {f["fieldName"] for f in described} == real
+
+
+@pytest.mark.parametrize(
+    "template,path,expected",
+    [
+        ("/gis/qgis/connections.xml", "/gis/qgis/connections.xml", "text/xml"),
+        (
+            "/gis/qgis/layers/{layer_id}.qlr",
+            "/gis/qgis/layers/water-wells.qlr",
+            "text/xml",
+        ),
+        (
+            "/gis/arcgis/layers/{layer_id}.lyrx",
+            "/gis/arcgis/layers/water-wells.lyrx",
+            "application/json",
+        ),
+    ],
+)
+def test_openapi_advertises_the_content_type_actually_returned(
+    template, path, expected
+):
+    """The schema and the response must not disagree.
+
+    These routes return a raw Response with its own media type, so a
+    `response_class` chosen for convenience rather than accuracy documents a
+    content type the endpoint never sends. Both now come from the same
+    Response subclass; this pins them together.
+    """
+    schema = client.get("/openapi.json").json()
+    documented = set(schema["paths"][template]["get"]["responses"]["200"]["content"])
+    assert documented == {expected}
+
+    served = client.get(path).headers["content-type"]
+    assert served.split(";")[0] == expected

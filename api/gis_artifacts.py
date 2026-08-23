@@ -30,7 +30,7 @@ Read docs/ogc-desktop-gis-artifacts.md before changing what is emitted.
 """
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, Response
 
 from core.app import in_public_schema
 from core.dependencies import session_dependency, viewer_dependency
@@ -51,10 +51,25 @@ PUBLIC_CONNECTION_NAME = "NMBGMR Ocotillo"
 INTERNAL_CONNECTION_NAME = "NMBGMR Ocotillo (internal)"
 
 
-def _attachment(body: str, media_type: str, filename: str) -> Response:
-    return Response(
+class XmlAttachment(Response):
+    """An XML download. The media type lives here so the OpenAPI schema and
+    the response itself cannot disagree: FastAPI reads `media_type` off the
+    `response_class` to document the operation, and `_attachment` returns an
+    instance of that same class rather than restating the string."""
+
+    media_type = "text/xml"
+
+
+class JsonAttachment(Response):
+    """A JSON download. Not JSONResponse: the body is already serialised, and
+    re-encoding it would escape the CIM document into a JSON string."""
+
+    media_type = "application/json"
+
+
+def _attachment(response_class: type[Response], body: str, filename: str) -> Response:
+    return response_class(
         content=body,
-        media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -68,7 +83,7 @@ def _public_base() -> str:
     return _server_url()
 
 
-@router.get("/qgis/connections.xml", response_class=PlainTextResponse)
+@router.get("/qgis/connections.xml", response_class=XmlAttachment)
 @in_public_schema
 def qgis_connections() -> Response:
     """QGIS connections file registering the public OGC API - Features mount.
@@ -77,10 +92,10 @@ def qgis_connections() -> Response:
     Load Connections**.
     """
     body = qgis_connections_xml([Connection(PUBLIC_CONNECTION_NAME, _public_base())])
-    return _attachment(body, "text/xml", "ocotillo-ogcapi-connections.xml")
+    return _attachment(XmlAttachment, body, "ocotillo-ogcapi-connections.xml")
 
 
-@router.get("/qgis/connections-internal.xml", response_class=PlainTextResponse)
+@router.get("/qgis/connections-internal.xml", response_class=XmlAttachment)
 def qgis_connections_internal(user: viewer_dependency) -> Response:
     """QGIS connections file covering the public and internal mounts.
 
@@ -94,10 +109,10 @@ def qgis_connections_internal(user: viewer_dependency) -> Response:
             Connection(INTERNAL_CONNECTION_NAME, _internal_server_url()),
         ]
     )
-    return _attachment(body, "text/xml", "ocotillo-ogcapi-connections-internal.xml")
+    return _attachment(XmlAttachment, body, "ocotillo-ogcapi-connections-internal.xml")
 
 
-@router.get("/qgis/layers/{layer_id}.qlr", response_class=PlainTextResponse)
+@router.get("/qgis/layers/{layer_id}.qlr", response_class=XmlAttachment)
 @in_public_schema
 def qgis_layer(layer_id: str, session: session_dependency) -> Response:
     """A styled QGIS layer definition for one curated layer."""
@@ -106,10 +121,10 @@ def qgis_layer(layer_id: str, session: session_dependency) -> Response:
         raise HTTPException(status_code=404, detail=f"No curated layer {layer_id!r}.")
     fields = collection_fields(session, layer.collection)
     body = qgis_layer_definition(layer, _public_base(), fields)
-    return _attachment(body, "text/xml", f"{layer_id}.qlr")
+    return _attachment(XmlAttachment, body, f"{layer_id}.qlr")
 
 
-@router.get("/arcgis/layers/{layer_id}.lyrx", response_class=PlainTextResponse)
+@router.get("/arcgis/layers/{layer_id}.lyrx", response_class=JsonAttachment)
 @in_public_schema
 def arcgis_layer(layer_id: str, session: session_dependency) -> Response:
     """A styled ArcGIS Pro layer file for one curated layer."""
@@ -118,7 +133,7 @@ def arcgis_layer(layer_id: str, session: session_dependency) -> Response:
         raise HTTPException(status_code=404, detail=f"No curated layer {layer_id!r}.")
     fields = collection_fields(session, layer.collection)
     body = arcgis_layer_file(layer, _public_base(), fields)
-    return _attachment(body, "application/json", f"{layer_id}.lyrx")
+    return _attachment(JsonAttachment, body, f"{layer_id}.lyrx")
 
 
 _PAGE_STYLE = (
