@@ -29,12 +29,14 @@ API key.
 Read docs/ogc-desktop-gis-artifacts.md before changing what is emitted.
 """
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from core.app import in_public_schema
 from core.dependencies import session_dependency, viewer_dependency
-from core.pygeoapi import _internal_server_url, _server_url
+from core.pygeoapi import _app_base_url, _internal_server_url, _server_url
 from services.gis_artifacts import (
     Connection,
     arcgis_layer_file,
@@ -72,6 +74,63 @@ def _attachment(response_class: type[Response], body: str, filename: str) -> Res
         content=body,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+def _wants_json(request: Request, f: str | None) -> bool:
+    # Same precedence as api/disclaimer.py and pygeoapi itself: an explicit
+    # ?f= beats the Accept header, so the surfaces behave alike.
+    if f is not None:
+        return f.lower() == "json"
+    accept = request.headers.get("accept", "")
+    return "application/json" in accept and "text/html" not in accept
+
+
+def _index_payload() -> dict:
+    """Machine-readable catalogue of every artifact this router serves.
+
+    Absolute hrefs, built from _app_base_url() rather than the request, so a
+    browser app on another origin can use them unchanged and a proxy that
+    rewrites Host cannot send the caller somewhere else.
+    """
+    root = _app_base_url()
+    service = _public_base()
+    return {
+        "service_url": service,
+        "connections": [
+            {
+                "client": "qgis",
+                "href": f"{root}/gis/qgis/connections.xml",
+                "media_type": XmlAttachment.media_type,
+                "filename": "ocotillo-ogcapi-connections.xml",
+            }
+        ],
+        "layers": [
+            {
+                "id": layer.id,
+                "title": layer.title,
+                "abstract": layer.abstract,
+                "collection": layer.collection,
+                "collection_url": f"{service}/collections/{layer.collection}",
+                "geometry": layer.geometry,
+                "renderer": layer.renderer.get("type"),
+                "downloads": [
+                    {
+                        "client": "qgis",
+                        "href": f"{root}/gis/qgis/layers/{layer.id}.qlr",
+                        "media_type": XmlAttachment.media_type,
+                        "filename": f"{layer.id}.qlr",
+                    },
+                    {
+                        "client": "arcgis",
+                        "href": f"{root}/gis/arcgis/layers/{layer.id}.lyrx",
+                        "media_type": JsonAttachment.media_type,
+                        "filename": f"{layer.id}.lyrx",
+                    },
+                ],
+            }
+            for layer in load_curated_layers()
+        ],
+    }
 
 
 def _public_base() -> str:
@@ -112,7 +171,11 @@ def qgis_connections_internal(user: viewer_dependency) -> Response:
     return _attachment(XmlAttachment, body, "ocotillo-ogcapi-connections-internal.xml")
 
 
-@router.get("/qgis/layers/{layer_id}.qlr", response_class=XmlAttachment)
+@router.get(
+    "/qgis/layers/{layer_id}.qlr",
+    response_class=XmlAttachment,
+    responses={404: {"description": "No curated layer with that id."}},
+)
 @in_public_schema
 def qgis_layer(layer_id: str, session: session_dependency) -> Response:
     """A styled QGIS layer definition for one curated layer."""
@@ -124,7 +187,11 @@ def qgis_layer(layer_id: str, session: session_dependency) -> Response:
     return _attachment(XmlAttachment, body, f"{layer_id}.qlr")
 
 
-@router.get("/arcgis/layers/{layer_id}.lyrx", response_class=JsonAttachment)
+@router.get(
+    "/arcgis/layers/{layer_id}.lyrx",
+    response_class=JsonAttachment,
+    responses={404: {"description": "No curated layer with that id."}},
+)
 @in_public_schema
 def arcgis_layer(layer_id: str, session: session_dependency) -> Response:
     """A styled ArcGIS Pro layer file for one curated layer."""
@@ -145,8 +212,15 @@ _PAGE_STYLE = (
 
 @router.get("", response_class=HTMLResponse)
 @in_public_schema
-def gis_index() -> HTMLResponse:
-    """Landing page listing every downloadable artifact."""
+def gis_index(request: Request, f: Annotated[str | None, Query()] = None) -> Response:
+    """Landing page listing every downloadable artifact.
+
+    HTML by default for a human following the link; `?f=json` (or an
+    Accept: application/json header) returns the same catalogue as data, so a
+    frontend can enumerate the layers instead of hardcoding their ids.
+    """
+    if _wants_json(request, f):
+        return JSONResponse(_index_payload())
     base = _public_base()
     rows = "".join(
         f"<tr><td><strong>{layer.title}</strong><br>"

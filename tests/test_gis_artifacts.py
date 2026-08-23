@@ -353,3 +353,60 @@ def test_openapi_advertises_the_content_type_actually_returned(
 
     served = client.get(path).headers["content-type"]
     assert served.split(";")[0] == expected
+
+
+def test_index_defaults_to_html_and_negotiates_json():
+    assert client.get("/gis").headers["content-type"].startswith("text/html")
+    assert (
+        client.get("/gis", params={"f": "json"})
+        .headers["content-type"]
+        .startswith("application/json")
+    )
+    assert (
+        client.get("/gis", headers={"Accept": "application/json"})
+        .headers["content-type"]
+        .startswith("application/json")
+    )
+
+
+def test_json_index_lets_a_frontend_enumerate_instead_of_hardcoding():
+    payload = client.get("/gis", params={"f": "json"}).json()
+    assert [entry["id"] for entry in payload["layers"]] == [
+        layer.id for layer in load_curated_layers()
+    ]
+    for entry in payload["layers"]:
+        assert {d["client"] for d in entry["downloads"]} == {"qgis", "arcgis"}
+
+
+def test_json_index_hrefs_are_absolute_and_resolve():
+    """A browser app on another origin has to be able to use them unchanged."""
+    payload = client.get("/gis", params={"f": "json"}).json()
+    hrefs = [payload["connections"][0]["href"]] + [
+        download["href"]
+        for entry in payload["layers"]
+        for download in entry["downloads"]
+    ]
+    for href in hrefs:
+        assert href.startswith("http://") or href.startswith("https://")
+        response = client.get(href)
+        assert response.status_code == 200, href
+
+
+def test_json_index_media_types_match_what_the_download_sends():
+    payload = client.get("/gis", params={"f": "json"}).json()
+    for entry in payload["layers"]:
+        for download in entry["downloads"]:
+            served = client.get(download["href"])
+            assert served.headers["content-type"].split(";")[0] == (
+                download["media_type"]
+            )
+            assert download["filename"] in served.headers["content-disposition"]
+
+
+def test_missing_layer_404_is_documented():
+    schema = client.get("/openapi.json").json()
+    for path in (
+        "/gis/qgis/layers/{layer_id}.qlr",
+        "/gis/arcgis/layers/{layer_id}.lyrx",
+    ):
+        assert "404" in schema["paths"][path]["get"]["responses"]
