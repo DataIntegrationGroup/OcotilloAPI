@@ -54,6 +54,12 @@ EXPECTED_ANONYMOUS_ROUTES = {
     ("GET", "/docs-auth/oauth2-redirect"),
     ("GET", "/openapi-auth.json"),
     ("GET", "/disclaimer"),
+    # Desktop-GIS artifacts describe the anonymous /ogcapi mount and embed
+    # no credential; a QGIS client fetching one has nothing to present.
+    ("GET", "/gis"),
+    ("GET", "/gis/qgis/connections.xml"),
+    ("GET", "/gis/qgis/layers/{layer_id}.qlr"),
+    ("GET", "/gis/arcgis/layers/{layer_id}.lyrx"),
     ("GET", "/ngwmn/waterlevels/{pointid}"),
     ("GET", "/ngwmn/wellconstruction/{pointid}"),
     ("GET", "/ngwmn/lithology/{pointid}"),
