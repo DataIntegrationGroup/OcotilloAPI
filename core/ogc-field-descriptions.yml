@@ -40,6 +40,15 @@ _defaults:
   first_visit_date:
     title: First visit date
     description: Date of the earliest Bureau visit on record for this feature.
+  last_observation_date:
+    title: Last observation date
+    description: >-
+      Date of the most recent measurement recorded against this feature, as a
+      UTC calendar date. Null where no measurement is on record for it. Counts
+      readings and laboratory results held in the observation record; continuous
+      instrument readings from a deployed logger are not included, so an
+      instrumented well can carry newer data than this date shows. On the public
+      mount only measurements released to the public are counted.
   nma_pk_welldata:
     title: Legacy NM_Aquifer well key
     description: >-

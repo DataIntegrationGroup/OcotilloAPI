@@ -645,6 +645,20 @@ def _alembic_config() -> Config:
     return cfg
 
 
+def reset_pygeoapi_reflection() -> None:
+    """Drop pygeoapi's process-wide cache of reflected table models.
+
+    pygeoapi.provider.sql.get_table_model is functools.cache'd, so a provider
+    keeps serving the column list it reflected the first time a collection was
+    queried. Scenarios that move the schema under a running app (the
+    @migration-mutates-schema ones) would otherwise build SELECTs naming
+    columns the downgraded views no longer have.
+    """
+    from pygeoapi.provider.sql import get_table_model
+
+    get_table_model.cache_clear()
+
+
 def _initialize_test_schema() -> None:
     with session_ctx() as session:
         recreate_public_schema(session)
@@ -876,6 +890,7 @@ def before_scenario(context, scenario):
         # Defense in depth against a previous, unrelated failure having
         # already left the database below head.
         command.upgrade(_alembic_config(), "head")
+        reset_pygeoapi_reflection()
 
 
 def after_scenario(context, scenario):
@@ -885,6 +900,7 @@ def after_scenario(context, scenario):
         # this database. Deliberately not gated on DROP_AND_REBUILD_DB,
         # since these scenarios mutate schema regardless of that flag.
         command.upgrade(_alembic_config(), "head")
+        reset_pygeoapi_reflection()
 
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return
