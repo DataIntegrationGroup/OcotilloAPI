@@ -4,7 +4,6 @@
 [![Dependabot Updates](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates)
 [![Sentry Release](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/release.yml/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/release.yml)
 [![Tests](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/tests.yml/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/DataIntegrationGroup/NMSampleLocations/graph/badge.svg?token=Y20QB357OO)](https://codecov.io/gh/DataIntegrationGroup/NMSampleLocations)
 
 **Geospatial Sample Data Management System**  
 _New Mexico Bureau of Geology and Mineral Resources_
@@ -29,7 +28,7 @@ supports research, field operations, and public data delivery for the Bureau of 
 ## 🗺️ OGC API - Features
 
 The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
-In App Engine deployments, `/admin` and `/ogcapi` are served from the same
+In App Engine deployments, `/ogcapi` is served from the same
 application as the primary API. The service is intended to scale to zero
 outside business hours and be kept warm during the workday with Cloud Scheduler
 hits to `/_ah/warmup`.
@@ -40,23 +39,22 @@ hits to `/_ah/warmup`.
 curl http://localhost:8000/ogcapi
 curl http://localhost:8000/ogcapi/conformance
 curl http://localhost:8000/ogcapi/collections
-curl http://localhost:8000/ogcapi/collections/locations
+curl http://localhost:8000/ogcapi/collections/water_wells
 ```
 
 ### Items (GeoJSON)
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?limit=10&offset=0"
-curl "http://localhost:8000/ogcapi/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?limit=10&offset=0"
 curl "http://localhost:8000/ogcapi/collections/springs/items?limit=5"
-curl "http://localhost:8000/ogcapi/collections/locations/items/123"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items/123"
 ```
 
 ### BBOX + datetime filters
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
-curl "http://localhost:8000/ogcapi/collections/wells/items?datetime=2020-01-01/2024-01-01"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?datetime=2020-01-01/2024-01-01"
 ```
 
 ### Polygon filter (CQL2 text)
@@ -64,7 +62,7 @@ curl "http://localhost:8000/ogcapi/collections/wells/items?datetime=2020-01-01/2
 Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
 
 ```bash
-curl "http://localhost:8000/ogcapi/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+curl "http://localhost:8000/ogcapi/collections/water_wells/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
 ```
 
 ### OpenAPI UI
@@ -152,7 +150,6 @@ Minimum vars to set in `.env` for local development:
 * `POSTGRES_HOST` (`localhost` for local psql/pytest against mapped Docker port)
 * `POSTGRES_PORT` (`5432`)
 * `MODE` (`development` recommended locally)
-* `SESSION_SECRET_KEY` (required if you want to use `/admin`)
 
 Auth-related vars (required when auth is enabled, optional when `AUTHENTIK_DISABLE_AUTHENTICATION=1`):
 * `AUTHENTIK_DISABLE_AUTHENTICATION`
@@ -206,7 +203,7 @@ Notes:
 * Requires Docker Desktop.
 * By default, spins up two containers:
   * `db` for PostGIS/PostgreSQL
-  * `app` for the primary API, admin UI, and OGC API on `http://localhost:8000`
+  * `app` for the primary API and OGC API on `http://localhost:8000`
 * `db` initializes both application databases in the same Postgres service:
   * `ocotilloapi_dev`
   * `ocotilloapi_test`
@@ -216,7 +213,6 @@ Notes:
   * test: `ocotilloapi_test` (created by init SQL in `docker/db/init/01-create-test-db.sql`)
 * The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` and `POSTGRES_DB=ocotilloapi_dev` in your `.env` to run local commands against the Docker dev DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 * To restore a local or GCS-backed SQL dump into your local target DB, run `source .venv/bin/activate && python -m cli.cli restore-local-db path/to/dump.sql` or `source .venv/bin/activate && python -m cli.cli restore-local-db gs://ocotillo/sql-exports/latest.sql.gz`.
-* `SESSION_SECRET_KEY` only needs to be set in `.env` if you plan to use `/admin`; without it, the API and `/ogcapi` still boot, but `/admin` will be unavailable.
 
 #### Staging Data
 

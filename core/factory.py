@@ -6,8 +6,6 @@ from core.app import create_base_app
 from core.initializers import (
     configure_apitally_middleware,
     configure_cors_middleware,
-    configure_lazy_admin,
-    configure_session_middleware,
     register_api_routes,
 )
 
@@ -42,14 +40,21 @@ def initialize_runtime() -> None:
 
 def create_api_app():
     initialize_runtime()
+
+    # After initialize_runtime()'s load_dotenv(), so MODE and
+    # AUTHENTIK_DISABLE_AUTHENTICATION are both resolved. Raises
+    # AuthConfigurationError -- boot fails loudly rather than serving every
+    # endpoint anonymously.
+    from core.permissions import assert_auth_configuration
+
+    assert_auth_configuration()
+
     app = create_base_app()
     register_api_routes(app)
-    from core.pygeoapi import mount_pygeoapi
+    from core.pygeoapi import mount_pygeoapi, mount_pygeoapi_internal
 
     mount_pygeoapi(app)
-    if os.environ.get("SESSION_SECRET_KEY"):
-        configure_session_middleware(app)
+    mount_pygeoapi_internal(app)
     configure_cors_middleware(app)
     configure_apitally_middleware(app)
-    configure_lazy_admin(app)
     return app

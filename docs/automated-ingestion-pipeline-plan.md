@@ -1,0 +1,446 @@
+# Draft: Automated Ingestion Pipeline Epic (BDMS)
+
+1 new Epic → 4 Tasks → 17 Sub-tasks. **Nothing written to Jira yet.**
+
+## TL;DR
+
+Build the Bureau's first automated data ingestion pipeline, in the OcotilloAPI repo, so continuous depth-to-groundwater readings reach Ocotillo on a schedule instead of by hand. San Acacia Reach (38 Van Essen divers) is the pilot source; the structure it establishes is what every later source inherits.
+
+Stack: **Dagster+** code location → **dlt** extraction → **GCS** raw parquet → **`domain/`** mapping → direct **Postgres** load. Watermark and backfill mechanics are ported from Aqueduct, with two deliberate improvements a relational destination allows: the watermark is read from Postgres rather than a GCS sidecar, and an upsert replaces Aqueduct's delete-then-repost (removing its known window where data goes temporarily missing).
+
+**Decided** — four calls already made, so reviewers don't reopen them:
+
+- **Owned by OcotilloAPI, not Aqueduct.** The loader writes over a direct database connection, which wants the `db/` SQLAlchemy models and `domain/` rules in the same process. Running it as a third Aqueduct source would mean maintaining a copy of Ocotillo's schema in another repo. Aqueduct stays the FROST/SensorThings pipeline; shared code is **ported, not imported**, so the two can diverge without breaking each other.
+- **Ground-surface datum.** `TransducerObservation.value` stores depth to water below ground surface, in feet. That picks Van Essen's `gs` arrays and drops `vrd` entirely. No measuring-point correction on ingest — `domain/water_levels.py`'s MP reconciliation belongs to the manual-measurement path, where a field crew measured the height on the day. Datum shifts are the Hydrograph Corrector's job, downstream.
+- **Public + provisional.** Visible from the first run, and marked provisional so no consumer mistakes an uncorrected diver series for a reviewed one. This matches what the retired FROST pipeline asserted for this source (`is_provisional: true`) — adopted deliberately here rather than inherited silently, which was the open question left in Aqueduct's mapping doc. It needs a schema change: `release_status` is one column, and its lexicon lists `public` and `provisional` as siblings, so visibility and maturity — two orthogonal axes — currently collide.
+- **Vendor approval flag ≠ Ocotillo review status.** Van Essen's `approvedWaterLevels*` records what *the vendor* approved. Ocotillo's `review_status` is `approved` / `not reviewed`, and `TransducerObservationBlock.reviewer_id` FKs a Bureau `Contact` — so `approved` asserts a Bureau human reviewed it. Mapping one onto the other would manufacture provenance that doesn't exist. All San Acacia blocks land `not reviewed`; the vendor flag is preserved as a separate per-row attribute.
+
+**Watch:** two schema changes — a unique constraint on `transducer_observation`, and a new field because `release_status` cannot hold "public" and "provisional" at once. The vendor blocker cleared on 2026-08-18: the readings endpoint works, but only through the private Diver-HUB API, only with a 1-hour JWT, and only in bounded time windows.
+
+**Sequencing:** Task 1 gates everything. Tasks 2 and 3 run largely in parallel after it. Nothing is vendor-blocked any more.
+
+## All tasks
+
+| # | Item | In one line | Blocked by |
+|---|---|---|---|
+| **T1** | **Foundations** | Package, Dagster+ code location, GCS, DB connectivity | — |
+| 1.1 | Scaffold package + Dagster skeleton | `automated_ingestion/` layout, deps, loads in `dagster dev` | — |
+| 1.2 | Register Dagster+ code location | `dagster_cloud.yaml` + prod/branch deploy workflows | 1.1 |
+| 1.3 | GCS buckets + service account | `ocotillo-ingestion-{production,staging}`, date-partitioned layout | — |
+| 1.4 | DB connectivity + least-privilege role | Cloud SQL connector from serverless; scoped Postgres role | 1.2 |
+| **T2** | **Source extraction** | Van Essen API → GCS raw zone | T1 |
+| 2.1 | Confirm endpoint + finalize mapping | **Unblocked.** Diver-HUB swagger, JWT login, measure the window ceiling | — |
+| 2.2 | dlt resource: locations | 38 wells, `replace`, one call, no pagination | 1.3 |
+| 2.3 | dlt resource: readings, incremental | Windowed per-point fetch, dlt cursor, `append`, token refresh, failure isolation | 2.1 |
+| **T3** | **Domain mapping + load** | Van Essen records → Ocotillo Postgres | T1 |
+| 3.1 | Domain layer | Pure functions: units, datum, timestamps, geometry, external keys | — |
+| 3.2 | Bootstrap reference data | Reconcile 38 wells; seed parameter, sensor, deployments | 3.1 |
+| 3.3 | Represent "public but provisional" | **Schema change.** `release_status` can't hold both axes | — |
+| 3.4 | Unique constraint + upsert loader | **Schema change.** `ON CONFLICT DO UPDATE`; makes backfill idempotent | 3.2, 3.3 |
+| 3.5 | Watermark from Postgres | `MAX(observation_datetime)` per series; no GCS sidecar | 3.4 |
+| **T4** | **Backfill + operations** | Recover from gaps, bugs, and vendor corrections | T3 |
+| 4.1 | Port shared backfill primitives | `month_chunks`, `BackfillCheckpointStore`, `ChunkResult` from Aqueduct | — |
+| 4.2 | Mode A — refetch | Re-fetch from API for a window; `dry_run: true` default; chunked, resumable | 4.1, 2.3 |
+| 4.3 | Mode B — replay | Reprocess GCS parquet through the current adapter; no API calls | 4.1, 3.4 |
+| 4.4 | Schedule, observability, alerting | Daily schedule, log bridge, failure notification, run metadata | 4.2 |
+| 4.5 | Documentation | Source mapping, storage conventions, backfill runbook, new-source checklist | 4.3 |
+
+---
+
+# EPIC — Automated Ingestion Pipeline
+
+**Goal:** continuous depth-to-groundwater data lands in Ocotillo automatically, on a schedule, with no one hand-carrying files — starting with San Acacia Reach.
+
+The Hydrograph Corrector UI exists and works (BDMS-1137 done), but has no automatic supply of raw data. San Acacia Reach's 38 Van Essen divers historically flowed through the retired FROST/`st2` stack and now flow nowhere. This epic builds the supply. Correction, review, and publication workflows are **out of scope** and belong to their own epic.
+
+New top-level `automated_ingestion/` package in OcotilloAPI, deployed as its own Dagster+ code location in the existing `nmbgmr-data-services` org. dlt extracts the Van Essen API to a GCS raw zone; a `domain/` layer maps to the Ocotillo model; a loader writes to Ocotillo Postgres over a direct DB connection. Watermark and backfill mechanics come from Aqueduct.
+
+San Acacia first: 38 wells, one DTW series each, and already mapped in `Aqueduct/docs/sources/san_acacia.md`. It authenticates with a short-lived JWT and must be read in bounded time windows — both cheap enough here to establish the pattern before a harder source needs it. What it establishes — source registry, per-source dlt pipeline, adapter, backfill job factory — every later source inherits.
+
+**Ownership: OcotilloAPI.** Not a third Aqueduct source writing into Ocotillo. The loader writes over a direct database connection, which wants the `db/` SQLAlchemy models and `domain/` rules in-process rather than a duplicated schema in another repo. Aqueduct stays the FROST/SensorThings pipeline; this is Ocotillo's own. The two share code by porting (see below), not by importing.
+
+### Adopted from Aqueduct
+
+| Artifact | Adoption |
+|---|---|
+| `docs/BACKFILL_STRATEGY.md` | Wholesale: Mode A refetch / Mode B replay, per-source generated jobs, calendar-month chunking, `dry_run: true` default, `initial_start_date` as a floor only |
+| `shared/backfill.py`, `shared/gcs.py` | Port near-verbatim — already destination-agnostic |
+| `shared/source_registry.py` | Port the pattern; registry drives job + schedule generation |
+| `canonical/base_adapter.py` | Adapt: same `extract`/`to_*`/`run` shape and per-record failure isolation, emitting Ocotillo structs |
+| `loader/watermark_store.py` | **Adapt, not port** — see deviation 1 |
+| `docs/STORAGE_CONVENTIONS.md` | Adopt, renamed for `ocotillo-ingestion-<env>` |
+
+### Deviations from Aqueduct
+
+1. **Watermark in Postgres, not a GCS sidecar.** Aqueduct needs `_frost_watermarks.json` because FROST has no transactional read. Ocotillo's destination does: `MAX(observation_datetime)` per `(thing_id, parameter_id)`, read in the write transaction. No sidecar drift, no recovery path.
+2. **Upsert replaces delete-then-repost.** `BACKFILL_STRATEGY.md` §4.4 accepts a temporary hole in FROST because observations have no dedup key there. Postgres does — unique constraint plus `ON CONFLICT DO UPDATE` makes load and backfill idempotent with no destructive delete. Resolves that doc's §6 open question.
+3. **Target is `Thing → Deployment → TransducerObservation`**, not `FieldEvent → … → Observation`. 5-minute diver series are continuous, not field visits.
+
+### Data classification — decided
+
+- **Datum: ground surface.** `TransducerObservation.value` = depth to water below ground surface, feet. Ingest Van Essen's `gs` arrays, not `vrd`. No measuring-point correction on ingest — `domain/water_levels.py`'s MP reconciliation is the manual-measurement path. Datum shifts are the corrector's business.
+- **Visibility public, maturity provisional.** Public from the first run, marked provisional so nobody mistakes an uncorrected diver series for a reviewed one. Matches what the old FROST pipeline asserted (`is_provisional: true`) — adopted deliberately, not inherited silently.
+- **Schema cannot express this today.** `release_status` is one scalar column (`ReleaseMixin` → `lexicon_term.term`), and its lexicon category holds `public` *and* `provisional` as siblings. Visibility and maturity are orthogonal; the lexicon conflates them. Sub-task 3.3 resolves it.
+- **Vendor approval ≠ Ocotillo review status.** `approvedWaterLevels*` records what the *vendor* approved. Ocotillo `review_status` is `approved` / `not reviewed`, and `TransducerObservationBlock.reviewer_id` FKs a Bureau `Contact` — `approved` means a Bureau human reviewed it. All San Acacia blocks land `not reviewed`; the vendor flag is kept as a separate per-row attribute.
+
+### Epic acceptance criteria
+
+- `automated_ingestion/` deploys as a Dagster+ code location on merge; jobs visible in the Dagster UI.
+- Scheduled job runs end to end: Van Essen API → GCS parquet → domain mapping → Ocotillo Postgres.
+- Re-running over an already-loaded window: zero duplicates, zero errors.
+- Both backfill jobs exist, default `dry_run: true`, chunk by month, resume from last completed chunk.
+- 38 wells resolve to `Thing` records — matched, never created, no duplicates.
+- Readings are public, marked provisional, stored as DTW below ground surface in feet.
+- Series render in the Hydrograph Corrector.
+- Domain mapping unit-tested with no database, per `ADR4.md`.
+
+### Blocker — resolved 2026-08-18
+
+The 500s were never a vendor outage. Two things were wrong on our side, both reported by Chase Martin:
+
+1. **Wrong API.** Readings come from the private Diver-HUB API — `GET https://diver-hub.com/private/api/v1/DiverData/ByMonitoringPoint/{id}` — not the doubled-segment `/api/api/monitoringPoint/{project}/{id}` path the earlier draft assumed. Swagger: `https://diver-hub.com/private/swagger/index.html`, which is now the authority over anything inferred from retired FROST data.
+2. **Window too large.** The endpoint 500s rather than paginating or erroring cleanly when asked for too much. A confirmed-good request is a ~3-month window in **Unix seconds**:
+
+   ```
+   https://diver-hub.com/private/api/v1/DiverData/ByMonitoringPoint/40?startTime=1767225600&endTime=1775001600
+   ```
+
+**Auth:** POST to the login endpoint with the credentials Ethan circulated; it returns a **JWT valid for one hour**. This overturns the "unauthenticated" assumption in the earlier draft and has two consequences: the token is a secret needing the same handling as the DB credentials, and any run outliving an hour — every backfill — must refresh mid-run rather than acquire once at start.
+
+**Still open:** the actual window ceiling. Three months works; the limit is unmeasured. Until it is, chunk conservatively and treat a 500 as "too much data" rather than a hard failure.
+
+### Related
+
+BDMS-1137 (corrector zoom/selection, Done — the consumer of this data, not part of this epic) · BDMS-1090 (Wellpy Revival Discovery) · BDMS-362 (WellPy Ocotillo) · `DataIntegrationGroup/Aqueduct` · OcotilloAPI `ADR4.md`, `db/transducer.py`, `db/engine.py`
+
+---
+
+# TASK 1 — Foundations: code location, GCS, DB connectivity
+
+Nothing in this repo runs on a schedule today. This task creates the package, gets it deploying to Dagster+, provisions GCS, and proves the Dagster runtime can reach Ocotillo Postgres. Carries the workstream's two infrastructure risks: build size and serverless→Cloud SQL connectivity.
+
+**Done when:** package loads in `dagster dev`; merge deploys to prod and PRs produce branch deployments; buckets exist with a least-privilege SA; a trivial asset reads Ocotillo Postgres from both deployments; pytest/ruff/mypy pass.
+
+### 1.1 — Scaffold `automated_ingestion/` and the Dagster skeleton
+
+```
+automated_ingestion/
+├── defs/           definitions.py (entry point), assets/, jobs/backfill.py
+├── shared/         source_registry.py, backfill.py, gcs.py, http.py
+├── ocotillo/       adapter base + Ocotillo structs
+├── sources/san_acacia/   ingest / dlt_pipeline / adapter / transform / backfill
+└── tests/
+```
+
+- Layout above created; `automated_ingestion` added to `[tool.setuptools] packages` (same fix as `f33cd063` for `domain`).
+- Deps added: dagster, dagster-cloud, `dlt[filesystem,gs]`, gcsfs, pyarrow. `[tool.dagster] module_name = "automated_ingestion.defs.definitions"`.
+- `dagster dev` loads the location with no import errors; ruff/mypy cover it; pytest still green.
+
+Lives in this repo so the loader can import `db/` models and `domain/` rules rather than duplicate the schema. If the Dagster+ build proves too large, fall back to a `[project.optional-dependencies]` split.
+
+### 1.2 — Register as a Dagster+ code location with CI deploy
+
+Files written; nothing deployed yet — the secrets do not exist, so neither workflow has run.
+
+- ✅ `dagster_cloud.yaml` declaring `ocotillo-automated-ingestion` → `automated_ingestion.defs.definitions`, build directory `./`. The build directory is the repository root, not `automated_ingestion/`, because the loader imports `db/` and `domain/`.
+- ✅ `CD_dagster_prod.yml` and `CD_dagster_branch.yml`, both on `dagster-io/dagster-cloud-action@v1.13.18` — pinned to the same version as the installed dagster.
+- ✅ Path-filtered to `automated_ingestion/**`, `dagster_cloud.yaml`, `pyproject.toml`, and `uv.lock`. The last two matter: the location's dependency set is exported from them, so a lockfile bump changes the built image even when no ingestion file moves.
+- ⬜ `DAGSTER_CLOUD_API_TOKEN` as a repository **secret**, `DAGSTER_CLOUD_ORGANIZATION_ID` as a repository **variable**. The token is a CI credential the action uses to reach Dagster+, so it belongs with `CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY` rather than in Secret Manager -- reading it from Secret Manager would still require a GitHub secret to authenticate to GCP first, adding a hop without removing a trust root. The organization ID is not sensitive; it appears in the Dagster+ console URL.
+- ⬜ Runtime secrets are a different question and are **not** GitHub's. The Diver-HUB login (2.1), the ingestion service account (1.3), and the Postgres role (1.4) are read by the pipeline while it runs, not by the deploy, so they belong in Secret Manager on the `internal-ogc-api-keys` precedent, reached from Dagster+ at runtime.
+- ⬜ Test PR yields a working branch deployment; merge to `production` yields a working prod location.
+
+**Prod deploys from `production`, not `main`.** `main` was abandoned in July 2025 — it is 3,839 commits behind and is not part of the release flow (`docs/release-flow.md`). The `main` reference in the original draft was inherited from Aqueduct's layout without checking this repository's.
+
+**PEX vs Docker — answered: Docker.** `serverless_prod_deploy` and `serverless_branch_deploy` build with `docker/build-push-action` and a copied Dockerfile template; there is no PEX fast-deploy path in these actions. So build time is a full image build, and the dependency set matters: the image installs all 197 exported packages (the 135 runtime ones plus dagster, dlt, gcsfs, pyarrow). `pymssql` and `psycopg2-binary` are in that set and compile from source on some base images — the first real build is where that surfaces.
+
+**Ordering constraint, easy to break.** `utils/parse_workspace` runs its own `actions/checkout`, which cleans the working tree. It must run *before* `requirements.txt` is generated; putting the generation first silently deletes it, and the deploy fails on a missing file rather than on the real cause.
+
+Both workflows generate `requirements.txt` with `uv export --group ingestion`, since Dagster+ builds from a requirements file and the repository does not keep one under version control.
+
+### 1.3 — Provision GCS buckets and ingestion service account
+
+Terraform written in `automated_ingestion/iac/`; **not applied**. `terraform validate` and `fmt` pass, but no GCP credentials were available, so no resource exists yet.
+
+- ✅ `ocotillo-ingestion-production` and `-staging`, uniform bucket-level access, public access prevention enforced, `force_destroy = false`.
+- ✅ Service account `ocotillo-ingestion` with `roles/storage.objectAdmin` bound **on the two buckets**, not at project level. `objectAdmin` rather than `objectCreator` because a Mode B replay overwrites an existing object.
+- ✅ Lifecycle: NEARLINE at 30 days, COLDLINE at 365, and archived-version pruning past 3. Aged out rather than deleted — an old window is exactly what a historical replay reads.
+- ✅ `INGESTION_GCS_BUCKET` resolved by `shared/gcs.raw_zone_bucket()`, which raises rather than defaulting and explicitly rejects a value equal to `GCS_BUCKET_NAME`. `services/gcs_helper.py` uses that variable for user uploads; the two being confused would write raw vendor payloads into the uploads bucket, and would otherwise do so silently.
+- ⬜ `terraform apply`, then set `INGESTION_GCS_BUCKET` on the Dagster+ code location.
+
+The dlt layout `{table_name}/year={YYYY}/month={MM}/day={DD}/{load_id}.{file_id}.{ext}` is asserted by a test, because Mode B replay selects a window by prefix — the date has to be in the path, not inside the file.
+
+### 1.4 — DB connectivity from Dagster+ with a least-privilege role
+
+Dagster+ Serverless is outside the VPC, so Cloud SQL's private IP is unreachable from it. Code written; **nothing run against a database**.
+
+- ✅ `OcotilloDatabase` resource delegating to `db/engine.py`'s `DB_DRIVER=cloudsql` path rather than building a second engine. The import is lazy: `db.engine` builds its engine at import time, and a code location that needs a reachable database merely to *list* its assets breaks every time the database blips. A test asserts loading the definitions leaves `db.engine` unimported.
+- ✅ `database_connectivity` asset, read-only. Connectivity and grants are separable problems, and a write here would leave test rows in a real table.
+- ✅ Role DDL in `automated_ingestion/sql/ingestion_role.sql`, kept out of Alembic: roles and grants are per-environment infrastructure, not schema, and migrations do not run as a superuser.
+- ⬜ Run the DDL per environment; set `DB_DRIVER`, `CLOUD_SQL_*` on the code location; materialize the asset from both a branch and prod deployment.
+
+**The grant list is narrower than the draft assumed, and one part of it is non-obvious.** Writable: `transducer_observation`, `transducer_observation_block`, `deployment`, `sensor`, `parameter`. Read-only: `thing`, `thing_id_link`, `location`, and the three `lexicon_*` tables — `thing` and `location` deliberately *not* writable, because reconciling the 38 wells means matching rows that already exist. A well found missing is a decision for a human, not a row the pipeline invents.
+
+`parameter` is versioned by sqlalchemy-continuum, so inserting one also writes to `parameter_version` and `transaction`. Without those two grants the write fails on a table the code never names — the kind of error that costs an afternoon. (`transducer_observation` itself is not versioned; only `aquifer_system`, `geologic_formation`, `location`, `observation`, `parameter`, `regulatory_limit`, and `thing` are.) Sequence `USAGE` is granted explicitly, and no default privileges are set: a table added later stays invisible until someone grants it deliberately.
+
+Fallback if the connector path fails: Hybrid agent in GCP.
+
+---
+
+# TASK 2 — Source extraction: Van Essen → GCS raw zone
+
+Land locations and readings untransformed in GCS as date-partitioned parquet. Raw storage is what makes Mode B replay possible — a mapping bug becomes a reprocess, not a re-fetch. Carries the external blocker.
+
+**Done when:** both land at the documented paths; readings extraction is incremental; a per-entity failure doesn't abort the run; fixtures exist so downstream work needs no live API.
+
+### 2.1 — Confirm the readings endpoint; finalize the source mapping
+
+**The swagger is public** (`https://diver-hub.com/private/swagger/v1/swagger.json`) and reading it settled most of this without credentials. Full mapping in `docs/sources/san_acacia.md`; four corrections that invalidate parts of the original draft:
+
+- ✅ **No `/api/api/` segment, no `locations/sanacaciareach`.** Seven endpoints under `/api/v1/`. Reference data is `Projects` → `MonitoringPoints/ByProject/{id}`.
+- ✅ **No `gs`/`vrd` arrays.** `WaterLevels/ByMonitoringPoint` returns a flat `[{dateAndTime, level}]`. Datum and approval are *query parameters* (`reference`, `approved`), not fields to pick out of parallel arrays. The reshaping `transform.py` was scaffolded for does not exist.
+- ✅ **`DiverData` is not the series we want.** It returns `DataPoint` — pressure, temperature, conductivity, salinity — with no water level. It is what the known-good example URL fetches, which is why it looked like the readings endpoint.
+- ✅ **`MonitoringPoint` is `{id, name}` only.** No coordinates, no `drillingDepth`. The planned centimetre conversion and geometry mapping have no source here; both must come from the Ocotillo rows the points reconcile against.
+
+Built, and testable without the network:
+
+- ✅ `sources/san_acacia/client.py` — JWT auth refreshed against `validTo` with a skew, one forced re-login on a 401, and windowed fetches that halve on a 500 and refuse to shrink past a one-day floor.
+- ✅ `shared/windows.py` — the window arithmetic, kept pure so the tricky part is testable.
+- ✅ `scripts/probe_diverhub.py` — a one-off instrument that answers the remaining questions against the live API.
+
+⬜ **Run the probe.** It needs the credentials Ethan circulated. Until then:
+
+**`WaterLevelReference` is `enum [0,1,2,3]` with no names in the spec, and this is the highest-risk unknown in the epic.** Which value means ground surface is not derivable, and choosing wrong does not fail — it returns plausible numbers on the wrong datum and silently poisons every reading. `GROUND_SURFACE_REFERENCE` is `None` in code and the client will not guess. The probe samples all four side by side so a person can identify it against a well whose depth to water is known.
+
+Also still open: the window ceiling (three months works, the limit is unmeasured), whether `approved=true`/`false` partition or overlap, whether `dateAndTime` is marked UTC, and whether `level` is feet. That last one gates correctness rather than completeness, same as the datum.
+
+### 2.2 — dlt resource: locations → GCS
+
+- ✅ `@dlt.resource(name="vanessen_locations")`, `write_disposition="replace"`, on `MonitoringPoints/ByProject/4317` — **not** the `locations/sanacaciareach` path in the original draft, which does not exist. One request, no pagination.
+- ✅ Asset `raw_san_acacia_locations` emits the point count, project id, and a sample of names. Tested against a stub, no network.
+- ✅ `replace` rather than `append`: this is a snapshot of what the vendor currently lists, and a point disappearing is information rather than something to accumulate.
+
+The payload is `{id, name}` only, so this cannot be a source of geometry or construction detail — it enumerates the points a reading fetch walks. **38 points.** Earlier drafts said 33; that figure came from Aqueduct's stale mapping doc, not from a Bureau record — see 3.2.
+
+### 2.3 — dlt resource: readings → GCS, incremental
+
+- ✅ `@dlt.resource(name="vanessen_readings")`, `write_disposition="append"`, dlt incremental cursor on `dateAndTime`, walking each point from its watermark.
+- ✅ `INITIAL_START` (2015-01-01) documented as a floor for a point with no cursor, never a backfill lever.
+- ✅ Per-point failure isolation: one diver failing costs that diver's data for the run, not the other thirty-seven. Failures are collected into a list **the caller owns** — a dlt resource is a module-level object shared by every run, so per-run state stashed on it would have concurrent runs overwriting each other.
+- ✅ Asset `raw_san_acacia_readings` emits rows ingested, points attempted, points failed, and the failures themselves.
+- ✅ Nothing is converted on the way in. The raw zone stores the vendor's `level` in the vendor's centimetres on the vendor's datum, with `unit` and `reference` recorded alongside, so a mapping bug is a reprocess rather than a re-fetch.
+
+**Vendor approval needs two requests.** `approved` is a query parameter, not a response field, so the flag cannot be read off a row. Fetching `approved=true` and `approved=false` separately and concatenating would duplicate every reading if the two sets overlap — which is still unknown (open question 4). Instead the unfiltered series is authoritative and a second `approved=true` fetch supplies a set of timestamps used only to tag it. A failure of that second fetch leaves rows tagged `false` rather than losing them: an untagged reading is worth more than no reading, and the vendor flag is not Ocotillo's review status regardless.
+
+**Window span is measured, not inherited.** `READING_SPAN` is 365 days for this source rather than the cautious 90-day default in `shared/windows.py`, because probing showed `WaterLevels` serving 730 days and 18111 rows in one request. At 90 days a first run for a single point would issue four times the requests for no benefit. It sits at half the largest span observed to work, leaving headroom for a denser point than SO-0125.
+
+---
+
+# TASK 3 — Domain mapping and load into Ocotillo
+
+Where this stops resembling Aqueduct: the destination is a relational database with constraints and transactions, and mapping rules belong in `domain/` per `ADR4.md`. Three risks — matching 38 wells without duplicating them, representing "public but provisional" when the schema can't, and making the write idempotent so backfill is safe.
+
+**Done when:** mapping rules are pure functions tested without a database; 38 wells resolve with no duplicates; data is public and separately marked provisional; `transducer_observation` has a unique constraint and the loader upserts against it; loading the same window twice leaves the row count unchanged; the watermark comes from Postgres.
+
+### 3.1 — Domain layer: Van Essen record → Ocotillo model
+
+Built. `domain/van_essen.py` plus `sources/san_acacia/adapter.py`, 28 tests, no database and no network.
+
+**Scope is smaller than this section originally claimed.** The draft called for converting `drillingDepth` from centimetres and building a WGS84 point from `lat`/`lng`. The live `MonitoringPoint` payload is `{id, name}` — no depth, no coordinates — so those functions would have had no input. Well geometry and construction come from the Ocotillo records a point reconciles against, which is consistent with ingestion never creating wells.
+
+What the layer actually does:
+
+- ✅ Reading timestamp → timezone-aware UTC. A naive value is read as UTC, since the API documents UTC and does not always mark it; reading it as local would shift every observation by the machine's offset, and differently on a laptop than in a container.
+- ✅ Centimetres → feet via `domain/units.convert_cm_to_ft`.
+- ✅ Deterministic external keys, built from the vendor's **numeric** id rather than the name. `SO-0125` is a Bureau point id and can be corrected; the numeric id is what a re-run must resolve to the same record. The series key names the datum, because a point may later carry temperature or conductivity — both already in the vendor's raw payload.
+- ✅ Errors subclass `ValueError`, matching the per-row contract the CSV importers expect.
+- ✅ ADR4 layering verified by test rather than by inspection: importing `domain.van_essen` pulls in no `fastapi`, `sqlalchemy`, `pydantic`, `httpx`, `db`, `api`, `schemas`, or `services`.
+
+**The adapter refuses two things outright**, both because accepting them would produce plausible numbers rather than an error:
+
+- A row whose `reference` is not 3. The datum is chosen at request time and cannot be recovered from the row.
+- A row whose `unit` is not `cm`. Converting a value whose unit is not what it claims is wrong by a factor of 30.48 and still reads as a plausible depth.
+
+Per-record failures are collected, not raised: one unparseable reading costs that reading, not the series.
+
+The module docstring lists every value the mapping **invents** rather than reads — the datum, the unit, and the timezone — since inventing is where a mapping goes quietly wrong.
+
+### 3.2 — Bootstrap reference data: reconcile wells, seed parameter, sensor, deployments
+
+Reconciliation report built — `sources/san_acacia/reconcile.py` and `scripts/reconcile_san_acacia.py`, 12 tests. The seeding half is not built.
+
+**The "33 wells" figure was wrong, and was never a blocker.** It came from Aqueduct's `docs/sources/san_acacia.md` — the same document that also supplied the doubled `/api/api/` path, the claim the source is unauthenticated, and the `gs`/`vrd` payload shape, all disproved against the live API. 38 is what the API returns. Whether all 38 are in scope is a question the per-well report answers concretely.
+
+**Coordinate proximity is not available.** This section called for matching on name, external id, *and* coordinate proximity. `MonitoringPoint` is `{id, name}` — no coordinates. That removes the only fuzzy signal and leaves two exact ones, which is a better position: every match is defensible rather than probabilistic.
+
+- ✅ Matching on name and on `thing_id_link.alternate_id`, normalized for case, spacing and punctuation so `SO-0125`, `so 0125` and `SO0125` compare equal. Still exact on significant characters — `SO-0126` stays a different well.
+- ✅ Name beats external id when both hit. The name is the identifier the Bureau uses now; a link records an association someone made earlier.
+- ✅ **Never picks a winner.** More than one candidate is `ambiguous` and escalates; none is `unmatched` and escalates. Ingestion does not create wells, and choosing between two plausible ones is the judgement that must not be automated.
+- ✅ `report.ready` is false unless *every* point resolved, and false for empty input. A partial load produces a series that looks complete and is not.
+- ✅ The script exits non-zero when anything needs a human, so it can gate a later step without relying on someone reading the output.
+- ✅ **Run against staging: all 38 points match by name. Nothing ambiguous, nothing unmatched, `ready = True`.** The wells already exist — SO-0125 is thing 2343, SO-0131 is 2369, and so on through 277 `SO-` wells in that database. So the seeding half creates no wells; it only needs the parameter, sensor, deployments and external identifiers.
+- ✅ **Production confirms it**: same 38 matches, same thing ids (SO-0125 is 2343 in both), `ready = True`. Staging is a clone of production for these tables, so the two agree by construction.
+
+**External-id matching is off by default, on evidence.** `thing_id_link` in staging holds 11,148 links from nine organization/relation pairs — NMBGMR (8,603), PLSS (7,052), an unattributed "Unknown" (4,825), NMOSE, USGS, NMED, TWDB — and they disagree with each other. `SO-0131` carries NMBGMR `BRN-E04B (shallow)` plus an unattributed `BRN-E04A`, while `SO-0132` carries NMBGMR `BRN-E04A (deep)` plus an unattributed `BRN-E04B`: the two sources swap which physical well is A and which is B. (`SO-0262`/`SO-0263` disagree more sharply still — NMBGMR calls them NRCS 3A/3B, the other source NRCS 2.)
+
+Matching `BRN-E04A` against that returns a single confident hit on `SO-0131`, contradicting NMBGMR, because the parenthetical suffix stops the collision registering as ambiguous. A wrong answer delivered confidently is worse than no answer, so the fallback is opt-in and a test pins the real rows.
+
+**This is production data, not a staging artifact.** The same contradictions are in both. They are worth someone's attention independently of this pipeline: `SO-0131`/`SO-0132` and `SO-0262`/`SO-0263` are paired shallow/deep piezometers whose A/B designations disagree between identifier sources, and a swap there means a shallow series attributed to a deep well. Ingestion is unaffected — the vendor names points `SO-####` and Ocotillo agrees on those — but anyone reasoning about these wells through the `BRN-`/`NRCS` names is working from two incompatible answers.
+- ⬜ The seeding half: data migration creating missing `Location`/`Thing`, lexicon terms, DTW `Parameter`, `VanEssenDiver` `Sensor`, one `Deployment` per well, the vendor `uid` as external identifier, and `DataProvenance` for Van Essen-sourced attributes.
+
+### 3.2 seeding — nothing needed, measured 2026-08-19
+
+The plan expected to create wells, a parameter, a sensor and deployments. Checked against staging: **all of it already exists.**
+
+- All 38 wells have deployments — 108 open ones between them, because a deployment is a piece of equipment rather than a measured property. SO-0140 carries three: a `DiverLink` (telemetry), a `Pressure Transducer` (the reading), and a `Diver Cable`. `Barometer` appears elsewhere.
+- The parameter exists: id 1, `groundwater level`, `default_unit = ft` — which is what the adapter emits, so the centimetre conversion in `domain/van_essen.py` lands in the right unit.
+- Existing observations for these wells already use that parameter.
+
+**So the series is chosen, not created.** `sources/san_acacia/resolve.py` picks the open `Pressure Transducer` deployment. Across the 38 wells that resolves cleanly for **35**; **2** have two open transducers and **1** (SO-0246) has none. Those three are skipped and reported rather than guessed at — taking the lower id would be a silent decision about equipment.
+
+A *removed* transducer is not used as a fallback. Writing current readings against retired equipment would look like success while being wrong.
+
+### 3.3 — Represent "public but provisional"
+
+Built. Migration `b2c3d4e5f6a7` adds `data_maturity` to `transducer_observation`.
+
+**Decided: a `data_maturity` lexicon term, not an `is_provisional` boolean.** A boolean can only say provisional or not, and review is a progression rather than a switch.
+
+**Terms follow USGS usage** — `provisional`, `in review`, `approved`. `provisional` and `approved` are what USGS publishes against ("provisional data subject to revision" is the standard caveat on unapproved records). `in review` is the intermediate state from the Aquarius approval levels USGS uses for continuous time series (Working / In Review / Approved); Aquarius' `Working` is folded into `provisional`, because to a consumer the two are indistinguishable.
+
+- ✅ `release_status` keeps meaning visibility; `data_maturity` means trust. A reading can be `public` **and** `provisional` at once, which one column could not express — its lexicon lists them as siblings. There is a test asserting exactly that pair.
+- ✅ `DataMaturity` enum, built from `core/lexicon.json` like every other status enum. That file is the source of truth the enums read; the migration seeds the database to match.
+- ✅ Exposed on `TransducerObservationResponse` and accepted on `CreateTransducerObservation`, both nullable.
+- ✅ The loader defaults new readings to `provisional`, and an upsert refreshes maturity along with value — a corrected reading arriving as approved must not keep the older maturity.
+- ✅ The column is a foreign key onto `lexicon_term`, so a typo is rejected by the database. Tested.
+- ✅ Migration verified up and down against a database with 88,666 observations.
+
+**Existing rows are backfilled from the legacy QC flag.** `transducer_observation` already carries `nma_waterlevelscontinuous_pressure_qced`, the AMPAPI field recording whether a reading was quality controlled — the same question `data_maturity` asks. True becomes `approved`, false becomes `provisional`. All 88,666 rows in the development database are `qced = true`, so they land as `approved`.
+
+Rows where that flag is NULL stay NULL: they did not come from the NMA transducer tables, so there is no evidence either way.
+
+`provisional` and `approved` already existed as terms: `lexicon_term.term` is globally unique and categories share terms through an association table, so only `in review` is new. That means `approved` is now shared by `review_status` and `data_maturity`. They are asking different questions — `review_status` on the block records that a Bureau human reviewed it and carries a `reviewer_id`, while `data_maturity` describes the reading's revision state — and the shared vocabulary is how this lexicon is designed to work.
+
+⬜ Blast radius still to check: `services/ngwmn_helper.py` filters `Thing.release_status == "public"` for NGWMN publication. San Acacia data becoming public needs to be intended there too.
+
+### 3.4 — Unique constraint on `transducer_observation` + idempotent upsert loader
+
+Built. Migration `a1b2c3d4e5f6`, loader in `automated_ingestion/ocotillo/loader.py`, three tests against a real Postgres.
+
+**The constraint is on `deployment_id`, not `thing_id`.** This section named a column the table does not have — `TransducerObservation` carries `deployment_id`, and `thing_id` lives on `TransducerObservationBlock`. The existing index was already `(deployment_id, parameter_id, observation_datetime)`, so the constraint matches it. Semantically this is also the right scope: a deployment is a thing/sensor pairing, so two sensors on one well may legitimately report the same instant.
+
+- ✅ Migration drops the redundant index — the unique constraint creates its own on the same columns, and keeping both means two indexes maintained on every insert into the largest table in the schema. Verified up and down against a database with 88,666 observations.
+- ✅ `automated_ingestion/sql/find_duplicate_observations.sql` reports violations **before** the migration runs, since it fails on a table that already violates it and failing halfway through a production migration is worse than not starting. It separates redundant copies from groups whose `value` disagrees — the latter are not duplicates but conflicting measurements, and collapsing them silently would discard a reading.
+- ✅ Loader upserts with `ON CONFLICT DO UPDATE`, batching at 5,000 rows and committing per batch. **`DO UPDATE`, not `DO NOTHING`:** a vendor correction arriving as a no-op would leave the old value in place while the run reported success.
+- ✅ SQLAlchemy Core, not ORM objects, per `AGENTS.md` — instantiating a mapped class per observation is what turns a backfill into an hour-long run.
+- ✅ `ensure_block` widens an existing block rather than duplicating it, and defaults `review_status` to `not reviewed`.
+- ✅ Test: loading the same window twice leaves the row count unchanged. That claim depends on Postgres enforcing the constraint, so it runs against the real database rather than a stub.
+
+⬜ Run the duplicate report against production and staging before applying the migration. The local development database was clean — 0 duplicate groups in 88,666 rows — which is encouraging and not evidence about production.
+
+### Existing San Acacia data — measured 2026-08-19
+
+Ocotillo already holds transducer observations for **14 of the 38 wells**: 542,161 rows from the AMPAPI transfer, running 2016-07-08 to **2022-08-03**. They carry a real QC status, so `data_maturity` backfilled them as `approved`.
+
+Consequences, all of which the earlier plan assumed away:
+
+- **The watermark starts at 2022-08-03 for those 14**, not the 2015 floor, so a normal run fetches a four-year gap rather than a decade. The other 24 wells do start at the floor.
+- **A backfill would have overwritten them.** The upsert's `DO UPDATE` was written for vendor corrections to our own provisional readings; against approved AMPAPI history it would have replaced 542,161 reviewed values with vendor numbers *and* downgraded them to provisional. `load_observations` now refuses to touch an `approved` row unless `overwrite_approved=True` is passed deliberately.
+- **A datum comparison is still owed.** Those rows came from AMPAPI under whatever convention that pipeline used; ours are Diver-HUB ground-surface centimetres converted to feet. Before any window overlapping 2016–2022 is loaded, a few coinciding timestamps should be compared. Same failure shape as the `WaterLevelReference` question: plausible numbers, wrong meaning.
+
+Rows with `NULL` maturity still update. Unknown is not approved, and treating it as such would freeze the 394,086 legacy rows that have no QC record against every future correction.
+
+**The wider table**, for context: 2,180,989 approved, 7,351 provisional, 394,086 NULL. The NULL cohort is 176 deployments on a single parameter spanning 2016 to February 2025 with no AMPAPI provenance at all — a separate network, and **none of the 38 San Acacia wells are in it**. Worth identifying independently of this work.
+
+### 3.5 — Watermark from Postgres
+
+Built. `automated_ingestion/shared/watermark.py`, seven tests.
+
+- ✅ `PostgresWatermarkStore` returns `MAX(observation_datetime)` for the series, read through the loader's own session so it reflects that session's committed state rather than another connection's snapshot.
+- ✅ `InMemoryWatermarkStore` for tests and for reasoning about a run without a database.
+- ✅ `resolve_start` falls back to the `initial_start_date` floor only for a series that has never been loaded. A test asserts a floor *ahead* of the watermark does not win either — the floor is not a backfill lever in any direction.
+- ✅ The divergence from Aqueduct is in the module docstring, so it reads as a decision rather than an oversight.
+
+**Keyed by thing, not deployment.** This section said `(thing_id, parameter_id)` and that turns out to be right for a reason worth stating: observations carry `deployment_id`, but a series outlives its hardware. Replacing a diver creates a new deployment for the same well, and a watermark keyed to the deployment would report nothing for the new one and re-fetch the entire history. The query joins through `deployment` to ask the question the pipeline actually has.
+
+**Why derive rather than store.** A stored watermark is a second source of truth about what was loaded, and the two drift — a half-succeeded load, or a sidecar write that fails after the rows commit, leaves it claiming more or less than the data holds. Aqueduct stores one because FROST cannot be queried cheaply for a maximum; Postgres can.
+
+The payoff is that "backfill never advances the normal watermark" stops being a rule to enforce and becomes a property that cannot be violated: re-loading a window behind the maximum cannot move a maximum forward. Asserted anyway, in two directions — older data, and the same window twice.
+
+---
+
+# TASK 4 — Backfill and operations
+
+A forward-only pipeline isn't enough. `BACKFILL_STRATEGY.md` §3 lists twelve situations demanding backfill; most come from ongoing operation, not onboarding — outage gaps, vendor corrections, adapter bugs found later, newly mapped properties.
+
+**Done when:** both backfill jobs are registry-generated, unscheduled, default `dry_run: true`, chunk by month sequentially in one run, and resume from the last completed chunk; the daily pipeline is scheduled and alerts a human on failure; docs carry the runbook.
+
+### 4.1 — Port shared backfill primitives from Aqueduct
+
+Built. `automated_ingestion/shared/backfill.py`, 27 tests, all pure — no database, no network.
+
+**Written from the described shape, not copied.** The Aqueduct checkout available here was an empty directory skeleton, so these were rebuilt from this plan's description rather than ported line by line. Each docstring records provenance and what differs, so the two can still be diffed by someone with both open.
+
+- ✅ `month_chunks`, `Chunk`, `ChunkResult`, `sum_chunk_results`, `parse_backfill_date`, `validate_date_order`, `attach_run_timestamp`, `sanitize_run_key`, `chunk_key`, `resolve_location_ids`, `CheckpointStore` + `InMemoryCheckpointStore`, `pending_chunks`.
+- ⬜ `atomic_write_json_with_retry()` and a GCS-backed checkpoint store — deferred until 4.2 needs persistence. The interface is in place so the logic is testable without object storage.
+
+**`ChunkResult` counts `rows_upserted`,** replacing Aqueduct's `observations_posted` / `observations_deleted`. Not a rename: Aqueduct deletes a window and re-posts it because FROST has no constraint to conflict on, so it has two numbers and a window during which the data is missing. With 3.4's constraint Ocotillo upserts — one number, no window.
+
+Behaviour worth knowing:
+
+- **Chunk edges are clipped, not widened.** A window starting mid-month yields a first chunk starting mid-month, because widening would fetch data the operator did not ask for.
+- **An empty or reversed window is rejected.** A backfill that reports success having done nothing is indistinguishable from one that worked, and the operator would not learn they typed the dates backwards.
+- **An unknown `location_id` fails the run, naming every bad id.** Kept from Aqueduct deliberately: silently backfilling nothing looks exactly like backfilling successfully, and the gap is still there weeks later.
+- **Run keys are sanitized** before becoming path segments. One containing a slash would write checkpoints into a directory of its own, and a resumed run would not find them. Marking under `march gap` and resuming under `march-gap` finds the same checkpoint.
+- **A naive date is read as UTC**, so the same run config means the same window on every machine.
+
+### 4.2 — Backfill Mode A (refetch)
+
+Covers data never ingested: onboarding, a late-added well, an outage gap beyond the retry budget, a vendor correction, extending history past the original floor (§3A).
+
+- `san_acacia_backfill_refetch`, generated from the registry via a factory so a second source needs a registry entry, not new wiring. No schedule; launched from the Launchpad.
+- Run config: `location_ids` (empty = every location the API returns), `start_date`, `end_date`, `run_key`, `dry_run`.
+- **`dry_run: true` default.** Logs the full plan — entities, range, chunk list, expected counts — making exactly one read-only API call to resolve and validate the entity list, writing nothing.
+- An unknown `location_id` fails the run naming the bad IDs, rather than silently backfilling nothing.
+- Calendar-month chunks, sequential within one Dagster run — one billed run regardless of chunk count.
+- Ingest writes to `vanessen_backfill_readings` under isolated dlt pipeline state, so backfill can't roll back or race the scheduled cursor.
+- A chunk checkpoints only after ingest + transform + load all succeed; same `run_key` resumes from the last completed chunk.
+- Same idempotent upsert as normal load — no delete step, no window where data is missing.
+- Metadata reports per-chunk and total rows ingested, rows upserted, adapter failures.
+
+### 4.3 — Backfill Mode B (replay)
+
+Covers raw already in GCS with only the mapping wrong: adapter or unit bug, newly mapped property, storage migration, upstream rename, Ocotillo-side loss with parquet intact (§3B). Aqueduct notes this is almost entirely generic — build it that way.
+
+- `san_acacia_backfill_replay` from the same factory. Never contacts the Van Essen API.
+- Reads raw parquet for an explicit range, filtered on event time, re-running the source's *current* adapter — so fixing a domain bug and replaying picks it up automatically.
+- Same chunking, checkpointing, `dry_run: true` default, and upsert load path as Mode A.
+- Source-agnostic: a second source gets replay free once it has an adapter and a registry entry. Anything that can't be generic is called out in the docstring.
+- Test: a deliberately wrong mapping, once corrected, is fully repaired by a replay over the affected window.
+
+### 4.4 — Schedule, observability, alerting
+
+Schedule built. `defs/jobs/san_acacia.py` — `san_acacia_ingest` over the whole `san_acacia` asset group, on `san_acacia_weekly`.
+
+- ✅ **Weekly, not daily.** These are five-minute diver readings nobody watches in real time, the vendor's endpoint answers 500 when pushed, and the watermark makes the interval a question of freshness rather than correctness — a missed week is caught up by the next run, not lost.
+- ✅ Mondays 05:00 **America/Denver**, not UTC. The wells, the people reading the data and the working day are in one timezone; a schedule drifting an hour twice a year would be the surprising choice. After midnight so a run covers whole days, early enough that a failure is visible at the start of the week.
+- ✅ Selected **by group**, so an asset added to `san_acacia` joins the schedule without touching the job. A test asserts the selection resolves to exactly the three ingest assets and excludes `ingestion_heartbeat` and `database_connectivity` — a group-name typo would otherwise produce a schedule that runs happily and ingests nothing.
+- ✅ `RetryPolicy(max_retries=2, delay=60)` covers a dropped request or a token expiring mid-run. Two attempts, not more: a persistent 500 means the window is wrong or the endpoint is unwell, and hammering it makes both worse.
+- ✅ **`DefaultScheduleStatus.STOPPED`.** Turning it on starts writing to Ocotillo, and the first run for the 24 wells without history fetches back to `INITIAL_START`. That should be a decision taken once, not a consequence of a merge.
+- ⬜ Observability and alerting — log bridge, failure notification, run metadata.
+
+### 4.5 — Documentation
+
+- `docs/sources/san_acacia.md` — confirmed mapping.
+- `docs/ingestion-storage-conventions.md` — bucket/dataset/table naming, date partitioning, control-file convention, checklist for adding a source or agency.
+- `docs/ingestion-backfill.md` — Modes A and B, chunking, checkpoints, `dry_run` policy, and why Ocotillo upserts where Aqueduct deletes-then-reposts.
+- `automated_ingestion/README.md` — architecture, local dev, deploy path. Runbook: launching each mode, reading a dry-run plan, recovering a failed run.
+- `CLAUDE.md` section pointing at the above, in the style of the existing "Domain Rules" section.
+- "Adding a new source" checklist usable without reading the San Acacia implementation.
+
+---
+
+## Open questions
+
+1. **Provisional representation** (3.3) — new boolean, new lexicon category, or something else? Recommendation is in the sub-task.
+2. **NGWMN** — `release_status = "public"` makes San Acacia wells eligible for NGWMN publication via `services/ngwmn_helper.py`. Intended?
+3. **Epic name** — keep "Automated Ingestion Pipeline", or use "Hydrograph Corrector" as originally asked?

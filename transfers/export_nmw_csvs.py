@@ -1,4 +1,8 @@
-"""Export NM_Wells SQL Server tables to CSV files for the transfer pipeline.
+"""DEPRECATED: export NM_Wells SQL Server tables to CSV for the transfer pipeline.
+
+Part of the frozen NM_Wells migration path; see the deprecation note in
+``transfers/transfer_geothermal.py``. Kept runnable for re-exports, but it gets
+no new features and its tests no longer gate CI.
 
 Connects to the NM_Wells SQL Server database and exports each source table to
 transfers/data/nma_csv_cache/<table>.csv, which is where nmw_mirror_transfer.py
@@ -16,6 +20,7 @@ Required environment variables (add to .env):
 """
 
 import os
+import warnings
 from pathlib import Path
 
 import pymssql
@@ -64,6 +69,12 @@ def export_table(cursor, table: str, out_path: Path) -> int:
 
 
 def main():
+    warnings.warn(
+        "transfers.export_nmw_csvs is deprecated; the NM_Wells migration path "
+        "is frozen and receives no new migrations.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print(
         f"Connecting to {os.environ.get('NMW_HOST')} / {os.environ.get('NMW_DATABASE', 'NM_Wells')}"

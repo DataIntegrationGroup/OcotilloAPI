@@ -61,7 +61,7 @@ T8|x|export_nmw_csvs.py pymssql export|I.export
 T9|x|transfer_geothermal.py orchestrator|I.cli
 T10|x|6 OGC collections in pygeoapi-config.yml|V6,I.ogc
 T11|x|FK enforced via migration op.create_foreign_key; model index-only (resolved)|V2,V10
-T12|x|add NMW_* mirror/loader/migration/OGC tests (tests/test_nmw_mirror.py, 19 tests); found+fixed CAST-unwrap bug B1|V1,V2,V3,V5,V6,V10,V11
+T12|x|add NMW_* mirror/loader/migration/OGC tests (tests/transfers/test_nmw_mirror.py, 19 tests); found+fixed CAST-unwrap bug B1|V1,V2,V3,V5,V6,V10,V11
 T13|.|verify alembic down path drops all views+tables (V3) on real db|V3
 T14|.|run end-to-end load vs real dump, capture row counts per table|V2,V4
 T15|.|finish PR #738 body (truncated at "- I ") + reviewer notes|-

@@ -7,11 +7,11 @@ requires-python = ">=3.13"
 dependencies = [
   "aiofiles==24.1.0",
   "aiohappyeyeballs==2.7.1",
-  "aiohttp==3.14.1",
+  "aiohttp==3.14.3",
   "aiosignal==1.4.0",
   "aiosqlite==0.22.1",
-  "alembic==1.18.5",
-  "annotated-types==0.7.0",
+  "alembic==1.19.1",
+  "annotated-types==0.8.0",
   "anyio==4.14.2",
   "apitally[fastapi]==0.25.1",
   "asgiref==3.12.1",
@@ -20,49 +20,48 @@ dependencies = [
   "attrs==26.1.0",
   "authlib==1.7.2",
   "bcrypt==4.3.0",
-  "cachetools==7.1.4",
-  "certifi==2026.6.17",
-  "cffi==2.1.0",
-  "charset-normalizer==3.4.9",
+  "cachetools==7.1.7",
+  "certifi==2026.7.22",
+  "cffi==2.1.1",
+  "charset-normalizer==3.5.1",
   "click==8.4.2",
-  "cloud-sql-python-connector==1.20.4",
-  "cryptography==48.0.1",
+  "cloud-sql-python-connector==1.22.0",
+  "cryptography==50.0.0",
   "dnspython==2.8.0",
   "dotenv==0.9.9",
   "email-validator==2.3.0",
-  "fastapi==0.139.2",
-  "fastapi-pagination==0.15.15",
+  "fastapi==0.141.1",
+  "fastapi-pagination==0.15.16",
   "frozenlist==1.8.0",
   "geoalchemy2==0.20.0",
-  "google-api-core==2.32.0",
-  "google-auth==2.56.0",
-  "google-cloud-core==2.6.0",
-  "google-cloud-storage==3.13.0",
+  "google-api-core==2.34.0",
+  "google-auth==2.56.3",
+  "google-cloud-core==2.6.1",
+  "google-cloud-storage==3.13.1",
   "google-crc32c==1.8.0",
-  "google-resumable-media==2.10.0",
-  "googleapis-common-protos==1.75.0",
-  "greenlet==3.5.3",
-  "gunicorn==23.0.0",
+  "google-resumable-media==2.10.1",
+  "googleapis-common-protos==1.75.1",
+  "greenlet==3.5.5",
+  "gunicorn==26.1.0",
   "h11==0.16.0",
   "httpcore==1.0.9",
   "httpx==0.28.1",
-  "idna==3.18",
+  "idna==3.19",
   "iniconfig==2.3.0",
-  "itsdangerous>=2.2.0",
   "jinja2==3.1.6",
-  "mako==1.3.12",
+  "mako==1.4.1",
   "markupsafe==3.0.3",
   "multidict==6.7.1",
-  "numpy==2.5.1",
-  "packaging==26.2",
+  "numpy==2.5.2",
+  "packaging==26.3",
   "pandas==2.3.2",
   "pandas-stubs~=2.3.2",
   "pg8000==1.31.5",
-  "phonenumbers==9.0.34",
+  "phonenumbers==9.0.37",
   "pillow==12.3.0",
   "pluggy==1.6.0",
   "propcache==0.5.2",
-  "proto-plus==1.28.1",
+  "proto-plus==1.28.3",
   "protobuf==6.33.5",
   "psycopg2-binary>=2.9.12",
   "pyasn1==0.6.4",
@@ -70,36 +69,35 @@ dependencies = [
   "pycparser==3.0",
   "pydantic==2.12.5",
   "pydantic-core==2.41.5",
-  "pygments==2.20.0",
+  "pygments==2.21.0",
   "pyjwt==2.13.0",
-  "pygeoapi==0.23.5",
+  "pygeoapi==0.24.0",
   "pyproj==3.7.2",
   "pyshp==2.3.1",
   "python-dateutil==2.9.0.post0",
   "python-jose>=3.5.0",
   "python-multipart==0.0.32",
-  "pytz==2026.2",
+  "pytz==2026.3.post1",
   "requests==2.34.2",
   "rsa==4.9.1",
-  "scramp==1.4.12",
-  "sentry-sdk[fastapi]==2.66.0",
+  "scramp==1.4.17",
+  "sentry-sdk[fastapi]==2.68.0",
   "shapely==2.1.2",
   "six==1.17.0",
   "sniffio==1.3.1",
-  "sqlalchemy==2.0.51",
+  "sqlalchemy==2.0.52",
   "sqlalchemy-continuum==1.7.0",
   "sqlalchemy-searchable==2.1.0",
   "sqlalchemy-utils==0.42.1",
-  "sqlparse>=0.5.5",
-  "starlette==1.3.1",
-  "starlette-admin[i18n]==0.17.1",
-  "typer==0.27.0",
+  "sqlparse>=0.6.0",
+  "starlette==1.6.0",
+  "typer==0.27.1",
   "typing-extensions==4.16.0",
-  "typing-inspection==0.4.2",
+  "typing-inspection==0.4.4",
   "tzdata==2026.3",
   "urllib3==2.7.0",
-  "utm==0.8.1",
-  "uvicorn==0.51.0",
+  "utm==0.9.0",
+  "uvicorn==0.52.4",
   "yarl==1.24.5",
   "pymssql>=2.3.13",
 ]
@@ -108,7 +106,66 @@ dependencies = [
 package = true
 
 [tool.setuptools]
-packages = ["alembic", "cli", "core", "db", "schemas", "services", "transfers"]
+packages = [
+  "alembic",
+  "automated_ingestion",
+  "automated_ingestion.defs",
+  "automated_ingestion.defs.assets",
+  "automated_ingestion.defs.jobs",
+  "automated_ingestion.ocotillo",
+  "automated_ingestion.shared",
+  "automated_ingestion.sources",
+  "automated_ingestion.sources.san_acacia",
+  "cli",
+  "core",
+  "data_migrations",
+  "db",
+  "domain",
+  "schemas",
+  "services",
+  "transfers",
+]
+
+# Entry point for the `ocotillo-automated-ingestion` Dagster+ code location.
+# `dagster dev` and the Dagster+ agent both read this.
+[tool.dagster]
+module_name = "automated_ingestion.defs.definitions"
+
+# Required by the `dg` CLI, which refuses to run outside a directory it
+# recognises as a project. `dagster_cloud.yaml` names the entry point
+# explicitly, so this does not affect what the deployed code location loads --
+# it only lets `dg plus` manage environment variables from this checkout.
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "automated_ingestion"
+
+
+# Bare `--cov` measures every imported module, which pulls the whole virtualenv
+# into the report. Scope it to first-party code instead. Keep this a single
+# source root -- listing each package separately makes coverage treat every
+# entry as its own root, so `api/wells.py` is reported as `wells.py` and
+# collides with same-named modules in db/, schemas/, and services/.
+[tool.coverage.run]
+source = ["."]
+relative_files = true
+omit = [
+  ".venv/*",
+  "alembic/*",
+  "automated_ingestion/tests/*",
+  "docker/*",
+  "features/*",
+  "geoserver_iac/*",
+  "scripts/*",
+  "tests/*",
+  # Legacy AMPAPI migration scripts. Run by hand against SQL Server, not
+  # exercised by the suite, and large enough to dominate the total.
+  "transfers/*",
+]
+
+[tool.coverage.report]
+show_missing = true
 
 [project.scripts]
 oco = "cli.cli:cli"
@@ -136,7 +193,7 @@ dev = [
   "black>=26.5.1",
   "faker>=25.0.0",
   "flake8>=7.3.0",
-  "pre-commit>=4.6.0",
+  "pre-commit>=4.6.2",
   "pyhamcrest>=2.0.3",
   "pytest>=9.1.1",
   "pytest-cov>=6.2.1",
@@ -149,14 +206,19 @@ dev = [
 # --no-dev`). CI installs them explicitly with `uv sync --group cli`.
 cli = [
   "openpyxl==3.1.5",
-  "google-api-python-client==2.184.0",
+  "google-api-python-client==2.199.0",
 ]
-
-[tool.pytest.ini_options]
-filterwarnings = [
-  "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.:DeprecationWarning:starlette_admin.*",
+# Dagster+ code location dependencies. The API runtime never imports
+# `automated_ingestion`, so keeping these out of `dependencies` stops dagster
+# and its transitive tree from shipping in the API image. CI and the Dagster+
+# build install them explicitly with `uv sync --group ingestion`.
+ingestion = [
+  "dagster>=1.13.18",
+  "dagster-cloud>=1.13.18",
+  "dlt[filesystem,gs]>=1.30.0",
+  "gcsfs>=2026.8.0",
+  "pyarrow>=25.0.1",
 ]
-
 
 # timezone to use when rendering the date within the migration file
 # as well as the filename.

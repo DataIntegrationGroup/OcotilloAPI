@@ -13,7 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Load the NM_Wells SQL dump into the ``NMW_*`` 1:1 staging mirror tables.
+"""DEPRECATED: load the NM_Wells SQL dump into the ``NMW_*`` staging mirror.
+
+Part of the frozen NM_Wells migration path; see the deprecation note in
+``transfers/transfer_geothermal.py``. The ``NMW_*`` tables it populates are
+still read by live API routes, so this loader stays runnable for backfills and
+re-runs, but it gets no new features and its tests no longer gate CI.
 
 Phase 1 of the NM_Wells migration (see db/nmw_legacy.py and
 docs/nm_wells-migration.md). This is a faithful copy: each source table's CSV
@@ -47,6 +52,7 @@ import itertools
 import os
 import tempfile
 import uuid
+import warnings
 from dataclasses import dataclass
 
 import pandas as pd
@@ -317,6 +323,12 @@ def transfer_nmw_mirror(session: Session, limit: int = None) -> tuple:
     ``(session, limit)`` signature as the other session-based transfers. Returns
     ``(num_tables_loaded, total_rows_inserted, errors)``.
     """
+    warnings.warn(
+        "transfers.nmw_mirror_transfer is deprecated; the NM_Wells migration "
+        "path is frozen and receives no new migrations.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     limit = int(limit or 0)
     dump = os.getenv(_SQL_DUMP_ENV)
     out_dir = None

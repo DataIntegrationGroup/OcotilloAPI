@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import asyncio
 import os
 from pathlib import Path
 
@@ -21,7 +20,6 @@ from fastapi_pagination import add_pagination
 from sqlalchemy import text, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
-from starlette.responses import PlainTextResponse
 
 from db import Base
 from db.engine import session_ctx
@@ -47,7 +45,15 @@ def init_parameter(path: str = None) -> None:
         default_parameter = json.load(f)
 
     with session_ctx() as session:
+        # A parameter is identified by name and matrix, so skip the ones already
+        # stored instead of letting every re-run trip the unique constraint.
+        existing = set(
+            session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+        )
+
         for param in default_parameter:
+            if (param["parameter_name"], param["matrix"]) in existing:
+                continue
             try:
                 parameter_obj = Parameter(
                     parameter_name=param["parameter_name"],
@@ -217,11 +223,18 @@ def register_api_routes(app):
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
     from api.feedback import router as feedback_router
+    from api.disclaimer import router as disclaimer_router
+    from api.geothermal import router as geothermal_router
+    from api.chemisty import router as chemistry_router
+    from api.gis_artifacts import router as gis_artifacts_router
 
     app.include_router(asset_router)
+    app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
+    app.include_router(disclaimer_router)
     app.include_router(geospatial_router)
+    app.include_router(gis_artifacts_router)
     app.include_router(group_router)
     app.include_router(lexicon_router)
     app.include_router(location_router)
@@ -230,22 +243,14 @@ def register_api_routes(app):
     app.include_router(sample_router)
     app.include_router(sensor_router)
     app.include_router(search_router)
+    # geothermal shares the /thing prefix; register before thing_router so its
+    # explicit /thing/geothermal-well routes take precedence over /thing/{id}
+    app.include_router(geothermal_router)
     app.include_router(thing_router)
     app.include_router(ngwmn_router)
     app.include_router(feedback_router)
     add_pagination(app)
     app.state.api_routes_registered = True
-
-
-def configure_session_middleware(app):
-    from starlette.middleware.sessions import SessionMiddleware
-
-    if not getattr(app.state, "session_middleware_configured", False):
-        session_secret_key = os.environ.get("SESSION_SECRET_KEY")
-        if not session_secret_key:
-            raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
-        app.add_middleware(SessionMiddleware, secret_key=session_secret_key)
-        app.state.session_middleware_configured = True
 
 
 def configure_cors_middleware(app):
@@ -284,43 +289,8 @@ def configure_apitally_middleware(app):
 
 
 def configure_middleware(app):
-    configure_session_middleware(app)
     configure_cors_middleware(app)
     configure_apitally_middleware(app)
-
-
-def configure_admin(app):
-    if getattr(app.state, "admin_configured", False):
-        return
-
-    from admin import create_admin
-    from admin.auth_routes import router as admin_auth_router
-
-    app.include_router(admin_auth_router)
-    create_admin(app)
-    app.state.admin_configured = True
-
-
-def configure_lazy_admin(app):
-    if getattr(app.state, "lazy_admin_configured", False):
-        return
-
-    app.state.admin_configure_lock = asyncio.Lock()
-
-    @app.middleware("http")
-    async def ensure_admin_initialized(request, call_next):
-        if request.url.path.startswith("/admin"):
-            if not getattr(app.state, "session_middleware_configured", False):
-                return PlainTextResponse(
-                    "Admin requires SESSION_SECRET_KEY to be configured.",
-                    status_code=503,
-                )
-            async with app.state.admin_configure_lock:
-                if not getattr(app.state, "admin_configured", False):
-                    configure_admin(app)
-        return await call_next(request)
-
-    app.state.lazy_admin_configured = True
 
 
 # ============= EOF =============================================

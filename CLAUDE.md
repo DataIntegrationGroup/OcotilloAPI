@@ -77,9 +77,15 @@ POSTGRES_PASSWORD=<password>
 ```
 
 ### Data Migration
+Both legacy transfer drivers are **deprecated** (see `transfers/README.md`); they
+raise `DeprecationWarning` and take no new migrations, but stay runnable for
+backfills.
 ```bash
-# Transfer data from legacy AMPAPI (NM_Aquifer) to new schema
+# NM_Aquifer (AMPAPI) -> new schema. Deprecated.
 python -m transfers.transfer
+
+# NM_Wells (geothermal) Phase-1 staging mirror. Deprecated.
+python -m transfers.transfer_geothermal
 ```
 
 ## Architecture
@@ -117,8 +123,9 @@ Location (geographic point)
 ├── db/                   # SQLAlchemy models (one file per table/resource)
 │   ├── engine.py         # Database connection configuration
 │   └── ...
+├── domain/               # Business rules as plain functions (no DB, no HTTP)
 ├── schemas/              # Pydantic schemas (validation, serialization)
-├── services/             # Business logic and database interactions
+├── services/             # Orchestration: load, call domain rules, persist
 ├── tests/                # Pytest test suite
 │   ├── conftest.py       # Shared fixtures (test data setup)
 │   └── __init__.py       # Sets test database (ocotilloapi_test)
@@ -129,6 +136,22 @@ Location (geographic point)
 └── main.py               # Application entry point
 ```
 
+### Domain Rules
+
+`domain/` holds business rules as plain functions over plain values -- unit
+conversion, cross-column validation, deterministic naming. Modules there import
+nothing from `api/`, `db/`, `schemas/`, or `services/`, and no `fastapi`,
+`sqlalchemy`, `pydantic`, or `httpx`, so the rules are testable without a
+database.
+
+`services/` loads the data, calls the rule, and persists the result. Domain
+errors subclass `ValueError` because the CSV importers treat a `ValueError`
+raised on a row as a per-row validation failure.
+
+Extraction is opportunistic, not a migration: move a rule into `domain/` when
+you are already editing it and it is shared, subtle, or awkward to test in
+place. Read **`ADR4.md`** before extending the layer.
+
 ### Authentication & Authorization
 
 The system uses **Authentik** for OAuth2 authentication with role-based access control:
@@ -138,7 +161,59 @@ The system uses **Authentik** for OAuth2 authentication with role-based access c
 - **Editor**: Can modify existing records (includes Viewer permissions)
 - **Admin**: Can create new records (includes Editor + Viewer permissions)
 
+The hierarchy is enforced in code, via `authenticated(any_of=[...])` group lists —
+`Admin` satisfies an editor- or viewer-gated route without needing all three
+Authentik groups granted.
+
 **AMP-Specific Roles**: `AMPAdmin`, `AMPEditor`, `AMPViewer` for legacy AMPAPI integration
+
+**Role families are orthogonal**: general `Admin` confers nothing in the AMP or
+Lexicon families. Only tiers *within* a family nest.
+
+**`AMP.Staging`** is a standalone group, not a fourth AMP tier — `AMPAdmin`
+does not satisfy it. It gates the hydrograph corrector's publish and range-delete
+routes while the workbench is being validated against real logger files, so they
+ship dark. Read **`docs/hydrograph-correction-publish.md`** before changing
+them.
+
+**Authorization is opt-in per endpoint** — a `user: <role>_dependency` parameter
+in the signature, not a router-level `dependencies=[...]`. Omitting it produces a
+fully public endpoint with no error. `tests/test_authorization.py` holds the
+allowlist of intentionally anonymous routes and fails on anything else. Note the
+annotation must be a *type annotation* (`user: viewer_dependency`), never a
+default value (`user=viewer_dependency`) — the latter silently disables the
+dependency and FastAPI treats it as a query parameter.
+
+**Development bypass**: `AUTHENTIK_DISABLE_AUTHENTICATION=1` is honored only when
+`MODE=development`. Any other `MODE` (including unset) makes
+`assert_auth_configuration()` abort startup.
+
+**`@in_public_schema`** (`core/app.py`) controls anonymous OpenAPI visibility
+only — it grants no access and removes no dependency. Apply it only to routes
+that genuinely have none.
+
+**`/ogcapi-internal` is gated outside `Depends()`.** It is a raw Starlette
+Mount, so `core/internal_ogc_auth.py` gates it at the ASGI layer instead. It
+accepts a bearer Authentik JWT carrying `OGCInternal`, **or** a static API key
+presented as a bearer token, as the Basic password, or as `?token=`. Only the
+key digests are stored, as `label:sha256hex` entries in `INTERNAL_OGC_API_KEYS`
+— sourced in deployed environments from the Secret Manager secret
+`internal-ogc-api-keys` at deploy time, so revoking a key needs a redeploy.
+Never a GitHub secret. The static keys exist because
+ArcGIS Pro cannot send a bearer token at all and neither desktop client can
+refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
+changing the credential paths.
+
+### OGC field descriptions
+
+Per-column `title`/`description`/unit for every collection lives in
+`core/ogc-field-descriptions.yml`, keyed by backing relation, and is published
+on `/schema` and `/queryables` through `core/feature_provider.py` and a wrapper
+over pygeoapi's queryables handler. The feature leans on unpinned behaviour of
+the pinned pygeoapi version — most sharply, `BaseProvider.fields` returns
+`self._fields` and never calls `get_fields()`. Read
+**`docs/ogc-field-descriptions.md`** before changing field metadata or
+upgrading pygeoapi.
 
 ### Database Configuration
 
@@ -232,6 +307,24 @@ GitHub Actions workflows (`.github/workflows/`):
 - **release.yml**: Sentry release tracking
 
 ## Legacy System Migration
+
+**Deprecated.** Both legacy drivers are frozen -- `transfers/transfer.py`
+(NM_Aquifer/AMPAPI) and `transfers/transfer_geothermal.py` (NM_Wells, with
+`nmw_mirror_transfer.py`, `nmw_sql_dump.py`, `export_nmw_csvs.py`). Entry points
+raise `DeprecationWarning`. Do not add new migrations to either. They remain
+runnable because live API routes still read the `NMA_*` and `NMW_*` tables.
+Read **`transfers/README.md`** before touching this layer.
+
+Their tests live in `tests/transfers/` and **do not gate CI** --
+`.github/workflows/tests.yml` runs pytest with `--ignore=tests/transfers`, and
+`transfers/*` is omitted from coverage in `pyproject.toml`. Run them by hand:
+`uv run pytest tests/transfers`. Tests for the `NMA_*`/`NMW_*` ORM models
+(`db/nma_legacy.py`, `db/nmw_legacy.py`) stay in `tests/` proper and still gate
+CI, since live routes depend on those models.
+
+Still live, *not* deprecated: `services/scoped_transfer.py` and the
+`oco scoped-transfer` command, which import the individual NM_Aquifer
+transferers directly.
 
 **Source**: AMPAPI (SQL Server, `NM_Aquifer` schema)
 **Target**: OcotilloAPI (PostgreSQL + PostGIS)

@@ -1,0 +1,9 @@
+.terraform/
+.terraform.lock.hcl
+# Written while a plan or apply holds the state lock, and left behind if the
+# run is interrupted. Machine-specific and never useful to another checkout.
+.terraform.tfstate.lock.info
+terraform.tfstate
+terraform.tfstate.*
+terraform.tfvars
+*.tfplan

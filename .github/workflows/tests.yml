@@ -14,7 +14,12 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write
+
     env:
+      COVERAGE_FAIL_UNDER: "75"
       MODE: development
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
@@ -28,7 +33,6 @@ jobs:
       PYGEOAPI_POSTGRES_DB: ocotilloapi_test
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
-      SESSION_SECRET_KEY: supersecretkeyforunittests
       AUTHENTIK_DISABLE_AUTHENTICATION: 1
 
     services:
@@ -49,7 +53,7 @@ jobs:
 
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Wait for database readiness
         run: |
@@ -63,7 +67,7 @@ jobs:
           exit 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
@@ -82,7 +86,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
 
       - name: Install the project
-        run: uv sync --locked --all-extras --dev --group cli
+        run: uv sync --locked --all-extras --dev --group cli --group ingestion
 
       - name: Show Alembic heads
         run: uv run alembic heads
@@ -94,13 +98,53 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
 
       - name: Run tests
-        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
+        # --cov-fail-under is set here rather than in pyproject so that running a
+        # single test file locally does not fail on the whole-project total.
+        # --ignore=tests/transfers excludes the deprecated NM_Aquifer / NM_Wells
+        # transfer tests; those scripts are frozen and run by hand against SQL
+        # Server, so they must not gate a pull request. See transfers/README.md.
+        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under="$COVERAGE_FAIL_UNDER" --junitxml=junit.xml --ignore=tests/transfers
 
-      - name: Upload results to Codecov
-        uses: codecov/codecov-action@v6
+      - name: Write coverage summary
+        # Runs even when the coverage gate above fails, so the job summary shows
+        # which modules dropped rather than only the failing total.
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## Coverage"
+            echo
+            echo '```'
+            uv run coverage report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment coverage summary on the pull request
+        # A comment failure must not red the build, and the GITHUB_TOKEN is
+        # read-only for pull requests opened from a fork.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr diff "$PR_NUMBER" --name-only > changed-files.txt
+          uv run python scripts/coverage_pr_comment.py \
+            --changed-files changed-files.txt \
+            --fail-under "$COVERAGE_FAIL_UNDER" > coverage-comment.md
+          gh pr comment "$PR_NUMBER" \
+            --body-file coverage-comment.md \
+            --edit-last --create-if-none
+
+      - name: Upload coverage reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
-          report_type: test_results
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-${{ github.run_id }}
+          path: |
+            coverage.xml
+            htmlcov/
+            junit.xml
+          retention-days: 14
 
   bdd-tests:
     runs-on: ubuntu-latest
@@ -119,7 +163,6 @@ jobs:
       PYGEOAPI_POSTGRES_DB: ocotilloapi_test
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
-      SESSION_SECRET_KEY: supersecretkeyforunittests
       AUTHENTIK_DISABLE_AUTHENTICATION: 1
       DROP_AND_REBUILD_DB: 1
 
@@ -141,7 +184,7 @@ jobs:
 
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Wait for database readiness
         run: |
@@ -155,7 +198,7 @@ jobs:
           exit 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
@@ -174,7 +217,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
 
       - name: Install the project
-        run: uv sync --locked --all-extras --dev --group cli
+        run: uv sync --locked --all-extras --dev --group cli --group ingestion
 
       - name: Show Alembic heads
         run: uv run alembic heads

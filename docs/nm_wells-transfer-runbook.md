@@ -1,5 +1,12 @@
 # NM_Wells 1:1 Mirror Transfer — Runbook
 
+> **Deprecated.** The NM_Wells transfer path is frozen: no new migrations, no new
+> features, and its tests no longer gate CI (they live in `tests/transfers/`,
+> which `.github/workflows/tests.yml` ignores). The steps below stay accurate and
+> the code stays runnable, because the `NMW_*` tables are still read by live API
+> routes and so backfills and re-runs must remain possible. See
+> [transfers/README.md](../transfers/README.md).
+
 Operational steps to run the NM_Wells (geothermal) Phase-1 mirror transfer and verify it
 worked. Phase 1 is a faithful, column-for-column copy of the legacy NM_Wells SQL Server
 tables into the Postgres `NMW_*` staging mirror — no transform to the Ocotillo model.
@@ -225,8 +232,8 @@ psql "$DATABASE_URL" -c '\dv ogc_*'     # expect 0
 alembic upgrade head                     # recreate
 ```
 
-Automated coverage for this lives in `tests/test_nmw_mirror.py` (19 tests):
-`uv run pytest tests/test_nmw_mirror.py`.
+Automated coverage for this lives in `tests/transfers/test_nmw_mirror.py` (19 tests):
+`uv run pytest tests/transfers/test_nmw_mirror.py`.
 
 ---
 

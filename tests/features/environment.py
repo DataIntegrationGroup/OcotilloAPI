@@ -527,6 +527,15 @@ def add_edr_water_data(context, session, well, deployment):
 
     lex_term = "(SELECT term FROM lexicon_term LIMIT 1)"
 
+    # Wells seed as 'draft', but ogc_water_chemistry gates on the *thing's*
+    # release status as well as the sample's, so a draft well publishes no
+    # chemistry at all. Promote this one well -- the fixture exists to give
+    # the EDR collections something to serve.
+    session.execute(
+        text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+        {"tid": well.id},
+    )
+
     # Promote the seeded transducer data to public and give the deployment a
     # bounded window + recording interval so it reads as an EDR instance.
     session.execute(
@@ -595,6 +604,37 @@ def add_edr_water_data(context, session, well, deployment):
             {"sid": sid, "pid": pid, "dt": dt, "val": value, "st": status},
         )
 
+    # ogc_water_chemistry is built from the legacy NMA_* chemistry tables
+    # (d9e0f1a2b3c4), not from observation: nothing populates the
+    # observation -> sample -> parameter chain with analyte data. Seeding
+    # only observations left the EDR chemistry collection empty, which is
+    # why its scenarios failed with 400 (pH not a known parameter) and 204.
+    for public_release, ph_value in ((True, 7.1), (False, 99.0)):
+        sample_info_id = session.execute(
+            text(
+                'INSERT INTO "NMA_Chemistry_SampleInfo" '
+                '(thing_id, "CollectionDate", "PublicRelease", '
+                '"nma_SamplePointID") '
+                "VALUES (:tid, '2022-06-01T00:00:00Z', :pub, 'EDR-TEST') "
+                "RETURNING id"
+            ),
+            {"tid": well.id, "pub": public_release},
+        ).scalar()
+        session.execute(
+            text(
+                'INSERT INTO "NMA_FieldParameters" '
+                '(chemistry_sample_info_id, "FieldParameter", "SampleValue", '
+                "\"Units\") VALUES (:csi, 'pH', :val, 'std units')"
+            ),
+            {"csi": sample_info_id, "val": ph_value},
+        )
+
+    session.commit()
+
+    # Materialized view: without a refresh the rows just inserted are
+    # invisible to every chemistry query.
+    session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_chemistry"))
+    session.execute(text("REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry"))
     session.commit()
 
 
@@ -603,6 +643,20 @@ def _alembic_config() -> Config:
     cfg = Config(os.path.join(root, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(root, "alembic"))
     return cfg
+
+
+def reset_pygeoapi_reflection() -> None:
+    """Drop pygeoapi's process-wide cache of reflected table models.
+
+    pygeoapi.provider.sql.get_table_model is functools.cache'd, so a provider
+    keeps serving the column list it reflected the first time a collection was
+    queried. Scenarios that move the schema under a running app (the
+    @migration-mutates-schema ones) would otherwise build SELECTs naming
+    columns the downgraded views no longer have.
+    """
+    from pygeoapi.provider.sql import get_table_model
+
+    get_table_model.cache_clear()
 
 
 def _initialize_test_schema() -> None:
@@ -832,10 +886,21 @@ def after_all(context):
 def before_scenario(context, scenario):
     # runs before EVERY scenario
     # e.g. reset test data, open browser, etc.
-    pass
+    if "migration-mutates-schema" in scenario.tags:
+        # Defense in depth against a previous, unrelated failure having
+        # already left the database below head.
+        command.upgrade(_alembic_config(), "head")
+        reset_pygeoapi_reflection()
 
 
 def after_scenario(context, scenario):
+    if "migration-mutates-schema" in scenario.tags:
+        # Runs whether the scenario passed or failed, so a downgrade left
+        # mid-scenario never leaks into later scenarios/features sharing
+        # this database. Deliberately not gated on DROP_AND_REBUILD_DB,
+        # since these scenarios mutate schema regardless of that flag.
+        command.upgrade(_alembic_config(), "head")
+        reset_pygeoapi_reflection()
 
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return

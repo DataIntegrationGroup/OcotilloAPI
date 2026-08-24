@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Install uv in container
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -36,11 +36,14 @@ jobs:
         with:
           credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
-      # Feedback endpoint credentials live in Google Secret Manager, not
-      # GitHub secrets. The deploy service account needs
-      # roles/secretmanager.secretAccessor on these secrets.
-      - name: Fetch feedback secrets from Secret Manager
-        id: feedback-secrets
+      # Application credentials live in Google Secret Manager, not GitHub
+      # secrets. The deploy service account needs
+      # roles/secretmanager.secretAccessor on these secrets. Every secret
+      # listed here must already exist in the target project or the deploy
+      # fails -- see docs/internal-ogc-desktop-gis.md for the placeholder
+      # value to seed internal-ogc-api-keys with.
+      - name: Fetch application secrets from Secret Manager
+        id: app-secrets
         uses: 'google-github-actions/get-secretmanager-secrets@v3'
         with:
           secrets: |-
@@ -48,6 +51,7 @@ jobs:
             jira_api_token:${{ vars.GCP_PROJECT_ID }}/jira-api-token
             slack_feedback_webhook_url:${{ vars.GCP_PROJECT_ID }}/slack-feedback-webhook-url
             slack_edits_webhook_url:${{ vars.GCP_PROJECT_ID }}/slack-edits-webhook-url
+            internal_ogc_api_keys:${{ vars.GCP_PROJECT_ID }}/internal-ogc-api-keys
 
       - name: Run Alembic migrations on staging database
         env:
@@ -79,6 +83,7 @@ jobs:
           PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
           PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.PYGEOAPI_POSTGRES_PASSWORD }}"
           PYGEOAPI_SERVER_URL: "${{ vars.PYGEOAPI_SERVER_URL }}"
+          INTERNAL_OGC_API_KEYS: "${{ steps.app-secrets.outputs.internal_ogc_api_keys }}"
           CLOUD_SQL_IAM_AUTH: "true"
           GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
           GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
@@ -86,14 +91,13 @@ jobs:
           AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
           AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
           AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
-          SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
           APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
           JIRA_BASE_URL: "${{ vars.JIRA_BASE_URL || 'https://nmbgmr.atlassian.net' }}"
-          JIRA_EMAIL: "${{ steps.feedback-secrets.outputs.jira_email }}"
-          JIRA_API_TOKEN: "${{ steps.feedback-secrets.outputs.jira_api_token }}"
+          JIRA_EMAIL: "${{ steps.app-secrets.outputs.jira_email }}"
+          JIRA_API_TOKEN: "${{ steps.app-secrets.outputs.jira_api_token }}"
           JIRA_DEFAULT_PROJECT: "${{ vars.JIRA_DEFAULT_PROJECT || 'BDMS' }}"
-          SLACK_FEEDBACK_WEBHOOK_URL: "${{ steps.feedback-secrets.outputs.slack_feedback_webhook_url }}"
-          SLACK_EDITS_WEBHOOK_URL: "${{ steps.feedback-secrets.outputs.slack_edits_webhook_url }}"
+          SLACK_FEEDBACK_WEBHOOK_URL: "${{ steps.app-secrets.outputs.slack_feedback_webhook_url }}"
+          SLACK_EDITS_WEBHOOK_URL: "${{ steps.app-secrets.outputs.slack_edits_webhook_url }}"
           OCOTILLO_UI_BASE_URL: "${{ vars.OCOTILLO_UI_BASE_URL || 'https://ocotillo-staging.newmexicowaterdata.org' }}"
         run: |
           export MAX_INSTANCES="10"

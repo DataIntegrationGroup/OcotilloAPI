@@ -15,6 +15,7 @@
 # ===============================================================================
 from datetime import date, datetime
 from importlib.util import find_spec
+from urllib.parse import urlparse
 
 import pytest
 from fastapi.testclient import TestClient
@@ -93,6 +94,61 @@ def test_ogc_openapi_has_paths(ogc_client):
     assert payload["openapi"].startswith("3.")
     assert payload["paths"]
     assert "/collections" in payload["paths"]
+
+
+# A2: every surface that echoes metadata from core/pygeoapi-config.yml.
+# The JSON landing page carries only title/description/links, so the
+# provider/contact/terms assertions below have to go through the OpenAPI
+# document -- see pygeoapi.api.landing_page vs pygeoapi.openapi.get_oas_30.
+@pytest.mark.parametrize(
+    "path,params",
+    [
+        ("/ogcapi", {"f": "json"}),
+        ("/ogcapi", {"f": "html"}),
+        ("/ogcapi/openapi", {}),
+        ("/ogcapi/collections", {"f": "json"}),
+    ],
+)
+def test_ogc_metadata_has_no_placeholders(ogc_client, path, params):
+    response = ogc_client.get(path, params=params)
+    assert response.status_code == 200
+    assert "example.com" not in response.text
+
+
+def test_ogc_openapi_contact_metadata(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    assert response.status_code == 200
+    info = response.json()["info"]
+
+    # info.contact is built from metadata.provider, and metadata.contact is
+    # nested under the x-ogc-serviceContact extension.
+    assert info["contact"]["name"] == "NMBGMR"
+    assert info["contact"]["url"] == "https://geoinfo.nmt.edu"
+    assert info["contact"]["email"] == "ocotillo-nmbg@nmt.edu"
+
+    service_contact = info["contact"]["x-ogc-serviceContact"]
+    assert service_contact["name"] == "Ocotillo Support, NMBGMR"
+    assert service_contact["emails"][0]["value"] == "ocotillo-nmbg@nmt.edu"
+
+
+def test_ogc_terms_of_service_resolves(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    terms_url = response.json()["info"]["termsOfService"]
+    parsed = urlparse(terms_url)
+    assert parsed.scheme in ("http", "https")
+    assert parsed.path == "/disclaimer"
+
+    # An advertised terms_of_service that 404s is no better than a placeholder.
+    disclaimer = ogc_client.get(parsed.path)
+    assert disclaimer.status_code == 200
+    assert "New Mexico Bureau of Geology and Mineral Resources" in disclaimer.text
+
+
+def test_ogc_landing_page_advertises_service_url(ogc_client):
+    response = ogc_client.get("/ogcapi", params={"f": "json"})
+    about = [link for link in response.json()["links"] if link["rel"] == "about"]
+    assert about, "landing page has no rel=about link"
+    assert about[0]["href"] == "https://ocotillo.newmexicowaterdata.org"
 
 
 def test_latest_tds_observation_date_falls_back_to_collection_date(water_well_thing):
@@ -402,6 +458,109 @@ def test_ogc_water_elevation_wells_normalizes_meter_observations_to_feet(
         session.commit()
 
 
+def _seed_water_levels(session, sample, readings, release_status="public"):
+    """readings: (day, value, measuring_point_height) -> depth to water is
+    value - measuring_point_height, matching the layer's convention."""
+    from db import Observation
+    from tests import get_parameter_id
+
+    observations = []
+    for day, value, measuring_point_height in readings:
+        observation = Observation(
+            observation_datetime=datetime(2025, 1, day, 12, 0, 0),
+            sample_id=sample.id,
+            parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+            release_status=release_status,
+            value=value,
+            unit="ft",
+            measuring_point_height=measuring_point_height,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(observation)
+        observations.append(observation)
+    session.commit()
+    return observations
+
+
+def test_ogc_well_water_column_computes_the_four_depths(
+    water_well_thing, groundwater_level_sample
+):
+    # The well is 10 ft deep. Readings give depths to water of 5, 2 and 14 ft
+    # below ground surface, the last one deeper than the well itself.
+    with session_ctx() as session:
+        observations = _seed_water_levels(
+            session,
+            groundwater_level_sample,
+            [(1, 6.0, 1.0), (2, 3.0, 1.0), (3, 15.0, 1.0)],
+        )
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_well_water_column"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT water_column_latest, water_column_average, "
+                "water_column_maximum, water_column_minimum "
+                "FROM ogc_well_water_column WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        # Latest reading sits 4 ft below the bottom of the well, so the
+        # negative column is published as zero rather than -4.
+        assert float(row.water_column_latest) == 0.0
+        # Mean depth to water is (5 + 2 + 14) / 3 = 7 ft.
+        assert abs(float(row.water_column_average) - 3.0) < 1e-9
+        # Shallowest water (2 ft) leaves the most in the well.
+        assert float(row.water_column_maximum) == 8.0
+        # Deepest water (14 ft) leaves none, clamped from -4.
+        assert float(row.water_column_minimum) == 0.0
+
+        for observation in observations:
+            session.delete(observation)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_well_water_column"))
+        session.commit()
+
+
+def test_ogc_well_water_column_counts_private_readings_only_on_the_internal_view(
+    water_well_thing, groundwater_level_sample
+):
+    with session_ctx() as session:
+        observations = _seed_water_levels(
+            session,
+            groundwater_level_sample,
+            [(1, 6.0, 1.0)],
+            release_status="private",
+        )
+        for relation in ("ogc_well_water_column", "ogc_internal_well_water_column"):
+            session.execute(text(f"REFRESH MATERIALIZED VIEW {relation}"))
+        session.commit()
+
+        # No public reading, so the well has nothing to report publicly and
+        # drops out of the layer entirely.
+        public = session.execute(
+            text("SELECT COUNT(*) FROM ogc_well_water_column WHERE id = :thing_id"),
+            {"thing_id": water_well_thing.id},
+        ).scalar()
+        assert public == 0
+
+        internal = session.execute(
+            text(
+                "SELECT water_column_latest FROM ogc_internal_well_water_column "
+                "WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).scalar()
+        assert float(internal) == 5.0
+
+        for observation in observations:
+            session.delete(observation)
+        session.commit()
+        for relation in ("ogc_well_water_column", "ogc_internal_well_water_column"):
+            session.execute(text(f"REFRESH MATERIALIZED VIEW {relation}"))
+        session.commit()
+
+
 def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
     water_well_thing,
     groundwater_level_observation,
@@ -413,7 +572,7 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
         group = Group(
             name="Water Level Network",
             group_type="Monitoring Plan",
-            release_status="draft",
+            release_status="public",
         )
         session.add(group)
         session.flush()
@@ -435,15 +594,15 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
 
         row = session.execute(
             text(
-                "SELECT group_id, group_name, group_type "
+                "SELECT group_ids, group_names, group_types "
                 "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
             ),
             {"thing_id": water_well_thing.id},
         ).one()
 
-        assert row.group_id == group.id
-        assert row.group_name == "Water Level Network"
-        assert row.group_type == "Monitoring Plan"
+        assert row.group_ids == [group.id]
+        assert row.group_names == ["Water Level Network"]
+        assert row.group_types == ["Monitoring Plan"]
 
         session.delete(status_history)
         session.delete(group_assoc)
@@ -462,7 +621,7 @@ def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
         group = Group(
             name="Water Level Network",
             group_type="Monitoring Plan",
-            release_status="draft",
+            release_status="public",
         )
         session.add(group)
         session.flush()
@@ -503,24 +662,170 @@ def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
         session.commit()
 
 
+def test_ogc_actively_monitored_wells_aggregates_multiple_groups(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.execute(
+            text("REFRESH MATERIALIZED VIEW ogc_internal_water_well_summary")
+        )
+        session.commit()
+
+        group_a = Group(
+            name="Test Other Group A",
+            group_type="Monitoring Plan",
+            release_status="public",
+        )
+        group_b = Group(
+            name="Test Other Group B",
+            group_type="Monitoring Plan",
+            release_status="public",
+        )
+        session.add_all([group_a, group_b])
+        session.flush()
+
+        group_assoc_a = GroupThingAssociation(
+            group_id=group_a.id,
+            thing_id=water_well_thing.id,
+        )
+        group_assoc_b = GroupThingAssociation(
+            group_id=group_b.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add_all([group_assoc_a, group_assoc_b])
+        status_history = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add(status_history)
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT group_ids, group_names, group_types "
+                "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert set(row.group_ids) == {group_a.id, group_b.id}
+        assert set(row.group_names) == {"Test Other Group A", "Test Other Group B"}
+        assert row.group_types == ["Monitoring Plan", "Monitoring Plan"]
+
+        internal_row = session.execute(
+            text(
+                "SELECT group_ids, group_names, group_types "
+                "FROM ogc_internal_actively_monitored_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert set(internal_row.group_ids) == {group_a.id, group_b.id}
+        assert set(internal_row.group_names) == {
+            "Test Other Group A",
+            "Test Other Group B",
+        }
+        assert internal_row.group_types == ["Monitoring Plan", "Monitoring Plan"]
+
+        session.delete(status_history)
+        session.delete(group_assoc_a)
+        session.delete(group_assoc_b)
+        session.delete(group_a)
+        session.delete(group_b)
+        session.commit()
+
+
+def test_ogc_actively_monitored_wells_hides_draft_group_on_public_view(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.execute(
+            text("REFRESH MATERIALIZED VIEW ogc_internal_water_well_summary")
+        )
+        session.commit()
+
+        group = Group(
+            name="Test Draft Group",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        status_history = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add(status_history)
+        session.commit()
+
+        public_row = session.execute(
+            text("SELECT id FROM ogc_actively_monitored_wells WHERE id = :thing_id"),
+            {"thing_id": water_well_thing.id},
+        ).one_or_none()
+        assert public_row is None
+
+        internal_row = session.execute(
+            text(
+                "SELECT group_ids FROM ogc_internal_actively_monitored_wells "
+                "WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+        assert internal_row.group_ids == [group.id]
+
+        session.delete(status_history)
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
 def test_ogc_collections(ogc_client):
     response = ogc_client.get("/ogcapi/collections")
     assert response.status_code == 200
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
     assert {
-        "locations",
         "water_wells",
         "springs",
         "latest_tds_wells",
         "depth_to_water_trend_wells",
         "water_elevation_wells",
         "water_well_summary",
+        "well_water_column",
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",
         "project_areas",
     }.issubset(ids)
+    # Hidden from the public catalog: locations duplicates the thing-type
+    # layers (BDMS-978), avg_tds_wells averages ~1.9 observations per well
+    # and latest_depth_to_water_wells repeats water_well_summary
+    # (BDMS-977), and other_things is internal vocabulary (BDMS-979). The
+    # backing relations are retained and still served on /ogcapi-internal.
+    assert ids.isdisjoint(
+        {
+            "locations",
+            "avg_tds_wells",
+            "latest_depth_to_water_wells",
+            "other_things",
+        }
+    )
 
 
 def test_ogc_new_collection_items_endpoints(ogc_client):
@@ -529,6 +834,7 @@ def test_ogc_new_collection_items_endpoints(ogc_client):
         "depth_to_water_trend_wells",
         "water_elevation_wells",
         "water_well_summary",
+        "well_water_column",
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",
@@ -547,16 +853,6 @@ def test_ogc_project_areas_items_expose_groups_with_project_areas(ogc_client, gr
     payload = response.json()
     ids = {str(feature["id"]) for feature in payload["features"]}
     assert str(group.id) in ids
-
-
-@pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
-def test_ogc_locations_items_bbox(location):
-    bbox = "-107.95,33.80,-107.94,33.81"
-    response = ogc_client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["type"] == "FeatureCollection"
-    assert payload["numberReturned"] >= 1
 
 
 def test_ogc_wells_items_and_item(ogc_client, water_well_thing):
@@ -588,3 +884,54 @@ def test_ogc_polygon_within_filter(location):
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
+
+
+def test_ogc_waterlevels_excludes_readings_from_a_non_public_well(
+    water_well_thing, groundwater_level_observation
+):
+    """A well that is not public publishes no water levels, even public ones.
+
+    ogc_waterlevels used to filter on the reading's own release_status alone,
+    so a draft or private well still published its public readings -- with the
+    well's name and coordinates attached. ogc_water_chemistry already required
+    the parent thing to be public; baba91fe5e83 brought water levels onto the
+    same rule.
+    """
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.execute(
+            text("UPDATE thing SET release_status = 'draft' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        session.commit()
+
+        reading_id = f"m-{groundwater_level_observation.id}"
+
+        public_rows = session.execute(
+            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
+        assert not public_rows, "a non-public well leaked a reading to /ogcapi"
+
+        # The internal mount is where staff see non-public records; it must
+        # keep carrying them.
+        internal_rows = session.execute(
+            text("SELECT id FROM ogc_internal_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
+        assert internal_rows, "the internal mirror stopped carrying the reading"
+
+        # Public well, public reading: published again.
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        session.commit()
+
+        assert session.execute(
+            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
+            {"rid": reading_id},
+        ).all()
