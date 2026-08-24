@@ -458,6 +458,109 @@ def test_ogc_water_elevation_wells_normalizes_meter_observations_to_feet(
         session.commit()
 
 
+def _seed_water_levels(session, sample, readings, release_status="public"):
+    """readings: (day, value, measuring_point_height) -> depth to water is
+    value - measuring_point_height, matching the layer's convention."""
+    from db import Observation
+    from tests import get_parameter_id
+
+    observations = []
+    for day, value, measuring_point_height in readings:
+        observation = Observation(
+            observation_datetime=datetime(2025, 1, day, 12, 0, 0),
+            sample_id=sample.id,
+            parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+            release_status=release_status,
+            value=value,
+            unit="ft",
+            measuring_point_height=measuring_point_height,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(observation)
+        observations.append(observation)
+    session.commit()
+    return observations
+
+
+def test_ogc_well_water_column_computes_the_four_depths(
+    water_well_thing, groundwater_level_sample
+):
+    # The well is 10 ft deep. Readings give depths to water of 5, 2 and 14 ft
+    # below ground surface, the last one deeper than the well itself.
+    with session_ctx() as session:
+        observations = _seed_water_levels(
+            session,
+            groundwater_level_sample,
+            [(1, 6.0, 1.0), (2, 3.0, 1.0), (3, 15.0, 1.0)],
+        )
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_well_water_column"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT water_column_latest, water_column_average, "
+                "water_column_maximum, water_column_minimum "
+                "FROM ogc_well_water_column WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        # Latest reading sits 4 ft below the bottom of the well, so the
+        # negative column is published as zero rather than -4.
+        assert float(row.water_column_latest) == 0.0
+        # Mean depth to water is (5 + 2 + 14) / 3 = 7 ft.
+        assert abs(float(row.water_column_average) - 3.0) < 1e-9
+        # Shallowest water (2 ft) leaves the most in the well.
+        assert float(row.water_column_maximum) == 8.0
+        # Deepest water (14 ft) leaves none, clamped from -4.
+        assert float(row.water_column_minimum) == 0.0
+
+        for observation in observations:
+            session.delete(observation)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_well_water_column"))
+        session.commit()
+
+
+def test_ogc_well_water_column_counts_private_readings_only_on_the_internal_view(
+    water_well_thing, groundwater_level_sample
+):
+    with session_ctx() as session:
+        observations = _seed_water_levels(
+            session,
+            groundwater_level_sample,
+            [(1, 6.0, 1.0)],
+            release_status="private",
+        )
+        for relation in ("ogc_well_water_column", "ogc_internal_well_water_column"):
+            session.execute(text(f"REFRESH MATERIALIZED VIEW {relation}"))
+        session.commit()
+
+        # No public reading, so the well has nothing to report publicly and
+        # drops out of the layer entirely.
+        public = session.execute(
+            text("SELECT COUNT(*) FROM ogc_well_water_column WHERE id = :thing_id"),
+            {"thing_id": water_well_thing.id},
+        ).scalar()
+        assert public == 0
+
+        internal = session.execute(
+            text(
+                "SELECT water_column_latest FROM ogc_internal_well_water_column "
+                "WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).scalar()
+        assert float(internal) == 5.0
+
+        for observation in observations:
+            session.delete(observation)
+        session.commit()
+        for relation in ("ogc_well_water_column", "ogc_internal_well_water_column"):
+            session.execute(text(f"REFRESH MATERIALIZED VIEW {relation}"))
+        session.commit()
+
+
 def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
     water_well_thing,
     groundwater_level_observation,
@@ -704,6 +807,7 @@ def test_ogc_collections(ogc_client):
         "depth_to_water_trend_wells",
         "water_elevation_wells",
         "water_well_summary",
+        "well_water_column",
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",
@@ -730,6 +834,7 @@ def test_ogc_new_collection_items_endpoints(ogc_client):
         "depth_to_water_trend_wells",
         "water_elevation_wells",
         "water_well_summary",
+        "well_water_column",
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",

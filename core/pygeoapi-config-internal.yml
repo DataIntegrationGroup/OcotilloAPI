@@ -284,6 +284,48 @@ resources:
         table: ogc_internal_water_well_summary
         geom_field: point
 
+  well_water_column:
+    type: collection
+    title: Well Water Column (Water Wells)
+    description: >-
+      One row per water well, reporting how much standing water the well
+      holds: the well's depth minus its depth to water, in feet, worked out
+      four ways -- from the most recent reading, from the average of every
+      reading, from the shallowest water level on record (the fullest the
+      well has been) and from the deepest (the emptiest). Depths to water are
+      manual readings below ground surface -- the measured depth minus the
+      height of the measuring point above ground, with readings that have no
+      recorded measuring-point height treated as taken at ground level.
+      Continuous logger readings are not counted. A reading deeper than the
+      recorded well depth would give a negative column and is reported as
+      zero instead; water_well_summary publishes the raw shallowest and
+      deepest readings beside the well depth if you need to see that
+      contradiction. Wells with no depth on record, or no usable reading, are
+      left out. Each row also carries the well's construction record and
+      surveyed ground elevation. Use it to judge remaining water column and
+      how far it has swung over the well's history.
+    keywords: [
+      water-wells, water-column, groundwater-level, well-depth,
+      depth-to-water, saturated-thickness, drawdown
+    ]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: core.feature_provider.DescribedPostgreSQLProvider
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_internal_well_water_column
+        geom_field: point
+
   major_chemistry_results:
     type: collection
     title: Major Chemistry (Water Wells)
