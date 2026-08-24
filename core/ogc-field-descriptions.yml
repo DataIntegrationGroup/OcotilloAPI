@@ -40,6 +40,15 @@ _defaults:
   first_visit_date:
     title: First visit date
     description: Date of the earliest Bureau visit on record for this feature.
+  last_observation_date:
+    title: Last observation date
+    description: >-
+      Date of the most recent measurement recorded against this feature, as a
+      UTC calendar date. Null where no measurement is on record for it. Counts
+      readings and laboratory results held in the observation record; continuous
+      instrument readings from a deployed logger are not included, so an
+      instrumented well can carry newer data than this date shows. On the public
+      mount only measurements released to the public are counted.
   nma_pk_welldata:
     title: Legacy NM_Aquifer well key
     description: >-
@@ -234,6 +243,40 @@ project_areas:
     description: >-
       Kind of grouping the record represents, such as a project or a
       geographic area.
+
+well_water_column:
+  water_column_latest:
+    title: Water column, latest reading
+    description: >-
+      Standing water in the well at the most recent measurement: the well's
+      depth less that reading's depth to water. Reported as zero where the
+      reading is deeper than the recorded well depth.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  water_column_average:
+    title: Water column, average reading
+    description: >-
+      Standing water the well holds on average: the well's depth less the mean
+      depth to water across every reading on record. Each reading counts once,
+      however unevenly spaced in time they are. Reported as zero where the mean
+      reading is deeper than the recorded well depth.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  water_column_maximum:
+    title: Water column, fullest on record
+    description: >-
+      The most standing water the well is known to have held: the well's depth
+      less the shallowest depth to water on record.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
+  water_column_minimum:
+    title: Water column, emptiest on record
+    description: >-
+      The least standing water the well is known to have held: the well's depth
+      less the deepest depth to water on record. Reported as zero where that
+      reading is deeper than the recorded well depth.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
 
 water_well_summary:
   elevation_method:

@@ -181,8 +181,18 @@ class WaterEDRProvider(BaseEDRProvider):
         return self.get_fields()
 
     # ----------------------------------------------------------- instances
-    def get_instances(self):
-        """List transducer-deployment instance identifiers."""
+    def instances(self):
+        """List transducer-deployment instance identifiers.
+
+        Named for pygeoapi's EDR contract, not ours: ``get_collection_edr_
+        instances`` calls ``p.instances()`` and ``p.instance(id)``, and
+        ``BaseEDRProvider`` *returns* (rather than raises) a
+        ``NotImplementedError`` instance from both. A provider that spells
+        these ``get_instances``/``get_instance`` therefore does not override
+        anything -- /instances iterates the NotImplementedError object and
+        500s, and /instances/{id}/... validates against a truthy object, so
+        any id at all is accepted.
+        """
         if not self.instance_field:
             return []
         rows = self._fetch(
@@ -192,9 +202,9 @@ class WaterEDRProvider(BaseEDRProvider):
         )
         return [str(row["iid"]) for row in rows]
 
-    def get_instance(self, instance):
+    def instance(self, instance):
         """Validate an instance identifier."""
-        return instance in set(self.get_instances())
+        return str(instance) in set(self.instances())
 
     # ------------------------------------------------------------ queries
     def locations(

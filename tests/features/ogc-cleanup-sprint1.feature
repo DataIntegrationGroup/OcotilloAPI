@@ -203,7 +203,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A13 — Add last_observation_date column to Group A view template
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A13
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A13 @production
   Scenario: last_observation_date column is present in all Group A layers
     When a client requests items from each of the following layers:
       | layer-id                          |
@@ -221,7 +221,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     # other_things is not listed: it is in the Group A view template, but A18
     # took it off the public catalog — it is only reachable on /ogcapi-internal.
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A13
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A13 @production
   Scenario: last_observation_date is NULL for things with no associated observations
     Given monitoring locations with no linked observations exist in each of the following layers:
       | layer-id                          |
@@ -240,7 +240,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     # other_things is not listed: it is in the Group A view template, but A18
     # took it off the public catalog — it is only reachable on /ogcapi-internal.
 
-  @backend @ogc-data-currency @sprint-1 @medium-priority @A13
+  @backend @ogc-data-currency @sprint-1 @medium-priority @A13 @production
   Scenario: Consumers can filter Group A layers by last_observation_date
     Given each of the following Group A layers has features with last_observation_date values "2019-06-01" and "2023-06-01":
       | layer-id                        |

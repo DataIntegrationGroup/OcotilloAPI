@@ -1,0 +1,116 @@
+# Curated desktop-GIS layers.
+#
+# Each entry becomes one QGIS .qlr and one ArcGIS Pro .lyrx. These are the
+# "I just want water levels" artifacts -- a small, opinionated set, not a
+# mirror of the collection list. The connection files cover "give me
+# everything"; anything a user can reach by browsing the connection does not
+# need an entry here.
+#
+# `collection` must name a collection served by the OGC API - Features mount.
+# The two EDR collections (waterlevels, water_chemistry) cannot appear here:
+# neither QGIS nor ArcGIS Pro has an OGC API - EDR client, so a layer file
+# pointing at one would not open. The feature collections below carry the same
+# measurements summarised per site, which is what a GIS user wants on a map.
+#
+# Field aliases and value maps are NOT listed here. They are derived from
+# core/ogc-field-descriptions.yml, the same file that feeds /schema and
+# /queryables, so a renamed field cannot drift between the API and the shipped
+# layer files.
+#
+# Colours are chosen to stay distinguishable for the common forms of colour
+# blindness: the sequential ramps run light-to-dark so they survive being read
+# by lightness alone, and the trend categories pair hue with a size difference.
+#
+# See docs/ogc-desktop-gis-artifacts.md.
+
+layers:
+  - id: water-wells
+    collection: water_wells
+    title: Water Wells
+    abstract: >-
+      Every groundwater well in the monitoring-point register, at its most
+      recent recorded location.
+    geometry: Point
+    renderer:
+      type: single
+      color: "31,119,180,255"
+      size: 2.2
+      outline_color: "255,255,255,200"
+
+  - id: depth-to-water
+    collection: water_elevation_wells
+    title: Depth to Water
+    abstract: >-
+      Depth to the water table at each well at its most recent measurement, in
+      feet below ground surface. Larger values mean a deeper water table.
+    geometry: Point
+    renderer:
+      type: graduated
+      field: depth_to_water_below_ground_surface_ft
+      size: 2.6
+      classes:
+        - {lower: 0,    upper: 25,     label: "0 - 25 ft",     color: "237,248,251,255"}
+        - {lower: 25,   upper: 50,     label: "25 - 50 ft",    color: "179,205,227,255"}
+        - {lower: 50,   upper: 100,    label: "50 - 100 ft",   color: "140,150,198,255"}
+        - {lower: 100,  upper: 250,    label: "100 - 250 ft",  color: "136,86,167,255"}
+        - {lower: 250,  upper: 100000, label: "over 250 ft",   color: "129,15,124,255"}
+
+  - id: water-level-trend
+    collection: depth_to_water_trend_wells
+    title: Water-Level Trend
+    abstract: >-
+      Direction of the fitted depth-to-water trend at each well. "Falling
+      water table" means depth below ground surface is increasing.
+    geometry: Point
+    renderer:
+      type: categorized
+      field: trend_category
+      size: 2.6
+      categories:
+        - {value: "increasing",      label: "Falling water table",  color: "202,58,48,255",   size: 3.2}
+        - {value: "decreasing",      label: "Rising water table",   color: "42,122,182,255",  size: 3.2}
+        - {value: "stable",          label: "Stable",               color: "140,140,140,255", size: 2.2}
+        - {value: "not enough data", label: "Not enough data",      color: "225,225,225,255", size: 1.8}
+
+  - id: actively-monitored-wells
+    collection: actively_monitored_wells
+    title: Actively Monitored Wells
+    abstract: >-
+      Wells currently on a monitoring schedule, with their water-level record
+      summarised.
+    geometry: Point
+    renderer:
+      type: single
+      color: "44,140,80,255"
+      size: 2.8
+      outline_color: "255,255,255,200"
+
+  - id: springs
+    collection: springs
+    title: Springs
+    abstract: Natural groundwater discharge points in the register.
+    geometry: Point
+    renderer:
+      type: single
+      color: "23,150,140,255"
+      size: 2.6
+      shape: triangle
+      outline_color: "255,255,255,200"
+
+  - id: latest-tds
+    collection: latest_tds_wells
+    title: Latest Total Dissolved Solids
+    abstract: >-
+      Most recent total-dissolved-solids result at each well. 1000 mg/L is the
+      conventional fresh/brackish boundary.
+    geometry: Point
+    renderer:
+      type: graduated
+      field: latest_tds_value
+      size: 2.6
+      classes:
+        - {lower: 0,    upper: 500,     label: "0 – 500 mg/L",        color: "255,255,204,255"}
+        - {lower: 500,  upper: 1000,    label: "500 – 1000 mg/L",     color: "161,218,180,255"}
+        - {lower: 1000, upper: 3000,    label: "1000 – 3000 mg/L",    color: "65,182,196,255"}
+        - {lower: 3000, upper: 10000,   label: "3000 – 10000 mg/L",   color: "44,127,184,255"}
+        - {lower: 10000, upper: 10000000, label: "over 10000 mg/L",   color: "37,52,148,255"}

@@ -226,6 +226,7 @@ def register_api_routes(app):
     from api.disclaimer import router as disclaimer_router
     from api.geothermal import router as geothermal_router
     from api.chemisty import router as chemistry_router
+    from api.gis_artifacts import router as gis_artifacts_router
 
     app.include_router(asset_router)
     app.include_router(chemistry_router)
@@ -233,6 +234,7 @@ def register_api_routes(app):
     app.include_router(contact_router)
     app.include_router(disclaimer_router)
     app.include_router(geospatial_router)
+    app.include_router(gis_artifacts_router)
     app.include_router(group_router)
     app.include_router(lexicon_router)
     app.include_router(location_router)
