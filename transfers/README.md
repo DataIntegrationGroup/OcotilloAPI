@@ -16,6 +16,15 @@ because the tables they populate (`NMA_*`, `NMW_*`) are still read by live API
 routes, so backfills and re-runs must remain possible -- but they receive no new
 features.
 
+## No automated build or trigger
+
+There is no deployed transfer job any more. The repo used to carry a `Procfile`
+(`web: python3 -m transfers.transfer`) that a Cloud Build trigger
+(`nma-ocotillo-transfer`, us-central1) built with buildpacks on every push; that
+trigger and the `Procfile` are gone. Nothing runs a transfer on its own -- the
+drivers are invoked by hand, by an engineer, for a backfill. Do not add a
+`Procfile` or a build trigger back.
+
 Consequently their tests live in `tests/transfers/` and do **not** gate CI
 (`.github/workflows/tests.yml` runs pytest with `--ignore=tests/transfers`), and
 `transfers/*` is omitted from the coverage total in `pyproject.toml`. Run them by
