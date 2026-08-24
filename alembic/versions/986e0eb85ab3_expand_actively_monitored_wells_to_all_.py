@@ -1,7 +1,9 @@
 """expand actively_monitored_wells to all groups
 
 Drops the "WHERE group name = 'water level network'" restriction so the view
-covers currently-monitored wells in any group, not just one. Inner join to
+covers currently-monitored wells in any group, not just one. Public view
+adds a group release_status = 'public' check instead, so draft/private
+groups don't leak through now that any group can show up. Inner join to
 group/group_thing_association is kept as-is (prod has no currently-monitored
 well with zero group memberships); wells in multiple groups intentionally
 appear once per group, no aggregation.
@@ -41,8 +43,13 @@ def _drop_view_or_materialized_view(view_name: str) -> None:
 
 
 def _create_actively_monitored_wells_view(all_groups: bool) -> str:
+    # The all_groups branch drops the group-name predicate but still needs
+    # to keep draft/private groups off the public mount -- unlike the old
+    # single-group filter, any group can appear here now, so the group's own
+    # release_status has to be checked directly (mirrors
+    # _create_project_areas_view's public_only handling).
     group_filter = (
-        ""
+        "g.release_status = 'public'\n          AND "
         if all_groups
         else "lower(trim(g.name)) = 'water level network'\n          AND "
     )
