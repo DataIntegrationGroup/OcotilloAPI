@@ -491,15 +491,15 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
 
         row = session.execute(
             text(
-                "SELECT group_id, group_name, group_type "
+                "SELECT group_ids, group_names, group_types "
                 "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
             ),
             {"thing_id": water_well_thing.id},
         ).one()
 
-        assert row.group_id == group.id
-        assert row.group_name == "Water Level Network"
-        assert row.group_type == "Monitoring Plan"
+        assert row.group_ids == [group.id]
+        assert row.group_names == ["Water Level Network"]
+        assert row.group_types == ["Monitoring Plan"]
 
         session.delete(status_history)
         session.delete(group_assoc)
@@ -559,7 +559,7 @@ def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
         session.commit()
 
 
-def test_ogc_actively_monitored_wells_includes_wells_from_other_groups(
+def test_ogc_actively_monitored_wells_aggregates_multiple_groups(
     water_well_thing,
     groundwater_level_observation,
 ):
@@ -570,19 +570,28 @@ def test_ogc_actively_monitored_wells_includes_wells_from_other_groups(
         )
         session.commit()
 
-        group = Group(
-            name="Test Other Group",
+        group_a = Group(
+            name="Test Other Group A",
             group_type="Monitoring Plan",
             release_status="public",
         )
-        session.add(group)
+        group_b = Group(
+            name="Test Other Group B",
+            group_type="Monitoring Plan",
+            release_status="public",
+        )
+        session.add_all([group_a, group_b])
         session.flush()
 
-        group_assoc = GroupThingAssociation(
-            group_id=group.id,
+        group_assoc_a = GroupThingAssociation(
+            group_id=group_a.id,
             thing_id=water_well_thing.id,
         )
-        session.add(group_assoc)
+        group_assoc_b = GroupThingAssociation(
+            group_id=group_b.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add_all([group_assoc_a, group_assoc_b])
         status_history = StatusHistory(
             status_type="Monitoring Status",
             status_value="Currently monitored",
@@ -595,31 +604,36 @@ def test_ogc_actively_monitored_wells_includes_wells_from_other_groups(
 
         row = session.execute(
             text(
-                "SELECT group_id, group_name, group_type "
+                "SELECT group_ids, group_names, group_types "
                 "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
             ),
             {"thing_id": water_well_thing.id},
         ).one()
 
-        assert row.group_id == group.id
-        assert row.group_name == "Test Other Group"
-        assert row.group_type == "Monitoring Plan"
+        assert set(row.group_ids) == {group_a.id, group_b.id}
+        assert set(row.group_names) == {"Test Other Group A", "Test Other Group B"}
+        assert row.group_types == ["Monitoring Plan", "Monitoring Plan"]
 
         internal_row = session.execute(
             text(
-                "SELECT group_id, group_name, group_type "
+                "SELECT group_ids, group_names, group_types "
                 "FROM ogc_internal_actively_monitored_wells WHERE id = :thing_id"
             ),
             {"thing_id": water_well_thing.id},
         ).one()
 
-        assert internal_row.group_id == group.id
-        assert internal_row.group_name == "Test Other Group"
-        assert internal_row.group_type == "Monitoring Plan"
+        assert set(internal_row.group_ids) == {group_a.id, group_b.id}
+        assert set(internal_row.group_names) == {
+            "Test Other Group A",
+            "Test Other Group B",
+        }
+        assert internal_row.group_types == ["Monitoring Plan", "Monitoring Plan"]
 
         session.delete(status_history)
-        session.delete(group_assoc)
-        session.delete(group)
+        session.delete(group_assoc_a)
+        session.delete(group_assoc_b)
+        session.delete(group_a)
+        session.delete(group_b)
         session.commit()
 
 
@@ -665,12 +679,12 @@ def test_ogc_actively_monitored_wells_hides_draft_group_on_public_view(
 
         internal_row = session.execute(
             text(
-                "SELECT group_id FROM ogc_internal_actively_monitored_wells "
+                "SELECT group_ids FROM ogc_internal_actively_monitored_wells "
                 "WHERE id = :thing_id"
             ),
             {"thing_id": water_well_thing.id},
         ).one()
-        assert internal_row.group_id == group.id
+        assert internal_row.group_ids == [group.id]
 
         session.delete(status_history)
         session.delete(group_assoc)
