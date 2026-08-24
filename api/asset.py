@@ -33,7 +33,6 @@ from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     viewer_dependency,
-    admin_dependency,
     editor_dependency,
 )
 from db import Thing
@@ -141,7 +140,7 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
     status_code=HTTP_201_CREATED,
 )
 async def upload_asset(
-    user: admin_dependency,
+    user: editor_dependency,
     bucket=Depends(get_storage_bucket),
     file: UploadFile = File(...),
 ) -> dict:
@@ -171,7 +170,7 @@ async def upload_asset(
 
 @router.post("/upload-and-record", status_code=HTTP_201_CREATED)
 async def upload_and_record_asset(
-    user: admin_dependency,
+    user: editor_dependency,
     session: session_dependency,
     bucket=Depends(get_storage_bucket),
     file: UploadFile = File(...),
@@ -188,7 +187,7 @@ async def upload_and_record_asset(
     returned instead of creating a duplicate.
 
     Args:
-        user: Authenticated admin user performing the upload.
+        user: Authenticated editor user performing the upload.
         session: Active database session.
         bucket: GCS storage bucket resolved via dependency injection.
         file: The file to upload. Accepted MIME types: JPEG, PNG, GIF, WebP,
@@ -384,10 +383,10 @@ async def upload_and_record_asset(
 
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
-    user: admin_dependency,
+    user: editor_dependency,
     session: session_dependency,
     asset_data: CreateAsset,
-) -> AssetResponse:
+) -> AssetResponse | None:
 
     try:
         data = asset_data.model_dump()
@@ -446,7 +445,7 @@ signed url is always generated when retrieving assets individually
 async def list_assets(
     user: viewer_dependency,
     session: session_dependency,
-    thing_id: int = None,
+    thing_id: int | None = None,
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.
@@ -579,7 +578,7 @@ async def update_asset(
 
 @router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT)
 async def delete_asset(
-    asset_id: int, session: session_dependency, user: admin_dependency
+    asset_id: int, session: session_dependency, user: editor_dependency
 ):
     return model_deleter(session, Asset, asset_id, user=user)
 
@@ -589,7 +588,7 @@ async def delete_asset(
     status_code=HTTP_204_NO_CONTENT,
 )
 async def remove_asset(
-    user: admin_dependency,
+    user: editor_dependency,
     asset_id: int,
     session: session_dependency,
     bucket=Depends(get_storage_bucket),
