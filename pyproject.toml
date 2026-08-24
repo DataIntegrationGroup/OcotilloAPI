@@ -23,9 +23,9 @@ dependencies = [
   "cachetools==7.1.7",
   "certifi==2026.7.22",
   "cffi==2.1.1",
-  "charset-normalizer==3.5.0",
+  "charset-normalizer==3.5.1",
   "click==8.4.2",
-  "cloud-sql-python-connector==1.21.0",
+  "cloud-sql-python-connector==1.22.0",
   "cryptography==50.0.0",
   "dnspython==2.8.0",
   "dotenv==0.9.9",
@@ -42,11 +42,11 @@ dependencies = [
   "google-resumable-media==2.10.1",
   "googleapis-common-protos==1.75.1",
   "greenlet==3.5.5",
-  "gunicorn==26.0.0",
+  "gunicorn==26.1.0",
   "h11==0.16.0",
   "httpcore==1.0.9",
   "httpx==0.28.1",
-  "idna==3.18",
+  "idna==3.19",
   "iniconfig==2.3.0",
   "jinja2==3.1.6",
   "mako==1.4.1",
@@ -69,7 +69,7 @@ dependencies = [
   "pycparser==3.0",
   "pydantic==2.12.5",
   "pydantic-core==2.41.5",
-  "pygments==2.20.0",
+  "pygments==2.21.0",
   "pyjwt==2.13.0",
   "pygeoapi==0.24.0",
   "pyproj==3.7.2",
@@ -97,7 +97,7 @@ dependencies = [
   "tzdata==2026.3",
   "urllib3==2.7.0",
   "utm==0.9.0",
-  "uvicorn==0.52.3",
+  "uvicorn==0.52.4",
   "yarl==1.24.5",
   "pymssql>=2.3.13",
 ]
@@ -206,7 +206,7 @@ dev = [
 # --no-dev`). CI installs them explicitly with `uv sync --group cli`.
 cli = [
   "openpyxl==3.1.5",
-  "google-api-python-client==2.198.0",
+  "google-api-python-client==2.199.0",
 ]
 # Dagster+ code location dependencies. The API runtime never imports
 # `automated_ingestion`, so keeping these out of `dependencies` stops dagster
