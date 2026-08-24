@@ -20,14 +20,17 @@ This is explicitly engineer-triggered: it runs once per invocation and does no
 polling or scheduling. New/changed ``.xlsx`` files under
 ``CHEMISTRY_DRIVE_FOLDER_ID`` are downloaded and handed to
 :func:`services.chemistry_lims.bulk_upload_chemistry`. A manifest of
-already-ingested files is kept as a JSON object in the GCS bucket
-(``CHEMISTRY_INGEST_MANIFEST_PATH``, default ``chemistry-ingest/manifest.json``)
-so re-runs only process files that are new or whose contents changed.
+already-ingested files is kept as a JSON object in the GCS bucket. By default
+the manifest path is scoped per target database (``chemistry-ingest/manifest.
+<postgres_db>.json``) so pointing ``.env`` at a different database -- local
+copy, staging, production -- never skips a file on the strength of an ingest
+into a different database.
 
 Configuration (environment variables):
 * ``CHEMISTRY_DRIVE_FOLDER_ID`` - Drive folder id to scan (shared-drive or
   My-Drive folder shared with the service account).
 * ``CHEMISTRY_INGEST_MANIFEST_PATH`` - GCS object key for the manifest.
+  Overrides the per-database default below.
 * ``GCS_BUCKET_NAME`` - bucket that holds the manifest (shared with gcs_helper).
 
 Authentication mirrors ``services.gcs_helper``: in production the base64
@@ -43,6 +46,7 @@ import io
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -56,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-DEFAULT_MANIFEST_PATH = "chemistry-ingest/manifest.json"
+MANIFEST_PREFIX = "chemistry-ingest/"
 
 
 class ChemistryDriveConfigError(Exception):
@@ -167,8 +171,23 @@ def download_drive_file(file_id: str, service=None) -> bytes:
 # --- manifest (GCS JSON object) ------------------------------------------------
 
 
+def _manifest_db_suffix() -> str:
+    """Slug the target database name for use in a manifest path.
+
+    Scoping by ``POSTGRES_DB`` (rather than a separate "which environment am
+    I" variable) means the manifest can never disagree with the database
+    ``.env`` is actually pointed at -- there is nothing to keep in sync.
+    """
+    db_name = os.environ.get("POSTGRES_DB", "").strip().lower()
+    slug = re.sub(r"[^a-z0-9-]+", "-", db_name).strip("-")
+    return slug or "unknown"
+
+
 def _manifest_path() -> str:
-    return os.environ.get("CHEMISTRY_INGEST_MANIFEST_PATH", DEFAULT_MANIFEST_PATH)
+    override = os.environ.get("CHEMISTRY_INGEST_MANIFEST_PATH")
+    if override:
+        return override
+    return f"{MANIFEST_PREFIX}manifest.{_manifest_db_suffix()}.json"
 
 
 def _manifest_bucket():

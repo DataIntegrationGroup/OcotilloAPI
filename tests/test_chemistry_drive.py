@@ -136,6 +136,30 @@ def test_manifest_roundtrip(fake_bucket):
     assert load_manifest(fake_bucket) == {"F1": {"status": "success"}}
 
 
+def test_manifest_path_scoped_to_database(monkeypatch):
+    """The manifest key follows POSTGRES_DB so one database cannot mask another."""
+    monkeypatch.delenv("CHEMISTRY_INGEST_MANIFEST_PATH", raising=False)
+
+    monkeypatch.setenv("POSTGRES_DB", "ocotillo-staging")
+    assert (
+        chemistry_drive._manifest_path()
+        == "chemistry-ingest/manifest.ocotillo-staging.json"
+    )
+
+    # Underscores and case are slugged so the key is a safe object name.
+    monkeypatch.setenv("POSTGRES_DB", "Ocotillo_Prod_Copy")
+    assert (
+        chemistry_drive._manifest_path()
+        == "chemistry-ingest/manifest.ocotillo-prod-copy.json"
+    )
+
+
+def test_manifest_path_override_wins(monkeypatch):
+    monkeypatch.setenv("POSTGRES_DB", "ocotillo-staging")
+    monkeypatch.setenv("CHEMISTRY_INGEST_MANIFEST_PATH", "custom/manifest.json")
+    assert chemistry_drive._manifest_path() == "custom/manifest.json"
+
+
 def test_missing_folder_raises(monkeypatch):
     monkeypatch.delenv("CHEMISTRY_DRIVE_FOLDER_ID", raising=False)
     with pytest.raises(ChemistryDriveConfigError):
