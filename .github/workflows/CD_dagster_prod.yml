@@ -94,7 +94,7 @@ jobs:
       # working tree either path sets up below.
       - name: Prerun checks
         id: prerun
-        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.18
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.19
 
       # parse_workspace performs its own `actions/checkout`, which cleans the
       # working tree -- fine here because the Docker path runs in a separate job
@@ -102,7 +102,7 @@ jobs:
       - name: Parse dagster_cloud.yaml
         if: steps.prerun.outputs.result == 'docker-deploy'
         id: parse
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.18
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.19
         with:
           dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
 
@@ -155,7 +155,7 @@ jobs:
       # spins up when the dependency hash changes.
       - name: Deploy to Dagster+ prod
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.18
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.19
         with:
           dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
@@ -203,7 +203,7 @@ jobs:
       # checkout_repo is false because requirements.txt is generated above and
       # a second checkout would discard it.
       - name: Deploy to Dagster+ prod
-        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.18
+        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.19
         with:
           organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
