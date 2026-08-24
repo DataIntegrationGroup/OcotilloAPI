@@ -315,17 +315,19 @@ actively_monitored_wells:
       is falling.
     x-ogc-unit: https://qudt.org/vocab/unit/FT-PER-YR
     x-ogc-unitLang: QUDT
-  group_id:
-    title: Network ID
-    description: Identifier of the monitoring network the well belongs to.
-  group_name:
-    title: Network name
+  group_ids:
+    title: Network IDs
+    description: Identifiers of every monitoring network the well belongs to.
+  group_names:
+    title: Network names
     description: >-
-      Name of the monitoring network the well belongs to. Always the Water
-      Level Network in this collection.
-  group_type:
-    title: Network type
-    description: Kind of grouping the network record represents.
+      Names of every monitoring network the well belongs to, in the same
+      order as group_ids.
+  group_types:
+    title: Network types
+    description: >-
+      Kind of grouping each network record represents, in the same order as
+      group_ids.
 
 depth_to_water_trend_wells:
   record_count:

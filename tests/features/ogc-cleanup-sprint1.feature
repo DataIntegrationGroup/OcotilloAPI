@@ -135,47 +135,29 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | /ogcapi/collections/water_wells/items?datetime=2020-01-01/2024-01-01  |
 
   # ---------------------------------------------------------------------------
-  # A4 — Fix brittle SQL filter in actively_monitored_wells
+  # A4/A6 — actively_monitored_wells covers all groups; name unchanged
   # ---------------------------------------------------------------------------
-  # Note: these scenarios use actively_monitored_wells (the pre-A6 name). After A6
-  # is applied, requests to this ID redirect via the 90-day deprecation route.
+  # A6's original rename to water_level_network_wells was withdrawn: the name
+  # was fine, the filter was too narrow. A4 (brittle group-name filter) and A6
+  # (naming) are resolved together by the same SQL change.
 
   @backend @ogc-data-currency @sprint-1 @high-priority @A4
-  Scenario: Layer result set is unchanged after replacing the string filter
-    Given the "Water Level Network" group exists in the database
+  Scenario: Layer includes a well from a group other than Water Level Network
+    Given a well is currently monitored under the "Test Other Group" group
     When a client requests features from the actively_monitored_wells layer
-    Then the feature count is 322
+    Then the response includes that well
 
   @backend @ogc-data-currency @sprint-1 @high-priority @A4
   Scenario: Layer is resilient to group display name changes
     Given the "Water Level Network" group display name is changed to "Water Level Monitoring Network"
     When a client requests features from the actively_monitored_wells layer
-    Then the feature count is 322
-
-  # ---------------------------------------------------------------------------
-  # A6 — Rename actively_monitored_wells to water_level_network_wells
-  # ---------------------------------------------------------------------------
+    Then wells in that group still appear in the response
 
   @backend @ogc-naming @sprint-1 @high-priority @A6
-  Scenario: Layer is accessible under the new ID water_level_network_wells
-    When a client requests /ogcapi/collections/water_level_network_wells/items
-    Then the response HTTP status is 200
-    And the response Content-Type is "application/geo+json"
-
-  @backend @ogc-naming @sprint-1 @high-priority @A6
-  Scenario: The renamed layer is discoverable in the collections catalog
-    Given the rename to water_level_network_wells has been applied across service configuration
+  Scenario: Layer keeps its existing ID and is discoverable in the collections catalog
     When a client requests /ogcapi/collections
-    Then the water_level_network_wells collection appears in the response
-    And the actively_monitored_wells collection does not appear in the response
-
-  @backend @ogc-naming @sprint-1 @high-priority @A6
-  Scenario: Old layer ID returns deprecation headers during the 90-day grace period
-    When a client requests /ogcapi/collections/actively_monitored_wells/items
-    Then the response HTTP status is 200
-    And the response includes a Deprecation header
-    And the response includes a Sunset header containing a valid RFC 7231 date
-    And the response includes a Link header pointing to the water_level_network_wells collection
+    Then the actively_monitored_wells collection appears in the response
+    And the water_level_network_wells collection does not appear in the response
 
   # ---------------------------------------------------------------------------
   # A11 — Stand up authenticated internal OGC mount at /ogcapi-internal
