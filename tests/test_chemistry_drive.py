@@ -98,6 +98,13 @@ class FakeBucket:
     def blob(self, name):
         return FakeBlob(self.store, name)
 
+    def list_blobs(self, prefix=""):
+        return [
+            SimpleNamespace(name=name)
+            for name in sorted(self.store)
+            if name.startswith(prefix)
+        ]
+
 
 @pytest.fixture()
 def fake_bucket():
@@ -158,6 +165,53 @@ def test_manifest_path_override_wins(monkeypatch):
     monkeypatch.setenv("POSTGRES_DB", "ocotillo-staging")
     monkeypatch.setenv("CHEMISTRY_INGEST_MANIFEST_PATH", "custom/manifest.json")
     assert chemistry_drive._manifest_path() == "custom/manifest.json"
+
+
+def test_manifest_overview_merges_databases(monkeypatch, fake_bucket):
+    """The cross-database view answers 'has this workbook reached staging?'."""
+    monkeypatch.delenv("CHEMISTRY_INGEST_MANIFEST_PATH", raising=False)
+
+    monkeypatch.setenv("POSTGRES_DB", "ocotillo_prod_copy")
+    save_manifest(
+        {
+            "F1": {"name": "wells.xlsx", "status": "success", "rows_imported": 12},
+            "F2": {"name": "other.xlsx", "status": "failed", "error": "no Thing"},
+        },
+        fake_bucket,
+    )
+
+    monkeypatch.setenv("POSTGRES_DB", "ocotillo-staging")
+    save_manifest(
+        {"F1": {"name": "wells.xlsx", "status": "success", "rows_imported": 12}},
+        fake_bucket,
+    )
+
+    assert chemistry_drive.manifest_databases(fake_bucket) == [
+        "ocotillo-prod-copy",
+        "ocotillo-staging",
+    ]
+
+    overview = chemistry_drive.manifest_overview(fake_bucket)
+    assert overview.files["F1"]["name"] == "wells.xlsx"
+    assert set(overview.files["F1"]["databases"]) == {
+        "ocotillo-prod-copy",
+        "ocotillo-staging",
+    }
+    # F2 only ever ingested locally, so staging is absent rather than blank.
+    assert set(overview.files["F2"]["databases"]) == {"ocotillo-prod-copy"}
+
+
+def test_manifest_overview_separates_corrupt_manifest(monkeypatch, fake_bucket):
+    """A corrupt manifest must not read as 'not ingested there'."""
+    monkeypatch.delenv("CHEMISTRY_INGEST_MANIFEST_PATH", raising=False)
+    monkeypatch.setenv("POSTGRES_DB", "ocotillo-staging")
+    save_manifest({"F1": {"name": "wells.xlsx", "status": "success"}}, fake_bucket)
+    fake_bucket.store["chemistry-ingest/manifest.broken.json"] = "{not json"
+
+    overview = chemistry_drive.manifest_overview(fake_bucket)
+    assert overview.databases == ["ocotillo-staging"]
+    assert overview.unreadable == ["broken"]
+    assert set(overview.files["F1"]["databases"]) == {"ocotillo-staging"}
 
 
 def test_missing_folder_raises(monkeypatch):

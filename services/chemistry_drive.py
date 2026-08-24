@@ -61,6 +61,10 @@ logger = logging.getLogger(__name__)
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MANIFEST_PREFIX = "chemistry-ingest/"
+# Recovers the database name from a per-database manifest object key. Only the
+# generated names match, so an explicit CHEMISTRY_INGEST_MANIFEST_PATH override
+# is left out of the cross-database view rather than reported under a guess.
+MANIFEST_NAME_RE = re.compile(r"^manifest\.(?P<db>[a-z0-9-]+)\.json$")
 
 
 class ChemistryDriveConfigError(Exception):
@@ -223,6 +227,61 @@ def save_manifest(manifest: dict[str, dict], bucket=None) -> None:
         json.dumps(manifest, indent=2, sort_keys=True),
         content_type="application/json",
     )
+
+
+def manifest_databases(bucket=None) -> list[str]:
+    """Database names that have a manifest object, sorted by name."""
+    bucket = bucket or _manifest_bucket()
+    names = []
+    for blob in bucket.list_blobs(prefix=MANIFEST_PREFIX):
+        match = MANIFEST_NAME_RE.match(blob.name[len(MANIFEST_PREFIX) :])
+        if match:
+            names.append(match.group("db"))
+    return sorted(names)
+
+
+@dataclass
+class ManifestOverview:
+    """A read-only cross-database view of the per-database manifests."""
+
+    # Databases whose manifest parsed. Unreadable ones are reported separately
+    # so a corrupt manifest is never rendered as "this file is not ingested
+    # there", which is a different and much more alarming claim.
+    databases: list[str] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)
+    files: dict[str, dict] = field(default_factory=dict)
+
+
+def manifest_overview(bucket=None) -> ManifestOverview:
+    """Merge every per-database manifest into one read-only cross-db view.
+
+    ``files`` maps ``file_id -> {"name": str, "databases": {db: entry}}``. This
+    only reads, and is derived from the per-database manifests rather than
+    replacing them: the authoritative skip decision stays scoped to a single
+    database so concurrent runs cannot clobber each other's bookkeeping.
+    """
+    bucket = bucket or _manifest_bucket()
+    overview = ManifestOverview()
+    for db in manifest_databases(bucket):
+        blob = bucket.blob(f"{MANIFEST_PREFIX}manifest.{db}.json")
+        if not blob.exists():
+            continue
+        try:
+            manifest = json.loads(blob.download_as_text())
+        except (ValueError, json.JSONDecodeError):
+            logger.warning("Chemistry ingest manifest for %s is corrupt; skipping.", db)
+            overview.unreadable.append(db)
+            continue
+        overview.databases.append(db)
+        for file_id, entry in manifest.items():
+            record = overview.files.setdefault(
+                file_id, {"name": entry.get("name", file_id), "databases": {}}
+            )
+            # Later manifests may carry a renamed file; keep a name over a bare id.
+            if entry.get("name"):
+                record["name"] = entry["name"]
+            record["databases"][db] = entry
+    return overview
 
 
 # --- orchestration -------------------------------------------------------------
