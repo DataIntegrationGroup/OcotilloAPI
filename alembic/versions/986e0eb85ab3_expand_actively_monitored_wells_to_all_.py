@@ -49,6 +49,11 @@ def _create_actively_monitored_wells_view(all_groups: bool) -> str:
         # groups. release_status = 'public' is checked on the group row
         # itself (mirrors _create_project_areas_view's public_only handling)
         # since any group can appear here now, not just one hardcoded one.
+        # group_thing_association has no unique constraint on
+        # (group_id, thing_id), so distinct_memberships de-dupes before
+        # aggregating; all three arrays are ordered by the same group_id key
+        # so they stay index-aligned with each other (ordering each array by
+        # its own column, e.g. names alphabetically, would desync them).
         return """
             CREATE VIEW ogc_actively_monitored_wells AS
             WITH latest_monitoring_status AS (
@@ -60,6 +65,16 @@ def _create_actively_monitored_wells_view(all_groups: bool) -> str:
                     sh.target_table = 'thing'
                     AND sh.status_type = 'Monitoring Status'
                 ORDER BY sh.target_id, sh.start_date DESC, sh.id DESC
+            ),
+            distinct_memberships AS (
+                SELECT DISTINCT
+                    gta.thing_id,
+                    g.id AS group_id,
+                    g.name AS group_name,
+                    g.group_type
+                FROM group_thing_association AS gta
+                JOIN "group" AS g ON g.id = gta.group_id
+                WHERE g.release_status = 'public'
             )
             SELECT
                 wws.id,
@@ -75,16 +90,14 @@ def _create_actively_monitored_wells_view(all_groups: bool) -> str:
                 wws.min_water_level,
                 wws.max_water_level,
                 wws.water_level_trend_ft_per_year,
-                array_agg(g.id) AS group_ids,
-                array_agg(g.name) AS group_names,
-                array_agg(g.group_type) AS group_types,
+                array_agg(dm.group_id ORDER BY dm.group_id) AS group_ids,
+                array_agg(dm.group_name ORDER BY dm.group_id) AS group_names,
+                array_agg(dm.group_type ORDER BY dm.group_id) AS group_types,
                 wws.point
             FROM ogc_water_well_summary AS wws
             JOIN latest_monitoring_status AS lms ON lms.thing_id = wws.id
-            JOIN group_thing_association AS gta ON gta.thing_id = wws.id
-            JOIN "group" AS g ON g.id = gta.group_id
+            JOIN distinct_memberships AS dm ON dm.thing_id = wws.id
             WHERE lms.status_value = 'Currently monitored'
-              AND g.release_status = 'public'
             GROUP BY
                 wws.id, wws.name, wws.well_depth, wws.elevation,
                 wws.elevation_method, wws.formation_zone,
@@ -138,7 +151,8 @@ def _create_internal_actively_monitored_wells_view(all_groups: bool) -> str:
     if all_groups:
         # Aggregated, same shape as the public view's all_groups branch, but
         # no release_status filter -- the internal mount is unfiltered by
-        # design, same as its sibling views.
+        # design, same as its sibling views. See the public branch's comment
+        # for why distinct_memberships + a shared ORDER BY key is needed.
         return """
             CREATE VIEW ogc_internal_actively_monitored_wells AS
             WITH latest_monitoring_status AS (
@@ -150,6 +164,15 @@ def _create_internal_actively_monitored_wells_view(all_groups: bool) -> str:
                     sh.target_table = 'thing'
                     AND sh.status_type = 'Monitoring Status'
                 ORDER BY sh.target_id, sh.start_date DESC, sh.id DESC
+            ),
+            distinct_memberships AS (
+                SELECT DISTINCT
+                    gta.thing_id,
+                    g.id AS group_id,
+                    g.name AS group_name,
+                    g.group_type
+                FROM group_thing_association AS gta
+                JOIN "group" AS g ON g.id = gta.group_id
             )
             SELECT
                 wws.id,
@@ -165,14 +188,13 @@ def _create_internal_actively_monitored_wells_view(all_groups: bool) -> str:
                 wws.min_water_level,
                 wws.max_water_level,
                 wws.water_level_trend_ft_per_year,
-                array_agg(g.id) AS group_ids,
-                array_agg(g.name) AS group_names,
-                array_agg(g.group_type) AS group_types,
+                array_agg(dm.group_id ORDER BY dm.group_id) AS group_ids,
+                array_agg(dm.group_name ORDER BY dm.group_id) AS group_names,
+                array_agg(dm.group_type ORDER BY dm.group_id) AS group_types,
                 wws.point
             FROM ogc_internal_water_well_summary AS wws
             JOIN latest_monitoring_status AS lms ON lms.thing_id = wws.id
-            JOIN group_thing_association AS gta ON gta.thing_id = wws.id
-            JOIN "group" AS g ON g.id = gta.group_id
+            JOIN distinct_memberships AS dm ON dm.thing_id = wws.id
             WHERE lms.status_value = 'Currently monitored'
             GROUP BY
                 wws.id, wws.name, wws.well_depth, wws.elevation,
