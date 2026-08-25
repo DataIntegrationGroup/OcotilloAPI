@@ -274,6 +274,11 @@ def manifest_overview(bucket=None) -> ManifestOverview:
             logger.warning("Chemistry ingest manifest for %s is corrupt; skipping.", db)
             overview.unreadable.append(db)
             continue
+
+        overview.databases.append(db)
+        for file_id, entry in manifest.items():
+            if not isinstance(entry, dict):
+                continue
             record = overview.files.setdefault(
                 file_id, {"name": entry.get("name", file_id), "databases": {}}
             )
@@ -281,7 +286,6 @@ def manifest_overview(bucket=None) -> ManifestOverview:
             if entry.get("name"):
                 record["name"] = entry["name"]
             record["databases"][db] = entry
-    return overview
 
 
 # --- orchestration -------------------------------------------------------------
