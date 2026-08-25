@@ -277,6 +277,14 @@ def prep_record(record: dict) -> dict:
     if not pointid:
         raise ChemistryMappingError("Missing SamplePointID")
 
+    # The WCLab_ID is the only thing that makes a re-ingest recognizable, so a
+    # row without one is not loadable data: it would be appended again under a
+    # fresh lettered sample point on every run. Same policy as a missing
+    # SamplePointID, a row error that aborts the file before anything is written.
+    wclab_id = _get(record, "SampleNumber")
+    if not wclab_id:
+        raise ChemistryMappingError("Missing SampleNumber")
+
     units = mapping.units or _get(record, "Results_Units")
 
     reported = _get(record, "ReportedND")
@@ -300,7 +308,6 @@ def prep_record(record: dict) -> dict:
 
     analysis_date = _to_datetime(_get(record, "AnalysisTime"))
     sample_date = _to_datetime(_get(record, "SampleDate")) or analysis_date
-    wclab_id = _get(record, "SampleNumber")
 
     return {
         "analyte": mapping.analyte,
@@ -311,7 +318,7 @@ def prep_record(record: dict) -> dict:
         "analysis_method": str(analysis_method) if analysis_method else None,
         "analysis_date": analysis_date,
         "sample_date": sample_date,
-        "wclab_id": str(wclab_id) if wclab_id is not None else None,
+        "wclab_id": str(wclab_id),
         "samplepointid": str(pointid),
         "test": _get(record, "Test"),
     }
@@ -433,6 +440,9 @@ def _sample_exists_for_wclab(
     session: Session, thing_id: int, wclab_id: str | None
 ) -> bool:
     """True if this lab sample (WCLab_ID) is already recorded for the Thing."""
+    # Unreachable via prep_record, which rejects a blank SampleNumber. Kept
+    # because a None would compare as IS NULL and match legacy rows, silently
+    # skipping a real sample.
     if wclab_id is None:
         return False
     return (
@@ -483,8 +493,9 @@ def bulk_upload_chemistry(
     ...). A lab sample already recorded for the well (same ``WCLab_ID``) is
     skipped, so re-running is idempotent.
 
-    A data-quality problem (a row that fails to map, or a ``SamplePointID`` with
-    no matching Thing) aborts the whole file -- nothing is written.
+    A data-quality problem aborts the whole file and nothing is written: a row
+    that fails to map, a row with no ``SampleNumber`` (the WCLab_ID that makes a
+    re-ingest recognizable), or a ``SamplePointID`` with no matching Thing.
     """
     if isinstance(source, str):
         source = Path(source)
