@@ -31,13 +31,16 @@ from db.analysis_method import *
 from db.aquifer_system import *
 from db.aquifer_type import *
 from db.asset import *
+from db.authorization_audit import *
 from db.base import *
 from db.base import Base
 from db.collabnet import *
 from db.contact import *
 from db.data_provenance import *
 from db.deployment import *
+from db.destination import *
 from db.field import *
+from db.field_access_consent import *
 from db.geochronology import *
 from db.geologic_formation import *
 from db.geothermal import *
@@ -48,8 +51,9 @@ from db.measuring_point_history import *
 from db.notes import *
 from db.observation import *
 from db.parameter import *
-from db.field_access_consent import *
+from db.permission_grant import *
 from db.publication import *
+from db.publication_consent import *
 from db.regulatory_limit import *
 from db.sample import *
 from db.sensor import *

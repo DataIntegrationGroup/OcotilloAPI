@@ -231,7 +231,25 @@ upgrading pygeoapi.
 
 **`ADR5.md`** decides the shape of the access-control work: two grant tables
 (internal permission vs landowner publication consent), one visibility layer,
-one field-projection chokepoint. Nothing is built yet.
+one field-projection chokepoint.
+
+The storage and the evaluator exist; the field projection does not.
+
+- **`services/visibility.py` is the only evaluator.** `may()` answers internal
+  authorization, `published_things()` answers "what does this destination
+  get". It loads rows and calls `domain/access.py`, which holds the rules and
+  touches no database. Do not filter by grant or consent anywhere else --
+  migration `baba91fe5e83` is what distributed filtering already cost.
+- **`api/access.py` (`/access`) is its only tenant.** Grants, destinations,
+  consent, and a `/access/decision` introspection route. No pre-existing
+  endpoint consults the layer yet, so release_status still governs what the
+  OGC views publish. The prefix is `/access`, not `/publication`, because
+  `api/publication.py` is the bibliography.
+- **Default deny, no wildcards, expiry at use.** A grant with no matching row
+  is a no; a grant names its `data_type` (there is no term meaning "all"); and
+  nothing sweeps expired rows, so every check compares against the date asked
+  about. `services/access_admin.py` writes an `authorization_audit` row in the
+  same transaction as every change.
 
 Two vocabulary fixes from it have landed and matter when reading models:
 
