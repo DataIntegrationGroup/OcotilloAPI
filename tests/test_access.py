@@ -84,6 +84,36 @@ def destination():
 
 
 @pytest.fixture
+def public_destination():
+    response = client.post(
+        "/access/destination",
+        json={
+            "slug": "test-public-web",
+            "name": "Test Public Web",
+            "destination_kind": "public web",
+        },
+    )
+    assert response.status_code == 201, response.text
+    created = response.json()
+
+    yield created
+
+    with session_ctx() as session:
+        session.execute(
+            delete(PublicationConsent).where(
+                PublicationConsent.destination_id == created["id"]
+            )
+        )
+        session.execute(delete(Destination).where(Destination.id == created["id"]))
+        session.execute(
+            delete(AuthorizationAudit).where(
+                AuthorizationAudit.actor == ADMIN_PAYLOAD["sub"]
+            )
+        )
+        session.commit()
+
+
+@pytest.fixture
 def grants():
     created = []
 
@@ -148,14 +178,71 @@ def test_levels_yes_chemistry_no(destination, water_well_thing):
     assert consent_to(water_well_thing.id, "water level").status_code == 201
 
     entries = published()
-    assert entries == [
-        {
-            "thing_id": water_well_thing.id,
-            "name": water_well_thing.name,
-            "data_types": ["water level"],
-        }
-    ]
+    assert len(entries) == 1
+    assert entries[0]["thing_id"] == water_well_thing.id
+    assert entries[0]["data_types"] == ["water level"]
+    assert entries[0]["properties"]["name"] == water_well_thing.name
+
     assert published(data_type="water chemistry") == []
+
+
+# ------ field projection ----------
+
+
+def test_a_destination_receives_only_its_allowlisted_fields(
+    destination, water_well_thing
+):
+    consent_to(water_well_thing.id, "water level")
+    properties = published()[0]["properties"]
+
+    # Named for the harvester audience in core/field-allowlists.yml.
+    assert set(properties) == {
+        "id",
+        "name",
+        "thing_type",
+        "well_depth",
+        "hole_depth",
+        "well_casing_depth",
+        "well_completion_date",
+    }
+
+
+def test_never_public_fields_reach_nobody(destination, water_well_thing):
+    consent_to(water_well_thing.id, "water level")
+    entry = published()[0]
+
+    for column in ("created_by_id", "created_by_name", "nma_pk_welldata"):
+        assert column not in entry["properties"]
+    for column in ("nma_location_notes", "nma_coordinate_notes"):
+        assert column not in entry["location"]
+
+
+def test_coordinates_are_rounded_for_the_audience(
+    destination, public_destination, water_well_thing
+):
+    """The same well, two audiences, two precisions -- not published or hidden."""
+    consent_to(water_well_thing.id, "water level")
+    client.post(
+        "/access/consent",
+        json={
+            "thing_id": water_well_thing.id,
+            "destination_slug": public_destination["slug"],
+            "data_type": "water level",
+            "starts_at": TODAY.isoformat(),
+        },
+    )
+
+    harvester_location = published()[0]["location"]
+    public_response = client.get(
+        f"/access/destination/{public_destination['slug']}/thing"
+    )
+    public_location = public_response.json()[0]["location"]
+
+    assert harvester_location["latitude"] == round(harvester_location["latitude"], 4)
+    assert public_location["latitude"] == round(public_location["latitude"], 2)
+    assert public_location["latitude"] != harvester_location["latitude"]
+    # Rounded, not withheld: the well still appears on the public map.
+    assert public_location["latitude"] is not None
 
 
 def test_nothing_is_published_without_consent(destination, water_well_thing):
