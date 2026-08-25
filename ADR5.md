@@ -216,8 +216,13 @@ told.
    holds the per-audience allowlists and the never-public list, and coordinate
    rounding is the first transform. The OGC views still select their own
    columns in SQL and do not pass through it.
-5. Console administration.
-6. Healy migration, after the data owner decides grandfathering.
+5. **Per environment, by hand:** `oco seed-access-grants` writes the day-one
+   role baseline (ADR5, 5.2) -- one global grant per Authentik role,
+   capability and data type, so nobody's access changes when the layer starts
+   being consulted. Until it runs, that environment denies everyone.
+   Idempotent, and it does not resurrect a revoked seeded grant.
+6. Console administration.
+7. Healy migration, after the data owner decides grandfathering.
 
 ## References
 

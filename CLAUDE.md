@@ -253,6 +253,12 @@ The storage and the evaluator exist; the field projection does not.
   transformation -- public coordinates are rounded, not withheld. The OGC
   views do **not** pass through this yet. Read
   **`docs/access-field-projection.md`** before touching the allowlists.
+- **The role baseline is seeded by hand, per environment.**
+  `oco seed-access-grants` writes one global grant per (Authentik role,
+  capability, data type) so today's roles keep today's access; it previews by
+  default and needs `--apply` to write. Idempotent, and it will not resurrect
+  a seeded grant somebody revoked, because narrowing the baseline is the point.
+  Until it is run in an environment, `/access/decision` denies everyone there.
 - **Default deny, no wildcards, expiry at use.** A grant with no matching row
   is a no; a grant names its `data_type` (there is no term meaning "all"); and
   nothing sweeps expired rows, so every check compares against the date asked
