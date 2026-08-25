@@ -325,17 +325,10 @@ def test_ampapi_fields_independent_of_created_at():
     cleanup_post_test(Location, data["id"])
 
 
-def test_geojson_response_uses_the_points_actual_utm_zone():
-    """A well outside 12N/13N must not read back with a hardcoded 13N label."""
-    from shapely import Point
-
-    from core.constants import SRID_WGS84
+def _geojson_response_for_point(lon: float, lat: float) -> tuple:
+    """Build a real Location row at (lon, lat) and return its GeoJSON response."""
     from db.engine import session_ctx
     from schemas.location import LocationGeoJSONResponse
-    from services.util import transform_srid
-
-    lon, lat = -117.0, 36.144718  # zone 11N (Nevada), outside 12N/13N
-    expected = transform_srid(Point(lon, lat), SRID_WGS84, 26911)
 
     with session_ctx() as session:
         loc = Location(point=f"POINT({lon} {lat})", elevation=0, release_status="draft")
@@ -346,12 +339,52 @@ def test_geojson_response_uses_the_points_actual_utm_zone():
 
         response = LocationGeoJSONResponse.model_validate(loc)
 
+    return response, location_id
+
+
+def test_geojson_response_uses_the_points_actual_utm_zone():
+    """A well outside 12N/13N must not read back with a hardcoded 13N label."""
+    from shapely import Point
+
+    from core.constants import SRID_WGS84
+    from services.util import transform_srid
+
+    lon, lat = -117.0, 36.144718  # zone 11N (Nevada), outside 12N/13N
+    expected = transform_srid(Point(lon, lat), SRID_WGS84, 32611)
+
+    response, location_id = _geojson_response_for_point(lon, lat)
     try:
         utm = response.properties.utm_coordinates
         assert utm.utm_zone == "11N"
         assert utm.easting == pytest.approx(expected.x)
         assert utm.northing == pytest.approx(expected.y)
-        assert utm.horizontal_datum == "NAD83"
+        assert utm.horizontal_datum == "WGS84"
+    finally:
+        cleanup_post_test(Location, location_id)
+
+
+def test_geojson_response_resolves_southern_hemisphere_zone():
+    """A point south of the equator must get an 'S' zone, not a fake northern one."""
+    lon, lat = -58.4, -34.6  # Buenos Aires-ish
+
+    response, location_id = _geojson_response_for_point(lon, lat)
+    try:
+        utm = response.properties.utm_coordinates
+        assert utm.utm_zone == "21S"
+        assert utm.horizontal_datum == "WGS84"
+    finally:
+        cleanup_post_test(Location, location_id)
+
+
+def test_geojson_response_omits_utm_coordinates_beyond_the_utm_domain():
+    """A point past the UTM latitude domain has no valid zone to report."""
+    lon, lat = 0.0, -90.0  # South Pole
+
+    response, location_id = _geojson_response_for_point(lon, lat)
+    try:
+        assert response.properties.utm_coordinates is None
+        # The geometry member still carries WGS84 lon/lat regardless.
+        assert response.geometry.coordinates[:2] == [lon, lat]
     finally:
         cleanup_post_test(Location, location_id)
 

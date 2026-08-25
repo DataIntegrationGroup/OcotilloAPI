@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Read-side UTM zone lookup. No database, no fixtures."""
+"""Read-side UTM zone/CRS lookup. No database, no fixtures."""
 
 import pytest
 
-from core.constants import SRID_NAD83_UTM_BASE
-from domain.geospatial import srid_for_longitude, utm_zone_for_longitude
+from domain.geospatial import (
+    OutsideUtmDomain,
+    utm_crs_for_point,
+    utm_zone_for_longitude,
+)
 
 
 @pytest.mark.parametrize(
@@ -28,8 +31,8 @@ from domain.geospatial import srid_for_longitude, utm_zone_for_longitude
         (-107.949533, 13),
         (-109.05, 12),  # just west of NM's western border
         (-117.0, 11),  # Nevada
-        (-69.0, 19),  # Maine, top of the CONUS range
-        (-123.0, 10),  # Pacific coast, bottom of the CONUS range
+        (13.4, 33),  # Berlin
+        (139.7, 54),  # Tokyo
     ],
 )
 def test_utm_zone_for_longitude_matches_the_true_zone(longitude, expected_zone):
@@ -39,20 +42,49 @@ def test_utm_zone_for_longitude_matches_the_true_zone(longitude, expected_zone):
 @pytest.mark.parametrize(
     "longitude, expected_zone",
     [
-        (-170.0, 10),  # far west of CONUS -- clamps rather than picking zone 3
-        (170.0, 19),  # far east of CONUS -- clamps rather than picking zone 51
+        (180.0, 1),  # antimeridian
+        (185.0, 1),  # past the antimeridian, unnormalized
+        (-180.0, 1),
+        (-190.0, 59),  # past -180, unnormalized
+        (179.999, 60),
     ],
 )
-def test_utm_zone_for_longitude_clamps_outside_conus(longitude, expected_zone):
-    # Clamping avoids handing pyproj a 269xx code outside the "NAD83 / UTM
-    # zone nN" series, where the number is reused for unrelated state-plane
-    # systems (see domain/geospatial.py).
+def test_utm_zone_for_longitude_normalizes_out_of_range_input(longitude, expected_zone):
+    # int((lon + 180) // 6) + 1 alone returns 61/62/-1/-2 for these -- clamping
+    # used to hide it. Normalizing onto [-180, 180) first fixes it at the root.
     assert utm_zone_for_longitude(longitude) == expected_zone
 
 
-def test_srid_for_longitude_derives_from_the_zone():
-    assert srid_for_longitude(-105.0) == SRID_NAD83_UTM_BASE + 13
-    assert srid_for_longitude(-117.0) == SRID_NAD83_UTM_BASE + 11
+def test_utm_crs_for_point_resolves_northern_hemisphere():
+    srid, zone_label = utm_crs_for_point(-105.0, 35.0)
+    assert (srid, zone_label) == (32613, "13N")
+
+
+def test_utm_crs_for_point_resolves_southern_hemisphere():
+    # Buenos Aires-ish. Hemisphere can only come from latitude.
+    srid, zone_label = utm_crs_for_point(-58.4, -34.6)
+    assert (srid, zone_label) == (32721, "21S")
+
+
+def test_utm_crs_for_point_resolves_southern_hemisphere_pacific():
+    # Sydney-ish.
+    srid, zone_label = utm_crs_for_point(151.2, -33.9)
+    assert (srid, zone_label) == (32756, "56S")
+
+
+@pytest.mark.parametrize("latitude", [84.0, -80.0])
+def test_utm_crs_for_point_accepts_the_domain_edges(latitude):
+    utm_crs_for_point(-105.0, latitude)  # must not raise
+
+
+@pytest.mark.parametrize("latitude", [84.1, -80.1, 90.0, -90.0])
+def test_utm_crs_for_point_rejects_outside_the_latitude_domain(latitude):
+    with pytest.raises(OutsideUtmDomain, match="outside the UTM domain"):
+        utm_crs_for_point(-105.0, latitude)
+
+
+def test_outside_utm_domain_is_a_value_error():
+    assert issubclass(OutsideUtmDomain, ValueError)
 
 
 # ============= EOF =============================================

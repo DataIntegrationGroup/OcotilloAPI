@@ -1,5 +1,5 @@
 from behave import then
-from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.constants import SRID_WGS84
 from geoalchemy2.shape import to_shape
 from services.util import (
     transform_srid,
@@ -278,7 +278,7 @@ def step_step_step_6(context):
 
 
 @then(
-    "the response should include the UTM coordinates with datum NAD83 in the properties"
+    "the response should include the UTM coordinates with datum WGS84 in the properties"
 )
 def step_step_step_7(context):
 
@@ -288,7 +288,9 @@ def step_step_step_7(context):
 
     point_wkb = context.objects["locations"][0].point
     point_wkt = to_shape(point_wkb)
-    point_utm_zone_13 = transform_srid(point_wkt, SRID_WGS84, SRID_UTM_ZONE_13N)
+    # Fixture location is genuinely zone 13N; the read path resolves this via
+    # WGS84 UTM (EPSG 32613), not the NAD83 code (26913) it used to assume.
+    point_utm_zone_13 = transform_srid(point_wkt, SRID_WGS84, 32613)
 
     assert context.water_well_data["current_location"]["properties"][
         "utm_coordinates"
@@ -296,7 +298,7 @@ def step_step_step_7(context):
         "easting": point_utm_zone_13.x,
         "northing": point_utm_zone_13.y,
         "utm_zone": "13N",
-        "horizontal_datum": "NAD83",
+        "horizontal_datum": "WGS84",
     }
 
 

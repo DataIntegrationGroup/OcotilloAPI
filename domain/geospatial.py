@@ -14,36 +14,82 @@
 # limitations under the License.
 # ===============================================================================
 """
-UTM zone lookup for a stored point, used on the read path.
+UTM zone/CRS lookup for a stored point, used on the read path.
 
-``domain/wells.py`` parses a UTM zone label supplied on import. This module is
-the read-side counterpart: given a point already stored as WGS84, find the UTM
-zone it actually falls in, so the GeoJSON response can report real coordinates
-instead of a fixed zone. See ``schemas/location.py``.
+``domain/wells.py`` parses a UTM zone label supplied on import, scoped to
+AMP's CONUS-only water-well ingestion policy. This module is the read-side
+counterpart and has no such scope: a ``Location`` can be stored anywhere on
+earth, so this resolves the true WGS84 UTM zone for any point against
+pyproj's CRS database rather than computing an EPSG code, and raises
+``OutsideUtmDomain`` for the polar latitudes UTM doesn't cover. See
+``schemas/location.py``.
+
+Deliberately does not import ``AMP_UTM_ZONE_MIN/MAX`` or ``AMP_COORD_*``:
+those are AMP ingestion policy, not a projection limit, and importing them
+here is exactly the coupling that let a CONUS bound silently clamp this
+worldwide path before.
 """
 
-from core.constants import AMP_UTM_ZONE_MAX, AMP_UTM_ZONE_MIN, SRID_NAD83_UTM_BASE
+from functools import lru_cache
+
+from pyproj.aoi import AreaOfInterest
+from pyproj.database import query_utm_crs_info
+
+# UTM is undefined outside this band; polar points need UPS/Polar
+# Stereographic (EPSG 32661/32761 or 3413/3031), which is not implemented
+# here. Raising rather than clamping keeps that gap visible.
+UTM_LAT_MIN, UTM_LAT_MAX = -80.0, 84.0
+
+
+class OutsideUtmDomain(ValueError):
+    """Raised when a point falls outside the latitude band UTM is defined for."""
 
 
 def utm_zone_for_longitude(longitude: float) -> int:
     """
-    Return the standard UTM zone number for a longitude, clamped to the
-    continental US range (``AMP_UTM_ZONE_MIN..AMP_UTM_ZONE_MAX``).
+    Return the UTM zone number (1-60) for a longitude.
 
-    UTM zones are 6 degrees wide starting at -180 (zone 1 covers -180..-174).
-    Clamping keeps the result inside the range EPSG defines as "NAD83 / UTM
-    zone nN" (n = 1..23); above that, 269xx codes belong to unrelated NAD83
-    state-plane systems, so an uncapped zone number could resolve to a valid
-    but wrong CRS instead of failing loudly. Worldwide support is out of
-    scope -- see domain/wells.py.
+    UTM zones are 6 degrees wide starting at -180. The longitude is
+    normalized onto [-180, 180) first so values at or past the antimeridian
+    (180.0, 185, -190, ...) still land in range instead of returning 61, 62,
+    or a negative zone.
     """
-    zone = int((longitude + 180) // 6) + 1
-    return max(AMP_UTM_ZONE_MIN, min(AMP_UTM_ZONE_MAX, zone))
+    return int(((longitude + 180) % 360) // 6) + 1
 
 
-def srid_for_longitude(longitude: float) -> int:
-    """Return the NAD83 UTM EPSG code for the zone a longitude falls in."""
-    return SRID_NAD83_UTM_BASE + utm_zone_for_longitude(longitude)
+@lru_cache(maxsize=128)
+def _utm_epsg(zone: int, northern: bool) -> int:
+    """Look up the WGS84 UTM EPSG code for a zone/hemisphere pair."""
+    # Resolved against the EPSG database rather than computed, so a zone that
+    # doesn't exist raises instead of landing on an unrelated CRS.
+    lon = (zone - 1) * 6 - 177  # zone central meridian
+    lat = 1.0 if northern else -1.0
+    suffix = f"{zone}{'N' if northern else 'S'}"
+    for info in query_utm_crs_info(
+        datum_name="WGS 84",
+        area_of_interest=AreaOfInterest(lon, lat, lon, lat),
+    ):
+        if info.name.endswith(suffix):
+            return int(info.code)
+    raise OutsideUtmDomain(f"No WGS 84 UTM CRS for zone {suffix}")
+
+
+def utm_crs_for_point(longitude: float, latitude: float) -> tuple[int, str]:
+    """
+    Return the ``(EPSG code, zone label)`` of the UTM zone containing a point.
+
+    Hemisphere is derived from latitude, not assumed, since this path serves
+    points anywhere on earth (unlike the AMP importer, which only ever
+    accepts northern-hemisphere zones by policy).
+    """
+    if not UTM_LAT_MIN <= latitude <= UTM_LAT_MAX:
+        raise OutsideUtmDomain(
+            f"Latitude {latitude} is outside the UTM domain "
+            f"({UTM_LAT_MIN} to {UTM_LAT_MAX}); polar points need UPS."
+        )
+    zone = utm_zone_for_longitude(longitude)
+    northern = latitude >= 0
+    return _utm_epsg(zone, northern), f"{zone}{'N' if northern else 'S'}"
 
 
 # ============= EOF =============================================
