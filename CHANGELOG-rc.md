@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0-rc...v1.3.0-rc.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* **chemistry-ingest:** kas-fix-chemistry-ingest-manifest ([166f3d8](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/166f3d8135762f410b54b44bc88f77c345619157))
+* **chemistry:** reject rows with no SampleNumber ([d48c60b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d48c60be8b962b47d95ad6a6c20c9b3a9ccb11d7))
+
 ## [1.3.0-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.2.1...v1.3.0-rc) (2026-08-24)
 
 
