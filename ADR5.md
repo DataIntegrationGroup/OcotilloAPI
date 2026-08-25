@@ -207,8 +207,10 @@ told.
 2. **Done.** `permission_history` is `field_access_consent`, dead `Permission`
    and `PermissionMixin` are gone, and `ReleaseMixin` carries `release_status`
    (level) plus `data_maturity` (review state).
-3. `permission_grant`, `publication_consent`, destination registry, and the
-   visibility layer, behind **one** service before it is behind all of them.
+3. **Done.** `permission_grant`, `publication_consent`, `destination` and
+   `authorization_audit` exist; `services/visibility.py` is the single
+   evaluator; `api/access.py` is its one tenant. No existing endpoint routes
+   through it yet.
 4. Field projection at the serialization chokepoint, with the never-public list.
 5. Console administration.
 6. Healy migration, after the data owner decides grandfathering.
