@@ -268,12 +268,12 @@ def manifest_overview(bucket=None) -> ManifestOverview:
             continue
         try:
             manifest = json.loads(blob.download_as_text())
-        except (ValueError, json.JSONDecodeError):
+            if not isinstance(manifest, dict):
+                raise ValueError("manifest JSON is not an object")
+        except (TypeError, ValueError, json.JSONDecodeError):
             logger.warning("Chemistry ingest manifest for %s is corrupt; skipping.", db)
             overview.unreadable.append(db)
             continue
-        overview.databases.append(db)
-        for file_id, entry in manifest.items():
             record = overview.files.setdefault(
                 file_id, {"name": entry.get("name", file_id), "databases": {}}
             )
