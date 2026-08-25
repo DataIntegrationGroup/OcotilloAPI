@@ -328,6 +328,43 @@ def test_bulk_upload_reports_missing_thing(tmp_path, _cleanup_chemistry):
     assert any("no matching Thing" in e for e in result.payload["validation_errors"])
 
 
+@pytest.mark.parametrize("blank", [None, "", "   "])
+def test_prep_record_missing_sample_number_raises(blank):
+    """No WCLab_ID means no way to recognize a re-ingest, so reject the row."""
+    from services.chemistry_lims import ChemistryMappingError
+
+    with pytest.raises(ChemistryMappingError, match="Missing SampleNumber"):
+        prep_record(_lims_row("calcium", "12.5", SampleNumber=blank))
+
+
+def test_bulk_upload_reports_missing_sample_number(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """A blank SampleNumber aborts the file rather than loading un-redoable rows."""
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5"),
+            _lims_row("magnesium", "3.3", SampleNumber=None),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert result.payload["summary"]["total_rows_imported"] == 0
+    assert any("Missing SampleNumber" in e for e in result.payload["validation_errors"])
+
+    # Nothing was written, including the row that would have mapped cleanly.
+    with session_ctx() as session:
+        infos = session.scalars(
+            select(NMA_Chemistry_SampleInfo).where(
+                NMA_Chemistry_SampleInfo.nma_wclab_id == "LAB-1"
+            )
+        ).all()
+    assert infos == []
+
+
 def test_bulk_upload_reports_unmapped_analyte(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):

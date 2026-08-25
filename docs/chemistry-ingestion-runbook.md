@@ -152,8 +152,9 @@ Br); resolve the base `SamplePointID → Thing`. Then, per distinct lab sample
 otherwise create a new `NMA_Chemistry_SampleInfo` whose `nma_sample_point_id`
 is the base PointID with the **next letter incrementor** appended
 (`A`, `B`, ... `Z`, `AA`, ...), and insert the analyte rows under it.
-A data-quality problem (a row that fails to map, or a `SamplePointID` with no
-matching well) aborts the whole file — nothing is written.
+A data-quality problem aborts the whole file and nothing is written: a row that
+fails to map, a row with no `SampleNumber`, or a `SamplePointID` with no
+matching well.
 
 ---
 
@@ -162,7 +163,9 @@ matching well) aborts the whole file — nothing is written.
 - **Duplicate detection is WCLab_ID-only.** A re-ingest is recognized by the lab
   `WCLab_ID` (SampleNumber). A genuinely new lab sample with a reused SampleNumber
   would be treated as a duplicate and skipped; a re-run of the same sample under a
-  new SampleNumber would append a spurious extra lettered sample.
+  new SampleNumber would append a spurious extra lettered sample. A row with no
+  SampleNumber at all is rejected rather than loaded, since there would be
+  nothing to recognize it by on the next run.
 - **`.xlsx` only.** Legacy `.xls` LIMS exports are not read; the file must be
   a modern `.xlsx`.
 - **Fixed analyte map.** Unknown `Param` names fail until engineering adds them
