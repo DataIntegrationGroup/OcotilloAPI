@@ -18,16 +18,24 @@ SRID_WGS84 = 4326
 SRID_UTM_ZONE_13N = 26913
 SRID_UTM_ZONE_12N = 26912
 
-# EPSG 269xx == NAD83 / UTM zone xxN. Zones 10N-19N span the continental US.
+# EPSG 269xx == NAD83 / UTM zone xxN, but only for xx = 01..23; 26924-26928
+# don't exist, and 26929+ names unrelated NAD83 state-plane systems. Safe here
+# because AMP's 10N-19N range sits well inside 1-23.
 SRID_NAD83_UTM_BASE = 26900
-UTM_ZONE_MIN = 10
-UTM_ZONE_MAX = 19
+
+# AMP water-well ingestion policy: submissions are limited to the continental
+# US. Not a projection limit -- domain/geospatial.py serves Location points
+# stored anywhere on earth and must not import these; that coupling is what
+# let a CONUS bound apply to the worldwide read path once before.
+AMP_UTM_ZONE_MIN = 10
+AMP_UTM_ZONE_MAX = 19
 
 # A coarse sanity range, not a national border: it catches transposed
-# easting/northing and feet-vs-meters entry mistakes. It is wider than the US
-# (e.g. it admits Mexico City) -- do not use it to decide "is this the US".
-COORD_LAT_MIN, COORD_LAT_MAX = 18.0, 72.0
-COORD_LON_MIN, COORD_LON_MAX = -180.0, -66.0
+# easting/northing and feet-vs-meters entry mistakes on AMP well submissions.
+# It is CONUS-shaped, not global -- e.g. it excludes the entire eastern
+# hemisphere -- which is fine for this policy but wrong for anything else.
+AMP_COORD_LAT_MIN, AMP_COORD_LAT_MAX = 18.0, 72.0
+AMP_COORD_LON_MIN, AMP_COORD_LON_MAX = -180.0, -66.0
 
 STATE_CODES = (
     "AL",

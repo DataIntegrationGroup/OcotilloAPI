@@ -20,10 +20,10 @@ from typing import Optional, Annotated, TypeAlias
 import phonenumbers
 import utm
 from core.constants import (
-    COORD_LAT_MAX,
-    COORD_LAT_MIN,
-    COORD_LON_MAX,
-    COORD_LON_MIN,
+    AMP_COORD_LAT_MAX,
+    AMP_COORD_LAT_MIN,
+    AMP_COORD_LON_MAX,
+    AMP_COORD_LON_MIN,
     STATE_CODES,
 )
 from core.enums import (
@@ -403,8 +403,8 @@ class WellInventoryRow(BaseModel):
         # A coarse sanity check, not a border check -- catches transposed
         # easting/northing and feet-vs-meters entry mistakes.
         if not (
-            COORD_LAT_MIN <= lat <= COORD_LAT_MAX
-            and COORD_LON_MIN <= lon <= COORD_LON_MAX
+            AMP_COORD_LAT_MIN <= lat <= AMP_COORD_LAT_MAX
+            and AMP_COORD_LON_MIN <= lon <= AMP_COORD_LON_MAX
         ):
             raise ValueError(
                 f"UTM coordinates are outside the expected range. E={self.utm_easting}"

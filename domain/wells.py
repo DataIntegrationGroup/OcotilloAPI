@@ -27,7 +27,7 @@ import.
 
 import re
 
-from core.constants import SRID_NAD83_UTM_BASE, UTM_ZONE_MAX, UTM_ZONE_MIN
+from core.constants import AMP_UTM_ZONE_MAX, AMP_UTM_ZONE_MIN, SRID_NAD83_UTM_BASE
 from domain.units import convert_ft_to_m
 from domain.values import enum_value
 
@@ -90,21 +90,23 @@ def utm_zone_number(utm_zone: str | None) -> int:
     """
     Parse a UTM zone label (e.g. ``"13N"``) into its zone number.
 
-    Accepts any northern-hemisphere zone from ``UTM_ZONE_MIN`` to ``UTM_ZONE_MAX``
-    (10N-19N spans the continental US), case-insensitively and tolerant of
-    surrounding whitespace. Anything else -- a bad shape, a southern-hemisphere
-    suffix, or a zone outside that range -- raises ``UnsupportedUtmZone``, which
-    also names the supported range so the message is useful on its own.
+    Accepts any northern-hemisphere zone from ``AMP_UTM_ZONE_MIN`` to
+    ``AMP_UTM_ZONE_MAX`` (10N-19N spans the continental US), case-insensitively
+    and tolerant of surrounding whitespace. This is AMP water-well ingestion
+    policy, not a projection limit -- see domain/geospatial.py for the
+    worldwide read path. Anything else -- a bad shape, a southern-hemisphere
+    suffix, or a zone outside that range -- raises ``UnsupportedUtmZone``.
     """
     match = UTM_ZONE_REGEX.match(utm_zone or "")
     if match:
         zone = int(match.group(1))
-        if UTM_ZONE_MIN <= zone <= UTM_ZONE_MAX:
+        if AMP_UTM_ZONE_MIN <= zone <= AMP_UTM_ZONE_MAX:
             return zone
 
     raise UnsupportedUtmZone(
-        f"Unsupported UTM zone: {utm_zone}. Must be a northern-hemisphere zone "
-        f"from {UTM_ZONE_MIN}N to {UTM_ZONE_MAX}N."
+        f"Unsupported UTM zone: {utm_zone}. AMP well submissions are limited "
+        f"to CONUS zones {AMP_UTM_ZONE_MIN}N-{AMP_UTM_ZONE_MAX}N "
+        f"(southern-hemisphere zones are not accepted)."
     )
 
 

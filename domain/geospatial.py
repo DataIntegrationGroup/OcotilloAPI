@@ -22,13 +22,13 @@ zone it actually falls in, so the GeoJSON response can report real coordinates
 instead of a fixed zone. See ``schemas/location.py``.
 """
 
-from core.constants import SRID_NAD83_UTM_BASE, UTM_ZONE_MAX, UTM_ZONE_MIN
+from core.constants import AMP_UTM_ZONE_MAX, AMP_UTM_ZONE_MIN, SRID_NAD83_UTM_BASE
 
 
 def utm_zone_for_longitude(longitude: float) -> int:
     """
     Return the standard UTM zone number for a longitude, clamped to the
-    continental US range this system supports (``UTM_ZONE_MIN..UTM_ZONE_MAX``).
+    continental US range (``AMP_UTM_ZONE_MIN..AMP_UTM_ZONE_MAX``).
 
     UTM zones are 6 degrees wide starting at -180 (zone 1 covers -180..-174).
     Clamping keeps the result inside the range EPSG defines as "NAD83 / UTM
@@ -38,7 +38,7 @@ def utm_zone_for_longitude(longitude: float) -> int:
     scope -- see domain/wells.py.
     """
     zone = int((longitude + 180) // 6) + 1
-    return max(UTM_ZONE_MIN, min(UTM_ZONE_MAX, zone))
+    return max(AMP_UTM_ZONE_MIN, min(AMP_UTM_ZONE_MAX, zone))
 
 
 def srid_for_longitude(longitude: float) -> int:
