@@ -41,7 +41,7 @@ THING_RESPONSE_LOADER_OPTIONS = (
         GroupThingAssociation.group
     ),
     THING_RESPONSE_BASE.selectinload(Thing.notes),
-    THING_RESPONSE_BASE.selectinload(Thing.permission_history),
+    THING_RESPONSE_BASE.selectinload(Thing.field_access_consent),
     THING_RESPONSE_BASE.selectinload(Thing.data_provenance),
     THING_RESPONSE_BASE.selectinload(Thing.status_history),
 )

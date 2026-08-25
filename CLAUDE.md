@@ -227,6 +227,25 @@ the pinned pygeoapi version — most sharply, `BaseProvider.fields` returns
 **`docs/ogc-field-descriptions.md`** before changing field metadata or
 upgrading pygeoapi.
 
+### Access control and release state
+
+**`ADR5.md`** decides the shape of the access-control work: two grant tables
+(internal permission vs landowner publication consent), one visibility layer,
+one field-projection chokepoint. Nothing is built yet.
+
+Two vocabulary fixes from it have landed and matter when reading models:
+
+- **`db/field_access_consent.py`** (`FieldAccessConsent`, table
+  `field_access_consent`, formerly `PermissionHistory` / `permission_history`)
+  is a landowner's consent to *physical site access*. It is not authorization.
+  Its `permission_type` / `permission_allowed` columns keep their names, and
+  Thing responses still publish it under the `permissions` key.
+- **`ReleaseMixin` has two axes**: `release_status` is the release *level*
+  (who may see it) and `data_maturity` is the review state (`provisional`,
+  `in review`, `approved`, NULL = not stated). The `release_status` lexicon
+  still lists `provisional` and `final` for historical rows; new code should
+  put review state in `data_maturity`.
+
 ### Database Configuration
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):

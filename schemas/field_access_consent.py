@@ -5,8 +5,11 @@ from schemas import PastOrTodayDate
 
 
 # ------ RESPONSE ----------
-class PermissionHistoryResponse(BaseModel):
+class FieldAccessConsentResponse(BaseModel):
     """
+    Landowner field-access consent, as published on a Thing. Not an
+    access-control grant (ADR5).
+
     Even though permission_allowed and start_date are not-nullable in the
     database, they are nullable here to accommodate cases where no permission
     record exists for a given permission type.

@@ -48,7 +48,7 @@ from db.measuring_point_history import *
 from db.notes import *
 from db.observation import *
 from db.parameter import *
-from db.permission_history import *
+from db.field_access_consent import *
 from db.publication import *
 from db.regulatory_limit import *
 from db.sample import *
