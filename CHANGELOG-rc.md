@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0-rc.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0-rc.1...v1.3.0-rc.2) (2026-08-25)
+
+
+### Bug Fixes
+
+* **chemistry:** restore the return in manifest_overview ([1a9f30c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1a9f30c056c7b1aed2d31588c115b820555b68da))
+* **chemistry:** restore the return in manifest_overview ([6578752](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/6578752636e505c1f984a47d2a4d0bd70cd5ad93))
+
 ## [1.3.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0-rc...v1.3.0-rc.1) (2026-08-25)
 
 
