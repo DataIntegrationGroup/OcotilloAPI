@@ -1163,6 +1163,78 @@ def water_chemistry_sync_drive(
     raise typer.Exit(result.exit_code)
 
 
+@water_chemistry.command("manifest-status")
+def water_chemistry_manifest_status(
+    name: str = typer.Option(
+        None,
+        "--name",
+        help="Only show workbooks whose file name contains this text.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    show which databases each chemistry workbook has been ingested into. Reads
+    every per-database manifest in GCS and merges them for display; writes
+    nothing, so it is safe to run against any environment.
+    """
+    from services.chemistry_drive import ChemistryDriveConfigError, manifest_overview
+
+    colors = _palette(theme)
+    try:
+        overview = manifest_overview()
+    except ChemistryDriveConfigError as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    databases = overview.databases
+    if not databases and not overview.unreadable:
+        typer.secho("No chemistry ingest manifests found.", fg=colors["muted"])
+        return
+
+    records = sorted(overview.files.items(), key=lambda kv: kv[1]["name"].lower())
+    if name:
+        needle = name.lower()
+        records = [r for r in records if needle in r[1]["name"].lower()]
+
+    typer.secho("[CHEMISTRY MANIFEST STATUS]", fg=colors["accent"], bold=True)
+    typer.secho("=" * 72, fg=colors["accent"])
+    typer.secho(f"Databases: {', '.join(databases) or 'none'}", fg=colors["accent"])
+    if overview.unreadable:
+        typer.secho(
+            f"Unreadable manifests (not shown below): "
+            f"{', '.join(overview.unreadable)}",
+            fg=colors["issue"],
+        )
+    typer.echo()
+
+    if not records:
+        typer.secho("No workbooks match.", fg=colors["muted"])
+        return
+
+    for file_id, record in records:
+        typer.secho(record["name"], fg=colors["field"], bold=True)
+        for db in databases:
+            entry = record["databases"].get(db)
+            if entry is None:
+                typer.secho(f"  {db:<28} | not ingested", fg=colors["muted"])
+                continue
+            status = entry.get("status", "unknown")
+            color = colors["ok"] if status == "success" else colors["issue"]
+            detail = f"{entry.get('rows_imported', 0)} row(s)"
+            if status != "success":
+                detail = entry.get("error") or "ingestion failed"
+            when = (entry.get("ingested_at") or "")[:19]
+            typer.secho(
+                f"  {db:<28} | {status:<8} | {detail} | {when}",
+                fg=color,
+            )
+        typer.echo()
+
+    typer.secho("=" * 72, fg=colors["accent"])
+
+
 @data_migrations.command("list")
 def data_migrations_list(
     theme: ThemeMode = typer.Option(
