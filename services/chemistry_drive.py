@@ -286,6 +286,7 @@ def manifest_overview(bucket=None) -> ManifestOverview:
             if entry.get("name"):
                 record["name"] = entry["name"]
             record["databases"][db] = entry
+    return overview
 
 
 # --- orchestration -------------------------------------------------------------
