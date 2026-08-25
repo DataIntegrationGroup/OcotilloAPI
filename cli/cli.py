@@ -1213,7 +1213,7 @@ def water_chemistry_manifest_status(
         typer.secho("No workbooks match.", fg=colors["muted"])
         return
 
-    for file_id, record in records:
+    for _file_id, record in records:
         typer.secho(record["name"], fg=colors["field"], bold=True)
         for db in databases:
             entry = record["databases"].get(db)
