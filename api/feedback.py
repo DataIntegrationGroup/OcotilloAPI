@@ -225,7 +225,7 @@ def _build_slack_payload(payload: FeedbackCreate, jira_key: str, jira_url: str) 
 @router.post("", response_model=FeedbackResponse)
 async def create_feedback(
     payload: FeedbackCreate,
-    _user=viewer_dependency,
+    _user: viewer_dependency,
 ):
     jira_base = os.environ["JIRA_BASE_URL"]
     jira_email = os.environ["JIRA_EMAIL"]

@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""Standalone orchestrator for the NM_Wells (geothermal) migration.
+"""DEPRECATED: standalone orchestrator for the NM_Wells (geothermal) migration.
 
-Separate from the deprecated ``transfers/transfer.py`` (NM_Aquifer driver). This
-script runs the NM_Wells Phase-1 staging migration:
+Deprecated alongside ``transfers/transfer.py`` (the NM_Aquifer driver): both
+legacy migration drivers are frozen. Do not add new migrations here. The
+``NMW_*`` staging tables this loads remain in service -- live API routes still
+read them -- so the loader is kept runnable for backfills and re-runs, but it
+gets no new features and its tests no longer gate CI.
+
+This script runs the NM_Wells Phase-1 staging migration:
 
 1. Reference -> lexicon load (``ref_*`` lookups), gated by
    ``TRANSFER_GEOTHERMAL_REFERENCE`` (default True).
@@ -37,6 +42,7 @@ Env:
 """
 
 import os
+import warnings
 
 from dotenv import load_dotenv
 
@@ -63,6 +69,12 @@ from transfers.reference_lexicon_transfer import transfer_reference_tables  # no
 
 def run_geothermal_transfer(limit: int = None) -> dict:
     """Run the NM_Wells geothermal staging migration. Returns a summary dict."""
+    warnings.warn(
+        "transfers.transfer_geothermal is deprecated; the NM_Wells migration "
+        "drivers are frozen and receive no new migrations.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     limit = int(limit if limit is not None else os.getenv("TRANSFER_LIMIT", 0) or 0)
     summary: dict = {}
 

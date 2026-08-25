@@ -243,12 +243,17 @@
     {
       "name": "lithology",
       "description": null
+    },
+    {
+      "name": "data_maturity",
+      "description": "How far through review a measurement is, on USGS terms. Orthogonal to release_status, which controls visibility rather than trust."
     }
   ],
   "terms": [
     {
       "categories": [
-        "review_status"
+        "review_status",
+        "data_maturity"
       ],
       "term": "approved",
       "definition": "approved"
@@ -1762,7 +1767,8 @@
     },
     {
       "categories": [
-        "release_status"
+        "release_status",
+        "data_maturity"
       ],
       "term": "provisional",
       "definition": "provisional version"
@@ -2583,748 +2589,6 @@
       "categories": [
         "organization"
       ],
-      "term": "City of Aztec",
-      "definition": "City of Aztec"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Daybreak Investments",
-      "definition": "Daybreak Investments"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Vallecitos HOA",
-      "definition": "Vallecitos HOA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SFC, Santa Fe Animal Shelter",
-      "definition": "Santa Fe County, Santa Fe Animal Shelter"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Guicu Ditch Association",
-      "definition": "El Guicu Ditch Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Santa Fe Municipal Airport",
-      "definition": "Santa Fe Municipal Airport"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Uluru Development",
-      "definition": "Uluru Development"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "AllSup's Convenience Stores",
-      "definition": "AllSup's Convenience Stores"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Santa Fe Downs Resort",
-      "definition": "Santa Fe Downs Resort"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "City of Truth or Consequences, WWTP",
-      "definition": "City of Truth or Consequences, WWTP"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Riverbend Hotsprings",
-      "definition": "Riverbend Hotsprings"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Armendaris Ranch",
-      "definition": "Armendaris Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Paso Water",
-      "definition": "El Paso Water"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "BLM, Socorro Field Office",
-      "definition": "BLM, Socorro Field Office"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "USFWS",
-      "definition": "US Fish & Wildlife Service"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Sile MDWCA",
-      "definition": "Sile Municipal Domestic Water Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Pena Blanca Water & Sanitation District",
-      "definition": "Pena Blanca Water & Sanitation District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Town of Questa",
-      "definition": "Town of Questa"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Town of Cerro",
-      "definition": "Town of Cerro"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Cerro MDWCA",
-      "definition": "Cerro MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Farr Cattle Company",
-      "definition": "Farr Cattle Company (Farr Ranch)"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Carrizozo Orchard",
-      "definition": "Carrizozo Orchard"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "White Oaks Pottery",
-      "definition": "White Oaks Pottery"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "USFS, Kiowa Grasslands",
-      "definition": "USFS, Kiowa Grasslands"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Cloud Country West Subdivision",
-      "definition": "Cloud Country West Subdivision"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Chama West WUA",
-      "definition": "Chama West Water Users Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Rito Regional Water and Waste Water Association",
-      "definition": "El Rito Regional Water + Waste Water Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Rito MDWCA",
-      "definition": "El Rito MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "West Rim MDWUA",
-      "definition": "West Rim MDWUA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Village of Willard",
-      "definition": "Village of Willard"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Quemado Municipal Water & SWA",
-      "definition": "Quemado Mutual Water and Sewage Works Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Coyote Creek MDWUA",
-      "definition": "Coyote Creek MDWUA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Lamy MDWCA",
-      "definition": "Lamy Mutual Domestic Water Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "La Joya CWDA",
-      "definition": "La Joya CWDA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NM Firefighters Training Academy",
-      "definition": "NM Firefighters Training Academy"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Cebolleta Land Grant",
-      "definition": "Cebolleta Land Grant"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Madrid Water Co-op",
-      "definition": "Madrid Water Co-op"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Sun Valley Water and Sanitation",
-      "definition": "Sun Valley Water and Sanitation"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Bluewater Lake MDWCA",
-      "definition": "Bluewater Lake MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Bluewater Acres Domestic WUA",
-      "definition": "Bluewater Acres Domestic Water Users Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Lybrook MDWCA",
-      "definition": "Lybrook Municipal"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "New Mexico Museum of Natural History",
-      "definition": "New Mexico Museum of Natural History"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Hillsboro MDWCA",
-      "definition": "Hillsboro Mutual Domestic Water Consumer Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Tyrone MDWCA",
-      "definition": "Tyrone Mutual Domestic Water Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Santa Clara Water System",
-      "definition": "Santa Clara Water System"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Casas Adobes MDWCA",
-      "definition": "Casas Adobes Mutual Domestic"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Lake Roberts WUA",
-      "definition": "Lake Roberts Water Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Creston MDWCA",
-      "definition": "El Creston MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Reserve Municipality Water Works",
-      "definition": "Reserve Municipality Water Works"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Town of Estancia",
-      "definition": "Town of Estancia"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Pie Town MDWCA",
-      "definition": "Pie Town MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Roosevelt SWCD",
-      "definition": "Roosevelt Soil & Water Conservation District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Otis MDWCA",
-      "definition": "Otis Mutual Domestic"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "White Cliffs MDWUA",
-      "definition": "White Cliffs MDWUA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Vista Linda Water Co-op",
-      "definition": "Vista Linda Water Co-op"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Anasazi Trails Water Co-op",
-      "definition": "Anasazi Trails Water Cooperative"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Canon MDWCA",
-      "definition": "Canon Mutual Domestic Water Consumer Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Placitas Trails Water Co-op",
-      "definition": "Placitas Trails Water Coop"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "BLM, Roswell Office",
-      "definition": "BLM, Roswell Office"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Forked Lightning Ranch",
-      "definition": "Forked Lightning Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Cottonwood RWA",
-      "definition": "Cottonwood Rural Water Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Pinon Ridge WUA",
-      "definition": "Pinon Ridge Water Users Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "McSherry Farms",
-      "definition": "McSherry Farms"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Agua Sana WUA",
-      "definition": "Agua Sana Water Users Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Chamita MDWCA",
-      "definition": "Chamita Mutual Domestic Water Consumers Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "W Spear-bar Ranch",
-      "definition": "W Spear-bar Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Village of Capitan",
-      "definition": "Village of Capitan"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Brazos MDWCA",
-      "definition": "Brazos Mutual Domestic Water Consumers Assn."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Alto Alps HOA",
-      "definition": "Alto Alps Homeowners Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Chiricahua Desert Museum",
-      "definition": "Chiricahua Desert Museum"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Bike Ranch",
-      "definition": "Bike Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Hachita MDWCA",
-      "definition": "Hachita MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Carrizozo Municipal Water",
-      "definition": "Carrizozo Municipal Water"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Dunhill Ranch",
-      "definition": "Dunhill Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Santa Fe Conservation Trust",
-      "definition": "Santa Fe Conservation Trust"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMSU",
-      "definition": "New Mexico State University"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "USGS",
-      "definition": "US Geological Survey"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "TWDB",
-      "definition": "Texas Water Development Board"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMED",
-      "definition": "New Mexico Environment Department"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMOSE",
-      "definition": "New Mexico Office of the State Engineer"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMBGMR",
-      "definition": "New Mexico Bureau of Geology and Mineral Resources"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Bernalillo County",
-      "definition": "Bernalillo County"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "BLM",
-      "definition": "Bureau of Land Management"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "BLM Taos Office",
-      "definition": "Bureau of Land Management Taos Office"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SFC",
-      "definition": "Santa Fe County"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SFC, Fire Facilities",
-      "definition": "Santa Fe County, Fire Facilities"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SFC, Utilities Dept.",
-      "definition": "Santa Fe County, Utilities Dept."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SFC, Valle Vista Water Utility, Inc.",
-      "definition": "Santa Fe County, Valle Vista Water Utility, Inc."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "City of Santa Fe",
-      "definition": "City of Santa Fe"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "City of Santa Fe WWTP",
-      "definition": "City of Santa Fe WWTP"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "City of Santa Fe, Municipal Recreation Complex",
-      "definition": "City of Santa Fe, Municipal Recreation Complex"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "City of Santa Fe, Sangre de Cristo Water Co.",
-      "definition": "City of Santa Fe, Sangre de Cristo Water Co."
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMISC",
-      "definition": "New Mexico Interstate Stream Commission"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "PVACD",
-      "definition": "Pecos Valley Artesian Conservancy District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Bayard",
-      "definition": "Bayard Municipal Water"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "SNL",
-      "definition": "Sandia National Laboratories"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "USFS",
-      "definition": "United States Forest Service"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMT",
-      "definition": "New Mexico Tech"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NPS",
-      "definition": "National Park Service"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMRWA",
-      "definition": "New Mexico Rural Water Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "NMDOT",
-      "definition": "New Mexico Department of Transportation"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Taos SWCD",
-      "definition": "Taos Soil and Water Conservation District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Otero SWCD",
-      "definition": "Otero Soil and Water Conservation District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Northeastern SWCD",
-      "definition": "Northeastern Soil and Water Conservation District"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "CDWR",
-      "definition": "Colorado Division of Water Resources"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Pendaries Village",
-      "definition": "Pendaries Village"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
       "term": "A&T Pump & Well Service, LLC",
       "definition": "A&T Pump & Well Service, LLC"
     },
@@ -3334,237 +2598,6 @@
       ],
       "term": "A. G. Wassenaar, Inc",
       "definition": "A. G. Wassenaar, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "AMEC",
-      "definition": "AMEC"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Balleau Groundwater, Inc",
-      "definition": "Balleau Groundwater, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "CDM Smith",
-      "definition": "CDM Smith"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "CH2M Hill",
-      "definition": "CH2M Hill"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Corbin Consulting, Inc",
-      "definition": "Corbin Consulting, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Chevron",
-      "definition": "Chevron"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Daniel B. Stephens & Associates, Inc",
-      "definition": "Daniel B. Stephens & Associates, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "EnecoTech",
-      "definition": "EnecoTech"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Faith Engineering, Inc",
-      "definition": "Faith Engineering, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Foster Well Service, Inc",
-      "definition": "Foster Well Service, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Glorieta Geoscience, Inc",
-      "definition": "Glorieta Geoscience, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Golder Associates, Inc",
-      "definition": "Golder Associates, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Hathorn's Well Service, Inc",
-      "definition": "Hathorn's Well Service, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Hydroscience Associates, Inc",
-      "definition": "Hydroscience Associates, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "IC Tech, Inc",
-      "definition": "IC Tech, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "John Shomaker & Associates, Inc",
-      "definition": "John Shomaker & Associates, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Kuckleman Pump Service",
-      "definition": "Kuckleman Pump Service"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Los Golondrinas",
-      "definition": "Los Golondrinas"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Minton Engineers",
-      "definition": "Minton Engineers"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "MJDarrconsult, Inc",
-      "definition": "MJDarrconsult, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Puerta del Canon Ranch",
-      "definition": "Puerta del Canon Ranch"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Rodgers & Company, Inc",
-      "definition": "Rodgers & Company, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "San Pedro Creek Estates HOA",
-      "definition": "San Pedro Creek Estates HOA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Statewide Drilling, Inc",
-      "definition": "Statewide Drilling, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Tec Drilling Limited",
-      "definition": "Tec Drilling Limited"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Tetra Tech, Inc",
-      "definition": "Tetra Tech, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Thompson Drilling, Inc",
-      "definition": "Thompson Drilling, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Witcher & Associates",
-      "definition": "Witcher & Associates"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Zeigler Geologic Consulting, LLC",
-      "definition": "Zeigler Geologic Consulting, LLC"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Sandia Well Service, Inc",
-      "definition": "Sandia Well Service, Inc"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "San Marcos Association",
-      "definition": "San Marcos Association"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "URS",
-      "definition": "URS"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Vista del Oro",
-      "definition": "Vista del Oro"
     },
     {
       "categories": [
@@ -3591,8 +2624,57 @@
       "categories": [
         "organization"
       ],
+      "term": "Agua Sana MWCD",
+      "definition": "Agua Sana MWCD"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Agua Sana WUA",
+      "definition": "Agua Sana Water Users Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "AllSup's Convenience Stores",
+      "definition": "AllSup's Convenience Stores"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Alto Alps HOA",
+      "definition": "Alto Alps Homeowners Association"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "AMEC",
+      "definition": "AMEC"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Anasazi Trails Water Co-op",
+      "definition": "Anasazi Trails Water Cooperative"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Apache Gap Ranch",
       "definition": "Apache Gap Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Armendaris Ranch",
+      "definition": "Armendaris Ranch"
     },
     {
       "categories": [
@@ -3619,8 +2701,36 @@
       "categories": [
         "organization"
       ],
+      "term": "Balleau Groundwater, Inc",
+      "definition": "Balleau Groundwater, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bayard",
+      "definition": "Bayard Municipal Water"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bernalillo County",
+      "definition": "Bernalillo County"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Berridge Distributing Company",
       "definition": "Berridge Distributing Company"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bike Ranch",
+      "definition": "Bike Ranch"
     },
     {
       "categories": [
@@ -3633,8 +2743,64 @@
       "categories": [
         "organization"
       ],
+      "term": "BLM",
+      "definition": "Bureau of Land Management"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "BLM Taos Office",
+      "definition": "Bureau of Land Management Taos Office"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "BLM, Roswell Office",
+      "definition": "BLM, Roswell Office"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "BLM, Socorro Field Office",
+      "definition": "BLM, Socorro Field Office"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bluewater Acres Domestic WUA",
+      "definition": "Bluewater Acres Domestic Water Users Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bluewater Lake MDWCA",
+      "definition": "Bluewater Lake MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Bonanza Creek Ranch",
       "definition": "Bonanza Creek Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bourbon Grill at El Gancho",
+      "definition": "Bourbon Grill at El Gancho"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Brazos MDWCA",
+      "definition": "Brazos Mutual Domestic Water Consumers Assn."
     },
     {
       "categories": [
@@ -3647,13 +2813,6 @@
       "categories": [
         "organization"
       ],
-      "term": "Wehinahpay Mountain Camp",
-      "definition": "Wehinahpay Mountain Camp"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
       "term": "Campbell Ranch",
       "definition": "Campbell Ranch"
     },
@@ -3661,8 +2820,78 @@
       "categories": [
         "organization"
       ],
+      "term": "Canada Los Alamos MDWCA",
+      "definition": "Canada Los Alamos MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Canjilon Mutual Domestic Water System",
+      "definition": "Canjilon Mutual Domestic Water System"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Canon MDWCA",
+      "definition": "Canon Mutual Domestic Water Consumer Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Capitol Ford Santa Fe",
       "definition": "Capitol Ford Santa Fe"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Carrizozo Municipal Water",
+      "definition": "Carrizozo Municipal Water"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Carrizozo Orchard",
+      "definition": "Carrizozo Orchard"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Casas Adobes MDWCA",
+      "definition": "Casas Adobes Mutual Domestic"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "CDM Smith",
+      "definition": "CDM Smith"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "CDWR",
+      "definition": "Colorado Division of Water Resources"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Cebolla Mutual Domestic",
+      "definition": "Cebolla Mutual Domestic"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Cebolleta Land Grant",
+      "definition": "Cebolleta Land Grant"
     },
     {
       "categories": [
@@ -3682,8 +2911,50 @@
       "categories": [
         "organization"
       ],
-      "term": "Santa Fe Jewish Center",
-      "definition": "Santa Fe Jewish Center"
+      "term": "Cerro MDWCA",
+      "definition": "Cerro MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "CH2M Hill",
+      "definition": "CH2M Hill"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Chama West WUA",
+      "definition": "Chama West Water Users Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Chamita MDWCA",
+      "definition": "Chamita Mutual Domestic Water Consumers Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Chevron",
+      "definition": "Chevron"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Chihuahuan Desert Rangeland Research Center (CDRRC)",
+      "definition": "Chihuahuan Desert Rangeland Research Center (CDRRC)"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Chiricahua Desert Museum",
+      "definition": "Chiricahua Desert Museum"
     },
     {
       "categories": [
@@ -3717,8 +2988,43 @@
       "categories": [
         "organization"
       ],
+      "term": "City of Aztec",
+      "definition": "City of Aztec"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "City of Portales, Public Works Dept.",
       "definition": "City of Portales, Public Works Dept."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "City of Santa Fe",
+      "definition": "City of Santa Fe"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "City of Santa Fe WWTP",
+      "definition": "City of Santa Fe WWTP"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "City of Santa Fe, Municipal Recreation Complex",
+      "definition": "City of Santa Fe, Municipal Recreation Complex"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "City of Santa Fe, Sangre de Cristo Water Co.",
+      "definition": "City of Santa Fe, Sangre de Cristo Water Co."
     },
     {
       "categories": [
@@ -3731,8 +3037,29 @@
       "categories": [
         "organization"
       ],
+      "term": "City of Truth or Consequences, WWTP",
+      "definition": "City of Truth or Consequences, WWTP"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Cloud Country West Subdivision",
+      "definition": "Cloud Country West Subdivision"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Commonwealth Conservancy",
       "definition": "Commonwealth Conservancy"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Corbin Consulting, Inc",
+      "definition": "Corbin Consulting, Inc"
     },
     {
       "categories": [
@@ -3745,8 +3072,22 @@
       "categories": [
         "organization"
       ],
+      "term": "Cottonwood RWA",
+      "definition": "Cottonwood Rural Water Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Country Club Garden Mobile Home Park",
       "definition": "Country Club Garden Mobile Home Park"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Coyote Creek MDWUA",
+      "definition": "Coyote Creek MDWUA"
     },
     {
       "categories": [
@@ -3759,8 +3100,36 @@
       "categories": [
         "organization"
       ],
+      "term": "Daniel B. Stephens & Associates, Inc",
+      "definition": "Daniel B. Stephens & Associates, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Daybreak Investments",
+      "definition": "Daybreak Investments"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Desert Village RV & Mobile Home Park",
+      "definition": "Desert Village RV & Mobile Home Park"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Double H Ranch",
       "definition": "Double H Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Dunhill Ranch",
+      "definition": "Dunhill Ranch"
     },
     {
       "categories": [
@@ -3773,6 +3142,13 @@
       "categories": [
         "organization"
       ],
+      "term": "East Rio Arriba SWCD",
+      "definition": "East Rio Arriba SWCD"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "El Camino Realty, Inc",
       "definition": "El Camino Realty, Inc"
     },
@@ -3780,15 +3156,22 @@
       "categories": [
         "organization"
       ],
-      "term": "Eldorado Area Water & Sanitation District",
-      "definition": "Eldorado Area Water & Sanitation District"
+      "term": "El Creston MDWCA",
+      "definition": "El Creston MDWCA"
     },
     {
       "categories": [
         "organization"
       ],
-      "term": "Bourbon Grill at El Gancho",
-      "definition": "Bourbon Grill at El Gancho"
+      "term": "El Guicu Ditch Association",
+      "definition": "El Guicu Ditch Association"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "El Paso Water",
+      "definition": "El Paso Water"
     },
     {
       "categories": [
@@ -3796,6 +3179,13 @@
       ],
       "term": "El Prado HOA",
       "definition": "El Prado HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "El Prado Municipal Water",
+      "definition": "El Prado Municipal Water"
     },
     {
       "categories": [
@@ -3815,8 +3205,36 @@
       "categories": [
         "organization"
       ],
+      "term": "El Rito MDWCA",
+      "definition": "El Rito MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "El Rito Regional Water and Waste Water Association",
+      "definition": "El Rito Regional Water + Waste Water Association"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Eldorado Area Water & Sanitation District",
+      "definition": "Eldorado Area Water & Sanitation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Encantado Enterprises",
       "definition": "Encantado Enterprises"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "EnecoTech",
+      "definition": "EnecoTech"
     },
     {
       "categories": [
@@ -3829,8 +3247,15 @@
       "categories": [
         "organization"
       ],
-      "term": "Sixteen Springs Fire Department",
-      "definition": "Sixteen Springs Fire Department"
+      "term": "Faith Engineering, Inc",
+      "definition": "Faith Engineering, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Farr Cattle Company",
+      "definition": "Farr Cattle Company (Farr Ranch)"
     },
     {
       "categories": [
@@ -3850,6 +3275,20 @@
       "categories": [
         "organization"
       ],
+      "term": "Forked Lightning Ranch",
+      "definition": "Forked Lightning Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Foster Well Service, Inc",
+      "definition": "Foster Well Service, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Friendly Construction, Inc",
       "definition": "Friendly Construction, Inc"
     },
@@ -3857,8 +3296,43 @@
       "categories": [
         "organization"
       ],
+      "term": "Glorieta Geoscience, Inc",
+      "definition": "Glorieta Geoscience, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Golder Associates, Inc",
+      "definition": "Golder Associates, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Hachita MDWCA",
+      "definition": "Hachita MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Hachita Mutual Domestic",
+      "definition": "Hachita Mutual Domestic"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Hacienda Del Cerezo",
       "definition": "Hacienda Del Cerezo"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Hathorn's Well Service, Inc",
+      "definition": "Hathorn's Well Service, Inc"
     },
     {
       "categories": [
@@ -3878,6 +3352,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Hillsboro MDWCA",
+      "definition": "Hillsboro Mutual Domestic Water Consumer Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Holloman Air Force Base",
       "definition": "Holloman Air Force Base"
     },
@@ -3892,8 +3373,29 @@
       "categories": [
         "organization"
       ],
-      "term": "Desert Village RV & Mobile Home Park",
-      "definition": "Desert Village RV & Mobile Home Park"
+      "term": "Hydroscience Associates, Inc",
+      "definition": "Hydroscience Associates, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "IC Tech, Inc",
+      "definition": "IC Tech, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "John Shomaker & Associates, Inc",
+      "definition": "John Shomaker & Associates, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Jornada Experimental Range (JER)",
+      "definition": "Jornada Experimental Range (JER)"
     },
     {
       "categories": [
@@ -3906,6 +3408,20 @@
       "categories": [
         "organization"
       ],
+      "term": "Kuckleman Pump Service",
+      "definition": "Kuckleman Pump Service"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "La Canada Way HOA",
+      "definition": "La Canada Way HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "La Cienega MDWCA",
       "definition": "La Cienega MDWCA"
     },
@@ -3913,8 +3429,29 @@
       "categories": [
         "organization"
       ],
+      "term": "La Joya CWDA",
+      "definition": "La Joya CWDA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "La Vista HOA",
       "definition": "La Vista HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Lake Roberts WUA",
+      "definition": "Lake Roberts Water Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Lamy MDWCA",
+      "definition": "Lamy Mutual Domestic Water Assn."
     },
     {
       "categories": [
@@ -3962,8 +3499,43 @@
       "categories": [
         "organization"
       ],
+      "term": "Los Golondrinas",
+      "definition": "Los Golondrinas"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Los Ojos Mutual Domestic",
+      "definition": "Los Ojos Mutual Domestic"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Los Prados HOA",
       "definition": "Los Prados HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Lower Rio Grande Public Water Works Authority",
+      "definition": "Lower Rio Grande Public Water Works Authority"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Lybrook MDWCA",
+      "definition": "Lybrook Municipal"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Madrid Water Co-op",
+      "definition": "Madrid Water Co-op"
     },
     {
       "categories": [
@@ -3978,6 +3550,13 @@
       ],
       "term": "Mangas Outfitters",
       "definition": "Mangas Outfitters"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "McSherry Farms",
+      "definition": "McSherry Farms"
     },
     {
       "categories": [
@@ -4004,15 +3583,15 @@
       "categories": [
         "organization"
       ],
-      "term": "NMDGF",
-      "definition": "New Mexico Department of Game and Fish"
+      "term": "Minton Engineers",
+      "definition": "Minton Engineers"
     },
     {
       "categories": [
         "organization"
       ],
-      "term": "NMSU College of Agriculture",
-      "definition": "New Mexico State University College of Agriculture"
+      "term": "MJDarrconsult, Inc",
+      "definition": "MJDarrconsult, Inc"
     },
     {
       "categories": [
@@ -4025,8 +3604,64 @@
       "categories": [
         "organization"
       ],
-      "term": "NRAO",
-      "definition": "National Radio Astronomy Observatory"
+      "term": "New Mexico Museum of Natural History",
+      "definition": "New Mexico Museum of Natural History"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NM Firefighters Training Academy",
+      "definition": "NM Firefighters Training Academy"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMBGMR",
+      "definition": "New Mexico Bureau of Geology and Mineral Resources"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMDGF",
+      "definition": "New Mexico Department of Game and Fish"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMDOT",
+      "definition": "New Mexico Department of Transportation"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMED",
+      "definition": "New Mexico Environment Department"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMISC",
+      "definition": "New Mexico Interstate Stream Commission"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMOSE",
+      "definition": "New Mexico Office of the State Engineer"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMRWA",
+      "definition": "New Mexico Rural Water Association"
     },
     {
       "categories": [
@@ -4039,8 +3674,50 @@
       "categories": [
         "organization"
       ],
+      "term": "NMSU",
+      "definition": "New Mexico State University"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMSU College of Agriculture",
+      "definition": "New Mexico State University College of Agriculture"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NMT",
+      "definition": "New Mexico Tech"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Nogal MDWCA",
       "definition": "Nogal MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Northeastern SWCD",
+      "definition": "Northeastern Soil and Water Conservation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NPS",
+      "definition": "National Park Service"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "NRAO",
+      "definition": "National Radio Astronomy Observatory"
     },
     {
       "categories": [
@@ -4053,13 +3730,6 @@
       "categories": [
         "organization"
       ],
-      "term": "OMI Wastewater Treatment Plant",
-      "definition": "OMI Wastewater Treatment Plant"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
       "term": "Old Road Ranch Pardners Ltd",
       "definition": "Old Road Ranch Pardners Ltd"
     },
@@ -4067,8 +3737,29 @@
       "categories": [
         "organization"
       ],
-      "term": "PNM Service Center",
-      "definition": "PNM Service Center"
+      "term": "OMI Wastewater Treatment Plant",
+      "definition": "OMI Wastewater Treatment Plant"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Otero SWCD",
+      "definition": "Otero Soil and Water Conservation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Otis MDWCA",
+      "definition": "Otis Mutual Domestic"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Our Lady of Guadalupe (OLG)",
+      "definition": "Our Lady of Guadalupe (OLG)"
     },
     {
       "categories": [
@@ -4095,8 +3786,78 @@
       "categories": [
         "organization"
       ],
+      "term": "Pena Blanca Water & Sanitation District",
+      "definition": "Pena Blanca Water & Sanitation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Pendaries Village",
+      "definition": "Pendaries Village"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Pie Town MDWCA",
+      "definition": "Pie Town MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Pinon Ridge WUA",
+      "definition": "Pinon Ridge Water Users Association"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Pistachio Tree Ranch",
       "definition": "Pistachio Tree Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Placitas Trails Water Co-op",
+      "definition": "Placitas Trails Water Coop"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "PLSS",
+      "definition": "Public Land Survey System"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "PNM Service Center",
+      "definition": "PNM Service Center"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Puerta del Canon Ranch",
+      "definition": "Puerta del Canon Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "PVACD",
+      "definition": "Pecos Valley Artesian Conservancy District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Quemado Municipal Water & SWA",
+      "definition": "Quemado Mutual Water and Sewage Works Association"
     },
     {
       "categories": [
@@ -4137,8 +3898,36 @@
       "categories": [
         "organization"
       ],
+      "term": "Reserve Municipality Water Works",
+      "definition": "Reserve Municipality Water Works"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Rio En Medio MDWCA",
       "definition": "Rio En Medio MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Riverbend Hotsprings",
+      "definition": "Riverbend Hotsprings"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Rodgers & Company, Inc",
+      "definition": "Rodgers & Company, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Roosevelt SWCD",
+      "definition": "Roosevelt Soil & Water Conservation District"
     },
     {
       "categories": [
@@ -4158,15 +3947,22 @@
       "categories": [
         "organization"
       ],
-      "term": "Sangre de Cristo Estates",
-      "definition": "Sangre de Cristo Estates"
+      "term": "San Marcos Association",
+      "definition": "San Marcos Association"
     },
     {
       "categories": [
         "organization"
       ],
-      "term": "Santa Fe Community College",
-      "definition": "Santa Fe Community College"
+      "term": "San Pedro Creek Estates HOA",
+      "definition": "San Pedro Creek Estates HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Sandia Well Service, Inc",
+      "definition": "Sandia Well Service, Inc"
     },
     {
       "categories": [
@@ -4179,8 +3975,64 @@
       "categories": [
         "organization"
       ],
+      "term": "Sangre de Cristo Estates",
+      "definition": "Sangre de Cristo Estates"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Ana Pueblo Department of Natural Resources",
+      "definition": "Santa Ana Pueblo Department of Natural Resources"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Clara Water System",
+      "definition": "Santa Clara Water System"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Fe Community College",
+      "definition": "Santa Fe Community College"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Fe Conservation Trust",
+      "definition": "Santa Fe Conservation Trust"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Fe Downs Resort",
+      "definition": "Santa Fe Downs Resort"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Santa Fe Horse Park",
       "definition": "Santa Fe Horse Park"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Fe Jewish Center",
+      "definition": "Santa Fe Jewish Center"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Santa Fe Municipal Airport",
+      "definition": "Santa Fe Municipal Airport"
     },
     {
       "categories": [
@@ -4195,6 +4047,41 @@
       ],
       "term": "Santa Fe Waldorf School",
       "definition": "Santa Fe Waldorf School"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SFC",
+      "definition": "Santa Fe County"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SFC, Fire Facilities",
+      "definition": "Santa Fe County, Fire Facilities"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SFC, Santa Fe Animal Shelter",
+      "definition": "Santa Fe County, Santa Fe Animal Shelter"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SFC, Utilities Dept.",
+      "definition": "Santa Fe County, Utilities Dept."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SFC, Valle Vista Water Utility, Inc.",
+      "definition": "Santa Fe County, Valle Vista Water Utility, Inc."
     },
     {
       "categories": [
@@ -4221,8 +4108,36 @@
       "categories": [
         "organization"
       ],
+      "term": "Sile MDWCA",
+      "definition": "Sile Municipal Domestic Water Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Sixteen Springs Fire Department",
+      "definition": "Sixteen Springs Fire Department"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Slash Triangle Ranch",
       "definition": "Slash Triangle Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Smith Ranch LLC",
+      "definition": "Smith Ranch LLC"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "SNL",
+      "definition": "Sandia National Laboratories"
     },
     {
       "categories": [
@@ -4256,6 +4171,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Statewide Drilling, Inc",
+      "definition": "Statewide Drilling, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Stephenson Ranch",
       "definition": "Stephenson Ranch"
     },
@@ -4270,6 +4192,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Sun Valley Water and Sanitation",
+      "definition": "Sun Valley Water and Sanitation"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Tano Rd LLC",
       "definition": "Tano Rd LLC"
     },
@@ -4277,8 +4206,15 @@
       "categories": [
         "organization"
       ],
-      "term": "UNM-Taos",
-      "definition": "UNM-Taos"
+      "term": "Taos SWCD",
+      "definition": "Taos Soil and Water Conservation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Tec Drilling Limited",
+      "definition": "Tec Drilling Limited"
     },
     {
       "categories": [
@@ -4305,8 +4241,29 @@
       "categories": [
         "organization"
       ],
+      "term": "Tetra Tech, Inc",
+      "definition": "Tetra Tech, Inc"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "The Great Cloud Zen Center",
       "definition": "The Great Cloud Zen Center"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "The Nature Conservancy (TNC)",
+      "definition": "The Nature Conservancy (TNC)"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Thompson Drilling, Inc",
+      "definition": "Thompson Drilling, Inc"
     },
     {
       "categories": [
@@ -4326,8 +4283,29 @@
       "categories": [
         "organization"
       ],
+      "term": "Town of Cerro",
+      "definition": "Town of Cerro"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Town of Estancia",
+      "definition": "Town of Estancia"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Town of Magdalena",
       "definition": "Town of Magdalena"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Town of Questa",
+      "definition": "Town of Questa"
     },
     {
       "categories": [
@@ -4368,8 +4346,50 @@
       "categories": [
         "organization"
       ],
+      "term": "TWDB",
+      "definition": "Texas Water Development Board"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Tyrone MDWCA",
+      "definition": "Tyrone Mutual Domestic Water Assn."
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Uluru Development",
+      "definition": "Uluru Development"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "UNM-Taos",
+      "definition": "UNM-Taos"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "URS",
+      "definition": "URS"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "US Bureau of Indian Affairs, Santa Fe Indian School",
       "definition": "US Bureau of Indian Affairs, Santa Fe Indian School"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "USFS",
+      "definition": "United States Forest Service"
     },
     {
       "categories": [
@@ -4396,8 +4416,29 @@
       "categories": [
         "organization"
       ],
+      "term": "USFS, Kiowa Grasslands",
+      "definition": "USFS, Kiowa Grasslands"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "USFS, Santa Fe NF, Espanola Ranger District",
       "definition": "USFS, Santa Fe NF, Espanola Ranger District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "USFWS",
+      "definition": "US Fish & Wildlife Service"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "USGS",
+      "definition": "US Geological Survey"
     },
     {
       "categories": [
@@ -4417,6 +4458,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Vallecitos HOA",
+      "definition": "Vallecitos HOA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Velte",
       "definition": "Velte"
     },
@@ -4426,6 +4474,13 @@
       ],
       "term": "Vereda Serena Property",
       "definition": "Vereda Serena Property"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Village of Capitan",
+      "definition": "Village of Capitan"
     },
     {
       "categories": [
@@ -4445,6 +4500,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Village of Hope",
+      "definition": "Village of Hope"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Village of Melrose",
       "definition": "Village of Melrose"
     },
@@ -4459,15 +4521,8 @@
       "categories": [
         "organization"
       ],
-      "term": "Vista Land Company",
-      "definition": "Vista Land Company"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Vista Redonda MDWCA",
-      "definition": "Vista Redonda MDWCA"
+      "term": "Village of Willard",
+      "definition": "Village of Willard"
     },
     {
       "categories": [
@@ -4480,8 +4535,71 @@
       "categories": [
         "organization"
       ],
+      "term": "Vista del Oro",
+      "definition": "Vista del Oro"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Vista Land Company",
+      "definition": "Vista Land Company"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Vista Linda Water Co-op",
+      "definition": "Vista Linda Water Co-op"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Vista Redonda MDWCA",
+      "definition": "Vista Redonda MDWCA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "W Spear-bar Ranch",
+      "definition": "W Spear-bar Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Walker Ranch",
       "definition": "Walker Ranch"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Wehinahpay Mountain Camp",
+      "definition": "Wehinahpay Mountain Camp"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "West Rim MDWUA",
+      "definition": "West Rim MDWUA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "White Cliffs MDWUA",
+      "definition": "White Cliffs MDWUA"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "White Oaks Pottery",
+      "definition": "White Oaks Pottery"
     },
     {
       "categories": [
@@ -4501,6 +4619,20 @@
       "categories": [
         "organization"
       ],
+      "term": "Witcher & Associates",
+      "definition": "Witcher & Associates"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "WSP",
+      "definition": "WSP"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Yates Petroleum Corporation",
       "definition": "Yates Petroleum Corporation"
     },
@@ -4515,113 +4647,8 @@
       "categories": [
         "organization"
       ],
-      "term": "Agua Sana MWCD",
-      "definition": "Agua Sana MWCD"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Canada Los Alamos MDWCA",
-      "definition": "Canada Los Alamos MDWCA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Canjilon Mutual Domestic Water System",
-      "definition": "Canjilon Mutual Domestic Water System"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Cebolla Mutual Domestic",
-      "definition": "Cebolla Mutual Domestic"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Chihuahuan Desert Rangeland Research Center (CDRRC)",
-      "definition": "Chihuahuan Desert Rangeland Research Center (CDRRC)"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "East Rio Arriba SWCD",
-      "definition": "East Rio Arriba SWCD"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "El Prado Municipal Water",
-      "definition": "El Prado Municipal Water"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Hachita Mutual Domestic",
-      "definition": "Hachita Mutual Domestic"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Jornada Experimental Range (JER)",
-      "definition": "Jornada Experimental Range (JER)"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "La Canada Way HOA",
-      "definition": "La Canada Way HOA"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Los Ojos Mutual Domestic",
-      "definition": "Los Ojos Mutual Domestic"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "The Nature Conservancy (TNC)",
-      "definition": "The Nature Conservancy (TNC)"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Smith Ranch LLC",
-      "definition": "Smith Ranch LLC"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Santa Ana Pueblo Department of Natural Resources",
-      "definition": "Santa Ana Pueblo Department of Natural Resources"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Village of Hope",
-      "definition": "Village of Hope"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "WSP",
-      "definition": "WSP"
+      "term": "Zeigler Geologic Consulting, LLC",
+      "definition": "Zeigler Geologic Consulting, LLC"
     },
     {
       "categories": [
@@ -4629,20 +4656,6 @@
       ],
       "term": "Zia Pueblo",
       "definition": "Zia Pueblo"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "Our Lady of Guadalupe (OLG)",
-      "definition": "Our Lady of Guadalupe (OLG)"
-    },
-    {
-      "categories": [
-        "organization"
-      ],
-      "term": "PLSS",
-      "definition": "Public Land Survey System"
     },
     {
       "categories": [
@@ -8488,6 +8501,13 @@
       ],
       "term": "Data not field checked, but considered reliable",
       "definition": "Data were not field checked but are considered reliable"
+    },
+    {
+      "categories": [
+        "data_maturity"
+      ],
+      "term": "in review",
+      "definition": "Under review and not yet approved. Intermediate state from the USGS Aquarius approval levels used for continuous records."
     }
   ]
 }

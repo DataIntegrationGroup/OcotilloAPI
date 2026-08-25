@@ -20,14 +20,17 @@ This is explicitly engineer-triggered: it runs once per invocation and does no
 polling or scheduling. New/changed ``.xlsx`` files under
 ``CHEMISTRY_DRIVE_FOLDER_ID`` are downloaded and handed to
 :func:`services.chemistry_lims.bulk_upload_chemistry`. A manifest of
-already-ingested files is kept as a JSON object in the GCS bucket
-(``CHEMISTRY_INGEST_MANIFEST_PATH``, default ``chemistry-ingest/manifest.json``)
-so re-runs only process files that are new or whose contents changed.
+already-ingested files is kept as a JSON object in the GCS bucket. By default
+the manifest path is scoped per target database (``chemistry-ingest/manifest.
+<postgres_db>.json``) so pointing ``.env`` at a different database -- local
+copy, staging, production -- never skips a file on the strength of an ingest
+into a different database.
 
 Configuration (environment variables):
 * ``CHEMISTRY_DRIVE_FOLDER_ID`` - Drive folder id to scan (shared-drive or
   My-Drive folder shared with the service account).
 * ``CHEMISTRY_INGEST_MANIFEST_PATH`` - GCS object key for the manifest.
+  Overrides the per-database default below.
 * ``GCS_BUCKET_NAME`` - bucket that holds the manifest (shared with gcs_helper).
 
 Authentication mirrors ``services.gcs_helper``: in production the base64
@@ -43,6 +46,7 @@ import io
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -56,7 +60,11 @@ logger = logging.getLogger(__name__)
 
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-DEFAULT_MANIFEST_PATH = "chemistry-ingest/manifest.json"
+MANIFEST_PREFIX = "chemistry-ingest/"
+# Recovers the database name from a per-database manifest object key. Only the
+# generated names match, so an explicit CHEMISTRY_INGEST_MANIFEST_PATH override
+# is left out of the cross-database view rather than reported under a guess.
+MANIFEST_NAME_RE = re.compile(r"^manifest\.(?P<db>[a-z0-9-]+)\.json$")
 
 
 class ChemistryDriveConfigError(Exception):
@@ -167,8 +175,23 @@ def download_drive_file(file_id: str, service=None) -> bytes:
 # --- manifest (GCS JSON object) ------------------------------------------------
 
 
+def _manifest_db_suffix() -> str:
+    """Slug the target database name for use in a manifest path.
+
+    Scoping by ``POSTGRES_DB`` (rather than a separate "which environment am
+    I" variable) means the manifest can never disagree with the database
+    ``.env`` is actually pointed at -- there is nothing to keep in sync.
+    """
+    db_name = os.environ.get("POSTGRES_DB", "").strip().lower()
+    slug = re.sub(r"[^a-z0-9-]+", "-", db_name).strip("-")
+    return slug or "unknown"
+
+
 def _manifest_path() -> str:
-    return os.environ.get("CHEMISTRY_INGEST_MANIFEST_PATH", DEFAULT_MANIFEST_PATH)
+    override = os.environ.get("CHEMISTRY_INGEST_MANIFEST_PATH")
+    if override:
+        return override
+    return f"{MANIFEST_PREFIX}manifest.{_manifest_db_suffix()}.json"
 
 
 def _manifest_bucket():
@@ -204,6 +227,61 @@ def save_manifest(manifest: dict[str, dict], bucket=None) -> None:
         json.dumps(manifest, indent=2, sort_keys=True),
         content_type="application/json",
     )
+
+
+def manifest_databases(bucket=None) -> list[str]:
+    """Database names that have a manifest object, sorted by name."""
+    bucket = bucket or _manifest_bucket()
+    names = []
+    for blob in bucket.list_blobs(prefix=MANIFEST_PREFIX):
+        match = MANIFEST_NAME_RE.match(blob.name[len(MANIFEST_PREFIX) :])
+        if match:
+            names.append(match.group("db"))
+    return sorted(names)
+
+
+@dataclass
+class ManifestOverview:
+    """A read-only cross-database view of the per-database manifests."""
+
+    # Databases whose manifest parsed. Unreadable ones are reported separately
+    # so a corrupt manifest is never rendered as "this file is not ingested
+    # there", which is a different and much more alarming claim.
+    databases: list[str] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)
+    files: dict[str, dict] = field(default_factory=dict)
+
+
+def manifest_overview(bucket=None) -> ManifestOverview:
+    """Merge every per-database manifest into one read-only cross-db view.
+
+    ``files`` maps ``file_id -> {"name": str, "databases": {db: entry}}``. This
+    only reads, and is derived from the per-database manifests rather than
+    replacing them: the authoritative skip decision stays scoped to a single
+    database so concurrent runs cannot clobber each other's bookkeeping.
+    """
+    bucket = bucket or _manifest_bucket()
+    overview = ManifestOverview()
+    for db in manifest_databases(bucket):
+        blob = bucket.blob(f"{MANIFEST_PREFIX}manifest.{db}.json")
+        if not blob.exists():
+            continue
+        try:
+            manifest = json.loads(blob.download_as_text())
+        except (ValueError, json.JSONDecodeError):
+            logger.warning("Chemistry ingest manifest for %s is corrupt; skipping.", db)
+            overview.unreadable.append(db)
+            continue
+        overview.databases.append(db)
+        for file_id, entry in manifest.items():
+            record = overview.files.setdefault(
+                file_id, {"name": entry.get("name", file_id), "databases": {}}
+            )
+            # Later manifests may carry a renamed file; keep a name over a bare id.
+            if entry.get("name"):
+                record["name"] = entry["name"]
+            record["databases"][db] = entry
+    return overview
 
 
 # --- orchestration -------------------------------------------------------------

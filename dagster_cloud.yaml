@@ -1,0 +1,16 @@
+# Dagster+ code locations for this repository.
+#
+# The API and the ingestion pipeline share a repo but not a runtime: this file
+# describes only what Dagster+ builds and runs. `module_name` mirrors
+# `[tool.dagster]` in pyproject.toml, so `dagster dev` locally and the Dagster+
+# agent load the same entry point.
+#
+# `directory` is the repository root rather than `automated_ingestion/` because
+# the loader imports `db/` models and `domain/` rules -- the package is not
+# self-contained by design (see docs/automated-ingestion-pipeline-plan.md).
+locations:
+  - location_name: ocotillo-automated-ingestion
+    code_source:
+      module_name: automated_ingestion.defs.definitions
+    build:
+      directory: ./

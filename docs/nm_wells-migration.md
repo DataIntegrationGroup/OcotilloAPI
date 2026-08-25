@@ -1,5 +1,10 @@
 # NM_Wells → Ocotillo migration
 
+> **Deprecated.** The Phase-1 loader described here is frozen and Phase 2 is not
+> being pursued through this path; see [transfers/README.md](../transfers/README.md).
+> Retained as the design record for the `NMW_*` mirror tables, which live API
+> routes still read.
+
 Migration of the legacy **NM_Wells** SQL Server database (and the related
 Subsurface Library) into OcotilloAPI. Source of truth for table inventory and
 field-level recommendations: `NM_Wells + Subsurface library.xlsx` (planning

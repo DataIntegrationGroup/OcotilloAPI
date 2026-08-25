@@ -54,18 +54,55 @@ def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
     )
 
 
+# Lexicon categories the seed below draws terms from. Every one of them has to
+# have at least one term or the seed cannot build a coherent row.
+REQUIRED_LEXICON_CATEGORIES = (
+    "organization",
+    "relation",
+    "analysis_method_type",
+    "sample_method",
+    "activity_type",
+    "sensor_type",
+    "email_type",
+    "phone_type",
+    "address_type",
+    "well_purpose",
+    "casing_material",
+    "monitoring_frequency",
+    "note_type",
+    "participant_role",
+)
+
+
 def ensure_seed_prereqs() -> None:
-    """Ensure that lexicon and parameter data exist before seeding."""
+    """Load the reference lexicon and parameters that the seed data depends on.
+
+    Both initializers leave existing rows alone, so this runs unconditionally.
+    It used to skip them whenever the tables held any rows at all, which broke
+    once migrations started inserting lexicon terms of their own: on a fresh
+    database those few rows made the real lexicon look already-loaded, and the
+    seed then failed on empty categories.
+    """
     from core.initializers import init_lexicon, init_parameter
 
-    with session_ctx() as s:
-        has_lexicon = s.scalar(select(LexiconTerm.id).limit(1)) is not None
-        has_parameter = s.scalar(select(Parameter.id).limit(1)) is not None
+    init_lexicon()
+    init_parameter()
 
-    if not has_lexicon:
-        init_lexicon()
-    if not has_parameter:
-        init_parameter()
+
+def assert_lexicon_ready() -> None:
+    """Fail with the empty categories named, rather than deep inside the seed."""
+    with session_ctx() as s:
+        empty = [
+            category
+            for category in REQUIRED_LEXICON_CATEGORIES
+            if not get_terms_by_category(s, category)
+        ]
+
+    if empty:
+        raise RuntimeError(
+            "Reference lexicon is incomplete; no terms for "
+            f"{', '.join(empty)}. Seeding cannot continue."
+        )
 
 
 def contact_data_exists() -> bool:
@@ -79,6 +116,7 @@ def seed_all(n: int = 5, skip_if_exists: bool = False):
         print("Contact data exists; skipping seeding.")
         return
     ensure_seed_prereqs()
+    assert_lexicon_ready()
     new_mexico_bounds = [
         (36.9, -106.6),  # Taos area
         (35.1, -106.6),  # Albuquerque

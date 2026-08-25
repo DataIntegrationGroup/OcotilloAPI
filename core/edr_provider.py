@@ -46,6 +46,8 @@ from pygeoapi.provider.base import (
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
 
+from core.ogc_field_metadata import describe_fields, table_entries
+
 LOGGER = logging.getLogger(__name__)
 
 GEOGRAPHIC_CRS = {
@@ -95,6 +97,12 @@ class WaterEDRProvider(BaseEDRProvider):
         self._fields = {}
         self.get_fields()
 
+        # Station metadata carried by some backing views but not others: the
+        # chemistry views (d9e0f1a2b3c4) span wells and springs and expose
+        # thing_type so a consumer can tell them apart. Detected rather than
+        # assumed, so a view without the column keeps working unchanged.
+        self._has_thing_type = self._has_column("thing_type")
+
     # ------------------------------------------------------------------ db
     def _connect(self):
         try:
@@ -117,11 +125,37 @@ class WaterEDRProvider(BaseEDRProvider):
             if conn is not None:
                 conn.close()
 
+    def _has_column(self, column):
+        """Whether the backing relation exposes ``column``.
+
+        Reads pg_attribute rather than information_schema.columns: the
+        chemistry collections are backed by materialized views, which
+        information_schema does not list at all.
+        """
+        try:
+            rows = self._fetch(
+                "SELECT 1 FROM pg_attribute "
+                "WHERE attrelid = to_regclass(%s) AND attname = %s "
+                "AND attnum > 0 AND NOT attisdropped LIMIT 1",
+                [self.table, column],
+            )
+        except ProviderConnectionError:
+            # View may not exist yet (e.g. OpenAPI generation before migrate).
+            return False
+        return bool(rows)
+
     # -------------------------------------------------------------- fields
     def get_fields(self):
-        """Return the parameter-name fields present in the backing view."""
+        """Return the parameter-name fields present in the backing view.
+
+        Each call hands back fresh per-field dicts. pygeoapi's
+        get_collection_schema mutates what a provider returns in place --
+        popping ``format``, assigning ``x-ogc-role`` -- so returning the
+        cached dicts themselves would let one request's edits accumulate on
+        the next one's response.
+        """
         if self._fields:
-            return self._fields
+            return {name: dict(field) for name, field in self._fields.items()}
         try:
             rows = self._fetch(
                 f"SELECT DISTINCT parameter_name, unit "  # noqa: S608 (trusted table)
@@ -136,15 +170,29 @@ class WaterEDRProvider(BaseEDRProvider):
                 "title": row["parameter_name"],
                 "x-ogc-unit": row["unit"],
             }
-        return self._fields
+        # Same prose source as the feature collections, keyed by parameter
+        # name rather than column name. Parameter names are read out of the
+        # data, so an undocumented analyte keeps its generated title.
+        self._fields = describe_fields(self.table, self._fields)
+        return {name: dict(field) for name, field in self._fields.items()}
 
     @property
     def fields(self):
         return self.get_fields()
 
     # ----------------------------------------------------------- instances
-    def get_instances(self):
-        """List transducer-deployment instance identifiers."""
+    def instances(self):
+        """List transducer-deployment instance identifiers.
+
+        Named for pygeoapi's EDR contract, not ours: ``get_collection_edr_
+        instances`` calls ``p.instances()`` and ``p.instance(id)``, and
+        ``BaseEDRProvider`` *returns* (rather than raises) a
+        ``NotImplementedError`` instance from both. A provider that spells
+        these ``get_instances``/``get_instance`` therefore does not override
+        anything -- /instances iterates the NotImplementedError object and
+        500s, and /instances/{id}/... validates against a truthy object, so
+        any id at all is accepted.
+        """
         if not self.instance_field:
             return []
         rows = self._fetch(
@@ -154,9 +202,9 @@ class WaterEDRProvider(BaseEDRProvider):
         )
         return [str(row["iid"]) for row in rows]
 
-    def get_instance(self, instance):
+    def instance(self, instance):
         """Validate an instance identifier."""
-        return instance in set(self.get_instances())
+        return str(instance) in set(self.instances())
 
     # ------------------------------------------------------------ queries
     def locations(
@@ -192,8 +240,11 @@ class WaterEDRProvider(BaseEDRProvider):
             bbox=bbox,
         )
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        columns = "thing_id, station_name, longitude, latitude"
+        if self._has_thing_type:
+            columns += ", thing_type"
         rows = self._fetch(
-            f"SELECT DISTINCT thing_id, station_name, longitude, latitude "  # noqa: S608
+            f"SELECT DISTINCT {columns} "  # noqa: S608 (trusted table/columns)
             f"FROM {self.table}{where} ORDER BY thing_id",
             params,
         )
@@ -207,11 +258,17 @@ class WaterEDRProvider(BaseEDRProvider):
                         "type": "Point",
                         "coordinates": [row["longitude"], row["latitude"]],
                     },
-                    "properties": {"name": row["station_name"]},
+                    "properties": self._station_properties(row),
                 }
                 for row in rows
             ],
         }
+
+    def _station_properties(self, row):
+        properties = {"name": row["station_name"]}
+        if self._has_thing_type:
+            properties["thing_type"] = row["thing_type"]
+        return properties
 
     def area(
         self, wkt=None, select_properties=None, datetime_=None, instance=None, **kwargs
@@ -310,6 +367,10 @@ class WaterEDRProvider(BaseEDRProvider):
         )
 
     # ------------------------------------------------------- coveragejson
+    def _parameter_documentation(self, parameter_name):
+        """Documented title/description for one EDR parameter, or ``{}``."""
+        return table_entries(self.table).get(parameter_name, {})
+
     def _coverage_collection(self, rows):
         if not rows:
             raise ProviderNoDataError("No data found")
@@ -321,10 +382,17 @@ class WaterEDRProvider(BaseEDRProvider):
             stations.setdefault(row["thing_id"], []).append(row)
             name = row["parameter_name"]
             if name not in parameters:
+                # A CoverageJSON client reads observedProperty.label for the
+                # display name and description for the explanation; both were
+                # the raw parameter name before the field metadata existed.
+                entry = self._parameter_documentation(name)
                 parameters[name] = {
                     "type": "Parameter",
-                    "description": {"en": name},
-                    "observedProperty": {"id": name, "label": {"en": name}},
+                    "description": {"en": entry.get("description", name)},
+                    "observedProperty": {
+                        "id": name,
+                        "label": {"en": entry.get("title", name)},
+                    },
                     "unit": {"symbol": row["unit"], "label": {"en": row["unit"]}},
                 }
 

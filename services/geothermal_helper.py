@@ -27,7 +27,7 @@ this helper is what makes that swap a one-file change.
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from db.nmw_legacy import NMW_WellHeaders, NMW_WellLocations
 from schemas.geothermal import GeothermalWellResponse
@@ -67,9 +67,40 @@ def _to_response(header: NMW_WellHeaders, location: NMW_WellLocations | None):
     )
 
 
+# Columns a free-text term is matched against. Everything a person might use
+# to refer to a well: what it is called, how it is identified, and who ran it.
+_SEARCH_COLUMNS = (
+    NMW_WellHeaders.cur_well_nam,
+    NMW_WellHeaders.api,
+    NMW_WellHeaders.cur_well_num,
+    NMW_WellHeaders.cur_operatr,
+    NMW_WellLocations.county,
+)
+
+
+def _search_clauses(q: str):
+    """One clause per whitespace-separated word, each matching any column.
+
+    Words are ANDed so that adding a word narrows the result — "jemez 1"
+    returns a subset of "jemez" rather than everything matching either. ILIKE
+    wildcards in the term are escaped so a stray % does not silently widen the
+    search to everything.
+    """
+    clauses = []
+    for word in q.split():
+        pattern = "%{}%".format(
+            word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        clauses.append(
+            or_(*[column.ilike(pattern, escape="\\") for column in _SEARCH_COLUMNS])
+        )
+    return clauses
+
+
 def get_geothermal_wells_query(
     county: str | None = None,
     name_contains: str | None = None,
+    q: str | None = None,
 ):
     """Build the list query; returned as a SQLAlchemy select for pagination."""
     sql = _base_query()
@@ -77,6 +108,9 @@ def get_geothermal_wells_query(
         sql = sql.where(NMW_WellLocations.county == county)
     if name_contains:
         sql = sql.where(NMW_WellHeaders.cur_well_nam.ilike(f"%{name_contains}%"))
+    if q and q.strip():
+        for clause in _search_clauses(q.strip()):
+            sql = sql.where(clause)
     return sql.order_by(NMW_WellHeaders.cur_well_nam)
 
 

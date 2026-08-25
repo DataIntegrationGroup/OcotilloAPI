@@ -14,12 +14,14 @@
 # limitations under the License.
 # ===============================================================================
 """Step definitions for A1 (public release_status filter on ogc_* views),
-A2 (OGC server metadata placeholders) and A11 (authenticated internal OGC
-mount at /ogcapi-internal).
+A2 (OGC server metadata placeholders), A11 (authenticated internal OGC
+mount at /ogcapi-internal) and A13 (last_observation_date on the Group A
+view template).
 
-Only the @A1-, @A2- and @A11-tagged scenarios in ogc-cleanup-sprint1.feature
-are implemented here. The other ~8 tickets sharing that feature file have no
-steps yet and stay undefined/dormant, per those tickets' plans.
+Only the @A1-, @A2-, @A11- and @A13-tagged scenarios in
+ogc-cleanup-sprint1.feature are implemented here. The other tickets sharing
+that feature file have no steps yet and stay undefined/dormant, per those
+tickets' plans.
 """
 
 import importlib
@@ -62,7 +64,7 @@ from db import (
 )
 from db.engine import session_ctx
 from tests import get_parameter_id
-from tests.features.environment import _alembic_config
+from tests.features.environment import _alembic_config, reset_pygeoapi_reflection
 
 # Revision immediately before this ticket's schema migration -- re-verify
 # with `alembic heads`/`alembic history` if this file is revisited later,
@@ -649,6 +651,7 @@ def _seed_already_consistent_layers(session):
 @given("the following layers were already filtering correctly before the migration:")
 def step_given_already_consistent_layers(context):
     command.downgrade(_alembic_config(), PRE_A1_REVISION)
+    reset_pygeoapi_reflection()
     with session_ctx() as session:
         _seed_already_consistent_layers(session)
         session.commit()
@@ -664,6 +667,7 @@ def step_given_already_consistent_layers(context):
 @when("the Sprint 1 migration is applied")
 def step_when_sprint1_migration_is_applied(context):
     command.upgrade(_alembic_config(), "head")
+    reset_pygeoapi_reflection()
 
 
 @then("each of those layers returns the same feature count as before the migration")
@@ -858,6 +862,78 @@ def step_then_no_collection_id_prefixed(context, prefix):
 
 
 # ---------------------------------------------------------------------------
+# A16/A17/A18 -- Layers hidden from the public catalog, backing relations kept
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "avg_tds_wells and latest_depth_to_water_wells have been removed from the "
+    "service catalog"
+)
+@given("the locations entry has been removed from the service configuration")
+@given("the other_things view has at least one reference in the application codebase")
+def step_given_layer_hidden_from_public_catalog(context):
+    # No-op marker: the catalog is core/pygeoapi-config.yml and
+    # core.pygeoapi.THING_COLLECTIONS, both artifacts under test rather than
+    # runtime state to arrange. Same treatment as the A1/A2/A11 givens.
+    pass
+
+
+@then("the response does not include a collection with id {collection_id}")
+def step_then_response_excludes_collection_id(context, collection_id):
+    payload = context.response.json()
+    ids = {collection["id"] for collection in payload["collections"]}
+    assert collection_id not in ids, (
+        f"{collection_id} is still published on the public catalog; "
+        f"collections: {sorted(ids)}"
+    )
+
+
+@then("the materialized view for {layer_id} exists in the database schema")
+def step_then_matview_for_layer_exists(context, layer_id):
+    relation = f"ogc_{layer_id}"
+    assert relation in context.schema_relations, (
+        f"{relation} is missing -- A16 hides the layer from the catalog but "
+        "keeps its materialized view for internal use"
+    )
+
+
+@then("the locations table still exists")
+def step_then_locations_table_still_exists(context):
+    # context.schema_relations covers views and materialized views only, so
+    # the base table needs its own lookup.
+    with session_ctx() as session:
+        relkind = session.execute(
+            text(
+                "SELECT c.relkind FROM pg_class c "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'public' AND c.relname = 'location'"
+            )
+        ).scalar_one_or_none()
+    assert relkind == "r", (
+        "the location table is missing -- A17 hides the layer from the "
+        f"catalog but keeps the underlying table (relkind={relkind!r})"
+    )
+
+
+def _assert_other_things_view_exists(context, relation):
+    assert relation in context.schema_relations, (
+        f"{relation} is missing -- A18 hides other_things from the public "
+        "catalog but /ogcapi-internal still serves the layer"
+    )
+
+
+@then("the other_things backing view still exists in the database schema")
+def step_then_other_things_view_still_exists(context):
+    _assert_other_things_view_exists(context, "ogc_other_things")
+
+
+@then("the internal other_things backing view still exists in the database schema")
+def step_then_internal_other_things_view_still_exists(context):
+    _assert_other_things_view_exists(context, "ogc_internal_other_things")
+
+
+# ---------------------------------------------------------------------------
 # A2 -- Replace OGC server metadata placeholders in pygeoapi-config.yml
 # ---------------------------------------------------------------------------
 
@@ -949,6 +1025,222 @@ def step_then_terms_of_service_resolves(context):
     assert (
         "New Mexico Bureau of Geology and Mineral Resources" in response.text
     ), f"{terms_url!r} resolved but does not look like the disclaimer page"
+
+
+# ---------------------------------------------------------------------------
+# A13 -- last_observation_date on the Group A view template
+# ---------------------------------------------------------------------------
+
+# Every Group A layer the A13 scenarios name, plus water_wells, which is not in
+# SIMPLE_THING_TYPE_LAYERS because the A1 scenarios seed it with a full
+# observation/chemistry chain rather than a bare Location + Thing.
+A13_LAYER_THING_TYPES = {"water_wells": "water well", **dict(SIMPLE_THING_TYPE_LAYERS)}
+
+# Dates the filter scenario splits on: one comfortably before its 2021-01-01
+# cutoff, one comfortably after.
+A13_STALE_DATE = "2019-06-01"
+A13_RECENT_DATE = "2023-06-01"
+
+
+def _seed_thing_with_observation(session, thing_type, name, observation_date=None):
+    """A public thing of `thing_type`, optionally with one public observation.
+
+    `observation_date` is a plain YYYY-MM-DD string; it is stored at midday UTC
+    so the view's UTC-date cast cannot land on the neighbouring day.
+    """
+    thing = _seed_thing_with_location(session, thing_type, "public", name)
+    if observation_date is None:
+        return thing
+
+    field_event = FieldEvent(
+        thing_id=thing.id,
+        event_date=f"{observation_date}T12:00:00Z",
+        notes="A13 behave seed field event",
+        release_status="public",
+    )
+    session.add(field_event)
+    session.commit()
+
+    field_activity = FieldActivity(
+        field_event_id=field_event.id,
+        activity_type="groundwater level",
+        notes="A13 behave seed field activity",
+        release_status="public",
+    )
+    session.add(field_activity)
+    session.commit()
+
+    sample = Sample(
+        field_activity_id=field_activity.id,
+        sample_date=f"{observation_date}T12:00:00Z",
+        sample_name=f"A13 sample {thing.id}",
+        sample_matrix="water",
+        sample_method="Steel-tape measurement",
+        qc_type="Normal",
+        notes="A13 behave seed sample",
+        release_status="public",
+    )
+    session.add(sample)
+    session.commit()
+
+    observation = Observation(
+        observation_datetime=f"{observation_date}T12:00:00Z",
+        sample_id=sample.id,
+        parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+        release_status="public",
+        value=12.0,
+        unit="ft",
+        measuring_point_height=1.0,
+        groundwater_level_reason="Water level not affected",
+    )
+    session.add(observation)
+    session.commit()
+
+    return thing
+
+
+def _get_item(context, layer_id, feature_id):
+    response = context.client.get(f"/ogcapi/collections/{layer_id}/items/{feature_id}")
+    assert response.status_code == 200, (
+        f"Unexpected status {response.status_code} for {layer_id}/{feature_id}: "
+        f"{response.text}"
+    )
+    return response.json()
+
+
+@when("a client requests items from each of the following layers:")
+def step_when_client_requests_items_from_layers(context):
+    context.layer_responses = {}
+    for row in context.table:
+        layer_id = row["layer-id"].strip()
+        context.layer_responses[layer_id] = _get_items(context, layer_id)
+
+
+@then("each feature includes a last_observation_date property")
+def step_then_each_feature_includes_last_observation_date(context):
+    for layer_id, payload in context.layer_responses.items():
+        # Several Group A thing types carry no seeded rows in the behave
+        # database, and an empty feature list would let a missing column pass
+        # unnoticed -- so the layer's own queryables are checked as well.
+        queryables = context.client.get(f"/ogcapi/collections/{layer_id}/queryables")
+        assert queryables.status_code == 200, (
+            f"queryables for {layer_id} returned {queryables.status_code}: "
+            f"{queryables.text}"
+        )
+        advertised = queryables.json().get("properties", {})
+        assert "last_observation_date" in advertised, (
+            f"{layer_id} does not advertise last_observation_date: "
+            f"{sorted(advertised)}"
+        )
+
+        for feature in payload["features"]:
+            assert "last_observation_date" in feature["properties"], (
+                f"{layer_id} feature {feature.get('id')} has no "
+                f"last_observation_date property: {sorted(feature['properties'])}"
+            )
+
+
+@given(
+    "monitoring locations with no linked observations exist in each of the following layers:"
+)
+def step_given_things_without_observations(context):
+    context.a13_unobserved_ids = {}
+    with session_ctx() as session:
+        for row in context.table:
+            layer_id = row["layer-id"].strip()
+            thing_type = A13_LAYER_THING_TYPES[layer_id]
+            thing = _seed_thing_with_observation(
+                session, thing_type, f"A13 unobserved {layer_id}"
+            )
+            context.a13_unobserved_ids[layer_id] = thing.id
+
+
+@when("a client requests those features")
+def step_when_client_requests_those_features(context):
+    context.a13_unobserved_features = {
+        layer_id: _get_item(context, layer_id, feature_id)
+        for layer_id, feature_id in context.a13_unobserved_ids.items()
+    }
+
+
+@then("each feature's last_observation_date property is null")
+def step_then_last_observation_date_is_null(context):
+    for layer_id, feature in context.a13_unobserved_features.items():
+        value = feature["properties"]["last_observation_date"]
+        assert value is None, (
+            f"{layer_id} feature {feature.get('id')} has last_observation_date "
+            f"{value!r}; a thing with no observations must read null"
+        )
+
+
+@given(
+    "each of the following Group A layers has features with last_observation_date "
+    'values "{stale_date}" and "{recent_date}":'
+)
+def step_given_layers_with_stale_and_recent_observations(
+    context, stale_date, recent_date
+):
+    context.a13_stale_ids = {}
+    context.a13_recent_ids = {}
+    with session_ctx() as session:
+        for row in context.table:
+            layer_id = row["layer-id"].strip()
+            thing_type = A13_LAYER_THING_TYPES[layer_id]
+            stale = _seed_thing_with_observation(
+                session, thing_type, f"A13 stale {layer_id}", stale_date
+            )
+            recent = _seed_thing_with_observation(
+                session, thing_type, f"A13 recent {layer_id}", recent_date
+            )
+            context.a13_stale_ids[layer_id] = stale.id
+            context.a13_recent_ids[layer_id] = recent.id
+
+
+@when("a client requests items from each of those layers with filter")
+def step_when_client_requests_layers_with_filter(context):
+    cql = context.text.strip()
+    context.layer_responses = {}
+    for layer_id in context.a13_recent_ids:
+        response = context.client.get(
+            f"/ogcapi/collections/{layer_id}/items",
+            params={"filter": cql, "filter-lang": "cql2-text", "limit": 200},
+        )
+        assert response.status_code == 200, (
+            f"Filtered request on {layer_id} returned {response.status_code}: "
+            f"{response.text}"
+        )
+        context.layer_responses[layer_id] = response.json()
+
+
+@then(
+    'only features with a last_observation_date of "{recent_date}" are returned '
+    "from each layer"
+)
+def step_then_only_recent_features_returned(context, recent_date):
+    cutoff = date.fromisoformat("2021-01-01")
+    for layer_id, payload in context.layer_responses.items():
+        returned_ids = _layer_feature_ids(payload)
+        recent_id = context.a13_recent_ids[layer_id]
+        stale_id = context.a13_stale_ids[layer_id]
+
+        assert (
+            recent_id in returned_ids
+        ), f"{layer_id} dropped its {recent_date} feature (id={recent_id})"
+        assert stale_id not in returned_ids, (
+            f"{layer_id} returned its {A13_STALE_DATE} feature (id={stale_id}) "
+            "through a filter that excludes it"
+        )
+
+        for feature in payload["features"]:
+            value = feature["properties"]["last_observation_date"]
+            assert value is not None, (
+                f"{layer_id} feature {feature.get('id')} passed the filter with "
+                "a null last_observation_date"
+            )
+            assert date.fromisoformat(value[:10]) > cutoff, (
+                f"{layer_id} feature {feature.get('id')} has last_observation_date "
+                f"{value!r}, which the filter should have excluded"
+            )
 
 
 # ============= EOF =============================================

@@ -38,7 +38,7 @@ from db.engine import engine, session_ctx
 from transfers.nmw_mirror_transfer import NMW_MIRROR_SPECS
 from transfers.nmw_sql_dump import _parse_value, iter_table_rows
 
-ROOT = os.path.dirname(os.path.dirname(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # DB relations created by the OGC-view migrations (d1e2f3a4b5c6, e2f3a4b5c6d7).
 OGC_VIEWS = [

@@ -45,7 +45,15 @@ def init_parameter(path: str = None) -> None:
         default_parameter = json.load(f)
 
     with session_ctx() as session:
+        # A parameter is identified by name and matrix, so skip the ones already
+        # stored instead of letting every re-run trip the unique constraint.
+        existing = set(
+            session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+        )
+
         for param in default_parameter:
+            if (param["parameter_name"], param["matrix"]) in existing:
+                continue
             try:
                 parameter_obj = Parameter(
                     parameter_name=param["parameter_name"],
@@ -217,12 +225,16 @@ def register_api_routes(app):
     from api.feedback import router as feedback_router
     from api.disclaimer import router as disclaimer_router
     from api.geothermal import router as geothermal_router
+    from api.chemisty import router as chemistry_router
+    from api.gis_artifacts import router as gis_artifacts_router
 
     app.include_router(asset_router)
+    app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
     app.include_router(disclaimer_router)
     app.include_router(geospatial_router)
+    app.include_router(gis_artifacts_router)
     app.include_router(group_router)
     app.include_router(lexicon_router)
     app.include_router(location_router)

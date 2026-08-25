@@ -136,6 +136,14 @@ class LocationGeoJSONResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def populate_fields(cls, data: Any) -> Any:
+        # A thing can have no current location -- it is associated with one
+        # over an effective period, and that period can be closed or never
+        # opened. Hand None straight back so the optional annotation resolves
+        # it, rather than reaching for __table__ on it and turning a well with
+        # no location into a 500 for the whole page it appears on.
+        if data is None:
+            return None
+
         # convert row to dictionary
         if not isinstance(data, dict):
             data_dict = {c.name: getattr(data, c.name) for c in data.__table__.columns}
