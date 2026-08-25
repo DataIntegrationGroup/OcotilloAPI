@@ -211,7 +211,11 @@ told.
    `authorization_audit` exist; `services/visibility.py` is the single
    evaluator; `api/access.py` is its one tenant. No existing endpoint routes
    through it yet.
-4. Field projection at the serialization chokepoint, with the never-public list.
+4. **Done for the payloads the visibility layer builds.**
+   `services/field_projection.py` is the chokepoint, `core/field-allowlists.yml`
+   holds the per-audience allowlists and the never-public list, and coordinate
+   rounding is the first transform. The OGC views still select their own
+   columns in SQL and do not pass through it.
 5. Console administration.
 6. Healy migration, after the data owner decides grandfathering.
 

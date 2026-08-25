@@ -1,0 +1,128 @@
+# Per-audience field allowlists for published records (ADR5, 3.5 and A.2).
+#
+# Two rules this file exists to keep:
+#
+#   1. Omission produces silence. Only fields listed here reach an audience, so
+#      a column added next year is invisible until someone adds it deliberately.
+#      An audience with no entry receives nothing -- default deny, not "all".
+#
+#   2. `never_public` wins over every allowlist. Engineering guarantees these
+#      fields are enforced everywhere; what belongs on the list is a policy
+#      decision with a named data owner, and that owner has not been named yet
+#      (ADR5, "What this does not decide"). Adding a field here is safe at any
+#      time. Removing one is not an engineering call.
+#
+# Enforced by services/field_projection.py, which validates the whole file at
+# load: an unknown field, a transform on a field nobody publishes, or an
+# allowlist naming a never-public field raises rather than degrading quietly.
+#
+# Audiences are matched by destination slug first, then by destination kind.
+# `round` reduces coordinate precision: 2 decimal places is roughly a
+# kilometre, 4 is roughly ten metres.
+
+never_public:
+  thing:
+    # Provenance columns. Who typed a record is internal, always.
+    - created_by_id
+    - created_by_name
+    - updated_by_id
+    - updated_by_name
+    # Legacy AMPAPI primary keys. Publishing them invites outside systems to
+    # key on identifiers the migration is meant to retire.
+    - nma_pk_welldata
+    - nma_pk_location
+    - search_vector
+  location:
+    - created_by_id
+    - created_by_name
+    - updated_by_id
+    - updated_by_name
+    - nma_pk_location
+    # Free text written by staff for staff. The permissions interview was
+    # explicit that gate codes, lock combinations and candid landowner notes
+    # must never leave the Bureau, and this is where such text has landed.
+    - nma_location_notes
+    - nma_coordinate_notes
+
+audiences:
+  # Per-destination-kind defaults. A newly registered destination inherits the
+  # rules for its kind; nothing inherits "everything".
+  by_kind:
+    public web:
+      thing:
+        fields:
+          - id
+          - name
+          - thing_type
+          - well_depth
+          - hole_depth
+          - well_completion_date
+      location:
+        fields:
+          - id
+          - latitude
+          - longitude
+          - elevation
+          - county
+          - state
+        # Protect the landowner without dropping the well off the map.
+        transforms:
+          latitude:
+            round: 2
+          longitude:
+            round: 2
+
+    harvester:
+      thing:
+        fields:
+          - id
+          - name
+          - thing_type
+          - well_depth
+          - hole_depth
+          - well_casing_depth
+          - well_completion_date
+      location:
+        fields:
+          - id
+          - latitude
+          - longitude
+          - elevation
+          - county
+          - state
+          - quad_name
+        # A harvester plotting hydrographs needs the well in the right place;
+        # ten metres is close enough for that and not close enough to walk to.
+        transforms:
+          latitude:
+            round: 4
+          longitude:
+            round: 4
+
+    partner agency:
+      thing:
+        fields:
+          - id
+          - name
+          - thing_type
+          - well_depth
+          - hole_depth
+          - well_casing_diameter
+          - well_casing_depth
+          - well_completion_date
+          - well_construction_method
+      location:
+        fields:
+          - id
+          - latitude
+          - longitude
+          - elevation
+          - county
+          - state
+          - quad_name
+          - description
+
+  # Per-destination overrides, keyed by slug. An entry here replaces the rules
+  # for that destination's kind rather than adding to them, so what one partner
+  # receives is readable in one place.
+  by_slug: {}

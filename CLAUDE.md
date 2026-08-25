@@ -245,6 +245,14 @@ The storage and the evaluator exist; the field projection does not.
   endpoint consults the layer yet, so release_status still governs what the
   OGC views publish. The prefix is `/access`, not `/publication`, because
   `api/publication.py` is the bibliography.
+- **Fields are published by allowlist, per audience.**
+  `core/field-allowlists.yml` says what each audience receives;
+  `services/field_projection.py` applies it below the routes, so a new route
+  cannot skip it. An audience with no entry gets an empty record, and the
+  `never_public` block overrides every allowlist. Protection includes
+  transformation -- public coordinates are rounded, not withheld. The OGC
+  views do **not** pass through this yet. Read
+  **`docs/access-field-projection.md`** before touching the allowlists.
 - **Default deny, no wildcards, expiry at use.** A grant with no matching row
   is a no; a grant names its `data_type` (there is no term meaning "all"); and
   nothing sweeps expired rows, so every check compares against the date asked

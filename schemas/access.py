@@ -135,11 +135,19 @@ class PublicationConsentResponse(BaseModel):
 
 
 class PublishedThing(BaseModel):
-    """One thing as a destination sees it: which data types it may read."""
+    """One thing as a destination sees it.
+
+    ``thing_id`` and ``data_types`` are the envelope for staff reading this
+    route; ``properties`` and ``location`` are what the destination itself
+    receives, already projected through the per-audience allowlist. A field
+    nobody approved for this audience is absent rather than null, and a
+    coordinate may arrive rounded.
+    """
 
     thing_id: int
-    name: str | None
     data_types: list[AccessDataType]
+    properties: dict
+    location: dict
 
 
 # ============= EOF =============================================
