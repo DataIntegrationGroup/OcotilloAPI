@@ -38,7 +38,7 @@ from db import (
     FieldEventParticipant,
     FieldActivity,
     Contact,
-    PermissionHistory,
+    FieldAccessConsent,
     Thing,
     ThingContactAssociation,
     Sample,
@@ -425,11 +425,11 @@ def _make_well_permission(
     permission_type: str,
     permission_allowed: bool,
     start_date: date,
-) -> PermissionHistory:
+) -> FieldAccessConsent:
     """
-    Makes a PermissionHistory record for the given well and contact.
+    Makes a FieldAccessConsent record for the given well and contact.
     If the contact has not been provided, but a permission is to be created,
-    no PermissionHistory record is created and a 400 error is raised.
+    no FieldAccessConsent record is created and a 400 error is raised.
     """
     if contact is None:
         raise PydanticStyleException(
@@ -444,7 +444,7 @@ def _make_well_permission(
             ],
         )
 
-    permission = PermissionHistory(
+    permission = FieldAccessConsent(
         target_table="thing",
         target_id=well.id,
         contact=contact,

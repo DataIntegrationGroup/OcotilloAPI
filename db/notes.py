@@ -110,6 +110,7 @@ class NotesMixin:
         content: str,
         note_type: str,
         release_status: str = "draft",
+        data_maturity: str = None,
         created_by: str = None,
     ) -> Notes:
         """
@@ -123,6 +124,7 @@ class NotesMixin:
             target_id=self.id,
             target_table=self.__class__.__tablename__,
             release_status=release_status,
+            data_maturity=data_maturity,
         )
 
     def _get_notes(self, note_type: str) -> list[Notes]:

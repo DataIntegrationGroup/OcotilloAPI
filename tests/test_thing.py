@@ -927,6 +927,7 @@ def test_get_water_wells_includes_contact_summary(
             "id": contact.id,
             "created_at": contact.created_at.astimezone(timezone.utc).strftime(DT_FMT),
             "release_status": contact.release_status,
+            "data_maturity": contact.data_maturity,
             "name": contact.name,
             "organization": contact.organization,
             "contact_type": contact.contact_type,

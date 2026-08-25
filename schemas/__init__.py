@@ -16,7 +16,7 @@
 from datetime import datetime, timezone, date
 from typing import Annotated
 
-from core.enums import ReleaseStatus
+from core.enums import DataMaturity, ReleaseStatus
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -36,6 +36,9 @@ class ResourceNotFoundResponse(BaseModel):
 
 class BaseCreateModel(BaseModel):
     release_status: ReleaseStatus = "draft"
+    # Orthogonal to release_status: data can be published and provisional at
+    # the same time (ADR5). NULL means not stated.
+    data_maturity: DataMaturity | None = None
 
     @field_validator("release_status", mode="before")
     @classmethod
@@ -113,6 +116,7 @@ class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: UTCAwareDatetime
     release_status: ReleaseStatus
+    data_maturity: DataMaturity | None = None
 
     model_config = ConfigDict(
         from_attributes=True,

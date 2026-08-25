@@ -29,7 +29,7 @@ It includes:
     - `ReleaseMixin`: Adds a release status column referencing the `lexicon_term` table.
     - `AuditMixin`: Adds standard audit columns (created_at, created_by, updated_at, updated_by).
 5.  A simple `User` model for tracking user information in audit columns.
-6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `DataProvenanceMixin`, `PermissionMixin`.)
+6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `DataProvenanceMixin`.)
     which provide a clean, reusable way to add relationships to the polymorphic
     metadata tables. Any model that can have a status history (like Thing or Location)
     can simply inherit from the `StatusHistoryMixin` mixin.
@@ -53,7 +53,6 @@ from sqlalchemy.orm import (
     declared_attr,
     Mapped,
     mapped_column,
-    relationship,
 )
 from sqlalchemy_continuum import make_versioned
 from sqlalchemy_searchable import make_searchable
@@ -95,11 +94,31 @@ def pascal_to_snake(name):
 
 # ============= Common Mixins =============================================
 class ReleaseMixin:
-    """Mixin to add release status to a model."""
+    """Mixin to add release state to a model.
+
+    Two axes, deliberately separate (ADR5):
+
+    * ``release_status`` is the release *level* -- who may see the record at
+      all (draft, public, private, ...), lexicon-backed.
+    * ``data_maturity`` is how far through review the record is, on USGS
+      terms: provisional, in review, approved. It is orthogonal to the level:
+      San Acacia data is published and provisional at the same time, and one
+      column could not say both, because ``release_status``'s lexicon lists
+      those as siblings.
+
+    ``data_maturity`` is nullable and NULL means not stated, which is honest
+    for the rows that predate it. The vocabulary and the column originated on
+    ``TransducerObservation``; this mixin is where it now lives so that every
+    released record can carry the second axis.
+    """
 
     @declared_attr
     def release_status(self):
         return lexicon_term(default="draft")
+
+    @declared_attr
+    def data_maturity(self):
+        return lexicon_term(nullable=True)
 
 
 class AuditMixin:
@@ -173,28 +192,6 @@ class PropertiesMixin:
             JSON,
             nullable=True,
             comment="JSONB column for storing additional properties",
-        )
-
-
-# ============= Polymorphic Helper Mixins =============================================
-
-
-class PermissionMixin:
-    """
-    Mixin for models that can have permissions (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    Permission table.
-    """
-
-    @declared_attr
-    def permissions(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "Permission",
-            primaryjoin=f"and_({self.__name__}.id==foreign(Permission.permissible_id), "
-            f"Permission.permissible_type=='{self.__name__}')",
-            lazy="selectin",
-            viewonly=True,
         )
 
 
