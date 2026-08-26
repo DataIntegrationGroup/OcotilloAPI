@@ -211,11 +211,15 @@ told.
    `authorization_audit` exist; `services/visibility.py` is the single
    evaluator; `api/access.py` is its one tenant. No existing endpoint routes
    through it yet.
-4. **Done for the payloads the visibility layer builds.**
-   `services/field_projection.py` is the chokepoint, `core/field-allowlists.yml`
-   holds the per-audience allowlists and the never-public list, and coordinate
-   rounding is the first transform. The OGC views still select their own
-   columns in SQL and do not pass through it.
+4. **Done.** `services/field_projection.py` is the chokepoint,
+   `core/field-allowlists.yml` holds the per-audience allowlists and the
+   never-public list, and coordinate rounding is the first transform. Both
+   publication paths go through it: destination payloads via
+   `services/visibility.py`, and all 27 public OGC collections via
+   `core/feature_provider.py`, which turns the allowlist into the provider's
+   `properties` so unlisted columns are never selected. Closing that gap
+   found eleven collections publishing `nma_pk_welldata` and one publishing
+   `entered_by`.
 5. **Per environment, by hand:** `oco seed-access-grants` writes the day-one
    role baseline (ADR5, 5.2) -- one global grant per Authentik role,
    capability and data type, so nobody's access changes when the layer starts

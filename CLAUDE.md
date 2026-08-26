@@ -250,8 +250,11 @@ The storage and the evaluator exist; the field projection does not.
   `services/field_projection.py` applies it below the routes, so a new route
   cannot skip it. An audience with no entry gets an empty record, and the
   `never_public` block overrides every allowlist. Protection includes
-  transformation -- public coordinates are rounded, not withheld. The OGC
-  views do **not** pass through this yet. Read
+  transformation -- public coordinates are rounded, not withheld. The public
+  OGC collections go through it too: `core/feature_provider.py` turns each
+  collection's allowlist into pygeoapi's `properties`, so an unlisted column
+  is never selected, and a collection with no entry publishes nothing. The
+  internal mount is outside it. Read
   **`docs/access-field-projection.md`** before touching the allowlists.
 - **The role baseline is seeded by hand, per environment.**
   `oco seed-access-grants` writes one global grant per (Authentik role,

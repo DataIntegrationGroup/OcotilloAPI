@@ -26,7 +26,8 @@ Fields are published by **allowlist, per audience, at one chokepoint**.
 | Rules | `domain/field_projection.py` | Omit, transform, validate. Plain dicts; no database, no config parsing. |
 | Configuration + chokepoint | `services/field_projection.py` | Parse and validate the YAML, build a record from a model row, project it. |
 | Configuration | `core/field-allowlists.yml` | The allowlists and the never-public list. |
-| Only current consumer | `services/visibility.py` (`published_things`) | Builds every published payload through `project_entity`. |
+| Destination payloads | `services/visibility.py` (`published_things`) | Builds them through `project_entity`. |
+| Public OGC collections | `core/feature_provider.py` | Reads `ogc_allowlist(table)` at provider construction. |
 
 `api/access.py` never projects anything itself. That is the point: the
 projection sits *below* the routes, so a new route or a new output format
@@ -78,15 +79,42 @@ the permissions interview was explicit that gate codes, lock combinations and
 candid landowner notes must never leave the Bureau, and that is the text those
 columns have collected.
 
-## What this does *not* cover yet
+## The OGC collections
 
-The OGC collections do **not** go through the projection. `ogc_*` views select
-their own column lists in SQL and gate on `release_status`, exactly the
-distributed filtering ADR5 argues against. Bringing them under the chokepoint
-is later work, and until it happens the guarantees on this page apply only to
-payloads built by `services/visibility.py`.
+The public `/ogcapi` mount serves 27 collections from three places: fifteen
+declared in `core/pygeoapi-config.yml`, ten built from `THING_COLLECTIONS` in
+`core/pygeoapi.py`, and two EDR collections wired there too. Missing that third
+source is how eleven collections published `nma_pk_welldata` unnoticed.
 
-Only `thing` and `location` are projectable entities. Adding another means
+`DescribedPostgreSQLProvider` looks each table up in the `ogc:` block of
+`core/field-allowlists.yml` and hands the result to pygeoapi as the provider's
+`properties`. That is what `_select_properties` builds the SELECT from, so an
+unlisted column is never read out of Postgres at all: it cannot appear in a
+feature, in `/schema`, or in `/queryables`, and a filter cannot probe for it.
+`get_fields` is narrowed to match, since the reflection sees the whole view.
+
+**Adding a collection** means adding its table to `ogc.collections`. Without an
+entry it publishes *no* properties — default deny, logged as a warning — and
+`tests/test_ogc_projection.py` fails, so a missing entry shows up in CI rather
+than in production.
+
+**The internal mount is not projected.** `ogc_internal_*` tables return `None`
+from `ogc_allowlist` and pass through whole. It serves authenticated Bureau
+staff, and per-role internal field rules are the part of ADR5 3.5 that is not
+built.
+
+The lists were generated from what each view published on 2026-08-24 minus the
+never-public fields, so no consumer lost a field it was using. That makes the
+file a record of what is public rather than an aspiration — narrowing it is
+the next deliberate step, and it should happen.
+
+## What this does *not* cover
+
+The desktop-GIS layer files in `core/gis-curated-layers.yml` are not a separate
+publication path — they point clients at the OGC collections above and so
+inherit the projection.
+
+Only `thing` and `location` are projectable entities for destination payloads. Adding another means
 adding it to `ENTITY_MODELS` (and `DERIVED_FIELDS` if the payload carries
 values that are not columns, the way `latitude` and `longitude` stand in for
 the PostGIS `point`).
