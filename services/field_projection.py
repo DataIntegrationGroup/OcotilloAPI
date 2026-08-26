@@ -23,6 +23,14 @@ This is the chokepoint from ADR5 A.2. Every published payload is built here, so
 a new route or a new output format cannot skip the rule by omission -- it sits
 below them. The rules themselves are in ``domain/field_projection.py``.
 
+Two consumers, because there are two publication paths:
+
+* ``services/visibility.py`` builds destination payloads from ORM rows and
+  calls :func:`project_entity`.
+* ``core/feature_provider.py`` serves the public OGC collections and calls
+  :func:`ogc_allowlist` at provider construction, so the columns nobody
+  approved are never selected from Postgres at all.
+
 The whole file is validated the first time it is read: an unknown field name, a
 transform on a field nobody publishes, or an allowlist naming a never-public
 field raises. Failing at load rather than at request time is deliberate; the
@@ -37,7 +45,12 @@ import yaml
 
 from db.location import Location
 from db.thing import Thing
-from domain.field_projection import EntityProjection, project, validate_projection
+from domain.field_projection import (
+    EntityProjection,
+    NeverPublicFieldAllowed,
+    project,
+    validate_projection,
+)
 
 CONFIG_PATH = Path(__file__).parent.parent / "core" / "field-allowlists.yml"
 
@@ -80,7 +93,27 @@ def _configuration(path: str = None) -> dict:
                 projection = _build_projection(entity, rule, never_public)
                 audiences[(keyed_by, audience, entity)] = projection
 
-    return {"never_public": never_public, "audiences": audiences}
+    ogc = raw.get("ogc") or {}
+    ogc_never = frozenset(ogc.get("never_public") or ())
+    ogc_collections = {}
+    for table, columns in (ogc.get("collections") or {}).items():
+        columns = frozenset(columns or ())
+        forbidden = sorted(columns & ogc_never)
+        if forbidden:
+            # The same rule as the audience allowlists: a never-public field
+            # cannot be re-admitted by naming it somewhere else.
+            raise NeverPublicFieldAllowed(
+                f"{table}.{forbidden[0]} is on the OGC never-public list and "
+                "cannot be published by a collection."
+            )
+        ogc_collections[table] = columns
+
+    return {
+        "never_public": never_public,
+        "audiences": audiences,
+        "ogc_never_public": ogc_never,
+        "ogc_collections": ogc_collections,
+    }
 
 
 def _build_projection(entity: str, rule, never_public: dict) -> EntityProjection:
@@ -128,6 +161,36 @@ def projection_for(destination, entity: str) -> EntityProjection | None:
 
 def never_public_fields(entity: str) -> frozenset:
     return _configuration()["never_public"].get(entity, frozenset())
+
+
+# ============= OGC collections =============================================
+
+
+def ogc_never_public() -> frozenset:
+    """Fields no public OGC collection may publish."""
+    return _configuration()["ogc_never_public"]
+
+
+def ogc_allowlist(table: str) -> frozenset | None:
+    """Columns this public collection publishes, or None if it is not one.
+
+    None means "not projected" and covers the internal mount, whose tables are
+    ``ogc_internal_*``. An empty frozenset means "listed nowhere", which is
+    default deny: the collection publishes no properties until someone says
+    what it may publish.
+    """
+    if table is None or table.startswith("ogc_internal_"):
+        return None
+
+    collections = _configuration()["ogc_collections"]
+    if table not in collections:
+        return frozenset()
+    return collections[table]
+
+
+def ogc_collection_tables() -> frozenset:
+    """Every public table with an allowlist entry."""
+    return frozenset(_configuration()["ogc_collections"])
 
 
 def thing_record(thing) -> dict:

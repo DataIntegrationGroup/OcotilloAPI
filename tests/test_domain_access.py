@@ -21,6 +21,9 @@ import pytest
 
 from domain.access import (
     AccessRequest,
+    CAPABILITIES,
+    PRINCIPAL_TYPES,
+    SCOPE_TYPES,
     BackwardsDateRange,
     Consent,
     Grant,
@@ -210,6 +213,25 @@ def test_validation_errors_are_value_errors():
     """The importers and the routes both rely on this (ADR4)."""
     with pytest.raises(ValueError):
         validate_grant("user", "read", "global", None, None, TODAY, None)
+
+
+# ------ the domain constants and the lexicon must agree ----------
+
+
+def test_the_domain_vocabularies_match_the_lexicon():
+    """domain/access.py cannot import the lexicon without taking a database
+    dependency, so its constants are hand-copied. They drifted once: the
+    lexicon says `api key` and the constant said `api_key`, which made every
+    API-key grant fail validation with a 422. This is the guard."""
+    from core.enums import Capability, GrantScopeType, PrincipalType
+
+    assert {member.value for member in PrincipalType} == set(PRINCIPAL_TYPES)
+    assert {member.value for member in Capability} == set(CAPABILITIES)
+    assert {member.value for member in GrantScopeType} == set(SCOPE_TYPES)
+
+
+def test_an_api_key_grant_can_actually_be_written():
+    validate_grant("api key", "read", "global", None, "water level", TODAY, None)
 
 
 # ------ publication consent ----------

@@ -126,3 +126,728 @@ audiences:
   # for that destination's kind rather than adding to them, so what one partner
   # receives is readable in one place.
   by_slug: {}
+
+# ---------------------------------------------------------------------------
+# The OGC collections.
+#
+# The public mount serves 27 collections: fifteen declared in
+# core/pygeoapi-config.yml, ten built from THING_COLLECTIONS in
+# core/pygeoapi.py, and two EDR collections wired there as well. All of them
+# are served by
+# core.feature_provider.DescribedPostgreSQLProvider, which reads the allowlist
+# below and hands it to pygeoapi as the provider's `properties`. A column that
+# is not listed is never selected from Postgres, so it cannot appear in a
+# feature, in /schema, or in /queryables.
+#
+# These lists were generated from what each view published on 2026-08-24, minus
+# the never-public fields, so nothing anyone consumes today disappeared -- with
+# two exceptions, which is the point: eleven collections were publishing
+# nma_pk_welldata and one was publishing entered_by. That
+# makes this file the record of what is public, not an aspiration: narrowing a
+# list is a deliberate, reviewed edit, and it should happen.
+#
+# A collection with no entry here publishes no properties at all. That is
+# default deny working as intended, and `tests/test_ogc_projection.py` fails
+# when a public collection is missing, so it surfaces in CI rather than in
+# production.
+#
+# The internal mount (ogc_internal_*) is not projected. It serves authenticated
+# Bureau staff, and per-role internal field rules are the part of ADR5 3.5 that
+# is not built yet.
+
+ogc:
+  # Fields no public collection may publish, whatever its list says. Same
+  # policy status as `never_public` above: adding is safe, removing is not an
+  # engineering decision.
+  never_public:
+    # Legacy AMPAPI primary keys. ogc_well_water_column published
+    # nma_pk_welldata until this list existed.
+    - nma_pk_welldata
+    - nma_pk_location
+    # Who typed the record. ogc_temp_depth_measurements published entered_by,
+    # a staff member's name, inherited from the NM_Wells transfer.
+    - created_by_id
+    - created_by_name
+    - updated_by_id
+    - updated_by_name
+    - entered_by
+    # Free text written by staff for staff -- gate codes, lock combinations,
+    # candid landowner notes. Not public today; listed so it cannot become so.
+    - nma_location_notes
+    - nma_coordinate_notes
+    - search_vector
+
+  collections:
+    ogc_actively_monitored_wells:
+      - id
+      - name
+      - thing_type
+      - well_depth
+      - elevation
+      - elevation_method
+      - formation_zone
+      - total_water_levels
+      - last_water_level
+      - last_water_level_datetime
+      - min_water_level
+      - max_water_level
+      - water_level_trend_ft_per_year
+      - group_ids
+      - group_names
+      - group_types
+
+    ogc_bht_measurements:
+      - id
+      - api
+      - well_name
+      - well_num
+      - operator
+      - well_type
+      - well_tvd
+      - completion_date
+      - current_status
+      - total_depth
+      - cuttings
+      - core_exists
+      - county
+      - bht_depth
+      - bht
+      - hours_since_circulation
+      - date_measured
+
+    ogc_depth_to_water_trend_wells:
+      - id
+      - name
+      - thing_type
+      - record_count
+      - first_observation_datetime
+      - last_observation_datetime
+      - span_years
+      - slope_ft_per_year
+      - trend_category
+
+    ogc_diversions_surface_water:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_dst:
+      - id
+      - well_name
+      - well_num
+      - api
+      - dst_name
+      - dst_operator
+      - dst_number
+      - dst_date
+      - county
+      - state
+      - lat_dd83
+      - long_dd83
+      - from_depth
+      - to_depth
+      - target_fm
+      - packer_from
+      - packer_to
+      - srf_choke_sz
+      - bot_choke_sz
+      - depth_unit
+      - elev_gl
+      - elev_unspc
+      - prs_gage_dpt
+      - pipe_dia
+      - pipe_length
+      - flow_history
+      - init_flow
+      - flw_prs_in_min
+      - fin_flow
+      - flw_prs_fin_min
+      - prs_init_clsd_in
+      - in_sht_in_min
+      - fin_shut_in
+      - fn_sht_in_min
+      - hydrost_prs_in
+      - hyd_st_prs_fl
+      - press_units
+      - blanked_off
+      - fm_temp
+
+    ogc_ephemeral_streams:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_geothermal_wells_bht:
+      - id
+      - well_data_id
+      - well_name
+      - api
+      - total_depth
+      - bht_count
+      - max_bht
+      - min_bht
+      - max_bht_c
+      - min_bht_c
+      - max_bht_depth
+      - temp_unit
+      - temp_unit_source
+      - temp_unit_mixed
+      - unconvertible_count
+
+    ogc_geothermal_wells_temperature_profile:
+      - id
+      - well_data_id
+      - well_name
+      - api
+      - reading_count
+      - min_depth
+      - max_depth
+      - min_temp
+      - max_temp
+      - min_temp_c
+      - max_temp_c
+      - temp_unit
+      - temp_unit_source
+      - temp_unit_mixed
+      - unconvertible_count
+      - series
+
+    ogc_heat_flow:
+      - id
+      - well_name
+      - well_num
+      - api
+      - county
+      - state
+      - lat_dd27
+      - long_dd27
+      - lat_dd83
+      - long_dd83
+      - source_id
+      - elev_gl
+      - elev_kb
+      - elev_unspc
+      - elevation_m
+      - depth_units
+      - total_depth
+      - total_depth_m
+      - from_depth
+      - to_depth
+      - therml_cond
+      - tcond_range
+      - tcond_error
+      - tcond_unit
+      - tc_si
+      - sample_type
+      - num_samples
+      - therml_grad
+      - tgrad_range
+      - tg_error
+      - grad_unit
+      - heat_flow
+      - ht_flow_unit
+      - heat_flow_si
+      - quality
+      - first_auth
+      - pub_year
+      - title
+      - journal
+      - volume
+      - page_no
+      - ht_flow_est
+      - entry_date
+      - ht_flow_est_si
+
+    ogc_lakes_ponds_reservoirs:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_latest_tds_wells:
+      - id
+      - name
+      - thing_type
+      - major_chemistry_id
+      - latest_tds_observation_date
+      - latest_tds_value
+      - latest_tds_units
+
+    ogc_major_chemistry_results:
+      - id
+      - location_id
+      - name
+      - thing_type
+      - analyte_count
+      - latest_chemistry_date
+      - tds
+      - calcium
+      - calcium_total
+      - magnesium
+      - magnesium_total
+      - sodium
+      - sodium_total
+      - potassium
+      - potassium_total
+      - sodium_plus_potassium
+      - bicarbonate
+      - carbonate
+      - sulfate
+      - chloride
+      - ion_balance
+      - total_anions
+      - total_cations
+      - alkalinity
+      - hardness
+      - specific_conductance
+      - ph
+      - nitrate
+      - fluoride
+      - silica
+      - tds_units
+      - calcium_units
+      - calcium_total_units
+      - magnesium_units
+      - magnesium_total_units
+      - sodium_units
+      - sodium_total_units
+      - potassium_units
+      - potassium_total_units
+      - sodium_plus_potassium_units
+      - bicarbonate_units
+      - carbonate_units
+      - sulfate_units
+      - chloride_units
+      - ion_balance_units
+      - total_anions_units
+      - total_cations_units
+      - alkalinity_units
+      - hardness_units
+      - specific_conductance_units
+      - ph_units
+      - nitrate_units
+      - fluoride_units
+      - silica_units
+
+    ogc_meteorological_stations:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_minor_chemistry_wells:
+      - id
+      - location_id
+      - name
+      - thing_type
+      - analyte_count
+      - latest_chemistry_date
+      - h2r
+      - o18r
+      - c13r
+      - c14
+      - c14_years
+      - fluoride
+      - barium
+      - barium_total
+      - copper
+      - copper_total
+      - zinc
+      - zinc_total
+      - molybdenum
+      - molybdenum_total
+      - silica
+      - silicon
+      - silicon_total
+      - manganese
+      - manganese_total
+      - iron
+      - iron_total
+      - strontium
+      - strontium_total
+      - chromium
+      - chromium_total
+      - boron
+      - boron_total
+      - uranium
+      - uranium_total
+      - lithium
+      - lithium_total
+      - silver
+      - silver_total
+      - antimony
+      - antimony_total
+      - beryllium
+      - beryllium_total
+      - lead
+      - lead_total
+      - thallium
+      - thallium_total
+      - bromide
+      - selenium
+      - selenium_total
+      - vanadium
+      - vanadium_total
+      - aluminum
+      - aluminum_total
+      - arsenic
+      - arsenic_total
+      - nickel
+      - nickel_total
+      - cadmium
+      - cadmium_total
+      - cobalt
+      - cobalt_total
+      - phosphate
+      - nitrite
+      - nitrate
+      - nitrate_as_n
+      - thorium
+      - thorium_total
+      - tin
+      - tin_total
+      - mercury
+      - mercury_total
+      - titanium
+      - titanium_total
+      - h2r_units
+      - o18r_units
+      - c13r_units
+      - c14_units
+      - c14_years_units
+      - fluoride_units
+      - barium_units
+      - barium_total_units
+      - copper_units
+      - copper_total_units
+      - zinc_units
+      - zinc_total_units
+      - molybdenum_units
+      - molybdenum_total_units
+      - silica_units
+      - silicon_units
+      - silicon_total_units
+      - manganese_units
+      - manganese_total_units
+      - iron_units
+      - iron_total_units
+      - strontium_units
+      - strontium_total_units
+      - chromium_units
+      - chromium_total_units
+      - boron_units
+      - boron_total_units
+      - uranium_units
+      - uranium_total_units
+      - lithium_units
+      - lithium_total_units
+      - silver_units
+      - silver_total_units
+      - antimony_units
+      - antimony_total_units
+      - beryllium_units
+      - beryllium_total_units
+      - lead_units
+      - lead_total_units
+      - thallium_units
+      - thallium_total_units
+      - bromide_units
+      - selenium_units
+      - selenium_total_units
+      - vanadium_units
+      - vanadium_total_units
+      - aluminum_units
+      - aluminum_total_units
+      - arsenic_units
+      - arsenic_total_units
+      - nickel_units
+      - nickel_total_units
+      - cadmium_units
+      - cadmium_total_units
+      - cobalt_units
+      - cobalt_total_units
+      - phosphate_units
+      - nitrite_units
+      - nitrate_units
+      - nitrate_as_n_units
+      - thorium_units
+      - thorium_total_units
+      - tin_units
+      - tin_total_units
+      - mercury_units
+      - mercury_total_units
+      - titanium_units
+      - titanium_total_units
+
+    ogc_outfalls_wastewater_return_flow:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_perennial_streams:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_project_areas:
+      - id
+      - name
+      - description
+      - group_type
+      - release_status
+
+    ogc_rock_sample_locations:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_soil_gas_sample_locations:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_springs:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_temp_depth_measurements:
+      - id
+      - well_name
+      - well_num
+      - api
+      - source_id
+      - sample_fm
+      - county
+      - state
+      - lat_dd27
+      - long_dd27
+      - lat_dd83
+      - long_dd83
+      - loc_acc_val
+      - entry_date
+      - depth
+      - depth_unit
+      - temp
+      - temp_unit
+      - elev_gl
+      - elev_unspc
+      - elev_kb
+      - sample_date
+
+    ogc_water_chemistry:
+      - id
+      - thing_id
+      - station_name
+      - thing_type
+      - longitude
+      - latitude
+      - datetime
+      - value
+      - unit
+      - parameter_name
+      - sample_id
+      - release_status
+
+    ogc_water_elevation_wells:
+      - id
+      - name
+      - thing_type
+      - observation_id
+      - observation_datetime
+      - elevation_m
+      - depth_to_water_below_ground_surface_ft
+      - water_elevation_ft
+
+    ogc_water_well_summary:
+      - id
+      - name
+      - well_depth
+      - elevation
+      - elevation_method
+      - formation_zone
+      - total_water_levels
+      - last_water_level
+      - last_water_level_datetime
+      - min_water_level
+      - max_water_level
+      - water_level_trend_ft_per_year
+
+    ogc_water_wells:
+      - id
+      - name
+      - first_visit_date
+      - last_observation_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - elevation
+
+    ogc_waterlevels:
+      - id
+      - thing_id
+      - station_name
+      - longitude
+      - latitude
+      - datetime
+      - value
+      - unit
+      - parameter_name
+      - source
+      - deployment_id
+      - release_status
+
+    ogc_well_water_column:
+      - id
+      - name
+      - first_visit_date
+      - well_depth
+      - hole_depth
+      - well_casing_diameter
+      - well_casing_depth
+      - well_completion_date
+      - well_driller_name
+      - well_construction_method
+      - well_pump_type
+      - well_pump_depth
+      - formation_completion_code
+      - nma_formation_zone
+      - release_status
+      - water_column_latest
+      - water_column_average
+      - water_column_maximum
+      - water_column_minimum
+      - elevation

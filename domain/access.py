@@ -61,7 +61,12 @@ CAPABILITIES = frozenset(
 # consent, not as a grant, which is the two-table half of ADR5.
 PRINCIPAL_USER = "user"
 PRINCIPAL_ROLE = "role"
-PRINCIPAL_API_KEY = "api_key"
+# Spelled as the lexicon spells it. The lexicon is the source of truth for
+# every controlled term, and a constant that disagreed with it made this
+# principal type unwritable: the route validated "api key" against "api_key"
+# and rejected every API-key grant with a 422. tests/test_domain_access.py
+# pins the two together so it cannot drift again.
+PRINCIPAL_API_KEY = "api key"
 PRINCIPAL_TYPES = frozenset({PRINCIPAL_USER, PRINCIPAL_ROLE, PRINCIPAL_API_KEY})
 
 
@@ -273,19 +278,6 @@ def any_consent_publishes(
         consent_covers(consent, thing_id, destination_id, data_type, on_date)
         for consent in consents
     )
-
-
-def published_thing_ids(consents, destination_id: int, data_type: str, on_date: date):
-    """Thing ids a destination may read for one data type, in first-seen order."""
-    seen = []
-    for consent in consents:
-        if consent.thing_id in seen:
-            continue
-        if consent_covers(
-            consent, consent.thing_id, destination_id, data_type, on_date
-        ):
-            seen.append(consent.thing_id)
-    return seen
 
 
 # ============= EOF =============================================
