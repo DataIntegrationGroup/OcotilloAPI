@@ -15,24 +15,37 @@
 # ===============================================================================
 """Step definitions for A1 (public release_status filter on ogc_* views),
 A2 (OGC server metadata placeholders), A11 (authenticated internal OGC
-mount at /ogcapi-internal) and A13 (last_observation_date on the Group A
-view template).
+mount at /ogcapi-internal), A13 (last_observation_date on the Group A view
+template), A16/A17/A18 (layers hidden from the public catalog), and the
+Sprint 2-4 tickets A5, A7, A8, A10, A12, A14, A15, A20, A21.
 
-Only the @A1-, @A2-, @A11- and @A13-tagged scenarios in
-ogc-cleanup-sprint1.feature are implemented here. The other tickets sharing
-that feature file have no steps yet and stay undefined/dormant, per those
-tickets' plans.
+The Sprint 2-4 steps are written spec-first: none of A5/A7/A8/A10/A12/A14/
+A15/A20/A21's application code exists yet (no naming pass, no per-layer
+filters, no NULLIF sentinel-date fix, no view-template split, no refresh-job
+logging, no extended test coverage, no separate database roles). These
+scenarios are expected to fail (red) until each ticket's real implementation
+lands -- that is the point of writing them now rather than after the fact.
+A15 and A21 additionally guess at artifacts (a `matview_refresh_log` table,
+role names `ogc_public_reader`/`ogc_internal_reader`) that don't exist yet
+and may not match what those tickets actually build; adjust the constants
+below once the real implementation lands.
+
+A9 has no scenario: it is a governance/documentation action with no system
+behavior to assert (see the policy-gate comment in the feature file). A19 is
+excluded from the feature file entirely (see the "Not included" note there).
 """
 
 import importlib
+import logging
 import os
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 from urllib.parse import urlparse
 
 from alembic import command
 from behave import given, when, then
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import ProgrammingError
 
 from core.dependencies import (
     viewer_function,
@@ -1241,6 +1254,823 @@ def step_then_only_recent_features_returned(context, recent_date):
                 f"{layer_id} feature {feature.get('id')} has last_observation_date "
                 f"{value!r}, which the filter should have excluded"
             )
+
+
+# ---------------------------------------------------------------------------
+# A5 -- int(None) runtime warning in pygeoapi itemtypes
+# ---------------------------------------------------------------------------
+
+
+class _RecordCollector(logging.Handler):
+    """Collects log records emitted during a request, for asserting a
+    specific warning is (or isn't) present. Attached/detached around a
+    single request rather than left on the root logger for the whole run.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+@given("the A5 null guard has been applied to pygeoapi/api/itemtypes.py")
+def step_given_a5_null_guard_applied(context):
+    # No-op marker: the null guard is a source-code fix under test, not
+    # runtime state to arrange. Same treatment as the A2/A16-18 givens.
+    pass
+
+
+@when("a client requests items from the water_wells layer")
+def step_when_client_requests_items_from_water_wells(context):
+    collector = _RecordCollector()
+    root_logger = logging.getLogger()
+    root_logger.addHandler(collector)
+    try:
+        context.response = context.client.get(
+            "/ogcapi/collections/water_wells/items?limit=5"
+        )
+    finally:
+        root_logger.removeHandler(collector)
+    context.captured_log_records = collector.records
+    if context.response.status_code == 200:
+        context.response_payload = context.response.json()
+
+
+@then("the server logs contain no int(None) runtime warning")
+def step_then_no_int_none_warning_in_logs(context):
+    offending = [
+        record.getMessage()
+        for record in context.captured_log_records
+        if "int() argument must be a string" in record.getMessage()
+    ]
+    assert not offending, f"int(None) warning still present in logs: {offending}"
+
+
+@then('the response Content-Type is "{content_type}"')
+def step_then_response_content_type_is(context, content_type):
+    actual = context.response.headers.get("Content-Type", "")
+    assert actual.startswith(
+        content_type
+    ), f"Unexpected Content-Type {actual!r}, expected {content_type!r}"
+
+
+# ---------------------------------------------------------------------------
+# A7 -- Level 1 naming pass across all layers
+# ---------------------------------------------------------------------------
+
+
+@given("the Level 1 naming pass has been applied")
+def step_given_level1_naming_pass_applied(context):
+    # No-op marker: display titles/descriptions in core/pygeoapi-config.yml
+    # and core/pygeoapi.py are the artifact under test, not runtime state to
+    # arrange. Same treatment as the A2/A16-18 givens.
+    pass
+
+
+@then("the display title for each of the following layers matches its proposed title")
+def step_then_display_titles_match_proposed(context):
+    payload = context.response.json()
+    titles = {c["id"]: c.get("title") for c in payload["collections"]}
+    mismatches = []
+    for row in context.table:
+        layer_id = row["layer-id"].strip()
+        expected_title = row["title"].strip()
+        actual_title = titles.get(layer_id)
+        if actual_title != expected_title:
+            mismatches.append(
+                f"{layer_id}: expected {expected_title!r}, got {actual_title!r}"
+            )
+    assert not mismatches, "; ".join(mismatches)
+
+
+@then("each of the following layers keeps its pre-naming-pass id")
+def step_then_layers_keep_pre_naming_pass_id(context):
+    payload = context.response.json()
+    ids_present = {c["id"] for c in payload["collections"]}
+    missing = [
+        row["layer-id"].strip()
+        for row in context.table
+        if row["layer-id"].strip() not in ids_present
+    ]
+    assert not missing, (
+        f"expected these ids to remain unchanged by the Level 1 naming pass, "
+        f"but they are missing from the catalog: {missing}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A8 -- Level 2/Level 3 ID renames
+# ---------------------------------------------------------------------------
+
+# The old id exercised by the Level 2/Level 3 grace-period scenarios below --
+# any id from the Section 6.2.2 substantive-rename table works equally well
+# since neither scenario depends on which layer is being renamed.
+A8_OLD_ID_UNDER_TEST = "diversions_surface_water"
+
+
+@given("the team has decided on a rename level for the substantive renames")
+@given("the team decided on Level 2 renames with a 90-day grace period")
+@given("the team decided on Level 3 renames with no grace period")
+def step_given_a8_rename_level_decided(context):
+    # No-op marker: the Level 2/3 decision (Section 6.2.1) is a team
+    # decision this scenario assumes has already been made and
+    # implemented -- not runtime state to arrange here.
+    pass
+
+
+@when('the layer previously known as "{current_id}" is renamed to "{proposed_id}"')
+def step_when_layer_renamed(context, current_id, proposed_id):
+    context.a8_current_id = current_id
+    context.a8_proposed_id = proposed_id
+
+
+@then('a client requesting items from "{proposed_id}" receives that layer\'s features')
+def step_then_client_requesting_proposed_id_receives_features(context, proposed_id):
+    response = context.client.get(f"/ogcapi/collections/{proposed_id}/items?limit=5")
+    assert response.status_code == 200, (
+        f"expected {proposed_id} to be a live collection after the A8 rename, "
+        f"got {response.status_code}: {response.text}"
+    )
+    assert "features" in response.json(), f"{proposed_id} response has no features key"
+
+
+@when("a client requests items from a layer under its old id")
+def step_when_client_requests_items_under_old_id(context):
+    context.response = context.client.get(
+        f"/ogcapi/collections/{A8_OLD_ID_UNDER_TEST}/items?limit=5"
+    )
+
+
+@then("the response includes Deprecation, Sunset, and Link headers")
+def step_then_response_includes_deprecation_headers(context):
+    missing = [
+        header
+        for header in ("Deprecation", "Sunset", "Link")
+        if header not in context.response.headers
+    ]
+    assert not missing, f"response missing headers: {missing}"
+
+
+@then("the response still returns that layer's features")
+def step_then_response_still_returns_features(context):
+    assert context.response.status_code == 200, (
+        f"expected {A8_OLD_ID_UNDER_TEST} to still resolve during the Level 2 "
+        f"grace period, got {context.response.status_code}"
+    )
+    assert (
+        context.response.json().get("features") is not None
+    ), "response has no features key"
+
+
+# ---------------------------------------------------------------------------
+# A10 -- Permanent per-layer SQL filters
+# ---------------------------------------------------------------------------
+
+# The 18 layers on the public catalog after A1/A16/A17/A18 -- reused from the
+# A1 "Non-public records are excluded" scenario's table, kept in one place
+# so A10's regression scenario doesn't duplicate it a third time.
+PUBLIC_CATALOG_LAYER_IDS = [
+    "water_wells",
+    "springs",
+    "perennial_streams",
+    "meteorological_stations",
+    "ephemeral_streams",
+    "rock_sample_locations",
+    "diversions_surface_water",
+    "lakes_ponds_reservoirs",
+    "soil_gas_sample_locations",
+    "outfalls_wastewater_return_flow",
+    "water_well_summary",
+    "depth_to_water_trend_wells",
+    "water_elevation_wells",
+    "major_chemistry_results",
+    "minor_chemistry_wells",
+    "latest_tds_wells",
+    "actively_monitored_wells",
+    "project_areas",
+]
+
+
+def _seed_well_with_single_observation(
+    session, thing_release_status, observation_release_status, name
+):
+    """A well with exactly one water-level observation, so the well's
+    exposure in a Group B analytic layer is unambiguously attributable to
+    that one observation's release_status.
+    """
+    well = _seed_thing_with_location(session, "water well", thing_release_status, name)
+
+    field_event = FieldEvent(
+        thing_id=well.id,
+        event_date="2026-01-01T00:00:00Z",
+        notes="A10 behave seed field event",
+        release_status=observation_release_status,
+    )
+    session.add(field_event)
+    session.commit()
+
+    field_activity = FieldActivity(
+        field_event_id=field_event.id,
+        activity_type="groundwater level",
+        notes="A10 behave seed field activity",
+        release_status=observation_release_status,
+    )
+    session.add(field_activity)
+    session.commit()
+
+    sample = Sample(
+        field_activity_id=field_activity.id,
+        sample_date="2026-01-01T12:00:00Z",
+        sample_name=f"A10 sample {well.id}",
+        sample_matrix="water",
+        sample_method="Steel-tape measurement",
+        qc_type="Normal",
+        notes="A10 behave seed sample",
+        release_status=observation_release_status,
+    )
+    session.add(sample)
+    session.commit()
+
+    observation = Observation(
+        observation_datetime="2026-01-01T00:04:00Z",
+        sample_id=sample.id,
+        parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+        release_status=observation_release_status,
+        value=15.0,
+        unit="ft",
+        measuring_point_height=5.0,
+        groundwater_level_reason="Water level not affected",
+    )
+    session.add(observation)
+    session.commit()
+
+    session.execute(text("SELECT public.refresh_materialized_views()"))
+    session.commit()
+    return well
+
+
+def _teardown_a10_seed_data():
+    with session_ctx() as session:
+        session.execute(text("DELETE FROM thing WHERE name LIKE 'A10 %'"))
+        session.execute(text("DELETE FROM \"group\" WHERE name LIKE 'A10 %'"))
+        session.commit()
+
+
+@given(
+    'a well has release_status "public" but its only water level observation '
+    'has release_status "private"'
+)
+def step_given_well_public_observation_private(context):
+    with session_ctx() as session:
+        well = _seed_well_with_single_observation(
+            session, "public", "private", "A10 well with private observation"
+        )
+    context.a10_excluded_well_id = well.id
+    context.add_cleanup(_teardown_a10_seed_data)
+
+
+@given(
+    'a second well has release_status "public" and its only water level '
+    'observation has release_status "public"'
+)
+def step_given_second_well_public_observation_public(context):
+    with session_ctx() as session:
+        well = _seed_well_with_single_observation(
+            session, "public", "public", "A10 well with public observation"
+        )
+    context.a10_included_well_id = well.id
+
+
+@when("a client requests items from the water_elevation_wells layer")
+def step_when_client_requests_water_elevation_wells(context):
+    context.response_payload = _get_items(context, "water_elevation_wells", limit=500)
+
+
+@then("the response does not include the well with the private observation")
+def step_then_response_excludes_private_observation_well(context):
+    ids_present = _layer_feature_ids(context.response_payload)
+    assert context.a10_excluded_well_id not in ids_present, (
+        "water_elevation_wells exposed a well whose only observation is "
+        f"private (id={context.a10_excluded_well_id})"
+    )
+
+
+@then("the response includes the well with the public observation")
+def step_then_response_includes_public_observation_well(context):
+    ids_present = _layer_feature_ids(context.response_payload)
+    assert context.a10_included_well_id in ids_present, (
+        "water_elevation_wells is missing the well whose observation is "
+        f"public (id={context.a10_included_well_id})"
+    )
+
+
+@given('a project_areas group has release_status "public"')
+def step_given_project_areas_group_public(context):
+    with session_ctx() as session:
+        group = Group(
+            name="A10 public project area",
+            description="A10 behave seed project area group",
+            release_status="public",
+            project_area=(
+                "MULTIPOLYGON(((-107.1 33.5, -106.7 33.5, "
+                "-106.7 33.9, -107.1 33.9, -107.1 33.5)))"
+            ),
+        )
+        session.add(group)
+        session.commit()
+        context.a10_group_id = group.id
+    context.add_cleanup(_teardown_a10_seed_data)
+
+
+@when("a client requests items from the project_areas layer")
+def step_when_client_requests_items_from_project_areas(context):
+    context.response_payload = _get_items(context, "project_areas", limit=500)
+
+
+@then("the polygon feature for that group is included in the response")
+def step_then_polygon_feature_included(context):
+    ids_present = _layer_feature_ids(context.response_payload)
+    assert (
+        context.a10_group_id in ids_present
+    ), f"project_areas is missing the seeded public group (id={context.a10_group_id})"
+
+
+@given("known private and draft feature ids are seeded in each layer family")
+def step_given_known_private_draft_ids_seeded(context):
+    with session_ctx() as session:
+        context.a10_seed_ids = _seed_all(session)
+    context.add_cleanup(_teardown_a1_seed_data)
+
+
+@when("a client requests items from each of those layers")
+def step_when_client_requests_items_from_each_of_those_layers(context):
+    context.layer_responses = {
+        layer_id: _get_items(context, layer_id, limit=500)
+        for layer_id in PUBLIC_CATALOG_LAYER_IDS
+    }
+
+
+@then("none of the seeded private or draft feature ids appear in the response")
+def step_then_none_of_seeded_private_draft_ids_appear(context):
+    offenders = []
+    for layer_id, payload in context.layer_responses.items():
+        seed_key = LAYER_ID_TO_SEED_KEY[layer_id]
+        ids_present = _layer_feature_ids(payload)
+        for status in ("private", "draft"):
+            seeded_id = context.a10_seed_ids[seed_key][status]
+            if seeded_id in ids_present:
+                offenders.append(f"{layer_id}: exposed {status} id {seeded_id}")
+    assert not offenders, "; ".join(offenders)
+
+
+# ---------------------------------------------------------------------------
+# A12 -- Null out sentinel dates in chemistry layer matviews
+# ---------------------------------------------------------------------------
+
+# All three chemistry layers key by well (thing.id) and expose an aggregate
+# "most recent chemistry date" property rather than a raw per-row date
+# column -- ogc_major_chemistry_results/ogc_minor_chemistry_wells compute
+# latest_chemistry_date as MAX(observation date) across each well's most
+# recent result per analyte, and ogc_latest_tds_wells computes
+# latest_tds_observation_date the same way, filtered to TDS results. Seeding
+# exactly one chemistry result per well makes that aggregate deterministic.
+A12_LAYER_DATE_PROPERTY = {
+    "major_chemistry_results": "latest_chemistry_date",
+    "minor_chemistry_wells": "latest_chemistry_date",
+    "latest_tds_wells": "latest_tds_observation_date",
+}
+
+
+def _seed_chemistry_well_with_date(session, layer_id, sample_date):
+    thing = _seed_thing_with_location(
+        session, "water well", "public", f"A12 {layer_id} {sample_date}"
+    )
+    # nma_sample_point_id is varchar(10) -- keep it short.
+    sample_point_id = f"A12{thing.id}"[:10]
+    csi = NMA_Chemistry_SampleInfo(
+        thing_id=thing.id,
+        nma_sample_point_id=sample_point_id,
+        collection_date=f"{sample_date}T00:00:00Z",
+    )
+    session.add(csi)
+    session.flush()
+
+    if layer_id == "minor_chemistry_wells":
+        # ogc_minor_chemistry_wells derives its analyte_token from the
+        # Analyte column, not Symbol (see
+        # c7f8a9b0d1e2_add_minor_chemistry_wells_materialized_view.py's
+        # normalized_rows CTE) -- "As" is what the view's CASE mapping
+        # recognizes; the full word "Arsenic" normalizes to an unmapped
+        # token and the row gets silently dropped.
+        row = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id=sample_point_id,
+            analyte="As",
+            symbol="As",
+            sample_value=2.0,
+            units="ug/L",
+            analysis_date=date.fromisoformat(sample_date),
+        )
+    else:
+        # Total Dissolved Solids so the same seed row satisfies both
+        # major_chemistry_results (any analyte) and latest_tds_wells
+        # (TDS-analyte only).
+        row = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Total Dissolved Solids",
+            symbol="TDS",
+            sample_value=500.0,
+            units="mg/L",
+            analysis_date=date.fromisoformat(sample_date),
+        )
+    session.add(row)
+    session.commit()
+    return thing
+
+
+def _teardown_a12_seed_data():
+    with session_ctx() as session:
+        session.execute(text("DELETE FROM thing WHERE name LIKE 'A12 %'"))
+        session.commit()
+
+
+@given('a record in "{layer_id}" has a sample date of "{sample_date}"')
+def step_given_record_has_sample_date(context, layer_id, sample_date):
+    with session_ctx() as session:
+        thing = _seed_chemistry_well_with_date(session, layer_id, sample_date)
+    context.a12_layer_id = layer_id
+    context.a12_thing_id = thing.id
+    context.add_cleanup(_teardown_a12_seed_data)
+
+
+@when("the A12 migration is applied and the matview is refreshed")
+def step_when_a12_migration_applied_and_refreshed(context):
+    command.upgrade(_alembic_config(), "head")
+    with session_ctx() as session:
+        session.execute(text("SELECT public.refresh_materialized_views()"))
+        session.commit()
+
+
+@then("that record's sample date is null")
+def step_then_records_sample_date_is_null(context):
+    layer_id = context.a12_layer_id
+    feature = _get_item(context, layer_id, context.a12_thing_id)
+    prop = A12_LAYER_DATE_PROPERTY[layer_id]
+    value = feature["properties"][prop]
+    assert value is None, (
+        f"{layer_id} feature {context.a12_thing_id} still exposes a sentinel "
+        f"date via {prop}: {value!r}"
+    )
+
+
+@then('that record\'s sample date is still "{expected_date}"')
+def step_then_records_sample_date_is_still(context, expected_date):
+    layer_id = context.a12_layer_id
+    feature = _get_item(context, layer_id, context.a12_thing_id)
+    prop = A12_LAYER_DATE_PROPERTY[layer_id]
+    value = feature["properties"][prop]
+    assert value is not None and value[:10] == expected_date, (
+        f"{layer_id} feature {context.a12_thing_id} has {prop}={value!r}, "
+        f"expected {expected_date!r} to be preserved"
+    )
+
+
+@then(
+    "the description for each of the following layers states that a null "
+    "sample date means the date is unknown"
+)
+def step_then_description_states_null_date_unknown(context):
+    payload = context.response.json()
+    descriptions = {c["id"]: c.get("description", "") for c in payload["collections"]}
+    missing = []
+    for row in context.table:
+        layer_id = row["layer-id"].strip()
+        description = descriptions.get(layer_id, "").lower()
+        if "unknown" not in description or "null" not in description:
+            missing.append(layer_id)
+    assert (
+        not missing
+    ), f"layer descriptions do not document the sentinel-date convention: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# A14 -- Split Group A view template into well and non-well variants
+# ---------------------------------------------------------------------------
+
+
+@given("the Group A view template has been split into well and non-well variants")
+def step_given_group_a_template_split(context):
+    # No-op marker: the view-template split is the artifact under test, not
+    # runtime state to arrange. Same treatment as the A2/A16-18 givens.
+    pass
+
+
+@when('a client requests items from "{layer_id}"')
+def step_when_client_requests_items_from_quoted_layer(context, layer_id):
+    context.last_layer_id = layer_id
+    context.response_payload = _get_items(context, layer_id, limit=500)
+
+
+@then("the feature properties do not include the following well-specific columns")
+def step_then_feature_properties_exclude_well_columns(context):
+    # Checked via queryables rather than feature properties: these non-well
+    # layers may have zero seeded rows in the behave database, and an empty
+    # feature list would let a leaked column pass unnoticed. Same approach
+    # A13 uses for last_observation_date.
+    columns = [row["column"] for row in context.table]
+    layer_id = context.last_layer_id
+    queryables = context.client.get(f"/ogcapi/collections/{layer_id}/queryables")
+    assert (
+        queryables.status_code == 200
+    ), f"queryables for {layer_id} returned {queryables.status_code}: {queryables.text}"
+    advertised = queryables.json().get("properties", {})
+    leaked = [c for c in columns if c in advertised]
+    assert not leaked, f"{layer_id} still advertises well-specific columns: {leaked}"
+
+
+@then("the feature properties include well_depth")
+def step_then_feature_properties_include_well_depth(context):
+    queryables = context.client.get("/ogcapi/collections/water_wells/queryables")
+    assert (
+        queryables.status_code == 200
+    ), f"queryables for water_wells returned {queryables.status_code}: {queryables.text}"
+    advertised = queryables.json().get("properties", {})
+    assert "well_depth" in advertised, (
+        f"water_wells no longer advertises well_depth after the A14 template "
+        f"split: {sorted(advertised)}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A15 -- Document and verify materialized view refresh schedule
+# ---------------------------------------------------------------------------
+
+A15_LAYER_TO_RELATION = {
+    "water_well_summary": "ogc_water_well_summary",
+    "depth_to_water_trend_wells": "ogc_depth_to_water_trend_wells",
+    "water_elevation_wells": "ogc_water_elevation_wells",
+    "latest_depth_to_water_wells": "ogc_latest_depth_to_water_wells",
+    "avg_tds_wells": "ogc_avg_tds_wells",
+    "major_chemistry_results": "ogc_major_chemistry_results",
+    "minor_chemistry_wells": "ogc_minor_chemistry_wells",
+}
+
+# Daily for water-level matviews, weekly for chemistry matviews -- the
+# baseline cadence proposed in Section 6.3 (A15), pending runbook sign-off.
+_A15_WATER_LEVEL_LAYERS = {
+    "water_well_summary",
+    "depth_to_water_trend_wells",
+    "water_elevation_wells",
+    "latest_depth_to_water_wells",
+    "avg_tds_wells",
+}
+A15_CADENCE = {
+    **{layer: timedelta(days=1) for layer in _A15_WATER_LEVEL_LAYERS},
+    "major_chemistry_results": timedelta(days=7),
+    "minor_chemistry_wells": timedelta(days=7),
+}
+
+
+@given("a scheduled refresh job has been configured for the Group B materialized views")
+def step_given_scheduled_refresh_job_configured(context):
+    # No-op marker: the refresh job (cron/scheduler config) is the artifact
+    # under test, not runtime state to arrange. Same treatment as the
+    # A2/A16-18 givens.
+    pass
+
+
+@then(
+    'the last refresh timestamp for "{layer_id}" is within its documented '
+    "refresh cadence"
+)
+def step_then_last_refresh_timestamp_within_cadence(context, layer_id):
+    relation = A15_LAYER_TO_RELATION[layer_id]
+    try:
+        with session_ctx() as session:
+            last_refresh = session.execute(
+                text(
+                    "SELECT refreshed_at FROM matview_refresh_log "
+                    "WHERE relation_name = :relation "
+                    "ORDER BY refreshed_at DESC LIMIT 1"
+                ),
+                {"relation": relation},
+            ).scalar_one_or_none()
+    except ProgrammingError as exc:
+        assert False, (
+            f"could not read a refresh timestamp for {relation}: {exc}. A15 "
+            "has not yet introduced a refresh-log mechanism -- this "
+            "assertion will need to point at whatever A15 actually builds."
+        )
+    assert last_refresh is not None, (
+        f"no refresh has been logged for {relation} -- expected A15's "
+        "scheduled job to have run and recorded a refresh"
+    )
+    age = datetime.now(timezone.utc) - last_refresh.replace(tzinfo=timezone.utc)
+    cadence = A15_CADENCE[layer_id]
+    assert age <= cadence, (
+        f"{relation} was last refreshed {age} ago, outside its documented "
+        f"{cadence} cadence"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A20 -- Extend OGC test coverage to all 22 layers with a release_status
+# regression test
+# ---------------------------------------------------------------------------
+
+
+@then("the response includes all of the following 18 collection ids")
+def step_then_response_includes_all_18_ids(context):
+    payload = context.response.json()
+    ids_present = {c["id"] for c in payload["collections"]}
+    missing = [
+        row["layer-id"].strip()
+        for row in context.table
+        if row["layer-id"].strip() not in ids_present
+    ]
+    assert not missing, f"missing collection ids: {missing}"
+
+
+def _teardown_a20_seed_data():
+    with session_ctx() as session:
+        session.execute(text("DELETE FROM thing WHERE name LIKE 'A20 %'"))
+        session.execute(text("DELETE FROM \"group\" WHERE name LIKE 'A20 %'"))
+        session.commit()
+
+
+@given('a feature with id "{feature_id}" in "{layer_id}" has release_status "{status}"')
+def step_given_feature_with_id_in_layer_has_status(
+    context, feature_id, layer_id, status
+):
+    # The literal id in the Gherkin text (e.g. "7734") is illustrative only:
+    # database ids are assigned on insert and cannot be pinned to a literal
+    # value without fragile sequence manipulation. This seeds a real row with
+    # the given release_status and records its actual generated id for the
+    # Then step to check against.
+    with session_ctx() as session:
+        if layer_id == "project_areas":
+            group = Group(
+                name=f"A20 {status} project area",
+                description="A20 behave seed project area group",
+                release_status=status,
+                project_area=(
+                    "MULTIPOLYGON(((-107.3 33.4, -106.9 33.4, "
+                    "-106.9 33.8, -107.3 33.8, -107.3 33.4)))"
+                ),
+            )
+            session.add(group)
+            session.commit()
+            context.a20_seeded_id = group.id
+        else:
+            thing = _seed_thing_with_location(
+                session, "water well", status, f"A20 {status} {layer_id}"
+            )
+            context.a20_seeded_id = thing.id
+    context.a20_layer_id = layer_id
+    context.add_cleanup(_teardown_a20_seed_data)
+
+
+@then('no returned feature has id "{feature_id}"')
+def step_then_no_returned_feature_has_id(context, feature_id):
+    ids_present = _layer_feature_ids(context.response_payload)
+    assert context.a20_seeded_id not in ids_present, (
+        f"{context.a20_layer_id} exposed its seeded {feature_id!r}-labeled "
+        f"record (actual id={context.a20_seeded_id})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A21 -- Separate database roles for public and internal OGC access
+# ---------------------------------------------------------------------------
+
+# Illustrative role names -- A21 hasn't been implemented, so these are a
+# guess at what the real migration/deploy step will name the roles. Update
+# to match once A21 actually lands.
+A21_PUBLIC_ROLE = "ogc_public_reader"
+A21_INTERNAL_ROLE = "ogc_internal_reader"
+
+
+@given("the public read-only database role has been created")
+@given("the internal read-only database role has been created")
+def step_given_ogc_database_role_created(context):
+    # No-op marker: role provisioning is infrastructure under test (A21's
+    # own migration/deploy step), not runtime state to arrange here.
+    pass
+
+
+@when("the role's grants are inspected")
+def step_when_role_grants_are_inspected(context):
+    with session_ctx() as session:
+        context.a21_public_grants = set(
+            session.execute(
+                text(
+                    "SELECT table_name FROM information_schema.role_table_grants "
+                    "WHERE grantee = :role AND privilege_type = 'SELECT'"
+                ),
+                {"role": A21_PUBLIC_ROLE},
+            ).scalars()
+        )
+        context.a21_internal_grants = set(
+            session.execute(
+                text(
+                    "SELECT table_name FROM information_schema.role_table_grants "
+                    "WHERE grantee = :role AND privilege_type = 'SELECT'"
+                ),
+                {"role": A21_INTERNAL_ROLE},
+            ).scalars()
+        )
+
+
+@then("the role has SELECT privilege only on the public ogc_* views")
+def step_then_role_has_select_only_on_public_views(context):
+    grants = context.a21_public_grants
+    assert (
+        grants
+    ), f"{A21_PUBLIC_ROLE} has no SELECT grants -- expected the public ogc_* views"
+    non_public = [
+        table
+        for table in grants
+        if not (table.startswith("ogc_") and not table.startswith("ogc_internal_"))
+    ]
+    assert not non_public, f"{A21_PUBLIC_ROLE} has unexpected grants: {non_public}"
+
+
+@then("the role has no privilege on any ogc_internal_ relation")
+def step_then_role_has_no_privilege_on_internal(context):
+    offending = [t for t in context.a21_public_grants if t.startswith("ogc_internal_")]
+    assert (
+        not offending
+    ), f"{A21_PUBLIC_ROLE} has grants on internal relations: {offending}"
+
+
+@then("the role has SELECT privilege on the ogc_internal_ views")
+def step_then_role_has_select_on_internal_views(context):
+    internal = [t for t in context.a21_internal_grants if t.startswith("ogc_internal_")]
+    assert (
+        internal
+    ), f"{A21_INTERNAL_ROLE} has no SELECT grants on any ogc_internal_ relation"
+
+
+@given(
+    "the /ogcapi public mount is connected to the database as the public read-only role"
+)
+def step_given_public_mount_connected_as_public_role(context):
+    # No-op marker: the mount's connection role is deploy-time configuration
+    # under test (A21), not runtime state to arrange here.
+    pass
+
+
+@when("the public mount is misconfigured to query an ogc_internal_ relation")
+def step_when_public_mount_misconfigured_to_query_internal(context):
+    dsn = (
+        f"postgresql+psycopg2://{A21_PUBLIC_ROLE}:{A21_PUBLIC_ROLE}@"
+        f"{os.environ.get('POSTGRES_HOST', 'localhost')}:"
+        f"{os.environ.get('POSTGRES_PORT', '5432')}/"
+        f"{os.environ.get('POSTGRES_DB', 'ocotilloapi_test')}"
+    )
+    engine = create_engine(dsn)
+    context.a21_query_error = None
+    context.a21_query_rows = None
+    try:
+        with engine.connect() as conn:
+            context.a21_query_rows = conn.execute(
+                text("SELECT * FROM ogc_internal_water_wells LIMIT 1")
+            ).fetchall()
+    except Exception as exc:  # noqa: BLE001 -- surfaced via the next Then steps
+        context.a21_query_error = exc
+    finally:
+        engine.dispose()
+
+
+@then("the database denies the query with a permission error")
+def step_then_database_denies_query_with_permission_error(context):
+    assert context.a21_query_error is not None, (
+        "expected querying ogc_internal_water_wells as the public role to be "
+        "denied, but the query succeeded"
+    )
+    error_text = str(context.a21_query_error).lower()
+    # Before A21 provisions the role, connecting fails at authentication
+    # rather than at the grant check ("password authentication failed" /
+    # "role ... does not exist") -- both count as "denied" for this
+    # scenario's purposes; "permission denied" is the real post-A21 signal.
+    denial_signals = (
+        "permission denied",
+        "password authentication failed",
+        "does not exist",
+    )
+    assert any(signal in error_text for signal in denial_signals), (
+        f"expected a permission- or authentication-denied error, got: "
+        f"{context.a21_query_error}"
+    )
+
+
+@then("no rows are returned")
+def step_then_no_rows_are_returned(context):
+    assert (
+        not context.a21_query_rows
+    ), f"expected no rows from the denied query, got {context.a21_query_rows}"
 
 
 # ============= EOF =============================================

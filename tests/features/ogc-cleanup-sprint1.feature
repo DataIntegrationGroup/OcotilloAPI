@@ -4,19 +4,16 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   So that I can depend on the API for scientific and operational use
 
   # Sprint 1 scope: A1, A2, A3, A4, A6, A11, A13, A16, A17, A18, A22, A23
+  # Sprint 2 scope: A7, A8, A10, A14, A20
+  # Sprint 3 scope: A9, A12, A21
+  # Sprint 4 scope: A5, A15
   #
-  # Deferred to Sprint 2:
-  #   A5  — int(None) runtime warning in pygeoapi/api/itemtypes.py
-  #   A7  — Level 1 display title pass (non-breaking naming update)
-  #   A8  — Layer ID renames (Level 2 vs Level 3 decision pending)
-  #   A9  — Publication predicate policy per layer family (domain-owner sign-off required)
-  #   A10 — Per-layer SQL publication filters (depends on A9)
-  #   A12 — Sentinel date nulling in chemistry layers
-  #   A14 — Group A view template split to remove non-well schema bleed
-  #   A15 — Materialized view refresh schedule documentation
-  #   A19 — Sparse Group A layer hiding
-  #   A20 — Extended test coverage for all 22 configured collections
-  #   A21 — Separate database roles for public and internal OGC access
+  # Not included:
+  #   A19 — Hide sparse Group A layers from the public catalog. The ticket's
+  #         Acceptance Criteria say to remove the layers, but its Sprint/Epic
+  #         field reads "keep sparse groups" instead of a sprint number,
+  #         which contradicts that guidance. Left out of this feature file
+  #         until the conflict is resolved in the ticket.
 
   Background:
     Given the Ocotillo API is running
@@ -160,6 +157,128 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     And the water_level_network_wells collection does not appear in the response
 
   # ---------------------------------------------------------------------------
+  # A5 — Address int(None) runtime warning in pygeoapi itemtypes
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-infrastructure @sprint-4 @high-priority @A5 @production
+  Scenario: Items requests no longer emit the int(None) runtime warning
+    Given the A5 null guard has been applied to pygeoapi/api/itemtypes.py
+    When a client requests items from the water_wells layer
+    Then the server logs contain no int(None) runtime warning
+
+  @backend @ogc-infrastructure @sprint-4 @high-priority @A5 @production
+  Scenario: Items response content is unaffected by the null guard fix
+    Given the A5 null guard has been applied to pygeoapi/api/itemtypes.py
+    When a client requests items from the water_wells layer
+    Then the response HTTP status is 200
+    And the response Content-Type is "application/geo+json"
+
+  # ---------------------------------------------------------------------------
+  # A7 — Implement Level 1 naming pass across all layers
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-naming @sprint-2 @high-priority @A7
+  Scenario: Display titles are updated for layers with a naming defect
+    Given the Level 1 naming pass has been applied
+    When a client requests /ogcapi/collections
+    Then the display title for each of the following layers matches its proposed title
+      | layer-id                         | title                                     |
+      | diversions_surface_water         | Surface Water Diversions                  |
+      | lakes_ponds_reservoirs           | Lakes and Reservoirs                      |
+      | outfalls_wastewater_return_flow  | Wastewater Outfalls                       |
+      | latest_tds_wells                 | Water Well Latest Total Dissolved Solids  |
+      | major_chemistry_results          | Water Well Major Chemistry                |
+
+  @backend @ogc-naming @sprint-2 @high-priority @A7
+  Scenario: Layer ids are unchanged by the Level 1 naming pass
+    Given the Level 1 naming pass has been applied
+    When a client requests /ogcapi/collections
+    Then each of the following layers keeps its pre-naming-pass id
+      | layer-id                         |
+      | diversions_surface_water         |
+      | lakes_ponds_reservoirs           |
+      | outfalls_wastewater_return_flow  |
+      | latest_tds_wells                 |
+      | major_chemistry_results          |
+      | actively_monitored_wells         |
+
+  # ---------------------------------------------------------------------------
+  # A8 — Decide and implement Level 2 or Level 3 ID renames
+  # ---------------------------------------------------------------------------
+
+  # A8 policy gate: the team must decide Level 2 (grace period with
+  # deprecated aliases) or Level 3 (immediate rename) per Section 6.2.1
+  # before implementation begins. Tracked in ticket — not enforced as a
+  # Behave scenario.
+
+  # No outside organizations had access to the API before the renames, so
+  # no need for a grace period. The renames will be implemented as
+  # Level 3 (immediate) renames.
+
+  @backend @ogc-naming @sprint-2 @high-priority @A8
+  Scenario Outline: A substantive rename is discoverable under its proposed id
+    Given the team has decided on a rename level for the substantive renames
+    When the layer previously known as "<current-id>" is renamed to "<proposed-id>"
+    Then a client requesting items from "<proposed-id>" receives that layer's features
+
+    Examples:
+      | current-id                       | proposed-id                               |
+      | diversions_surface_water         | surface_water_diversions                  |
+      | lakes_ponds_reservoirs           | lakes_and_reservoirs                      |
+      | outfalls_wastewater_return_flow  | wastewater_outfalls                       |
+      | latest_tds_wells                 | water_well_latest_total_dissolved_solids  |
+      | major_chemistry_results          | water_well_major_chemistry                |
+
+  @backend @ogc-naming @sprint-2 @high-priority @A8
+  Scenario: Old collection id returns deprecation headers during a Level 2 grace period
+    Given the team decided on Level 2 renames with a 90-day grace period
+    When a client requests items from a layer under its old id
+    Then the response includes Deprecation, Sunset, and Link headers
+    And the response still returns that layer's features
+
+  @backend @ogc-naming @sprint-2 @high-priority @A8
+  Scenario: Old collection id is removed immediately under a Level 3 rename
+    Given the team decided on Level 3 renames with no grace period
+    When a client requests items from a layer under its old id
+    Then the response HTTP status is 404
+
+  # ---------------------------------------------------------------------------
+  # A9 — Define the publication predicate per layer family
+  # ---------------------------------------------------------------------------
+
+  # A9 is a governance action, not an engineering task: a named data owner
+  # must document, for each layer family (thing-based, chemistry and
+  # water-level, group-based, monitoring), which combination of
+  # release_status values, parent records, and joined tables must all be
+  # public before a feature is safe to serve. The document is reviewed and
+  # stored in the project knowledge base. A10 cannot begin correctly until
+  # this is complete. Tracked in ticket — not enforced as a Behave scenario.
+
+  # ---------------------------------------------------------------------------
+  # A10 — Implement more permanent per-layer SQL filters
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @migration-mutates-schema @cleanup_samples
+  Scenario: Water elevation layer excludes a well whose only water level observation is non-public
+    Given a well has release_status "public" but its only water level observation has release_status "private"
+    And a second well has release_status "public" and its only water level observation has release_status "public"
+    When a client requests items from the water_elevation_wells layer
+    Then the response does not include the well with the private observation
+    And the response includes the well with the public observation
+
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @migration-mutates-schema @cleanup_samples
+  Scenario: project_areas exposure follows the owning group's release_status
+    Given a project_areas group has release_status "public"
+    When a client requests items from the project_areas layer
+    Then the polygon feature for that group is included in the response
+
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @cleanup_samples
+  Scenario: Known private and draft records remain excluded after the permanent filter is applied
+    Given known private and draft feature ids are seeded in each layer family
+    When a client requests items from each of those layers
+    Then none of the seeded private or draft feature ids appear in the response
+
+  # ---------------------------------------------------------------------------
   # A11 — Stand up authenticated internal OGC mount at /ogcapi-internal
   # ---------------------------------------------------------------------------
 
@@ -198,6 +317,43 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   Scenario: Public /ogcapi surface is unaffected by the internal mount
     When a client requests /ogcapi/collections
     Then no collection in the response has an id prefixed "ogc_internal_"
+
+  # ---------------------------------------------------------------------------
+  # A12 — Null out sentinel dates in chemistry layer matviews
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production @migration-mutates-schema @cleanup_samples
+  Scenario Outline: Sentinel sample dates are nulled out after the matview migration
+    Given a record in "<layer-id>" has a sample date of "1900-01-01"
+    When the A12 migration is applied and the matview is refreshed
+    Then that record's sample date is null
+
+    Examples:
+      | layer-id                 |
+      | major_chemistry_results  |
+      | minor_chemistry_wells    |
+      | latest_tds_wells         |
+
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production @migration-mutates-schema @cleanup_samples
+  Scenario Outline: Valid historical sample dates are unaffected by the sentinel date fix
+    Given a record in "<layer-id>" has a sample date of "1998-04-12"
+    When the A12 migration is applied and the matview is refreshed
+    Then that record's sample date is still "1998-04-12"
+
+    Examples:
+      | layer-id                 |
+      | major_chemistry_results  |
+      | minor_chemistry_wells    |
+      | latest_tds_wells         |
+
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production
+  Scenario: Layer descriptions document the sentinel date convention
+    When a client requests /ogcapi/collections
+    Then the description for each of the following layers states that a null sample date means the date is unknown
+      | layer-id                 |
+      | major_chemistry_results  |
+      | minor_chemistry_wells    |
+      | latest_tds_wells         |
 
   # ---------------------------------------------------------------------------
   # A13 — Add last_observation_date column to Group A view template
@@ -248,12 +404,12 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | springs                         |
       | perennial_streams               |
       | meteorological_stations         |
-      | ephemeral_streams               |
-      | rock_sample_locations           |
-      | diversions_surface_water        |
-      | lakes_ponds_reservoirs          |
-      | soil_gas_sample_locations       |
-      | outfalls_wastewater_return_flow |
+      | ephemeral_streams                |
+      | rock_sample_locations            |
+      | diversions_surface_water         |
+      | lakes_ponds_reservoirs           |
+      | soil_gas_sample_locations        |
+      | outfalls_wastewater_return_flow  |
     When a client requests items from each of those layers with filter
       """
       last_observation_date > '2021-01-01'
@@ -261,6 +417,64 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     Then only features with a last_observation_date of "2023-06-01" are returned from each layer
     # other_things is not listed: it is in the Group A view template, but A18
     # took it off the public catalog — it is only reachable on /ogcapi-internal.
+
+  # ---------------------------------------------------------------------------
+  # A14 — Split Group A view template into well and non-well variants
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-naming @sprint-2 @medium-priority @A14 @production @migration-mutates-schema
+  Scenario Outline: Non-well Group A layers no longer expose well-specific columns
+    Given the Group A view template has been split into well and non-well variants
+    When a client requests items from "<layer-id>"
+    Then the feature properties do not include the following well-specific columns
+      | column                |
+      | well_depth            |
+      | well_completion_date  |
+      | well_casing_diameter  |
+
+    Examples:
+      | layer-id                         |
+      | springs                          |
+      | perennial_streams                |
+      | meteorological_stations          |
+      | ephemeral_streams                |
+      | rock_sample_locations            |
+      | diversions_surface_water         |
+      | lakes_ponds_reservoirs           |
+      | soil_gas_sample_locations        |
+      | outfalls_wastewater_return_flow  |
+
+  @backend @ogc-naming @sprint-2 @medium-priority @A14 @production @migration-mutates-schema
+  Scenario: Well layer keeps its well-specific columns after the template split
+    Given the Group A view template has been split into well and non-well variants
+    When a client requests items from the water_wells layer
+    Then the feature properties include well_depth
+
+  # ---------------------------------------------------------------------------
+  # A15 — Document and verify materialized view refresh schedule
+  # ---------------------------------------------------------------------------
+
+  # A15's runbook documentation and refresh cadence (daily for water-level
+  # matviews, weekly for chemistry matviews, as a starting baseline) are
+  # tracked in ticket — not enforced as a Behave scenario. The scenario below
+  # covers the one system-observable outcome: a refresh job is actually
+  # running.
+
+  @backend @ogc-data-currency @sprint-4 @medium-priority @A15 @production
+  Scenario Outline: Group B materialized views have a recent refresh timestamp
+    Given a scheduled refresh job has been configured for the Group B materialized views
+    When the database schema is inspected
+    Then the last refresh timestamp for "<layer-id>" is within its documented refresh cadence
+
+    Examples:
+      | layer-id                     |
+      | water_well_summary           |
+      | depth_to_water_trend_wells   |
+      | water_elevation_wells        |
+      | latest_depth_to_water_wells  |
+      | avg_tds_wells                |
+      | major_chemistry_results      |
+      | minor_chemistry_wells        |
 
   # ---------------------------------------------------------------------------
   # A16 — Hide avg_tds_wells and latest_depth_to_water_wells from public catalog
@@ -317,6 +531,82 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     When the database schema is inspected
     Then the other_things backing view still exists in the database schema
     And the internal other_things backing view still exists in the database schema
+
+  # ---------------------------------------------------------------------------
+  # A20 — Extend OGC test coverage to all 22 layers with a release_status regression test
+  # ---------------------------------------------------------------------------
+
+  # Related to decisions needed for permissions strategy - not going to do (8/25/2026).
+
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production
+  Scenario: Every configured collection is discoverable in the public catalog
+    When a client requests /ogcapi/collections
+    Then the response includes all of the following 18 collection ids
+      | layer-id                        |
+      | water_wells                     |
+      | springs                         |
+      | perennial_streams                |
+      | meteorological_stations         |
+      | ephemeral_streams                |
+      | rock_sample_locations            |
+      | diversions_surface_water         |
+      | lakes_ponds_reservoirs           |
+      | soil_gas_sample_locations        |
+      | outfalls_wastewater_return_flow  |
+      | water_well_summary               |
+      | depth_to_water_trend_wells       |
+      | water_elevation_wells            |
+      | major_chemistry_results          |
+      | minor_chemistry_wells            |
+      | latest_tds_wells                 |
+      | actively_monitored_wells         |
+      | project_areas                    |
+
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production @cleanup_samples
+  Scenario Outline: A known private record is excluded from public items by feature id
+    Given a feature with id "<feature-id>" in "<layer-id>" has release_status "private"
+    When a client requests items from "<layer-id>"
+    Then no returned feature has id "<feature-id>"
+
+    Examples:
+      | layer-id                 | feature-id |
+      | water_wells               | 7734       |
+      | major_chemistry_results   | 8102       |
+
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production @cleanup_samples
+  Scenario Outline: A known draft record is excluded from public items by feature id
+    Given a feature with id "<feature-id>" in "<layer-id>" has release_status "draft"
+    When a client requests items from "<layer-id>"
+    Then no returned feature has id "<feature-id>"
+
+    Examples:
+      | layer-id       | feature-id |
+      | water_wells     | 7735       |
+      | project_areas   | 19         |
+
+  # ---------------------------------------------------------------------------
+  # A21 — Create separate database roles for public and internal OGC access
+  # ---------------------------------------------------------------------------
+
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  Scenario: Public database role has no privilege on internal OGC relations
+    Given the public read-only database role has been created
+    When the role's grants are inspected
+    Then the role has SELECT privilege only on the public ogc_* views
+    And the role has no privilege on any ogc_internal_ relation
+
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  Scenario: Internal database role has SELECT privilege on internal OGC views
+    Given the internal read-only database role has been created
+    When the role's grants are inspected
+    Then the role has SELECT privilege on the ogc_internal_ views
+
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  Scenario: A misrouted request to internal relations fails closed under the public role
+    Given the /ogcapi public mount is connected to the database as the public read-only role
+    When the public mount is misconfigured to query an ogc_internal_ relation
+    Then the database denies the query with a permission error
+    And no rows are returned
 
   # ---------------------------------------------------------------------------
   # A22 — Verify NULL measuring_point_height assumption for water level layers
