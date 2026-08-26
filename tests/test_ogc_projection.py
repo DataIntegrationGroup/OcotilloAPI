@@ -39,8 +39,7 @@ PUBLIC_CONFIG = Path(__file__).parent.parent / "core" / "pygeoapi-config.yml"
 # The EDR collections are wired in core/pygeoapi.py rather than the YAML.
 EDR_TABLES = ("ogc_waterlevels", "ogc_water_chemistry")
 
-COLUMNS_QUERY = text(
-    """
+COLUMNS_QUERY = text("""
     select a.attname
     from pg_attribute a
     join pg_class c on c.oid = a.attrelid
@@ -49,8 +48,7 @@ COLUMNS_QUERY = text(
       and c.relname = :relation
       and a.attnum > 0
       and not a.attisdropped
-    """
-)
+    """)
 
 
 def public_tables() -> list:
