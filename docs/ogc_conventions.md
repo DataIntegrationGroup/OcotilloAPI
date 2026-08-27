@@ -23,7 +23,7 @@ Covers OGC **Feature** layer IDs and titles — `core/pygeoapi.py`,
 
 ## Governing standard
 
-**Authority:** USGS NWIS site-type vocabulary. 
+**Authority:** USGS NWIS site-type vocabulary.
 
 **Why this standard:** it's an established, published vocabulary — adopting it
 avoids inventing a new framework. The Bureau has also previously used USGS
@@ -94,15 +94,13 @@ deliberate, structural deviations, not naming defects:
 
 Before renaming any layer, decide which level applies. A layer's row in the
 inventory below may need more than one level at once — e.g. Level 1 for its
-title and Level 2/3 for its ID, if both need to change.
+title and Level 2 for its ID, if both need to change.
+
 
 - **Level 1 — Cosmetic only.** Update `title`/`description`, leave the layer
   ID (and therefore the URL) unchanged. Non-breaking, ship anytime.
-- **Level 2 — ID rename with grace period.** Rename the ID, keep the old ID
-  alive as an alias for 90 days, with `Deprecation`, `Sunset`, and `Link`
-  response headers pointing at the new ID.
-- **Level 3 — Hard rename, no alias.** Only safe if no external consumers are
-  confirmed on the current ID.
+- **Level 2 — Hard rename.** Rename the ID directly, no alias or grace
+  period.
 
 ## Applying this to new layers
 
@@ -111,55 +109,53 @@ Check any newly-added layer against the [do/don't rules](#do--dont-rules)
 
 ## Current layer inventory
 
-Every layer this catalog publishes. "Recommended" columns are `N/A` where the
-current ID/title already conforms.
+Every layer this catalog publishes. "Proposed" columns are `N/A` where the
+current ID/title already conforms. "Title" is the pygeoapi `title` field (the
+human-readable display name).
 
 ### Group A — thing-type layers (`core/pygeoapi.py`)
 
-| Layer ID | Recommended ID | Layer Name | Recommended Name | Level | Rationale |
+| Layer ID | Proposed ID | Layer Title | Proposed Title | Level | Rationale |
 |---|---|---|---|---|---|
 | `water_wells` | N/A | Water Wells | N/A | N/A | Conforms (USGS `GW`) |
 | `springs` | N/A | Springs | N/A | N/A | Conforms (USGS `SP`) |
-| `diversions_surface_water` | `surface_water_diversions` | Surface Water Diversions | N/A | 2 or 3 | Word-order inversion in the ID; title already correct. Matches USGS `FA-DV` (Diversion) |
+| `diversions_surface_water` | `surface_water_diversions` | Surface Water Diversions | N/A | 2 | Word-order inversion in the ID; title already correct. Matches USGS `FA-DV` (Diversion) |
 | `ephemeral_streams` | N/A | Ephemeral Streams | N/A | N/A | Conforms |
-| `lakes_ponds_reservoirs` | `lakes_and_reservoirs` | Lakes, Ponds, and Reservoirs | Lakes and Reservoirs | 1 and 2/3 | USGS's `LK` category doesn't separately name ponds, so consolidating the title is consistent with the standard |
+| `lakes_ponds_reservoirs` | `lakes_and_reservoirs` | Lakes, Ponds, and Reservoirs | Lakes and Reservoirs | 1 and 2 | USGS's `LK` category doesn't separately name ponds, so consolidating the title is consistent with the standard |
 | `meteorological_stations` | N/A | Meteorological Stations | N/A | N/A | Conforms (USGS `AT`) |
-| `outfalls_wastewater_return_flow` | `wastewater_outfalls` | Outfalls and Return Flow | N/A | 2 or 3 | ID reads as a description, not a name; title is already fine |
+| `outfalls_wastewater_return_flow` | `wastewater_outfalls` | Outfalls and Return Flow | N/A | 2 | ID reads as a description, not a name; title is already fine |
 | `perennial_streams` | N/A | Perennial Streams | N/A | N/A | Conforms |
-| `rock_sample_locations` | `rock_sample_sites` | Rock Sample Locations | Rock Sample Sites | 1 and 2/3 | USGS uses "site" consistently |
-| `soil_gas_sample_locations` | `soil_gas_sample_sites` | Soil Gas Sample Locations | Soil Gas Sample Sites | 1 and 2/3 | USGS uses "site" consistently |
+| `rock_sample_locations` | `rock_sample_sites` | Rock Sample Locations | Rock Sample Sites | 1 and 2 | USGS uses "site" consistently |
+| `soil_gas_sample_locations` | `soil_gas_sample_sites` | Soil Gas Sample Locations | Soil Gas Sample Sites | 1 and 2 | USGS uses "site" consistently |
 | `other_things` *(internal-only)* | N/A | Other Thing Types | N/A | N/A | "Thing" jargon resolved by removing from the public catalog, not renaming |
 
 ### Group B — analytic layers (`core/pygeoapi-config.yml`)
 
-| Layer ID | Recommended ID | Layer Name | Recommended Name | Level | Rationale |
+| Layer ID | Proposed ID | Layer Title | Proposed Title | Level | Rationale |
 |---|---|---|---|---|---|
-| `latest_tds_wells` | `water_well_latest_total_dissolved_solids` | Latest TDS (Water Wells) | Latest Total Dissolved Solids (Water Wells) | 1 and 2/3 | `tds` unexplained abbreviation in both ID and title |
+| `latest_tds_wells` | `water_well_latest_total_dissolved_solids` | Latest TDS (Water Wells) | Latest Total Dissolved Solids (Water Wells) | 1 and 2 | `tds` unexplained abbreviation in both ID and title |
 | `depth_to_water_trend_wells` | N/A | Depth to Water Trend (Water Wells) | N/A | N/A | Conforms |
 | `water_elevation_wells` | N/A | Water Elevation (Water Wells) | N/A | N/A | Conforms |
 | `water_well_summary` | N/A | Water Well Summary | N/A | N/A | Conforms |
 | `well_water_column` | N/A | Well Water Column (Water Wells) | N/A | N/A | Conforms — plain English, matches its description (standing water column per well). ⚠️ *needs review*: doesn't follow the `water_well_` prefix direction |
-| `major_chemistry_results` | `water_well_major_chemistry` | Major Chemistry (Water Wells) | N/A | 2 or 3 | Missing `water_well_` prefix; "Results" is redundant — every layer is a result |
-| `minor_chemistry_wells` | `water_well_minor_chemistry` | Minor Chemistry (Water Wells) | N/A | 2 or 3 | Should mirror the recommended `water_well_major_chemistry` for its sibling layer |
+| `major_chemistry_results` | `water_well_major_chemistry` | Major Chemistry (Water Wells) | N/A | 2 | Missing `water_well_` prefix; "Results" is redundant — every layer is a result |
+| `minor_chemistry_wells` | `water_well_minor_chemistry` | Minor Chemistry (Water Wells) | N/A | 2 | Should mirror the recommended `water_well_major_chemistry` for its sibling layer |
 | `actively_monitored_wells` | N/A | Actively Monitored Wells | N/A | N/A | Not renamed — see [Deviations](#deviations-from-usgs-nwis-conventions) |
 | `project_areas` | N/A | Project Areas | N/A | N/A | Conforms |
-| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Geothermal Wells — Bottom-Hole Temperature | N/A | 2 or 3 | ⚠️ *needs review*: `bht` abbreviation in the ID only; title already spells it out |
+| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Geothermal Wells — Bottom-Hole Temperature | N/A | 2 | ⚠️ *needs review*: `bht` abbreviation in the ID only; title already spells it out |
 | `geothermal_wells_temperature_profile` | N/A | Geothermal Wells — Temperature-Depth Profile | N/A | N/A | Conforms |
-| `bht_measurements` | `bottom_hole_temperature_measurements` | BHT Measurements | Bottom-Hole Temperature Measurements | 1 and 2/3 | ⚠️ *needs review*: `bht` abbreviation in both ID and title |
-| `temp_depth_measurements` | `temperature_depth_measurements` | Temperature-Depth Measurements | N/A | 2 or 3 | ⚠️ *needs review*: `temp` abbreviation in the ID only; title already spells it out |
+| `bht_measurements` | `bottom_hole_temperature_measurements` | BHT Measurements | Bottom-Hole Temperature Measurements | 1 and 2 | ⚠️ *needs review*: `bht` abbreviation in both ID and title |
+| `temp_depth_measurements` | `temperature_depth_measurements` | Temperature-Depth Measurements | N/A | 2 | ⚠️ *needs review*: `temp` abbreviation in the ID only; title already spells it out |
 | `heat_flow` | N/A | Heat Flow | N/A | N/A | Conforms |
-| `dst` | `drill_stem_tests` | Drill Stem Tests | N/A | 2 or 3 | ⚠️ *needs review*: ID is a bare abbreviation; title already spells it out — recommended ID matches the title exactly |
+| `dst` | `drill_stem_tests` | Drill Stem Tests | N/A | 2 | ⚠️ *needs review*: ID is a bare abbreviation; title already spells it out — recommended ID matches the title exactly |
 
 ### Internal-only (`core/pygeoapi-config-internal.yml`)
 
-| Layer ID | Recommended ID | Layer Name | Recommended Name | Level | Rationale |
+| Layer ID | Proposed ID | Layer Title | Proposed Title | Level | Rationale |
 |---|---|---|---|---|---|
 | `locations` | N/A | Locations | N/A | N/A | Conforms. Hidden from public catalog — scope decision, not a naming fix |
-| `avg_tds_wells` | `water_well_average_total_dissolved_solids` | Average TDS (Water Wells) | Average Total Dissolved Solids (Water Wells) | 1 and 2/3 | ⚠️ *needs review*: `avg` and `tds` both unexplained abbreviations; hidden from public catalog but the rule still applies for internal consumers |
+| `avg_tds_wells` | `water_well_average_total_dissolved_solids` | Average TDS (Water Wells) | Average Total Dissolved Solids (Water Wells) | 1 and 2 | ⚠️ *needs review*: `avg` and `tds` both unexplained abbreviations; hidden from public catalog but the rule still applies for internal consumers |
 | `latest_depth_to_water_wells` | N/A | Latest Depth to Water (Water Wells) | N/A | N/A | Conforms. Hidden from public catalog — audit flagged it as redundant with `water_well_summary`, not a naming defect |
-
-
-
 
 ## References
 
