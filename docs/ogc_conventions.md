@@ -96,7 +96,6 @@ Before renaming any layer, decide which level applies. A layer's row in the
 inventory below may need more than one level at once — e.g. Level 1 for its
 title and Level 2 for its ID, if both need to change.
 
-
 - **Level 1 — Cosmetic only.** Update `title`/`description`, leave the layer
   ID (and therefore the URL) unchanged. Non-breaking, ship anytime.
 - **Level 2 — Hard rename.** Rename the ID directly, no alias or grace
@@ -137,13 +136,13 @@ human-readable display name).
 | `depth_to_water_trend_wells` | N/A | Depth to Water Trend (Water Wells) | N/A | N/A | Conforms |
 | `water_elevation_wells` | N/A | Water Elevation (Water Wells) | N/A | N/A | Conforms |
 | `water_well_summary` | N/A | Water Well Summary | N/A | N/A | Conforms |
-| `well_water_column` | N/A | Well Water Column (Water Wells) | N/A | N/A | Conforms — plain English, matches its description (standing water column per well). ⚠️ *needs review*: doesn't follow the `water_well_` prefix direction |
+| `well_water_column` | `water_well_water_column` | Well Water Column (Water Wells) | Water Column (Water Wells) | 1 and 2 | |
 | `major_chemistry_results` | `water_well_major_chemistry` | Major Chemistry (Water Wells) | N/A | 2 | Missing `water_well_` prefix; "Results" is redundant — every layer is a result |
 | `minor_chemistry_wells` | `water_well_minor_chemistry` | Minor Chemistry (Water Wells) | N/A | 2 | Should mirror the recommended `water_well_major_chemistry` for its sibling layer |
 | `actively_monitored_wells` | N/A | Actively Monitored Wells | N/A | N/A | Not renamed — see [Deviations](#deviations-from-usgs-nwis-conventions) |
 | `project_areas` | N/A | Project Areas | N/A | N/A | Conforms |
-| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Geothermal Wells — Bottom-Hole Temperature | N/A | 2 | ⚠️ *needs review*: `bht` abbreviation in the ID only; title already spells it out |
-| `geothermal_wells_temperature_profile` | N/A | Geothermal Wells — Temperature-Depth Profile | N/A | N/A | Conforms |
+| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Geothermal Wells — Bottom-Hole Temperature | Bottom-Hole Temperature (Geothermal Wells) | 1 and 2 | `bht` abbreviation in the ID; title reworded to mirror water well naming conventions |
+| `geothermal_wells_temperature_profile` | N/A | Geothermal Wells — Temperature-Depth Profile | Temperature-Depth Profile (Geothermal Wells) | 1 | Title reworded to mirror water well naming conventions |
 | `bht_measurements` | `bottom_hole_temperature_measurements` | BHT Measurements | Bottom-Hole Temperature Measurements | 1 and 2 | ⚠️ *needs review*: `bht` abbreviation in both ID and title |
 | `temp_depth_measurements` | `temperature_depth_measurements` | Temperature-Depth Measurements | N/A | 2 | ⚠️ *needs review*: `temp` abbreviation in the ID only; title already spells it out |
 | `heat_flow` | N/A | Heat Flow | N/A | N/A | Conforms |
