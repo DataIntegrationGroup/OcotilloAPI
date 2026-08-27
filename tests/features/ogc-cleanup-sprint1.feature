@@ -160,13 +160,13 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A5 — Address int(None) runtime warning in pygeoapi itemtypes
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-infrastructure @sprint-4 @high-priority @A5 @production
+  @backend @ogc-infrastructure @sprint-4 @high-priority @A5
   Scenario: Items requests no longer emit the int(None) runtime warning
     Given the A5 null guard has been applied to pygeoapi/api/itemtypes.py
     When a client requests items from the water_wells layer
     Then the server logs contain no int(None) runtime warning
 
-  @backend @ogc-infrastructure @sprint-4 @high-priority @A5 @production
+  @backend @ogc-infrastructure @sprint-4 @high-priority @A5
   Scenario: Items response content is unaffected by the null guard fix
     Given the A5 null guard has been applied to pygeoapi/api/itemtypes.py
     When a client requests items from the water_wells layer
@@ -258,7 +258,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A10 — Implement more permanent per-layer SQL filters
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @migration-mutates-schema @cleanup_samples
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @migration-mutates-schema @cleanup_samples
   Scenario: Water elevation layer excludes a well whose only water level observation is non-public
     Given a well has release_status "public" but its only water level observation has release_status "private"
     And a second well has release_status "public" and its only water level observation has release_status "public"
@@ -266,13 +266,13 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     Then the response does not include the well with the private observation
     And the response includes the well with the public observation
 
-  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @migration-mutates-schema @cleanup_samples
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @migration-mutates-schema @cleanup_samples
   Scenario: project_areas exposure follows the owning group's release_status
     Given a project_areas group has release_status "public"
     When a client requests items from the project_areas layer
     Then the polygon feature for that group is included in the response
 
-  @backend @ogc-exposure @sprint-2 @high-priority @A10 @production @cleanup_samples
+  @backend @ogc-exposure @sprint-2 @high-priority @A10 @cleanup_samples
   Scenario: Known private and draft records remain excluded after the permanent filter is applied
     Given known private and draft feature ids are seeded in each layer family
     When a client requests items from each of those layers
@@ -322,7 +322,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A12 — Null out sentinel dates in chemistry layer matviews
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production @migration-mutates-schema @cleanup_samples
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @migration-mutates-schema @cleanup_samples
   Scenario Outline: Sentinel sample dates are nulled out after the matview migration
     Given a record in "<layer-id>" has a sample date of "1900-01-01"
     When the A12 migration is applied and the matview is refreshed
@@ -334,7 +334,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | minor_chemistry_wells    |
       | latest_tds_wells         |
 
-  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production @migration-mutates-schema @cleanup_samples
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @migration-mutates-schema @cleanup_samples
   Scenario Outline: Valid historical sample dates are unaffected by the sentinel date fix
     Given a record in "<layer-id>" has a sample date of "1998-04-12"
     When the A12 migration is applied and the matview is refreshed
@@ -346,7 +346,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | minor_chemistry_wells    |
       | latest_tds_wells         |
 
-  @backend @ogc-data-currency @sprint-3 @medium-priority @A12 @production
+  @backend @ogc-data-currency @sprint-3 @medium-priority @A12
   Scenario: Layer descriptions document the sentinel date convention
     When a client requests /ogcapi/collections
     Then the description for each of the following layers states that a null sample date means the date is unknown
@@ -422,7 +422,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A14 — Split Group A view template into well and non-well variants
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-naming @sprint-2 @medium-priority @A14 @production @migration-mutates-schema
+  @backend @ogc-naming @sprint-2 @medium-priority @A14 @migration-mutates-schema
   Scenario Outline: Non-well Group A layers no longer expose well-specific columns
     Given the Group A view template has been split into well and non-well variants
     When a client requests items from "<layer-id>"
@@ -444,7 +444,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | soil_gas_sample_locations        |
       | outfalls_wastewater_return_flow  |
 
-  @backend @ogc-naming @sprint-2 @medium-priority @A14 @production @migration-mutates-schema
+  @backend @ogc-naming @sprint-2 @medium-priority @A14 @migration-mutates-schema
   Scenario: Well layer keeps its well-specific columns after the template split
     Given the Group A view template has been split into well and non-well variants
     When a client requests items from the water_wells layer
@@ -460,7 +460,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # covers the one system-observable outcome: a refresh job is actually
   # running.
 
-  @backend @ogc-data-currency @sprint-4 @medium-priority @A15 @production
+  @backend @ogc-data-currency @sprint-4 @medium-priority @A15
   Scenario Outline: Group B materialized views have a recent refresh timestamp
     Given a scheduled refresh job has been configured for the Group B materialized views
     When the database schema is inspected
@@ -538,7 +538,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
 
   # Related to decisions needed for permissions strategy - not going to do (8/25/2026).
 
-  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20
   Scenario: Every configured collection is discoverable in the public catalog
     When a client requests /ogcapi/collections
     Then the response includes all of the following 18 collection ids
@@ -562,7 +562,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | actively_monitored_wells         |
       | project_areas                    |
 
-  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production @cleanup_samples
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @cleanup_samples
   Scenario Outline: A known private record is excluded from public items by feature id
     Given a feature with id "<feature-id>" in "<layer-id>" has release_status "private"
     When a client requests items from "<layer-id>"
@@ -573,7 +573,7 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
       | water_wells               | 7734       |
       | major_chemistry_results   | 8102       |
 
-  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @production @cleanup_samples
+  @backend @ogc-infrastructure @sprint-2 @medium-priority @A20 @cleanup_samples
   Scenario Outline: A known draft record is excluded from public items by feature id
     Given a feature with id "<feature-id>" in "<layer-id>" has release_status "draft"
     When a client requests items from "<layer-id>"
@@ -588,20 +588,20 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A21 — Create separate database roles for public and internal OGC access
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21
   Scenario: Public database role has no privilege on internal OGC relations
     Given the public read-only database role has been created
     When the role's grants are inspected
     Then the role has SELECT privilege only on the public ogc_* views
     And the role has no privilege on any ogc_internal_ relation
 
-  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21
   Scenario: Internal database role has SELECT privilege on internal OGC views
     Given the internal read-only database role has been created
     When the role's grants are inspected
     Then the role has SELECT privilege on the ogc_internal_ views
 
-  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21 @production
+  @backend @ogc-infrastructure @sprint-3 @medium-priority @A21
   Scenario: A misrouted request to internal relations fails closed under the public role
     Given the /ogcapi public mount is connected to the database as the public read-only role
     When the public mount is misconfigured to query an ogc_internal_ relation
