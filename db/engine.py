@@ -21,7 +21,6 @@ import os
 import time
 from contextlib import contextmanager
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import (
@@ -31,8 +30,6 @@ from sqlalchemy.util import await_only
 
 from services.env import get_bool_env
 
-# Load .env file. Do not override env vars already set by the runtime.
-load_dotenv(override=False)
 driver = os.environ.get("DB_DRIVER", "")
 logger = logging.getLogger(__name__)
 

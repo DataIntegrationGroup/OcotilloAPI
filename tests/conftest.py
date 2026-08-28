@@ -4,7 +4,6 @@ import socket
 import pytest
 from alembic import command
 from alembic.config import Config
-from dotenv import load_dotenv
 from sqlalchemy import delete, select
 from sqlalchemy import inspect as sa_inspect
 
@@ -19,7 +18,6 @@ from tests import get_parameter_id
 
 
 def pytest_configure():
-    load_dotenv(override=False)
     for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
         host = (os.environ.get(env_name) or "").strip()
         if host != "db":
