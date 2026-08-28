@@ -109,7 +109,7 @@ resources:
 
   avg_tds_wells:
     type: collection
-    title: Average TDS (Water Wells)
+    title: Average Total Dissolved Solids (Water Wells)
     description: >-
       The arithmetic mean of all total dissolved solids (TDS) results on
       record for each water well. Treat with care: across the catalog the
@@ -141,7 +141,7 @@ resources:
 
   latest_tds_wells:
     type: collection
-    title: Latest TDS (Water Wells)
+    title: Latest Total Dissolved Solids (Water Wells)
     description: >-
       Total dissolved solids (TDS) measures how much mineral matter is
       dissolved in the water -- in plain terms, how salty it is. This layer
@@ -286,7 +286,7 @@ resources:
 
   well_water_column:
     type: collection
-    title: Well Water Column (Water Wells)
+    title: Water Column (Water Wells)
     description: >-
       One row per water well, reporting how much standing water the well
       holds: the well's depth minus its depth to water, in feet, worked out

@@ -51,7 +51,7 @@ metadata:
 resources:
   latest_tds_wells:
     type: collection
-    title: Latest TDS (Water Wells)
+    title: Latest Total Dissolved Solids (Water Wells)
     description: >-
       Total dissolved solids (TDS) measures how much mineral matter is
       dissolved in the water -- in plain terms, how salty it is. This layer
@@ -196,7 +196,7 @@ resources:
 
   well_water_column:
     type: collection
-    title: Well Water Column (Water Wells)
+    title: Water Column (Water Wells)
     description: >-
       One row per water well, reporting how much standing water the well
       holds: the well's depth minus its depth to water, in feet, worked out
@@ -374,7 +374,7 @@ resources:
 
   geothermal_wells_bht:
     type: collection
-    title: Geothermal Wells — Bottom-Hole Temperature
+    title: Bottom-Hole Temperature (Geothermal Wells)
     description: >-
       Bottom-hole temperature (BHT) is the temperature at the deepest point
       of a borehole, usually recorded while drilling, and is the cheapest
@@ -410,7 +410,7 @@ resources:
 
   geothermal_wells_temperature_profile:
     type: collection
-    title: Geothermal Wells — Temperature-Depth Profile
+    title: Temperature-Depth Profile (Geothermal Wells)
     description: >-
       How temperature changes with depth down a borehole, summarised as one
       point per well. Every temperature-versus-depth reading logged for the
@@ -445,7 +445,7 @@ resources:
 
   bht_measurements:
     type: collection
-    title: BHT Measurements
+    title: Bottom-Hole Temperature Measurements
     description: >-
       Every individual bottom-hole temperature reading, one feature per
       measurement, for consumers who need the raw record rather than the

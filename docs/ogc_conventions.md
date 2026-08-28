@@ -1,10 +1,11 @@
 # OGC Layer Naming Conventions
 
-**Version:** 1.0 — 2026-08-27
+**Version:** 1.1 — 2026-08-28
 
 | Date | Change |
 |---|---|
 | 2026-08-27 | Initial version. |
+| 2026-08-28 | Implemented Level 1 title changes for the confirmed rows; inventory updated to reflect the new titles. |
 
 This doc is the standing convention. When a recommended rename below is
 agreed and actually implemented, update the layer.
@@ -120,30 +121,30 @@ human-readable display name).
 | `springs` | N/A | Springs | N/A | N/A | Conforms (USGS `SP`) |
 | `diversions_surface_water` | `surface_water_diversions` | Surface Water Diversions | N/A | 2 | Word-order inversion in the ID; title already correct. Matches USGS `FA-DV` (Diversion) |
 | `ephemeral_streams` | N/A | Ephemeral Streams | N/A | N/A | Conforms |
-| `lakes_ponds_reservoirs` | `lakes_and_reservoirs` | Lakes, Ponds, and Reservoirs | Lakes and Reservoirs | 1 and 2 | USGS's `LK` category doesn't separately name ponds, so consolidating the title is consistent with the standard |
+| `lakes_ponds_reservoirs` | `lakes_and_reservoirs` | Lakes and Reservoirs | N/A | 2 | Title implemented. USGS's `LK` category doesn't separately name ponds, so consolidating the title is consistent with the standard |
 | `meteorological_stations` | N/A | Meteorological Stations | N/A | N/A | Conforms (USGS `AT`) |
 | `outfalls_wastewater_return_flow` | `wastewater_outfalls` | Outfalls and Return Flow | N/A | 2 | ID reads as a description, not a name; title is already fine |
 | `perennial_streams` | N/A | Perennial Streams | N/A | N/A | Conforms |
-| `rock_sample_locations` | `rock_sample_sites` | Rock Sample Locations | Rock Sample Sites | 1 and 2 | USGS uses "site" consistently |
-| `soil_gas_sample_locations` | `soil_gas_sample_sites` | Soil Gas Sample Locations | Soil Gas Sample Sites | 1 and 2 | USGS uses "site" consistently |
+| `rock_sample_locations` | `rock_sample_sites` | Rock Sample Sites | N/A | 2 | Title implemented. USGS uses "site" consistently |
+| `soil_gas_sample_locations` | `soil_gas_sample_sites` | Soil Gas Sample Sites | N/A | 2 | Title implemented. USGS uses "site" consistently |
 | `other_things` *(internal-only)* | N/A | Other Thing Types | N/A | N/A | "Thing" jargon resolved by removing from the public catalog, not renaming |
 
 ### Group B — analytic layers (`core/pygeoapi-config.yml`)
 
 | Layer ID | Proposed ID | Layer Title | Proposed Title | Level | Rationale |
 |---|---|---|---|---|---|
-| `latest_tds_wells` | `water_well_latest_total_dissolved_solids` | Latest TDS (Water Wells) | Latest Total Dissolved Solids (Water Wells) | 1 and 2 | `tds` unexplained abbreviation in both ID and title |
+| `latest_tds_wells` | `water_well_latest_total_dissolved_solids` | Latest Total Dissolved Solids (Water Wells) | N/A | 2 | Title implemented. `tds` unexplained abbreviation in the ID |
 | `depth_to_water_trend_wells` | N/A | Depth to Water Trend (Water Wells) | N/A | N/A | Conforms |
 | `water_elevation_wells` | N/A | Water Elevation (Water Wells) | N/A | N/A | Conforms |
 | `water_well_summary` | N/A | Water Well Summary | N/A | N/A | Conforms |
-| `well_water_column` | `water_well_water_column` | Well Water Column (Water Wells) | Water Column (Water Wells) | 1 and 2 | |
+| `well_water_column` | `water_well_water_column` | Water Column (Water Wells) | N/A | 2 | Title implemented |
 | `major_chemistry_results` | `water_well_major_chemistry` | Major Chemistry (Water Wells) | N/A | 2 | Missing `water_well_` prefix; "Results" is redundant — every layer is a result |
 | `minor_chemistry_wells` | `water_well_minor_chemistry` | Minor Chemistry (Water Wells) | N/A | 2 | Should mirror the recommended `water_well_major_chemistry` for its sibling layer |
 | `actively_monitored_wells` | N/A | Actively Monitored Wells | N/A | N/A | Not renamed — see [Deviations](#deviations-from-usgs-nwis-conventions) |
 | `project_areas` | N/A | Project Areas | N/A | N/A | Conforms |
-| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Geothermal Wells — Bottom-Hole Temperature | Bottom-Hole Temperature (Geothermal Wells) | 1 and 2 | `bht` abbreviation in the ID; title reworded to mirror water well naming conventions |
-| `geothermal_wells_temperature_profile` | N/A | Geothermal Wells — Temperature-Depth Profile | Temperature-Depth Profile (Geothermal Wells) | 1 | Title reworded to mirror water well naming conventions |
-| `bht_measurements` | `bottom_hole_temperature_measurements` | BHT Measurements | Bottom-Hole Temperature Measurements | 1 and 2 | ⚠️ *needs review*: `bht` abbreviation in both ID and title |
+| `geothermal_wells_bht` | `geothermal_wells_bottom_hole_temperature` | Bottom-Hole Temperature (Geothermal Wells) | N/A | 2 | Title implemented. `bht` abbreviation in the ID |
+| `geothermal_wells_temperature_profile` | N/A | Temperature-Depth Profile (Geothermal Wells) | N/A | N/A | Conforms. Title implemented |
+| `bht_measurements` | `bottom_hole_temperature_measurements` | Bottom-Hole Temperature Measurements | N/A | 2 | Title implemented. `bht` abbreviation in the ID |
 | `temp_depth_measurements` | `temperature_depth_measurements` | Temperature-Depth Measurements | N/A | 2 | ⚠️ *needs review*: `temp` abbreviation in the ID only; title already spells it out |
 | `heat_flow` | N/A | Heat Flow | N/A | N/A | Conforms |
 | `dst` | `drill_stem_tests` | Drill Stem Tests | N/A | 2 | ⚠️ *needs review*: ID is a bare abbreviation; title already spells it out — recommended ID matches the title exactly |
@@ -153,7 +154,7 @@ human-readable display name).
 | Layer ID | Proposed ID | Layer Title | Proposed Title | Level | Rationale |
 |---|---|---|---|---|---|
 | `locations` | N/A | Locations | N/A | N/A | Conforms. Hidden from public catalog — scope decision, not a naming fix |
-| `avg_tds_wells` | `water_well_average_total_dissolved_solids` | Average TDS (Water Wells) | Average Total Dissolved Solids (Water Wells) | 1 and 2 | ⚠️ *needs review*: `avg` and `tds` both unexplained abbreviations; hidden from public catalog but the rule still applies for internal consumers |
+| `avg_tds_wells` | `water_well_average_total_dissolved_solids` | Average Total Dissolved Solids (Water Wells) | N/A | 2 | Title implemented. `avg` abbreviation remains in the ID; hidden from public catalog but the rule still applies for internal consumers |
 | `latest_depth_to_water_wells` | N/A | Latest Depth to Water (Water Wells) | N/A | N/A | Conforms. Hidden from public catalog — audit flagged it as redundant with `water_well_summary`, not a naming defect |
 
 ## References
