@@ -384,6 +384,23 @@ def test_a_grant_naming_no_data_type_cannot_be_written(grants):
     assert make_grant(grants, data_type=None).status_code == 422
 
 
+def test_listing_grants_with_no_filter_returns_everything(grants):
+    grant_id = make_grant(grants).json()["id"]
+
+    everyone = client.get("/access/grant")
+    assert grant_id in [row["id"] for row in everyone.json()]
+
+
+def test_listing_grants_filters_by_data_type(grants):
+    grant_id = make_grant(grants).json()["id"]
+
+    match = client.get("/access/grant", params={"data_type": "water level"})
+    assert grant_id in [row["id"] for row in match.json()]
+
+    no_match = client.get("/access/grant", params={"data_type": "water chemistry"})
+    assert grant_id not in [row["id"] for row in no_match.json()]
+
+
 def test_listing_grants_hides_revoked_ones_by_default(grants):
     grant_id = make_grant(grants).json()["id"]
     client.post(f"/access/grant/{grant_id}/revocation")

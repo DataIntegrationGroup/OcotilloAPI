@@ -166,16 +166,32 @@ def revoke_permission_grant(
     return PermissionGrantResponse.model_validate(grant)
 
 
-@router.get("/grant", summary="List grants held by a principal")
+@router.get("/grant", summary="List grants")
 def get_permission_grants(
     session: session_dependency,
     user: admin_dependency,
-    principal_id: str = Query(description="Authentik subject, role, or key label"),
+    principal_id: str = Query(
+        default=None, description="Authentik subject, role, or key label"
+    ),
+    capability: str = Query(default=None),
+    data_type: str = Query(default=None),
+    scope_type: str = Query(default=None),
     include_revoked: bool = Query(default=False),
 ) -> list[PermissionGrantResponse]:
-    statement = select(PermissionGrant).where(
-        PermissionGrant.principal_id == principal_id
-    )
+    """All grants, or a narrower slice of them.
+
+    Every filter is optional, so the bare route is the admin-wide audit view;
+    passing ``principal_id`` narrows it to one principal, as before.
+    """
+    statement = select(PermissionGrant)
+    if principal_id is not None:
+        statement = statement.where(PermissionGrant.principal_id == principal_id)
+    if capability is not None:
+        statement = statement.where(PermissionGrant.capability == capability)
+    if data_type is not None:
+        statement = statement.where(PermissionGrant.data_type == data_type)
+    if scope_type is not None:
+        statement = statement.where(PermissionGrant.scope_type == scope_type)
     if not include_revoked:
         statement = statement.where(PermissionGrant.revoked_at.is_(None))
 
