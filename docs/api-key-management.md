@@ -51,7 +51,7 @@ Generate button that 403s. That is a change to PR #360.
 
 ## Scope: what a key authorizes
 
-**Recommendation: v1 keys authorize `/ogcapi-internal` and nothing else.**
+**Decided: v1 keys authorize `/ogcapi-internal` and nothing else.**
 
 The alternative — a key that acts as its owner across the whole API — means
 `authenticated()` has to accept a non-JWT credential and synthesize a payload
@@ -78,7 +78,7 @@ New model `db/api_key.py`, table `api_key`. Not in `db/permission.py`: that
 | `owner_sub` | String(255), indexed | Authentik `sub` claim. The owner of record. |
 | `owner_name` | String(255), nullable | Display only, from `preferred_username`/`email`. Denormalized on purpose — there is no user table to join. |
 | `scope` | String(50) | `ogc_internal`. See above. |
-| `expires_at` | DateTime(tz), nullable | NULL = no expiry. |
+| `expires_at` | DateTime(tz), **not null** | Always set. See "Expiry" below — there is no never-expiring key. |
 | `last_used_at` | DateTime(tz), nullable | |
 | `revoked_at` | DateTime(tz), nullable | Soft. The row survives revocation so `last_used_at` and the audit trail survive with it. |
 
@@ -103,6 +103,43 @@ Stored as unsalted SHA-256, deliberately, not bcrypt/argon2:
   an unauthenticated endpoint.
 - It matches the existing digests in `INTERNAL_OGC_API_KEYS`, so both sources
   compare identically.
+
+## Expiry
+
+**Decided: every key expires, 365 days after creation by default.**
+
+`domain/api_key.py` holds the rule as a plain function over plain values, per
+`ADR4.md`:
+
+```python
+DEFAULT_LIFETIME = timedelta(days=365)
+MAX_LIFETIME = DEFAULT_LIFETIME
+
+def expiry_for(created_at: datetime, lifetime: timedelta | None = None) -> datetime
+```
+
+The create route accepts an optional shorter lifetime and clamps it to
+`MAX_LIFETIME`. `expires_at` is `NOT NULL`: there is no way to ask for a key that
+never expires. The operator-issued entries in `INTERNAL_OGC_API_KEYS` remain the
+escape hatch for a credential that has to outlive that, and those are deliberately
+harder to get.
+
+Checked at use, in `resolve_api_key()`. Nothing sweeps the table — an expired row
+stays for its `last_used_at` history, same rule `ADR5.md` sets for grants.
+
+Two things follow from a lifetime this long, both worth stating plainly:
+
+- **365 days is a backstop against abandoned keys, not a security control.** At
+  that length the window is wide enough that expiry stops nobody who has stolen a
+  key. What it does buy is that a key belonging to someone who left, or saved in
+  an ArcGIS Pro dialog on a decommissioned laptop, eventually stops working
+  without anyone remembering to revoke it. The real control is revocation, which
+  this design makes instant — that is the whole reason the table exists.
+- **A key will die silently in the middle of someone's work.** There is no email
+  or notification infrastructure here, so the first sign is ArcGIS Pro or QGIS
+  failing to connect, roughly a year after the person set it up and forgot about
+  it. `expires_at` must therefore be in the list response and rendered in the UI,
+  with a visible warning as it approaches — see the UI section below.
 
 ## Verification path
 
@@ -168,6 +205,7 @@ calls without reshaping:
   "token": "ocot_…",           // POST only, never again
   "tokenPreview": "ocot_ab12cd…wxyz",
   "createdAt": "2026-08-28T17:04:00Z",
+  "expiresAt": "2027-08-28T17:04:00Z",
   "lastUsedAt": null,
   "revokedAt": null
 }
@@ -207,6 +245,8 @@ back to its inert placeholder.
 - POST returns the token; GET never does, for the same key.
 - No stored column contains the token — assert on the row, not the response.
 - A revoked key 401s on `/ogcapi-internal`; an expired key 401s; a valid one passes.
+- Create sets `expires_at` 365 days out by default, honors a shorter requested
+  lifetime, and clamps a longer one to the maximum.
 - Revocation takes effect on the next request, with no redeploy and no cache flush.
 - Another user's key is invisible to GET and 404s on PATCH and DELETE.
 - A user without `OGCInternal` gets 403 on POST — the escalation test.
@@ -215,14 +255,23 @@ back to its inert placeholder.
 - `tests/test_authorization.py`'s anonymous-route allowlist is unchanged: every
   new route is gated.
 
-## Open questions
+## Changes needed in OcotilloUI#360
 
-1. **Should keys be scoped to `OGCInternal` at all in v1**, or does the settings
-   page need general-purpose read keys for scripts against `/thing`, `/location`
-   etc.? The second is a much larger change and is what the "acts as its owner"
-   section rules out.
-2. **Expiry policy.** The table supports it; nothing above sets a default. A
-   90-day default with explicit opt-out is defensible and is a one-line change to
-   the create route.
-3. **Should PR #360's card hide itself for non-`OGCInternal` accounts**, or show
-   a disabled state explaining the requirement? Either way the UI changes.
+The card as written does not carry everything the API returns, and one of its
+assumptions is wrong for this design.
+
+1. **`expiresAt` is a new field** on the `ApiKey` type in `src/utils/apiKeys.ts`,
+   shown in the table and warned about as it nears — a key that stops working a
+   year later with no warning is a support ticket, not a security win.
+2. **The card is only meaningful for `OGCInternal` accounts.** Everyone else needs
+   an empty state that says the keys are for desktop GIS access and how to request
+   the group — not a Generate button that 403s. *Still open: hide the section
+   entirely, or show it disabled with the explanation?*
+3. `id` arrives as a string, as the UI already assumes; the column is an int
+   serialized as one.
+
+## Settled
+
+- **Scope:** internal-only. Keys authorize `/ogcapi-internal` and nothing else.
+- **Expiry:** 365 days by default, `NOT NULL`, clamped as the maximum, checked at
+  use.
