@@ -1,6 +1,6 @@
 # API key management — design draft
 
-Status: **draft, not implemented.** Branch `feat/api-key-management`.
+Status: **implemented.** Branch `feat/api-key-management`.
 
 Companion to [OcotilloUI#360](https://github.com/DataIntegrationGroup/OcotilloUI/pull/360),
 whose settings page ships a generate / rename / revoke / one-time-reveal card
@@ -189,30 +189,37 @@ Every route takes `user: internal_ogc_dependency` and filters on
 `owner_sub == user["sub"]`. A key belonging to someone else is a 404, not a 403 —
 existence of another person's key is not the caller's business.
 
+Under `AUTHENTIK_DISABLE_AUTHENTICATION=1` the dependency hands the route `True`
+rather than a token payload, so there is no `sub` to own the row. Those keys are
+owned by a fixed `"development"` identity (`DEVELOPMENT_OWNER` in
+`api/api_key.py`). The bypass is honored only when `MODE=development`, so that
+value cannot appear in a deployed database.
+
 No admin list-all route in v1. It is the obvious next ask, and it is a different
 gate (general `Admin`, which confers nothing in this family), so it gets its own
 change.
 
 ### Response shape
 
-Matches `ApiKey` in `src/utils/apiKeys.ts` so the card swaps local state for
-calls without reshaping:
-
 ```json
 {
-  "id": "12",
+  "id": 12,
   "name": "Field laptop",
   "token": "ocot_…",           // POST only, never again
-  "tokenPreview": "ocot_ab12cd…wxyz",
-  "createdAt": "2026-08-28T17:04:00Z",
-  "expiresAt": "2027-08-28T17:04:00Z",
-  "lastUsedAt": null,
-  "revokedAt": null
+  "token_preview": "ocot_ab12cd…wxyz",
+  "scope": "ogc_internal",
+  "created_at": "2026-08-28T17:04:00Z",
+  "expires_at": "2027-08-28T17:04:00Z",
+  "last_used_at": null,
+  "revoked_at": null
 }
 ```
 
-The UI's `id` is a string; the column is an int. Serialize as a string rather
-than changing the UI type — it already treats the id as opaque.
+**snake_case, not the camelCase the draft proposed.** Every other route in this
+API is snake_case, and `src/utils/apiKeys.ts` is camelCase only because it was
+written against local component state with no server behind it. Mapping the
+field names in the UI is a smaller change than making one router disagree with
+the rest of the API. `id` is an int for the same reason.
 
 ## Relationship to the ADR5 access layer
 
@@ -255,20 +262,36 @@ back to its inert placeholder.
 - `tests/test_authorization.py`'s anonymous-route allowlist is unchanged: every
   new route is gated.
 
+## What shipped
+
+| File | |
+| --- | --- |
+| `domain/api_key.py` | Token shape, digesting, expiry, usability. No DB, no HTTP. |
+| `db/api_key.py` | The `api_key` table. |
+| `alembic/versions/d0e1f2a3b4c5_add_api_key_table.py` | Its migration. |
+| `services/api_key_auth.py` | `resolve_api_key()` and the session-opening variant the ASGI middleware calls. |
+| `core/internal_ogc_auth.py` | `_database_api_key_valid()`, checked after the environment-variable keys and before the JWT decode. |
+| `core/dependencies.py` | `internal_ogc_dependency`, the first Depends()-shaped consumer of `INTERNAL_OGC_GROUP`. |
+| `schemas/api_key.py`, `api/api_key.py` | The four routes. |
+| `tests/test_api_key.py` | Rules, routes, and the resolver — 33 tests. |
+| `tests/test_internal_ogc_auth.py` | Eight more, for the middleware path: every transport, revoked, expired, unissued, and a database failure falling back rather than 500ing. |
+| `tests/test_authorization.py` | `internal_ogc_function` registered in `AUTH_DEPENDENCY_CALLABLES`, so the new routes are seen as gated rather than reported as anonymous. |
+
 ## Changes needed in OcotilloUI#360
 
 The card as written does not carry everything the API returns, and one of its
 assumptions is wrong for this design.
 
-1. **`expiresAt` is a new field** on the `ApiKey` type in `src/utils/apiKeys.ts`,
-   shown in the table and warned about as it nears — a key that stops working a
-   year later with no warning is a support ticket, not a security win.
+1. **Field names are snake_case, and `expires_at` is new** on the `ApiKey` type
+   in `src/utils/apiKeys.ts`. The expiry belongs in the table with a warning as
+   it nears — a key that stops working a year later with no warning is a support
+   ticket, not a security win.
 2. **The card is only meaningful for `OGCInternal` accounts.** Everyone else needs
    an empty state that says the keys are for desktop GIS access and how to request
    the group — not a Generate button that 403s. *Still open: hide the section
    entirely, or show it disabled with the explanation?*
-3. `id` arrives as a string, as the UI already assumes; the column is an int
-   serialized as one.
+3. `id` arrives as a number, not a string. The card treats it as opaque, so this
+   is a type change and nothing more.
 
 ## Settled
 

@@ -219,6 +219,7 @@ def register_api_routes(app):
     from api.publication import router as publication_router
     from api.author import router as author_router
     from api.asset import router as asset_router
+    from api.api_key import router as api_key_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
@@ -229,6 +230,7 @@ def register_api_routes(app):
     from api.gis_artifacts import router as gis_artifacts_router
 
     app.include_router(asset_router)
+    app.include_router(api_key_router)
     app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
