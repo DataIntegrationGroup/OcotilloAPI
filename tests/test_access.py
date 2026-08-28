@@ -380,7 +380,8 @@ def test_a_global_grant_with_a_scope_id_is_rejected(grants):
 
 
 def test_a_grant_naming_no_data_type_cannot_be_written(grants):
-    """No wildcards. Pydantic rejects it before the service is reached."""
+    """No wildcards. A grant naming neither subject is rejected by the rule in
+    domain/access.py, which the route surfaces as a 422."""
     assert make_grant(grants, data_type=None).status_code == 422
 
 
@@ -463,3 +464,127 @@ def test_the_log_records_who_and_what(destination, water_well_thing):
     assert entry.subject_table == "publication_consent"
     assert entry.detail["thing_id"] == water_well_thing.id
     assert entry.detail["data_type"] == "water level"
+
+
+# ------ UI-surface grants ----------
+#
+# A grant can open a screen instead of reaching data. These go through the
+# route so the XOR, the global-only rule, and the decision endpoint are all
+# exercised the way the admin console will use them.
+
+
+def test_a_surface_grant_opens_that_screen(grants):
+    assert (
+        make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon").status_code
+        == 201
+    )
+
+    assert decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is True
+
+
+def test_a_surface_grant_opens_only_that_screen(grants):
+    make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon")
+
+    assert (
+        decision(capability="read", ui_surface="ocotillo.location")["allowed"] is False
+    )
+
+
+def test_a_data_grant_does_not_open_a_screen(grants):
+    make_grant(grants)
+
+    assert (
+        decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is False
+    )
+
+
+def test_a_surface_grant_does_not_reach_data(grants):
+    make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon")
+
+    assert decision(capability="read", data_type="water level")["allowed"] is False
+
+
+def test_a_grant_naming_both_subjects_is_rejected(grants):
+    response = make_grant(grants, ui_surface="ocotillo.lexicon")
+
+    assert response.status_code == 422
+    assert "not both" in response.text
+
+
+def test_a_scoped_surface_grant_is_rejected(grants, water_well_thing):
+    """It could never match: the UI never asks about a screen for one thing."""
+    response = make_grant(
+        grants,
+        data_type=None,
+        ui_surface="ocotillo.lexicon",
+        scope_type="thing",
+        scope_id=water_well_thing.id,
+    )
+
+    assert response.status_code == 422
+    assert "always global" in response.text
+
+
+def test_revoking_a_surface_grant_closes_the_screen(grants):
+    grant_id = make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon").json()[
+        "id"
+    ]
+    assert decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is True
+
+    assert client.post(f"/access/grant/{grant_id}/revocation").status_code == 201
+
+    assert (
+        decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is False
+    )
+
+
+def test_asking_about_both_subjects_at_once_is_rejected(grants):
+    """Two questions, two answers. The route refuses rather than picking one."""
+    response = client.get(
+        "/access/decision",
+        params={
+            "capability": "read",
+            "data_type": "water level",
+            "ui_surface": "ocotillo.lexicon",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_asking_about_neither_subject_is_a_no(grants):
+    """A question the layer cannot answer is not a yes."""
+    assert decision(capability="read")["allowed"] is False
+
+
+def test_listing_grants_filters_by_ui_surface(grants):
+    surface_id = make_grant(
+        grants, data_type=None, ui_surface="ocotillo.lexicon"
+    ).json()["id"]
+    data_id = make_grant(grants).json()["id"]
+
+    match = client.get("/access/grant", params={"ui_surface": "ocotillo.lexicon"})
+    ids = [row["id"] for row in match.json()]
+
+    assert surface_id in ids
+    assert data_id not in ids
+
+
+def test_a_surface_grant_is_logged_like_any_other(grants):
+    make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon")
+
+    with session_ctx() as session:
+        logged = (
+            session.execute(
+                select(AuthorizationAudit).where(
+                    AuthorizationAudit.actor == ADMIN_PAYLOAD["sub"]
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    assert any(entry.detail.get("ui_surface") == "ocotillo.lexicon" for entry in logged)
+
+
+# ============= EOF =============================================
