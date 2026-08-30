@@ -22,6 +22,7 @@ import pytest
 from domain.access import (
     AccessRequest,
     CAPABILITIES,
+    CAPABILITY_DELETE,
     CapabilitySubjectMismatch,
     DATA_CAPABILITIES,
     SURFACE_CAPABILITIES,
@@ -194,7 +195,7 @@ def test_a_thing_grant_needs_a_scope_id():
 
 def test_an_unknown_capability_is_rejected():
     with pytest.raises(UnknownCapability):
-        validate_grant("user", "delete", "global", None, "water level", TODAY, None)
+        validate_grant("user", "adjudicate", "global", None, "water level", TODAY, None)
 
 
 def test_an_unknown_principal_type_is_rejected():
@@ -438,3 +439,23 @@ def test_the_two_capability_sets_do_not_overlap():
 
 
 # ============= EOF =============================================
+
+
+def test_delete_is_a_data_verb_not_a_screen_one():
+    assert CAPABILITY_DELETE in DATA_CAPABILITIES
+    assert CAPABILITY_DELETE not in SURFACE_CAPABILITIES
+    validate_grant("user", "delete", "global", None, "water level", TODAY, None)
+
+
+def test_a_screen_cannot_be_deleted():
+    with pytest.raises(CapabilitySubjectMismatch):
+        validate_grant(
+            "user",
+            "delete",
+            "global",
+            None,
+            None,
+            TODAY,
+            None,
+            ui_surface="ocotillo.lexicon",
+        )

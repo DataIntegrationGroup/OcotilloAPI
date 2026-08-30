@@ -282,3 +282,20 @@ def test_a_seeded_surface_grant_opens_the_screen():
 
     assert allowed is True
     assert denied is False
+
+
+def test_only_the_admin_tier_may_delete():
+    """Destruction is the one action whose mistakes cannot be read back out of
+    the data, and today's delete routes for these data types are admin-gated."""
+    holders = {
+        role for role, capabilities in ROLE_BASELINE.items() if "delete" in capabilities
+    }
+
+    assert holders == {"AMP.Admin"}
+
+
+def test_delete_is_not_correct():
+    """A row that should not exist is a different question from a value that
+    was wrong, so an editor revising records cannot remove them."""
+    assert "correct" in ROLE_BASELINE["AMP.Editor"]
+    assert "delete" not in ROLE_BASELINE["AMP.Editor"]
