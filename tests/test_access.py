@@ -333,6 +333,15 @@ def make_grant(grants, **overrides):
     return response
 
 
+def grant_rows(**params):
+    """Whole rows on one page of the grant listing, for assertions about what
+    a filter returned rather than which ids it happened to include."""
+    params.setdefault("size", 1000)
+    response = client.get("/access/grant", params=params)
+    assert response.status_code == 200, response.text
+    return response.json()["items"]
+
+
 def listed_grants(**params):
     """Ids on one page of the grant listing.
 
@@ -412,6 +421,39 @@ def test_listing_grants_filters_by_data_type(grants):
 
     assert grant_id in listed_grants(data_type="water level")
     assert grant_id not in listed_grants(data_type="water chemistry")
+
+
+def test_listing_grants_filters_by_subject(grants):
+    """Which kind of grant, not which one. A console offering "screens only"
+    cannot ask by naming every screen."""
+    data_grant = make_grant(grants).json()["id"]
+    surface_grant = make_grant(
+        grants,
+        capability="view",
+        data_type=None,
+        ui_surface="ocotillo.lexicon",
+    ).json()["id"]
+
+    # Asserted as a property of every row rather than by membership: the
+    # seeded baseline shares this database, and a page-bounded membership
+    # check turns "filtered wrongly" and "fell off the page" into one failure.
+    surfaces = grant_rows(subject="ui_surface")
+    assert surface_grant in [row["id"] for row in surfaces]
+    assert all(row["ui_surface"] for row in surfaces)
+    assert all(row["data_type"] is None for row in surfaces)
+
+    data = grant_rows(subject="data_type")
+    assert data_grant in [row["id"] for row in data]
+    assert all(row["data_type"] for row in data)
+    assert all(row["ui_surface"] is None for row in data)
+
+
+def test_listing_grants_rejects_a_subject_that_is_neither(grants):
+    """Default deny would be a lie here: an unrecognized subject is a caller
+    bug, and answering it with an empty page reads as "none exist"."""
+    response = client.get("/access/grant", params={"subject": "screens"})
+
+    assert response.status_code == 422
 
 
 def test_listing_grants_hides_revoked_ones_by_default(grants):

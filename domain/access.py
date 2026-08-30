@@ -74,6 +74,13 @@ DATA_CAPABILITIES = frozenset(
 SURFACE_CAPABILITIES = frozenset({CAPABILITY_VIEW})
 CAPABILITIES = DATA_CAPABILITIES | SURFACE_CAPABILITIES
 
+# The two kinds of subject a grant can name, as the columns are spelled. Asking
+# which kind is a coarser question than asking which one, and a caller that
+# wants every screen grant cannot ask it by naming every screen.
+SUBJECT_DATA_TYPE = "data_type"
+SUBJECT_UI_SURFACE = "ui_surface"
+GRANT_SUBJECTS = frozenset({SUBJECT_DATA_TYPE, SUBJECT_UI_SURFACE})
+
 # Principal types. A destination is not here: publishing to one is recorded as
 # consent, not as a grant, which is the two-table half of ADR5.
 PRINCIPAL_USER = "user"

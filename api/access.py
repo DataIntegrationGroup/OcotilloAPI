@@ -72,8 +72,10 @@ from services.access_admin import (
 )
 from domain.access import (
     AmbiguousGrantSubject,
+    GRANT_SUBJECTS,
     MissingDataType,
     ScopedSurfaceGrant,
+    SUBJECT_UI_SURFACE,
 )
 from services.exceptions_helper import PydanticStyleException
 from services.visibility import (
@@ -195,6 +197,10 @@ def get_permission_grants(
     capability: str = Query(default=None),
     data_type: str = Query(default=None),
     ui_surface: str = Query(default=None),
+    subject: str = Query(
+        default=None,
+        description="Which kind of grant: 'data_type' or 'ui_surface'",
+    ),
     scope_type: str = Query(default=None),
     include_revoked: bool = Query(default=False),
 ) -> CustomPage[PermissionGrantResponse]:
@@ -202,6 +208,11 @@ def get_permission_grants(
 
     Every filter is optional, so the bare route is the admin-wide audit view;
     passing ``principal_id`` narrows it to one principal, as before.
+
+    ``data_type`` and ``ui_surface`` name one subject exactly. ``subject`` asks
+    the coarser question -- which kind of grant, not which one -- because a
+    console offering "screens only" cannot ask it by naming every screen, and
+    filtering a page client-side would filter a page rather than the set.
 
     Paginated, because the admin-wide view is not small: the day-one baseline
     alone is dozens of rows before anybody grants anything by hand, and a
@@ -217,6 +228,21 @@ def get_permission_grants(
         statement = statement.where(PermissionGrant.data_type == data_type)
     if ui_surface is not None:
         statement = statement.where(PermissionGrant.ui_surface == ui_surface)
+    if subject is not None:
+        if subject not in GRANT_SUBJECTS:
+            raise _invalid(
+                "subject",
+                f"A grant covers a data type or a UI surface. Use one of "
+                f"{', '.join(sorted(GRANT_SUBJECTS))}.",
+                subject,
+            )
+        # Exactly one of the two columns is set on any row, so "names a screen"
+        # and "names a data type" are the same question asked either way round.
+        statement = statement.where(
+            PermissionGrant.ui_surface.is_not(None)
+            if subject == SUBJECT_UI_SURFACE
+            else PermissionGrant.ui_surface.is_(None)
+        )
     if scope_type is not None:
         statement = statement.where(PermissionGrant.scope_type == scope_type)
     if not include_revoked:
