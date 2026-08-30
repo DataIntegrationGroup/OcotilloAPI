@@ -38,9 +38,11 @@ Every route is authorized: administration is Admin, reading is Viewer.
 from datetime import date
 
 from fastapi import APIRouter, Query
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
 
+from api.pagination import CustomPage
 from core.dependencies import (
     admin_dependency,
     session_dependency,
@@ -195,11 +197,16 @@ def get_permission_grants(
     ui_surface: str = Query(default=None),
     scope_type: str = Query(default=None),
     include_revoked: bool = Query(default=False),
-) -> list[PermissionGrantResponse]:
+) -> CustomPage[PermissionGrantResponse]:
     """All grants, or a narrower slice of them.
 
     Every filter is optional, so the bare route is the admin-wide audit view;
     passing ``principal_id`` narrows it to one principal, as before.
+
+    Paginated, because the admin-wide view is not small: the day-one baseline
+    alone is dozens of rows before anybody grants anything by hand, and a
+    console that loads every grant to show twenty-five is a page that gets
+    slower every time somebody uses the system correctly.
     """
     statement = select(PermissionGrant)
     if principal_id is not None:
@@ -215,10 +222,12 @@ def get_permission_grants(
     if not include_revoked:
         statement = statement.where(PermissionGrant.revoked_at.is_(None))
 
-    return [
-        PermissionGrantResponse.model_validate(row)
-        for row in session.execute(statement).scalars()
-    ]
+    # Ordered so paging is stable. Without it Postgres may return rows in a
+    # different order per page and the console would show one grant twice and
+    # another never.
+    statement = statement.order_by(PermissionGrant.id)
+
+    return paginate(query=statement, conn=session)
 
 
 @router.get("/decision", summary="Ask the visibility layer about yourself")
