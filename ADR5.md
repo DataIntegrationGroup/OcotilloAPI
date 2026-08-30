@@ -101,8 +101,9 @@ second axis, because some destinations want approved data only.
 ### 1. Two tables
 
 **`permission_grant`** — internal authorization. Principal (user subject, role,
-API key), capability (read, enter, correct, administer), scope (project, thing,
-data type, field group), time bounds, `granted_by`, `granted_at`, `reason`.
+API key), capability (read, enter, correct, delete, administer), scope
+(project, thing, data type, field group), time bounds, `granted_by`,
+`granted_at`, `reason`.
 Governed by data services staff. Answers "is this person trusted with this."
 
 **`publication_consent`** — landowner-facing publication. One row per

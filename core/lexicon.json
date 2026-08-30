@@ -8620,6 +8620,13 @@
     },
     {
       "categories": [
+        "capability"
+      ],
+      "term": "delete",
+      "definition": "May destroy existing records. Distinct from correct, which revises them."
+    },
+    {
+      "categories": [
         "grant_scope_type"
       ],
       "term": "global",
