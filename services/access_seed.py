@@ -61,6 +61,7 @@ from db.permission_grant import PermissionGrant
 from domain.access import (
     CAPABILITY_ADMINISTER,
     CAPABILITY_CORRECT,
+    CAPABILITY_DELETE,
     CAPABILITY_ENTER,
     CAPABILITY_READ,
     CAPABILITY_VIEW,
@@ -80,7 +81,11 @@ SEED_REASON = (
 
 READ_ONLY = (CAPABILITY_READ,)
 EDIT = (CAPABILITY_READ, CAPABILITY_ENTER, CAPABILITY_CORRECT)
-FULL = EDIT + (CAPABILITY_ADMINISTER,)
+# `delete` sits with `administer` at the top rather than with the editing
+# verbs. That mirrors where destruction is gated today: assets are an
+# editor's to remove, but the routes that delete the records these data types
+# name -- things, groups, observations -- are all admin-gated.
+FULL = EDIT + (CAPABILITY_DELETE, CAPABILITY_ADMINISTER)
 
 # Authentik group -> capabilities, mirroring core/dependencies.py. The tiers
 # nest, so `AMP.Admin`'s row set is a superset of `AMP.Editor`'s.

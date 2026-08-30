@@ -57,9 +57,19 @@ CAPABILITY_READ = "read"
 CAPABILITY_ENTER = "enter"
 CAPABILITY_CORRECT = "correct"
 CAPABILITY_ADMINISTER = "administer"
+# Destroying a record is not revising one. `correct` covers a value that was
+# wrong; `delete` covers a row that should not exist, which is the one action
+# whose mistakes cannot be read back out of the data.
+CAPABILITY_DELETE = "delete"
 CAPABILITY_VIEW = "view"
 DATA_CAPABILITIES = frozenset(
-    {CAPABILITY_READ, CAPABILITY_ENTER, CAPABILITY_CORRECT, CAPABILITY_ADMINISTER}
+    {
+        CAPABILITY_READ,
+        CAPABILITY_ENTER,
+        CAPABILITY_CORRECT,
+        CAPABILITY_DELETE,
+        CAPABILITY_ADMINISTER,
+    }
 )
 SURFACE_CAPABILITIES = frozenset({CAPABILITY_VIEW})
 CAPABILITIES = DATA_CAPABILITIES | SURFACE_CAPABILITIES
