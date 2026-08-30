@@ -33,7 +33,7 @@ from db.permission_grant import PermissionGrant
 from db.publication_consent import PublicationConsent
 from tests import client, override_authentication
 
-ADMIN_PAYLOAD = {"sub": "test-admin", "groups": ["Admin"]}
+ADMIN_PAYLOAD = {"sub": "test-admin", "groups": ["AMP.Admin"]}
 SLUG = "test-harvester"
 TODAY = date.today()
 
@@ -322,11 +322,27 @@ def make_grant(grants, **overrides):
         "starts_at": TODAY.isoformat(),
         "reason": "test",
     }
+    # A screen is opened with `view`; the data verbs belong to a data_type
+    # grant, and the route refuses the crossing.
+    if overrides.get("ui_surface") and "capability" not in overrides:
+        payload["capability"] = "view"
     payload.update(overrides)
     response = client.post("/access/grant", json=payload)
     if response.status_code == 201:
         grants.append(response.json()["id"])
     return response
+
+
+def listed_grants(**params):
+    """Ids on one page of the grant listing.
+
+    `size` is generous because the seeded baseline shares this database and a
+    default page would push a freshly written grant off the end.
+    """
+    params.setdefault("size", 200)
+    response = client.get("/access/grant", params=params)
+    assert response.status_code == 200, response.text
+    return [row["id"] for row in response.json()["items"]]
 
 
 def decision(**params):
@@ -388,32 +404,24 @@ def test_a_grant_naming_no_data_type_cannot_be_written(grants):
 def test_listing_grants_with_no_filter_returns_everything(grants):
     grant_id = make_grant(grants).json()["id"]
 
-    everyone = client.get("/access/grant")
-    assert grant_id in [row["id"] for row in everyone.json()]
+    assert grant_id in listed_grants()
 
 
 def test_listing_grants_filters_by_data_type(grants):
     grant_id = make_grant(grants).json()["id"]
 
-    match = client.get("/access/grant", params={"data_type": "water level"})
-    assert grant_id in [row["id"] for row in match.json()]
-
-    no_match = client.get("/access/grant", params={"data_type": "water chemistry"})
-    assert grant_id not in [row["id"] for row in no_match.json()]
+    assert grant_id in listed_grants(data_type="water level")
+    assert grant_id not in listed_grants(data_type="water chemistry")
 
 
 def test_listing_grants_hides_revoked_ones_by_default(grants):
     grant_id = make_grant(grants).json()["id"]
     client.post(f"/access/grant/{grant_id}/revocation")
 
-    live = client.get("/access/grant", params={"principal_id": ADMIN_PAYLOAD["sub"]})
-    assert live.json() == []
-
-    history = client.get(
-        "/access/grant",
-        params={"principal_id": ADMIN_PAYLOAD["sub"], "include_revoked": True},
-    )
-    assert [row["id"] for row in history.json()] == [grant_id]
+    assert listed_grants(principal_id=ADMIN_PAYLOAD["sub"]) == []
+    assert listed_grants(principal_id=ADMIN_PAYLOAD["sub"], include_revoked=True) == [
+        grant_id
+    ]
 
 
 # ------ audit ----------
@@ -479,14 +487,14 @@ def test_a_surface_grant_opens_that_screen(grants):
         == 201
     )
 
-    assert decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is True
+    assert decision(capability="view", ui_surface="ocotillo.lexicon")["allowed"] is True
 
 
 def test_a_surface_grant_opens_only_that_screen(grants):
     make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon")
 
     assert (
-        decision(capability="read", ui_surface="ocotillo.location")["allowed"] is False
+        decision(capability="view", ui_surface="ocotillo.location")["allowed"] is False
     )
 
 
@@ -494,7 +502,7 @@ def test_a_data_grant_does_not_open_a_screen(grants):
     make_grant(grants)
 
     assert (
-        decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is False
+        decision(capability="view", ui_surface="ocotillo.lexicon")["allowed"] is False
     )
 
 
@@ -529,12 +537,12 @@ def test_revoking_a_surface_grant_closes_the_screen(grants):
     grant_id = make_grant(grants, data_type=None, ui_surface="ocotillo.lexicon").json()[
         "id"
     ]
-    assert decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is True
+    assert decision(capability="view", ui_surface="ocotillo.lexicon")["allowed"] is True
 
     assert client.post(f"/access/grant/{grant_id}/revocation").status_code == 201
 
     assert (
-        decision(capability="read", ui_surface="ocotillo.lexicon")["allowed"] is False
+        decision(capability="view", ui_surface="ocotillo.lexicon")["allowed"] is False
     )
 
 
@@ -563,8 +571,7 @@ def test_listing_grants_filters_by_ui_surface(grants):
     ).json()["id"]
     data_id = make_grant(grants).json()["id"]
 
-    match = client.get("/access/grant", params={"ui_surface": "ocotillo.lexicon"})
-    ids = [row["id"] for row in match.json()]
+    ids = listed_grants(ui_surface="ocotillo.lexicon")
 
     assert surface_id in ids
     assert data_id not in ids
@@ -588,3 +595,42 @@ def test_a_surface_grant_is_logged_like_any_other(grants):
 
 
 # ============= EOF =============================================
+
+
+def test_the_grant_listing_is_paged(grants):
+    """The admin-wide view is not small: the day-one baseline alone is dozens
+    of rows before anybody grants anything by hand."""
+    for _ in range(3):
+        make_grant(grants)
+
+    page = client.get("/access/grant", params={"size": 2, "page": 1})
+    body = page.json()
+
+    assert page.status_code == 200
+    assert len(body["items"]) == 2
+    assert body["total"] >= 3
+    assert body["size"] == 2
+
+    second = client.get("/access/grant", params={"size": 2, "page": 2}).json()
+    assert not set(row["id"] for row in body["items"]) & set(
+        row["id"] for row in second["items"]
+    )
+
+
+def test_paging_is_stable_across_pages(grants):
+    """Ordered by id, so a row cannot appear on two pages or on none."""
+    for _ in range(5):
+        make_grant(grants)
+
+    everything = listed_grants(size=500)
+    walked = []
+    for page_number in (1, 2, 3):
+        walked.extend(
+            row["id"]
+            for row in client.get(
+                "/access/grant", params={"size": 2, "page": page_number}
+            ).json()["items"]
+        )
+
+    assert walked == everything[: len(walked)]
+    assert len(walked) == len(set(walked))

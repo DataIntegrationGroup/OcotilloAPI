@@ -146,7 +146,7 @@ def test_bearer_api_key_is_accepted(gate, api_key):
 
 def test_bearer_jwt_still_requires_the_internal_group(gate, monkeypatch):
     monkeypatch.setattr(
-        permissions, "decode_token_payload", lambda token: {"groups": ["Viewer"]}
+        permissions, "decode_token_payload", lambda token: {"groups": ["AMP.Viewer"]}
     )
 
     response = gate.get(

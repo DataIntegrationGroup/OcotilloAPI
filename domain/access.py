@@ -49,14 +49,20 @@ SCOPE_GROUP = "group"
 SCOPE_THING = "thing"
 SCOPE_TYPES = frozenset({SCOPE_GLOBAL, SCOPE_GROUP, SCOPE_THING})
 
-# Capabilities.
+# Capabilities. `view` is the screen verb and the others are data verbs; the
+# pairing is enforced in `validate_grant` rather than left as a convention,
+# because two ways to spell "may see this screen" is two things that can
+# disagree.
 CAPABILITY_READ = "read"
 CAPABILITY_ENTER = "enter"
 CAPABILITY_CORRECT = "correct"
 CAPABILITY_ADMINISTER = "administer"
-CAPABILITIES = frozenset(
+CAPABILITY_VIEW = "view"
+DATA_CAPABILITIES = frozenset(
     {CAPABILITY_READ, CAPABILITY_ENTER, CAPABILITY_CORRECT, CAPABILITY_ADMINISTER}
 )
+SURFACE_CAPABILITIES = frozenset({CAPABILITY_VIEW})
+CAPABILITIES = DATA_CAPABILITIES | SURFACE_CAPABILITIES
 
 # Principal types. A destination is not here: publishing to one is recorded as
 # consent, not as a grant, which is the two-table half of ADR5.
@@ -97,6 +103,10 @@ class AmbiguousGrantSubject(AccessRuleError):
 
 class ScopedSurfaceGrant(AccessRuleError):
     """A UI-surface grant was scoped to a group or a thing."""
+
+
+class CapabilitySubjectMismatch(AccessRuleError):
+    """A screen was granted with a data verb, or data with the screen verb."""
 
 
 class ScopeIdMismatch(AccessRuleError):
@@ -203,6 +213,19 @@ def validate_grant(
             "A grant names its data type, or the UI surface it opens. There is "
             "no wildcard, so a new data type or screen is never covered by an "
             "existing grant."
+        )
+    if ui_surface and capability not in SURFACE_CAPABILITIES:
+        # `read` over a screen would be a second spelling of `view`, and a
+        # listing could then show two grants that look like the same
+        # permission but only one of which the UI actually asks about.
+        raise CapabilitySubjectMismatch(
+            f"A UI-surface grant carries '{CAPABILITY_VIEW}', not "
+            f"'{capability}'. The data verbs belong to a data_type grant."
+        )
+    if data_type and capability in SURFACE_CAPABILITIES:
+        raise CapabilitySubjectMismatch(
+            f"'{CAPABILITY_VIEW}' opens a screen, not a data type. Use one of "
+            f"{', '.join(sorted(DATA_CAPABILITIES))}."
         )
     if ui_surface and scope_type != SCOPE_GLOBAL:
         # Navigation is app-wide: the UI asks "may this caller see this

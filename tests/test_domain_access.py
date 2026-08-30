@@ -22,6 +22,9 @@ import pytest
 from domain.access import (
     AccessRequest,
     CAPABILITIES,
+    CapabilitySubjectMismatch,
+    DATA_CAPABILITIES,
+    SURFACE_CAPABILITIES,
     PRINCIPAL_TYPES,
     SCOPE_TYPES,
     AmbiguousGrantSubject,
@@ -45,7 +48,7 @@ from domain.access import (
 
 TODAY = date(2026, 8, 24)
 STUDENT = ("user", "authentik-sub-1")
-EDITOR_ROLE = ("role", "Editor")
+EDITOR_ROLE = ("role", "AMP.Editor")
 
 
 def a_grant(**overrides):
@@ -114,7 +117,7 @@ def test_principal_type_is_part_of_identity():
 
 
 def test_a_role_grant_covers_a_caller_holding_that_role():
-    grant = a_grant(principal_type="role", principal_id="Editor")
+    grant = a_grant(principal_type="role", principal_id="AMP.Editor")
     request = a_request(principals=(STUDENT, EDITOR_ROLE))
     assert grant_covers(grant, request, TODAY) is True
 
@@ -382,7 +385,7 @@ def test_a_grant_naming_neither_subject_is_rejected():
 def test_a_surface_grant_is_accepted_without_a_data_type():
     validate_grant(
         "user",
-        "read",
+        "view",
         "global",
         None,
         None,
@@ -398,7 +401,7 @@ def test_a_scoped_surface_grant_is_rejected(scope_type, scope_id):
     with pytest.raises(ScopedSurfaceGrant):
         validate_grant(
             "user",
-            "read",
+            "view",
             scope_type,
             scope_id,
             None,
@@ -406,6 +409,32 @@ def test_a_scoped_surface_grant_is_rejected(scope_type, scope_id):
             None,
             ui_surface="ocotillo.lexicon",
         )
+
+
+def test_a_screen_cannot_be_granted_with_a_data_verb():
+    """`read` over a screen would be a second spelling of `view`, and the UI
+    only ever asks about one of them."""
+    with pytest.raises(CapabilitySubjectMismatch):
+        validate_grant(
+            "user",
+            "read",
+            "global",
+            None,
+            None,
+            TODAY,
+            None,
+            ui_surface="ocotillo.lexicon",
+        )
+
+
+def test_data_cannot_be_granted_with_the_screen_verb():
+    with pytest.raises(CapabilitySubjectMismatch):
+        validate_grant("user", "view", "global", None, "water level", TODAY, None)
+
+
+def test_the_two_capability_sets_do_not_overlap():
+    assert DATA_CAPABILITIES.isdisjoint(SURFACE_CAPABILITIES)
+    assert CAPABILITIES == DATA_CAPABILITIES | SURFACE_CAPABILITIES
 
 
 # ============= EOF =============================================

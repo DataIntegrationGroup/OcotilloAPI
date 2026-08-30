@@ -40,7 +40,7 @@ per user solves both problems.
 | `Authorization: Basic <base64(user:secret)>` | API key (or JWT) as the password | ArcGIS Pro, QGIS Basic |
 | `?token=<secret>` | API key (or JWT) | ArcGIS Pro custom request parameters |
 
-A JWT must additionally carry the `OGCInternal` group (`INTERNAL_OGC_GROUP` in
+A JWT must additionally carry the `OGC.Internal` group (`INTERNAL_OGC_GROUP` in
 `core/permissions.py`); a valid JWT without it gets 403. An API key is a
 pre-authorized stand-in for that group and carries no per-user claims.
 
@@ -128,7 +128,7 @@ issues, including paging.
 
 Staff who prefer real Authentik identity can instead configure QGIS's **OAuth2**
 authentication method against the Authentik provider; the mount accepts those
-tokens unchanged, provided the account is in `OGCInternal`.
+tokens unchanged, provided the account is in `OGC.Internal`.
 
 ## Advertised URLs
 
@@ -144,6 +144,6 @@ different host than the public `/ogcapi` mount.
 | Symptom | Cause |
 | --- | --- |
 | 401 with `WWW-Authenticate: Basic` | No credential reached the server. In QGIS, confirm the auth config is selected on the *connection*, not just created. |
-| 403 | Valid Authentik token, but the account is not in the `OGCInternal` group. |
+| 403 | Valid Authentik token, but the account is not in the `OGC.Internal` group. |
 | 424 | `AUTHENTIK_DISABLE_AUTHENTICATION=1` with `MODE` other than `development`. Misconfigured deploy. |
 | First page loads, paging fails against `localhost` | `PYGEOAPI_SERVER_URL` unset or wrong for the environment. |
