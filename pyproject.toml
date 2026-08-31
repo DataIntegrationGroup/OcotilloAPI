@@ -55,7 +55,7 @@ dependencies = [
   "numpy==2.5.2",
   "packaging==26.3",
   "pandas==2.3.2",
-  "pandas-stubs~=2.3.2",
+  "pandas-stubs>=2.3.2,<3.1.0",
   "pg8000==1.31.5",
   "phonenumbers==9.0.38",
   "pillow==12.3.0",
