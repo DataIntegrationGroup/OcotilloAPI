@@ -835,11 +835,24 @@ def step_then_schema_contains_relations_prefixed(context, prefix):
     assert matching, f"expected at least one relation prefixed {prefix!r}, found none"
 
 
+# Relations that are internal-only by design, with no public counterpart at
+# all -- not an accidental gap this check should catch. This layer publishes
+# landowner contact details and staff-written notes; see
+# docs/water-well-field-operations-layer.md section 3 for why it deliberately
+# has no ogc_water_well_field_operations public twin.
+INTERNAL_ONLY_NO_PUBLIC_COUNTERPART = {
+    "ogc_internal_water_well_field_operations",
+    "ogc_internal_water_well_field_operations_stats",
+}
+
+
 @then("no ogc_internal_ relation is shared with the public /ogcapi endpoint")
 def step_then_no_internal_relation_shared_with_public(context):
     internal = {r for r in context.schema_relations if r.startswith("ogc_internal_")}
     assert internal, "no ogc_internal_ relations found in the schema"
     for relation in internal:
+        if relation in INTERNAL_ONLY_NO_PUBLIC_COUNTERPART:
+            continue
         public_equivalent = relation.replace("ogc_internal_", "ogc_", 1)
         assert public_equivalent in context.schema_relations, (
             f"{relation} has no distinct public counterpart ({public_equivalent}) in "
