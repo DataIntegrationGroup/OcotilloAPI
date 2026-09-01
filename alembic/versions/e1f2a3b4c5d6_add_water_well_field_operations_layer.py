@@ -656,12 +656,10 @@ def _create_feature_view() -> str:
             open_st.status_value AS open_status,
             dl_st.status_value AS datalogger_suitability_status,
 
-            -- Permission, current grants. Three-valued: NULL means no
-            -- permission is on record, which is not the same as denied.
             wl_perm.permission_allowed AS may_measure_water_level,
             chem_perm.permission_allowed AS may_sample_water_chemistry,
             dl_perm.permission_allowed AS may_install_datalogger,
-            granter.name AS permission_granted_by,
+            CASE WHEN wl_perm.permission_allowed IS TRUE THEN granter.name END AS permission_granted_by,
 
             -- Monitoring programme.
             cmf.monitoring_frequency,
