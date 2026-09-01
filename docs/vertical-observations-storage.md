@@ -168,6 +168,48 @@ row (`Observation.groundwater_level_reason`). And review state
 see the row (`release_status`) — a reading can be public and provisional at
 once, which is why `TransducerObservation` has both.
 
+### 10. LAS is the ingestion format, and the original file is the record
+
+The distribution format for well log data is **LAS** (Log ASCII Standard,
+maintained by the Canadian Well Logging Society). LAS 2.0 is the most used
+version; LAS 3.0 extends it to tops, core data, deviation surveys, and drill
+tests, and is backward compatible. A LAS 2.0 file has six sections — `~VERSION`,
+`~WELL`, `~CURVE`, `~PARAMETER`, `~OTHER`, `~ASCII` — of which VERSION, WELL,
+CURVE, and ASCII are required.
+
+Three things follow.
+
+**The file is the provenance record, not a step on the way to one.** Store the
+original LAS as an `Asset` and keep it. The parsed rows are derived data: if the
+mnemonic mapping improves or a parse bug is found, the fix is to re-derive from
+the file, which is only possible if the file is still there. Note the difference
+from the transducer path, where `TransducerObservationBlock.source_file` holds a
+*name* and not the file — that is a weaker record, and worth not repeating.
+
+**`Asset` cannot currently express this association.** `AssetThingAssociation`
+links an asset to a `Thing` and nothing else. A LAS file belongs to a *run*, not
+just to a well: two logs of the same hole a decade apart are two files and two
+profiles, and an association at the `Thing` level cannot say which file produced
+which rows. Either the association table is extended to the profile, or a
+polymorphic asset association is introduced.
+
+**`~WELL` answers questions this document asks, and asks one back.** It carries
+the start and stop depths, the step interval, and the NULL value definition —
+the first three are a free reconciliation check against the rows actually loaded
+(need 7), and the last is a trap: the LAS null sentinel (conventionally
+`-999.25`) must become SQL `NULL` on import. Stored as a number it poisons every
+aggregate downstream, and does so plausibly. `~WELL` also commonly carries
+elevation reference mnemonics — `EKB` (kelly bushing), `EGL` (ground level),
+`EDF` (derrick floor) — which is exactly need 1 arriving in concrete form: a log
+referenced to kelly bushing is not ground-surface referenced, and assumption 2
+cannot silently absorb it. This should be verified against real files before the
+importer is written.
+
+Curve mnemonics are the other unsolved half. `~CURVE` gives a mnemonic and a
+unit per curve, but mnemonics are not standardized in practice, so a
+mnemonic-to-`Parameter` mapping is needed and is the same lexicon work Phase 5
+already requires.
+
 ## Assumptions
 
 These are the working assumptions. Each is a candidate to be confirmed or
@@ -200,7 +242,11 @@ overturned before any table is built.
    an assumption. The `Sample` path stays correct for discrete samples that
    happen to have a depth interval — a bailer at 200 ft is a sample, not a
    profile.
-8. **The existing geothermal temp-depth data is the first migration target.**
+8. **LAS originals are stored as `Asset` rows, not parsed and discarded.** The
+   parsed observations are derived; the file is the record. A LAS file has no
+   registered MIME type, so `mime_type` needs a stated convention
+   (`text/plain`, or `application/octet-stream` with a label).
+9. **The existing geothermal temp-depth data is the first migration target.**
    `NMW_GtTempDepths` is real, already published, and already the right shape.
    Any design that cannot absorb it is the wrong design.
 
@@ -241,6 +287,17 @@ Engineering, and now the critical path:
   container is shared and only the readings tables differ.
 - Is the profile container a new entity, or is `FieldActivity` already it? A
   logging run is an activity during a field event, which is close.
+- **How does a LAS file attach to the profile it produced?** `Asset` associates
+  to `Thing` only. Extend `AssetThingAssociation` to a profile association, or
+  make asset association polymorphic. The narrower change is cheaper; the
+  broader one is probably coming anyway.
+- Does one LAS file become one profile carrying many parameters, or one profile
+  per curve? A file with ten curves is one trip down the hole, which argues for
+  one profile — but review status, source file, and datum are then shared
+  across curves that may not deserve the same verdict.
+- Where does the mnemonic-to-`Parameter` mapping live — lexicon terms, a mapping
+  table, or importer configuration? Mnemonics are not standardized across
+  vendors, so this cannot be hardcoded.
 - How are profiles exposed in the REST API, given that the OGC path is already
   settled by precedent?
 
@@ -259,6 +316,7 @@ Answered 2026-09-01:
 | Separate table, or depth on `Observation`? | Separate |
 | Per-reading QC, or run-level? | Run-level is enough |
 | Which datasets are queued? | Subsurface Library, plus geothermal temp-depth profiles held and incoming |
+| What is the ingestion format? | LAS; store the original as an `Asset` |
 
 ## Related
 
@@ -272,3 +330,7 @@ Answered 2026-09-01:
 - `docs/nm_wells-migration.md` — where the geothermal profile data comes from
 - `docs/ogc-field-descriptions.md` — field titles/units for anything published
 - `ADR4.md` — depth/datum conversion rules belong in `domain/`, not `services/`
+- LAS format overview (USGS NGGDPP):
+  <https://www.usgs.gov/programs/national-geological-and-geophysical-data-preservation-program/las-format>
+- `db/asset.py` — `Asset` and `AssetThingAssociation`, the storage this needs
+  and the association it lacks
