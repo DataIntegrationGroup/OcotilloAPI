@@ -115,12 +115,15 @@ def test_loading_a_mount_restores_config_env_vars():
 # Layers hidden from the public catalog but still served to staff GIS
 # clients on /ogcapi-internal: locations duplicates the thing-type layers
 # (BDMS-978), avg_tds_wells and latest_depth_to_water_wells are misleading
-# or redundant (BDMS-977), other_things is internal vocabulary (BDMS-979).
+# or redundant (BDMS-977), other_things is internal vocabulary (BDMS-979),
+# and water_well_field_operations carries landowner contact details and
+# staff-written access notes, so it has no public form at all.
 INTERNAL_ONLY_COLLECTIONS = {
     "locations",
     "avg_tds_wells",
     "latest_depth_to_water_wells",
     "other_things",
+    "water_well_field_operations",
 }
 
 
