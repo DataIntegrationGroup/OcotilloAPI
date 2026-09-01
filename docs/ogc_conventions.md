@@ -155,6 +155,33 @@ human-readable display name).
 | `locations` | N/A | Locations | N/A | N/A | Conforms. Hidden from public catalog — scope decision, not a naming fix |
 | `avg_tds_wells` | `water_well_average_total_dissolved_solids` | Average TDS (Water Wells) | Average Total Dissolved Solids (Water Wells) | 1 and 2 | ⚠️ *needs review*: `avg` and `tds` both unexplained abbreviations; hidden from public catalog but the rule still applies for internal consumers |
 | `latest_depth_to_water_wells` | N/A | Latest Depth to Water (Water Wells) | N/A | N/A | Conforms. Hidden from public catalog — audit flagged it as redundant with `water_well_summary`, not a naming defect |
+| `water_well_field_operations` | N/A | Water Well Field Operations | N/A | N/A | Conforms. Internal-only with no public form at all — it publishes landowner contact details and staff-written access notes |
+
+## Current-record semantics
+
+Layers that read a history table (`status_history`, `permission_history`,
+`measuring_point_history`, `monitoring_frequency_history`) disagree about what
+"current" means, and the disagreement is deliberate.
+
+`ogc_actively_monitored_wells` takes the row with the greatest `start_date` and
+**ignores `end_date`**, so a monitoring status closed in 2019 still reads as
+current there. That is tolerable on a summary layer, where the question is
+roughly "is this well in the programme".
+
+`ogc_internal_water_well_field_operations` honours the window:
+
+```sql
+WHERE h.start_date <= CURRENT_DATE
+  AND (h.end_date IS NULL OR h.end_date >= CURRENT_DATE)
+ORDER BY h.start_date DESC, h.id DESC
+```
+
+Its columns answer "may a crew do this today", and a permission that ran out
+last month must not read as a permission. A row whose window has not opened yet
+is not current either, and reads null.
+
+New layers should follow the second form. The first is kept only because
+changing it would move rows in a published layer.
 
 ## References
 

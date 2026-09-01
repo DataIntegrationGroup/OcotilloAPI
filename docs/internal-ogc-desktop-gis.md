@@ -5,6 +5,16 @@ collections. It is gated by `core/internal_ogc_auth.py`, an ASGI middleware that
 runs in front of the raw Starlette Mount — FastAPI's `Depends()` machinery never
 sees these requests, so none of the `*_dependency` role parameters apply here.
 
+> **An internal credential dispenses personal information.** The
+> `water_well_field_operations` collection publishes landowner and operator
+> contact details — name, organisation, role, phone number, email address —
+> alongside staff-written access notes that routinely contain gate codes and
+> names. Every credential accepted by this mount reaches it: an Authentik JWT
+> carrying `OGCInternal`, and the static keys in `INTERNAL_OGC_API_KEYS`, which
+> are shared secrets revocable only by redeploy. Any credential path added
+> later inherits the same reach. Issue keys with that in mind, and read
+> `docs/water-well-field-operations-layer.md` before widening who holds one.
+
 ## Why there are static API keys at all
 
 The mount originally accepted only `Authorization: Bearer <Authentik JWT>`.
