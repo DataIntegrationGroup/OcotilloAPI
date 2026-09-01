@@ -1830,6 +1830,13 @@
     },
     {
       "categories": [
+        "release_status"
+      ],
+      "term": "embargoed",
+      "definition": "withheld from public release until release_at, then published by the scheduled release job"
+    },
+    {
+      "categories": [
         "relation"
       ],
       "term": "same_as",

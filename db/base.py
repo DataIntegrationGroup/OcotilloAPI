@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
+    Date,
     DateTime,
     func,
     Integer,
@@ -110,6 +111,17 @@ class ReleaseMixin:
     for the rows that predate it. The vocabulary and the column originated on
     ``TransducerObservation``; this mixin is where it now lives so that every
     released record can carry the second axis.
+
+    ``release_at`` is the third, and it is *intent* rather than enforcement:
+    the date an ``embargoed`` record becomes ``public``. Nothing on the read
+    path consults it. ``services/release_schedule.py`` flips the level when
+    the date arrives, and ``release_status`` stays the only thing the OGC
+    views filter on. See ``docs/data-embargo.md``.
+
+    NULL means no embargo, and that default is load-bearing rather than
+    incidental: migration ``w1x2y3z4a5b6`` records three NGWMN exports that
+    a release predicate emptied outright because the column it tested
+    defaulted to something other than "released".
     """
 
     @declared_attr
@@ -119,6 +131,10 @@ class ReleaseMixin:
     @declared_attr
     def data_maturity(self):
         return lexicon_term(nullable=True)
+
+    @declared_attr
+    def release_at(self):
+        return mapped_column(Date, nullable=True)
 
 
 class AuditMixin:

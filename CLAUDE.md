@@ -268,6 +268,20 @@ The storage and the evaluator exist; the field projection does not.
   about. `services/access_admin.py` writes an `authorization_audit` row in the
   same transaction as every change.
 
+- **Embargo is a scheduled level change, not a read-path rule.**
+  `release_status = 'embargoed'` plus a `release_at` date withholds a record;
+  `oco release-embargoed --apply` flips it to `public` when the date arrives,
+  and must run before the 09:00 UTC materialized-view refresh. Nothing on the
+  read path reads `release_at` -- seven public collections are materialized
+  views where `current_date` is frozen at refresh time, so a date predicate
+  would buy nothing there. Embargo only ever *widens* visibility; withdrawing
+  something published is an immediate `release_status` change. The public
+  water-level views exclude embargoed rows with `IS DISTINCT FROM 'embargoed'`
+  at every level of the observation chain -- deliberately not `= 'public'`,
+  which would also drop draft and NULL rows. Chemistry cannot be embargoed per
+  record: those collections read the legacy `NMA_*` tables, which have no
+  release columns. Read **`docs/data-embargo.md`** before changing any of it.
+
 Two vocabulary fixes from it have landed and matter when reading models:
 
 - **`db/field_access_consent.py`** (`FieldAccessConsent`, table
@@ -279,7 +293,8 @@ Two vocabulary fixes from it have landed and matter when reading models:
   (who may see it) and `data_maturity` is the review state (`provisional`,
   `in review`, `approved`, NULL = not stated). The `release_status` lexicon
   still lists `provisional` and `final` for historical rows; new code should
-  put review state in `data_maturity`.
+  put review state in `data_maturity`. A third column, `release_at`, is
+  the embargo date and is NULL for every record that is not embargoed.
 
 ### Database Configuration
 

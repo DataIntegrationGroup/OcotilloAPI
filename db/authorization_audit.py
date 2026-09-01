@@ -17,7 +17,7 @@
 db/authorization_audit.py
 
 The append-only log of authorization events: grants, revocations, consent
-captured or withdrawn, destinations registered or retired.
+captured or withdrawn, destinations registered or retired, embargoes lifted.
 
 ADR5 asks for this from the first commit, for one reason: when something is
 exposed that should not have been, the first question is never "what was the
@@ -46,6 +46,10 @@ GRANT_REVOKED = "grant.revoked"
 CONSENT_RECORDED = "consent.recorded"
 CONSENT_REVOKED = "consent.revoked"
 DESTINATION_REGISTERED = "destination.registered"
+# An embargo lifting is an authorization change like any other -- it widens
+# who may see a record -- so it lands in the same log rather than a second one
+# nobody thinks to read after an incident.
+RELEASE_LIFTED = "release.lifted"
 
 
 class AuthorizationAudit(Base, AutoBaseMixin):
