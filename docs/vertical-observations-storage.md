@@ -1,7 +1,23 @@
 # Vertical observations: needs and assumptions
 
-**Status:** Draft — needs and assumptions only. No storage decision is made here.
-**Date:** 2026-09-01
+**Status:** Storage shape decided 2026-09-01; several questions still open.
+**Date:** 2026-09-01, decisions recorded same day
+
+## Decisions
+
+Decided by Jake Ross, 2026-09-01:
+
+1. **Vertical observations get their own table**, separate from `Observation`,
+   paired with a profile container mirroring `TransducerObservationBlock`. This
+   resolves need 7 below: neither depth-on-`Observation` nor sample-per-depth.
+2. **Review status is held per profile (run)**, not per reading. No per-reading
+   QC column, and no per-reading correction note.
+3. **The Subsurface Library is the dataset driving this**, alongside the
+   geothermal temperature-depth profiles already held and the new ones the
+   geothermal team is collecting in spreadsheets.
+
+Whitepaper version, for non-engineering readers:
+<https://nmbgmr.atlassian.net/wiki/spaces/Ocotillo/pages/2908749826>
 
 ## What this is about
 
@@ -78,6 +94,14 @@ down the hole, same QC verdict, same source file. That is the same requirement
 approved, annotated, or deleted as a unit. Vertical data needs the equivalent;
 without it there is no way to say "this log is bad" except row by row.
 
+Per decision 2, the container is also where review state *stops*.
+`review_status`, `data_maturity`, and `release_status` all live on the profile;
+the readings table gets none of them. This is a real simplification over the
+transducer path, and it is available because a corrected transducer series has
+readings that differ from what the instrument recorded, while a vertical profile
+is stored as logged. Adding a per-reading flag later is additive and does not
+invalidate stored rows.
+
 ### 4. Measured depth is not always true vertical depth
 
 NM_Wells carries `From_TVD`/`To_TVD` alongside `From_Depth`/`To_Depth` because
@@ -97,7 +121,9 @@ the continuous transfer.
 ### 6. Point depths and intervals are both real
 
 A sonde reading at 42.0 ft is a point. A thermal-conductivity measurement over
-120–135 ft is an interval, and so is a core-derived chemistry value. These are
+120–135 ft is an interval, and so are core sample properties and lithology
+picks — which is most of what the Subsurface Library holds, so per decision 3
+this is now the first design question rather than a detail. These are
 different enough that one nullable pair of columns handles them only by
 convention (`depth_top == depth_bottom` for a point, or `depth_bottom IS NULL`).
 Whichever convention is chosen has to be stated and validated, and
@@ -115,6 +141,14 @@ each with a unique `sample_name` (a `NOT NULL UNIQUE` column). That is not
 tenable for logs. Either depth moves onto the observation, or vertical data gets
 its own path beside the manual one — which is what the continuous data already
 did.
+
+**Resolved by decision 1:** its own path. Depth-on-`Observation` was the other
+live option and would have kept the parameter/unit/lexicon plumbing shared, but
+an `Observation` requires a parent `Sample`, so it does not escape this problem
+without relaxing that foreign key, and it puts log-scale volume in the table
+backing most existing API traffic. The cost accepted is a third observation
+path: parameter and unit handling to keep consistent across three, and "all
+observations for this well" becoming a union of three sources.
 
 ### 8. Publication has no obvious shape
 
@@ -143,7 +177,10 @@ overturned before any table is built.
    needed, is derived, not stored alongside as a second authority.
 2. **Ground surface is the default datum**, matching every existing depth column
    and the San Acacia ingestion decision. Rows measured from anything else must
-   say so explicitly; the datum is not inferable from the parameter.
+   say so explicitly; the datum is not inferable from the parameter. Monitoring
+   wells share one convention; a library assembled over decades from many
+   operators does not, so test this against real Subsurface Library records
+   before relying on it.
 3. **Feet are the stored unit for depth**, matching existing depth columns, even
    though `Location.elevation` is meters. The depth unit is recorded per row (or
    per profile) as a lexicon term rather than assumed, following how
@@ -154,34 +191,81 @@ overturned before any table is built.
 5. **Measured depth equals TVD unless a deviation survey says otherwise.** No
    deviation data is stored today; assuming equality is the honest default for
    vertical NM wells, but the column pair should exist rather than be added later.
+   Close to theoretical for monitoring wells, not for the oil and gas boreholes
+   in the Subsurface Library.
 6. **Depth values are never recomputed.** Datum changes, re-surveys, and well
    deepening change the interpretation, not the recorded number.
 7. **Vertical data gets its own path**, parallel to `TransducerObservation`,
-   rather than being forced through `Sample`. The `Sample` path stays correct for
-   discrete samples that happen to have a depth interval — a bailer at 200 ft is
-   a sample, not a profile.
+   rather than being forced through `Sample`. **Decided 2026-09-01**, no longer
+   an assumption. The `Sample` path stays correct for discrete samples that
+   happen to have a depth interval — a bailer at 200 ft is a sample, not a
+   profile.
 8. **The existing geothermal temp-depth data is the first migration target.**
    `NMW_GtTempDepths` is real, already published, and already the right shape.
    Any design that cannot absorb it is the wrong design.
 
+## Where this sits in the migration
+
+Naming the Subsurface Library as the driver (decision 3) locates this work in
+the NM Wells migration plan, which sequences the library as a Phase 4 1:1 mirror
+(BDMS-948) and the refactor into the native model as Phase 5. **This table is a
+Phase 5 artifact.** Two consequences:
+
+- Nothing here blocks Phase 4, and Phase 4 should not wait on it. The library
+  arrives as `NMW_*`-style mirror tables first, exactly as NM Wells did.
+- Phase 5 already lists establishing geothermal and subsurface lexicon terms as
+  prerequisite work. That is this table's prerequisite too — `parameter` and
+  `unit` are controlled terms, so it cannot hold a reading whose parameter has
+  no term.
+
+The nearer driver is **Phase 2**: the geothermal team is collecting new
+temperature-depth profiles in spreadsheets with no path into a system of record.
+Those are vertical observations, they are being produced now, and they are the
+smallest clean first load this table could take.
+
+Out of scope, deliberately: the Subsurface Library's headline problems are
+identifier reconciliation against NM Wells (no shared key) and PLSS coordinates
+at varying precision. Both are `Location`/`Thing` problems, resolved before any
+depth-indexed row is written. This design should not try to absorb them.
+
 ## Open questions
 
-- Does depth go on `Observation` (nullable columns, one table for both axes) or
-  on a separate `VerticalObservation` table? The transducer precedent argues
-  separate; the parameter/unit/lexicon plumbing argues shared.
+Engineering, and now the critical path:
+
+- **Do intervals and points share a table, or split?** Decision 3 promotes this
+  to question one: temp-depth profiles are point series, but core properties,
+  lithology picks, and sample intervals are not, and they are most of the
+  library. If shared, the point convention (`depth_top == depth_bottom`, or a
+  null bottom) needs stating once plus a `DepthIntervalMixin` variant, since the
+  current mixin requires `bottom > top` strictly. If split, the profile
+  container is shared and only the readings tables differ.
 - Is the profile container a new entity, or is `FieldActivity` already it? A
   logging run is an activity during a field event, which is close.
-- Do intervals and points share a table, or split?
-- Does a profile need per-reading QC, or is run-level `review_status` enough?
-  Transducer data needed both.
-- Which datasets beyond geothermal are actually queued — downhole sonde
-  profiles, geophysical logs, core interval chemistry? The answer changes the
-  row-count and interval requirements sharply.
 - How are profiles exposed in the REST API, given that the OGC path is already
   settled by precedent?
 
+Domain staff:
+
+- Is one timestamp per profile (assumption 4) safe for the data actually queued?
+  A slow thermal equilibration run may not fit it.
+- Are profiles ever measured from a reference other than ground surface, and if
+  so, is that reference in the source data or only in the head of whoever
+  collected it? Matters most for Subsurface Library material.
+
+Answered 2026-09-01:
+
+| Question | Answer |
+| --- | --- |
+| Separate table, or depth on `Observation`? | Separate |
+| Per-reading QC, or run-level? | Run-level is enough |
+| Which datasets are queued? | Subsurface Library, plus geothermal temp-depth profiles held and incoming |
+
 ## Related
 
+- Whitepaper for non-engineering readers:
+  <https://nmbgmr.atlassian.net/wiki/spaces/Ocotillo/pages/2908749826>
+- NM Wells migration plan, Phases 2/4/5:
+  <https://nmbgmr.atlassian.net/wiki/spaces/Ocotillo/pages/2854780929>
 - `docs/measuring-point-height-null-handling.md` — null MP height defaults to
   ground surface
 - `docs/hydrograph-correction-publish.md` — the block/QC pattern on the time axis
