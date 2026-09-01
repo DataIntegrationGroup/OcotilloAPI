@@ -204,6 +204,18 @@ ArcGIS Pro cannot send a bearer token at all and neither desktop client can
 refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
 changing the credential paths.
 
+**`/ogcapi-internal` carries landowner PII.** The `water_well_field_operations`
+collection publishes contact name, organization, role, phone and email for well
+owners and operators, plus staff-written access notes. Every credential the
+mount accepts reaches it, the static keys included. It is internal-only with
+**no public twin** — `ogc_water_well_field_operations` does not exist and must
+never be created. The layer also honours `end_date` when reading history
+tables, unlike `ogc_actively_monitored_wells`, so "may we sample here" cannot
+outlive the permission that granted it. Read
+**`docs/water-well-field-operations-layer.md`** before changing it, and
+**`docs/water-well-field-operations-columns.md`** for where each column comes
+from.
+
 ### OGC field descriptions
 
 Per-column `title`/`description`/unit for every collection lives in

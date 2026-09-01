@@ -818,12 +818,15 @@ def test_ogc_collections(ogc_client):
     # and latest_depth_to_water_wells repeats water_well_summary
     # (BDMS-977), and other_things is internal vocabulary (BDMS-979). The
     # backing relations are retained and still served on /ogcapi-internal.
+    # water_well_field_operations is internal-only for a stronger reason than
+    # the other four: it publishes landowner contact details.
     assert ids.isdisjoint(
         {
             "locations",
             "avg_tds_wells",
             "latest_depth_to_water_wells",
             "other_things",
+            "water_well_field_operations",
         }
     )
 
