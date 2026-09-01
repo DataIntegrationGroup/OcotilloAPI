@@ -20,17 +20,12 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | --- | --- |
 | `id` | `thing.id` |
 | `name` | `thing.name` |
-| `thing_type` | Literal `'water well'` — the view's row filter |
+| `station_type` | Literal `'water well'` — the view's row filter. Named `station_type` rather than `thing_type` to match the naming already established on the public thing-type views |
 | `release_status` | `thing.release_status` |
-| `nma_pk_welldata` | `thing.nma_pk_welldata` |
 | `alternate_ids` | `thing_id_link.alternate_organization` + `.alternate_id`, comma-joined |
-| `county` | `location.county`, most recent association |
-| `state` | `location.state`, most recent association |
-| `quad_name` | `location.quad_name`, most recent association |
 | `latitude` | `ST_Y(location.point)` — decimal degrees, WGS 84 |
 | `longitude` | `ST_X(location.point)` — decimal degrees, WGS 84 |
 | `elevation` | `location.elevation`, most recent association |
-| `elevation_method` | `data_provenance.collection_method` where `target_table = 'location'` and `field_name = 'elevation'`, latest `id` |
 | `well_depth` | `thing.well_depth` |
 | `hole_depth` | `thing.hole_depth` |
 | `well_casing_diameter` | `thing.well_casing_diameter` |
@@ -41,32 +36,25 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | `well_pump_type` | `thing.well_pump_type` |
 | `well_pump_depth` | `thing.well_pump_depth` |
 | `formation_completion_code` | `thing.formation_completion_code` |
-| `nma_formation_zone` | `thing.nma_formation_zone` |
-| `well_purposes` | `well_purpose.purpose`, comma-joined |
-| `well_casing_materials` | `well_casing_material.material`, comma-joined |
+| `formation_completion_description` | `lexicon_term.definition` where `term = thing.formation_completion_code`. Neither this nor `aquifer_system_name` below is date-windowed — neither source table carries a `start_date`/`end_date` |
+| `well_purpose` | `well_purpose.purpose`, comma-joined |
+| `well_casing_material` | `well_casing_material.material`, comma-joined |
+| `aquifer_system_name` | `aquifer_system.name` via `thing_aquifer_association`, comma-joined |
 | `screen_count` | `count(well_screen)` |
-| `screen_depth_top` | `min(well_screen.screen_depth_top)` |
-| `screen_depth_bottom` | `max(well_screen.screen_depth_bottom)` |
-| `measuring_point_height` | `measuring_point_history.measuring_point_height`, current record |
-| `measuring_point_description` | `measuring_point_history.measuring_point_description`, current record |
-| `measuring_point_start_date` | `measuring_point_history.start_date`, current record |
+| `screen_depth_top` | `well_screen.screen_depth_top`, every interval, semicolon-joined, ordered shallowest first, `COALESCE(..., '')` for the same reason as the equipment columns |
+| `screen_depth_bottom` | `well_screen.screen_depth_bottom`, same intervals, same order, same `COALESCE(..., '')` treatment |
+| `screen_description` | `well_screen.screen_description`, same intervals, same order, same `COALESCE(..., '')` treatment |
+| `mp_height` | `measuring_point_history.measuring_point_height`, current record |
+| `mp_description` | `measuring_point_history.measuring_point_description`, current record |
 | `well_status` | `status_history.status_value` where `status_type = 'Well Status'`, current record |
-| `well_status_since` | `status_history.start_date`, same record |
 | `monitoring_status` | `status_history.status_value` where `status_type = 'Monitoring Status'`, current record |
-| `monitoring_status_since` | `status_history.start_date`, same record |
-| `monitoring_status_reason` | `status_history.reason`, same record |
-| `access_status` | `status_history.status_value` where `status_type = 'Access Status'`, current record |
-| `access_status_since` | `status_history.start_date`, same record |
 | `open_status` | `status_history.status_value` where `status_type = 'Open Status'`, current record |
-| `open_status_since` | `status_history.start_date`, same record |
 | `datalogger_suitability_status` | `status_history.status_value` where `status_type = 'Datalogger Suitability Status'`, current record |
-| `datalogger_suitability_status_since` | `status_history.start_date`, same record |
 | `may_measure_water_level` | `permission_history.permission_allowed` where `permission_type = 'Water Level Sample'`, current record |
 | `may_sample_water_chemistry` | `permission_history.permission_allowed` where `permission_type = 'Water Chemistry Sample'`, current record |
 | `may_install_datalogger` | `permission_history.permission_allowed` where `permission_type = 'Datalogger Installation'`, current record |
 | `permission_granted_by` | `contact.name` via `permission_history.contact_id` on the current water-level grant |
 | `monitoring_frequency` | `monitoring_frequency_history.monitoring_frequency`, current record |
-| `monitoring_frequency_since` | `monitoring_frequency_history.start_date`, current record |
 | `group_names` | `group.name` via `group_thing_association`, comma-joined |
 | `group_types` | `group.group_type`, same order as `group_names` |
 | `manual_water_level_count` | `count(observation)` via `sample` → `field_activity` → `field_event`, `activity_type = 'groundwater level'` *(stats)* |
@@ -78,17 +66,17 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | `chemistry_sample_last_date` | `max(sample.sample_date)`, UTC date, same filter *(stats)* |
 | `days_since_chemistry_sample` | `CURRENT_DATE - chemistry_sample_last_date` |
 | `field_event_count` | `count(field_event)` for the well *(stats)* |
-| `field_event_last_date` | `max(field_event.event_date)`, UTC date *(stats)* |
-| `has_datalogger` | `true` when an open logger deployment exists — see `datalogger_sensor_type` |
-| `datalogger_deployment_count` | `count(deployment)` open logger deployments |
-| `datalogger_sensor_type` | `sensor.sensor_type` on the current deployment, restricted to Data Logger / Pressure Transducer / DiverLink / Diver Cable |
-| `datalogger_model` | `sensor.model`, same deployment |
-| `datalogger_serial_no` | `sensor.serial_no`, same deployment |
-| `datalogger_sensor_status` | `sensor.sensor_status`, same deployment |
-| `datalogger_installed_date` | `deployment.installation_date`, same deployment |
-| `datalogger_recording_interval` | `deployment.recording_interval`, same deployment |
-| `datalogger_recording_interval_units` | `deployment.recording_interval_units`, same deployment |
-| `datalogger_hanging_point_description` | `deployment.hanging_point_description`, same deployment |
+| `date_last_visited` | `max(field_event.event_date)`, UTC date *(stats, column named `field_event_last_date` there)* |
+| `has_datalogger` | `true` when a currently-installed deployment exists whose `sensor.sensor_type` is Data Logger / Pressure Transducer / DiverLink / Diver Cable. Stays logger-scoped even though the columns below do not |
+| `datalogger_deployment_count` | `count(deployment)`, same logger-only filter as `has_datalogger` |
+| `sensor_type` | `sensor.sensor_type` for every currently-installed deployment (`installation_date IS NOT NULL AND removal_date IS NULL`), **any sensor type, not just loggers** — semicolon-joined, ordered by `sensor_type` |
+| `model` | `sensor.model`, same deployments, same order as `sensor_type`. `COALESCE(..., '')` before aggregating, so a null value is an empty segment, not a dropped position |
+| `serial_no` | `sensor.serial_no`, same deployments, same order, same `COALESCE(..., '')` treatment |
+| `sensor_status` | `sensor.sensor_status`, same deployments, same order, same `COALESCE(..., '')` treatment |
+| `installed_date` | `deployment.installation_date`, same deployments, same order. In practice never null -- `installed_deployments` filters on `installation_date IS NOT NULL` -- but `COALESCE`d anyway for consistency with its siblings |
+| `recording_interval` | `deployment.recording_interval`, same deployments, same order, same `COALESCE(..., '')` treatment — `text`, not `integer`, because `string_agg` produces `text` regardless of how many deployments a given well has |
+| `recording_interval_units` | `deployment.recording_interval_units`, same deployments, same order, same `COALESCE(..., '')` treatment |
+| `hanging_point_desc` | `deployment.hanging_point_description`, same deployments, same order, same `COALESCE(..., '')` treatment |
 | `continuous_reading_count` | `count(transducer_observation)` via `deployment` *(stats)* |
 | `continuous_first_datetime` | `min(transducer_observation.observation_datetime)` *(stats)* |
 | `continuous_last_datetime` | `max(transducer_observation.observation_datetime)` *(stats)* |
@@ -103,4 +91,15 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | `contact_names` | `contact.name` for every associated contact, comma-joined |
 | `access_notes` | `notes.content` where `note_type = 'Access'`, newest first, joined with ` | ` |
 | `directions_notes` | `notes.content` where `note_type = 'Directions'`, newest first, joined with ` | ` |
+| `communication_notes` | `notes.content` where `note_type = 'Communication'`, newest first, joined with ` | ` |
+| `construction_notes` | `notes.content` where `note_type = 'Construction'`, newest first, joined with ` | ` |
+| `maintenance_notes` | `notes.content` where `note_type = 'Maintenance'`, newest first, joined with ` | ` |
+| `historical_notes` | `notes.content` where `note_type = 'Historical'`, newest first, joined with ` | ` |
+| `general_notes` | `notes.content` where `note_type = 'General'`, newest first, joined with ` | ` |
+| `water_notes` | `notes.content` where `note_type = 'Water'`, newest first, joined with ` | ` |
+| `water_quality_notes` | `notes.content` where `note_type = 'Water Quality'`, newest first, joined with ` | ` |
+| `sampling_procedure_notes` | `notes.content` where `note_type = 'Sampling Procedure'`, newest first, joined with ` | ` |
+| `coordinate_notes` | `notes.content` where `note_type = 'Coordinate'`, newest first, joined with ` | ` |
+| `owner_comment_notes` | `notes.content` where `note_type = 'OwnerComment'`, newest first, joined with ` | ` |
+| `site_notes_legacy` | `notes.content` where `note_type = 'Site Notes (legacy)'`, newest first, joined with ` | `. Not `site_notes_legacy_notes` — the lexicon term already says "notes" |
 | `point` | `location.point`, most recent association (PostGIS Point, EPSG:4326) |

@@ -68,6 +68,51 @@ Both relations are new here, so downgrade() drops them rather than restoring a
 prior state. The supporting indexes are also created here: none of these
 foreign keys was indexed (Postgres does not index foreign keys on its own).
 
+Consolidated from two independently-drafted layers (this one and
+kas-water-well-operations-ogc-layer-bdms-1202) after a side-by-side review.
+The deltas from the version that first merged (3499f414):
+
+- Dropped: nma_pk_welldata, county, state, quad_name, elevation_method (and
+  its data_provenance LATERAL lookup, now unused), nma_formation_zone,
+  measuring_point_start_date, and every `*_since`/`*_reason` status and
+  monitoring-frequency column. access_status itself is also dropped (not just
+  its `_since` companion): status_value has no terms scoped to Access Status
+  in the lexicon, so the column could only ever read NULL, and access_notes
+  already carries staff-written access information for a well.
+- Renamed to match the naming already established on the public thing-type
+  views: thing_type -> station_type, well_casing_materials ->
+  well_casing_material, well_purposes -> well_purpose,
+  measuring_point_height/measuring_point_description -> mp_height/
+  mp_description, field_event_last_date (from the stats matview) ->
+  date_last_visited.
+- Added formation_completion_description (lexicon_term.definition for the
+  term named by formation_completion_code) and aquifer_system_name
+  (thing_aquifer_association -> aquifer_system, comma-joined), both scalar
+  lookups with no date-window semantics of their own -- neither source table
+  carries a start_date/end_date.
+- Broadened "currently installed equipment" from logger-only to every
+  currently-installed sensor. The original datalogger_sensor_type/model/
+  serial_no/sensor_status/installed_date/recording_interval/
+  recording_interval_units/hanging_point_description picked a single row
+  (DISTINCT ON, most-recently-installed) from deployments filtered to
+  LOGGER_SENSOR_TYPES, so a currently-installed camera or barometer was
+  invisible. The unprefixed sensor_type/model/serial_no/sensor_status/
+  installed_date/recording_interval/recording_interval_units/
+  hanging_point_desc columns now aggregate every currently-installed sensor
+  regardless of type (semicolon-joined, ordered by sensor_type, same
+  convention as the comma-joined columns above but semicolon because these
+  are genuinely positional -- position N in one list is the same deployment as
+  position N in the others). has_datalogger/datalogger_deployment_count stay
+  logger-scoped exactly as before, for whoever specifically needs "is this
+  well instrumented," now computed from the broader deployment set filtered
+  inline rather than a separate pre-filtered CTE.
+- Added one column per notes.note_type value (13 total, including the
+  pre-existing access_notes/directions_notes), `_notes`-suffixed, same
+  string_agg(' | ', id DESC) pattern as the original two. `OwnerComment` ->
+  owner_comment_notes and `Site Notes (legacy)` -> site_notes_legacy are the
+  two that do not mechanically snake-case; the legacy one is not
+  double-suffixed since the term already says "notes".
+
 Revision ID: e1f2a3b4c5d6
 Revises: c9d0e1f2a3b4
 Create Date: 2026-08-31 00:00:00.000000
@@ -93,7 +138,6 @@ REQUIRED_TABLES = {
     "sample",
     "field_activity",
     "field_event",
-    "data_provenance",
     "status_history",
     "permission_history",
     "measuring_point_history",
@@ -112,6 +156,9 @@ REQUIRED_TABLES = {
     "well_casing_material",
     "well_screen",
     "thing_id_link",
+    "lexicon_term",
+    "thing_aquifer_association",
+    "aquifer_system",
 }
 
 STATS_VIEW = "ogc_internal_water_well_field_operations_stats"
@@ -135,6 +182,26 @@ LOGGER_SENSOR_TYPES = (
     "'Pressure Transducer'",
     "'DiverLink'",
     "'Diver Cable'",
+)
+
+# notes.note_type -> published column name. Order matches core/lexicon.json's
+# note_type category. Two do not mechanically snake-case: OwnerComment has no
+# separator to split on, and "Site Notes (legacy)" already says "notes" so it
+# is not double-suffixed.
+NOTE_TYPES = (
+    ("Access", "access_notes"),
+    ("Directions", "directions_notes"),
+    ("Communication", "communication_notes"),
+    ("Construction", "construction_notes"),
+    ("Maintenance", "maintenance_notes"),
+    ("Historical", "historical_notes"),
+    ("General", "general_notes"),
+    ("Water", "water_notes"),
+    ("Water Quality", "water_quality_notes"),
+    ("Sampling Procedure", "sampling_procedure_notes"),
+    ("Coordinate", "coordinate_notes"),
+    ("OwnerComment", "owner_comment_notes"),
+    ("Site Notes (legacy)", "site_notes_legacy"),
 )
 
 # Indexes the per-well lookups need. Each is created IF NOT EXISTS: none of
@@ -169,6 +236,10 @@ SUPPORTING_INDEXES = [
     ("ix_well_screen_thing_id", "well_screen (thing_id)"),
     ("ix_thing_id_link_thing_id", "thing_id_link (thing_id)"),
     ("ix_thing_thing_type", "thing (thing_type)"),
+    (
+        "ix_thing_aquifer_association_thing_id",
+        "thing_aquifer_association (thing_id)",
+    ),
     # No index on transducer_observation (deployment_id, ...): the existing
     # uq_transducer_observation_deployment_parameter_datetime leads with
     # deployment_id and already serves the per-deployment aggregate.
@@ -302,6 +373,17 @@ def _create_feature_view() -> str:
     safe_name = _safe_relation_name(FEATURE_VIEW)
     safe_stats = _safe_relation_name(STATS_VIEW)
     logger_types = ", ".join(LOGGER_SENSOR_TYPES)
+    notes_columns_sql = ",\n            ".join(
+        f"""(
+                SELECT string_agg(n.content, ' | ' ORDER BY n.id DESC)
+                FROM notes AS n
+                WHERE
+                    n.target_table = 'thing'
+                    AND n.target_id = t.id
+                    AND n.note_type = '{note_type}'
+            ) AS {_safe_relation_name(column_name)}"""
+        for note_type, column_name in NOTE_TYPES
+    )
     return f"""
         CREATE VIEW {safe_name} AS
         WITH latest_location AS (
@@ -358,7 +440,11 @@ def _create_feature_view() -> str:
                 AND (mf.end_date IS NULL OR mf.end_date >= CURRENT_DATE)
             ORDER BY mf.thing_id, mf.start_date DESC, mf.id DESC
         ),
-        logger_deployments AS (
+        installed_deployments AS (
+            -- Every currently-installed sensor, not just loggers -- a camera
+            -- or barometer must not be invisible just because it cannot log
+            -- on its own. See logger_count below for the narrower has_datalogger
+            -- signal.
             SELECT
                 d.id AS deployment_id,
                 d.thing_id,
@@ -372,22 +458,88 @@ def _create_feature_view() -> str:
                 se.sensor_status
             FROM deployment AS d
             JOIN sensor AS se ON se.id = d.sensor_id
-            WHERE
-                d.installation_date IS NOT NULL
-                AND d.removal_date IS NULL
-                AND se.sensor_type IN ({logger_types})
+            WHERE d.installation_date IS NOT NULL AND d.removal_date IS NULL
         ),
-        current_logger AS (
-            SELECT DISTINCT ON (ld.thing_id) ld.*
-            FROM logger_deployments AS ld
-            ORDER BY ld.thing_id, ld.installation_date DESC, ld.deployment_id DESC
+        installed_equipment AS (
+            -- Aggregated, not DISTINCT ON: a well running more than one
+            -- current sensor lists all of them. All eight columns are ordered
+            -- by sensor_type, so position N in one list is the same
+            -- deployment as position N in the others -- which is why every
+            -- expression but sensor_type itself is wrapped in COALESCE(..,
+            -- ''): sensor_type is NOT NULL on sensor, but a deployment can
+            -- easily have a null model, recording_interval, etc. (a camera
+            -- has no recording interval), and plain string_agg silently
+            -- drops null inputs, shortening that one column's list and
+            -- breaking the position-N-means-the-same-deployment guarantee.
+            -- An empty segment between two ';' means "this sensor has no
+            -- value for this field," not "this sensor doesn't exist."
+            SELECT
+                idpl.thing_id,
+                string_agg(
+                    idpl.sensor_type, '; ' ORDER BY idpl.sensor_type
+                ) AS sensor_type,
+                string_agg(
+                    COALESCE(idpl.model, ''), '; ' ORDER BY idpl.sensor_type
+                ) AS model,
+                string_agg(
+                    COALESCE(idpl.serial_no, ''), '; ' ORDER BY idpl.sensor_type
+                ) AS serial_no,
+                string_agg(
+                    COALESCE(idpl.sensor_status, ''), '; ' ORDER BY idpl.sensor_type
+                ) AS sensor_status,
+                string_agg(
+                    COALESCE(idpl.installation_date::text, ''),
+                    '; ' ORDER BY idpl.sensor_type
+                ) AS installed_date,
+                string_agg(
+                    COALESCE(idpl.recording_interval::text, ''),
+                    '; ' ORDER BY idpl.sensor_type
+                ) AS recording_interval,
+                string_agg(
+                    COALESCE(idpl.recording_interval_units, ''),
+                    '; ' ORDER BY idpl.sensor_type
+                ) AS recording_interval_units,
+                string_agg(
+                    COALESCE(idpl.hanging_point_description, ''),
+                    '; ' ORDER BY idpl.sensor_type
+                ) AS hanging_point_desc
+            FROM installed_deployments AS idpl
+            GROUP BY idpl.thing_id
         ),
         logger_count AS (
             SELECT
-                ld.thing_id,
+                idpl.thing_id,
                 COUNT(*)::integer AS datalogger_deployment_count
-            FROM logger_deployments AS ld
-            GROUP BY ld.thing_id
+            FROM installed_deployments AS idpl
+            WHERE idpl.sensor_type IN ({logger_types})
+            GROUP BY idpl.thing_id
+        ),
+        screens AS (
+            -- Full per-interval detail, not a min/max summary: a well with
+            -- more than one screen keeps them all rather than collapsing to
+            -- an overall depth range. All three ordered by screen_depth_top
+            -- (nulls last), and each wrapped in COALESCE(..., '') for the
+            -- same reason as installed_equipment above -- screen_depth_top,
+            -- screen_depth_bottom, and screen_description are all nullable
+            -- independently of each other, and plain string_agg would drop
+            -- a null and misalign the other two columns' positions.
+            SELECT
+                ws.thing_id,
+                COUNT(*)::integer AS screen_count,
+                string_agg(
+                    COALESCE(ws.screen_depth_top::text, ''), '; '
+                    ORDER BY ws.screen_depth_top NULLS LAST
+                ) AS screen_depth_top,
+                string_agg(
+                    COALESCE(ws.screen_depth_bottom::text, ''), '; '
+                    ORDER BY ws.screen_depth_top NULLS LAST
+                ) AS screen_depth_bottom,
+                string_agg(
+                    COALESCE(ws.screen_description, ''), '; '
+                    ORDER BY ws.screen_depth_top NULLS LAST
+                ) AS screen_description
+            FROM well_screen AS ws
+            GROUP BY ws.thing_id
         ),
         thing_contacts AS (
             SELECT
@@ -431,9 +583,8 @@ def _create_feature_view() -> str:
         SELECT
             t.id AS id,
             t.name,
-            'water well'::text AS thing_type,
+            'water well'::text AS station_type,
             t.release_status,
-            t.nma_pk_welldata,
             (
                 SELECT string_agg(
                     DISTINCT
@@ -449,16 +600,12 @@ def _create_feature_view() -> str:
                 FROM thing_id_link AS tl
                 WHERE tl.thing_id = t.id
             ) AS alternate_ids,
-            l.county,
-            l.state,
-            l.quad_name,
             -- Decimal degrees alongside the geometry. A crew types these into
             -- a handheld GPS or reads them over the radio; the geometry column
             -- is for the map, and a CSV export of this layer drops it.
             ST_Y(l.point) AS latitude,
             ST_X(l.point) AS longitude,
             l.elevation,
-            dpl.collection_method AS elevation_method,
 
             -- Construction, same column names as the thing-type views.
             t.well_depth,
@@ -471,40 +618,43 @@ def _create_feature_view() -> str:
             t.well_pump_type,
             t.well_pump_depth,
             t.formation_completion_code,
-            t.nma_formation_zone,
+            (
+                SELECT lt.definition
+                FROM lexicon_term AS lt
+                WHERE lt.term = t.formation_completion_code
+            ) AS formation_completion_description,
             (
                 SELECT string_agg(DISTINCT wp.purpose, ', ' ORDER BY wp.purpose)
                 FROM well_purpose AS wp
                 WHERE wp.thing_id = t.id
-            ) AS well_purposes,
+            ) AS well_purpose,
             (
                 SELECT string_agg(
                     DISTINCT wcm.material, ', ' ORDER BY wcm.material
                 )
                 FROM well_casing_material AS wcm
                 WHERE wcm.thing_id = t.id
-            ) AS well_casing_materials,
+            ) AS well_casing_material,
+            (
+                SELECT string_agg(DISTINCT asys.name, ', ' ORDER BY asys.name)
+                FROM thing_aquifer_association AS taa
+                JOIN aquifer_system AS asys ON asys.id = taa.aquifer_system_id
+                WHERE taa.thing_id = t.id
+            ) AS aquifer_system_name,
             scr.screen_count,
             scr.screen_depth_top,
             scr.screen_depth_bottom,
+            scr.screen_description,
 
             -- Measuring point, current record.
-            cmp.measuring_point_height,
-            cmp.measuring_point_description,
-            cmp.start_date AS measuring_point_start_date,
+            cmp.measuring_point_height AS mp_height,
+            cmp.measuring_point_description AS mp_description,
 
             -- Status, current record per status type.
             well_st.status_value AS well_status,
-            well_st.start_date AS well_status_since,
             mon_st.status_value AS monitoring_status,
-            mon_st.start_date AS monitoring_status_since,
-            mon_st.reason AS monitoring_status_reason,
-            acc_st.status_value AS access_status,
-            acc_st.start_date AS access_status_since,
             open_st.status_value AS open_status,
-            open_st.start_date AS open_status_since,
             dl_st.status_value AS datalogger_suitability_status,
-            dl_st.start_date AS datalogger_suitability_status_since,
 
             -- Permission, current grants. Three-valued: NULL means no
             -- permission is on record, which is not the same as denied.
@@ -515,7 +665,6 @@ def _create_feature_view() -> str:
 
             -- Monitoring programme.
             cmf.monitoring_frequency,
-            cmf.start_date AS monitoring_frequency_since,
             grp.group_names,
             grp.group_types,
 
@@ -537,20 +686,22 @@ def _create_feature_view() -> str:
 
             -- Field visits (from the stats matview).
             COALESCE(st.field_event_count, 0) AS field_event_count,
-            st.field_event_last_date,
+            st.field_event_last_date AS date_last_visited,
 
-            -- Data logger, current deployment.
-            (cl.deployment_id IS NOT NULL) AS has_datalogger,
+            -- Currently installed equipment, any sensor type -- see
+            -- installed_equipment above. has_datalogger/
+            -- datalogger_deployment_count stay logger-scoped.
+            (lc.thing_id IS NOT NULL) AS has_datalogger,
             COALESCE(lc.datalogger_deployment_count, 0)
                 AS datalogger_deployment_count,
-            cl.sensor_type AS datalogger_sensor_type,
-            cl.model AS datalogger_model,
-            cl.serial_no AS datalogger_serial_no,
-            cl.sensor_status AS datalogger_sensor_status,
-            cl.installation_date AS datalogger_installed_date,
-            cl.recording_interval AS datalogger_recording_interval,
-            cl.recording_interval_units AS datalogger_recording_interval_units,
-            cl.hanging_point_description AS datalogger_hanging_point_description,
+            ie.sensor_type,
+            ie.model,
+            ie.serial_no,
+            ie.sensor_status,
+            ie.installed_date,
+            ie.recording_interval,
+            ie.recording_interval_units,
+            ie.hanging_point_desc,
             COALESCE(st.continuous_reading_count, 0) AS continuous_reading_count,
             st.continuous_first_datetime,
             st.continuous_last_datetime,
@@ -581,24 +732,10 @@ def _create_feature_view() -> str:
             ) AS primary_contact_email,
             cag.contact_names,
 
-            -- Visit instructions. Separator is ' | ' rather than ', ' because
-            -- the content is free text and routinely contains commas.
-            (
-                SELECT string_agg(n.content, ' | ' ORDER BY n.id DESC)
-                FROM notes AS n
-                WHERE
-                    n.target_table = 'thing'
-                    AND n.target_id = t.id
-                    AND n.note_type = 'Access'
-            ) AS access_notes,
-            (
-                SELECT string_agg(n.content, ' | ' ORDER BY n.id DESC)
-                FROM notes AS n
-                WHERE
-                    n.target_table = 'thing'
-                    AND n.target_id = t.id
-                    AND n.note_type = 'Directions'
-            ) AS directions_notes,
+            -- Notes, one column per note_type. Separator is ' | ' rather than
+            -- ', ' because the content is free text and routinely contains
+            -- commas.
+            {notes_columns_sql},
 
             l.point
         FROM thing AS t
@@ -610,8 +747,6 @@ def _create_feature_view() -> str:
         LEFT JOIN current_status AS mon_st
             ON mon_st.thing_id = t.id
             AND mon_st.status_type = 'Monitoring Status'
-        LEFT JOIN current_status AS acc_st
-            ON acc_st.thing_id = t.id AND acc_st.status_type = 'Access Status'
         LEFT JOIN current_status AS open_st
             ON open_st.thing_id = t.id AND open_st.status_type = 'Open Status'
         LEFT JOIN current_status AS dl_st
@@ -629,31 +764,11 @@ def _create_feature_view() -> str:
         LEFT JOIN contact AS granter ON granter.id = wl_perm.contact_id
         LEFT JOIN current_measuring_point AS cmp ON cmp.thing_id = t.id
         LEFT JOIN current_monitoring_frequency AS cmf ON cmf.thing_id = t.id
-        LEFT JOIN current_logger AS cl ON cl.thing_id = t.id
+        LEFT JOIN installed_equipment AS ie ON ie.thing_id = t.id
         LEFT JOIN logger_count AS lc ON lc.thing_id = t.id
         LEFT JOIN contact_agg AS cag ON cag.thing_id = t.id
         LEFT JOIN primary_contact AS pc ON pc.thing_id = t.id
-        LEFT JOIN LATERAL (
-            -- Character-for-character the elevation-provenance lookup in
-            -- ogc_water_well_summary (2d3c3a268652), so the two layers cannot
-            -- disagree about where a well's elevation came from.
-            SELECT dp.collection_method
-            FROM data_provenance AS dp
-            WHERE
-                dp.target_table = 'location'
-                AND dp.target_id = l.id
-                AND dp.field_name = 'elevation'
-            ORDER BY dp.id DESC
-            LIMIT 1
-        ) AS dpl ON true
-        LEFT JOIN LATERAL (
-            SELECT
-                COUNT(*)::integer AS screen_count,
-                MIN(ws.screen_depth_top) AS screen_depth_top,
-                MAX(ws.screen_depth_bottom) AS screen_depth_bottom
-            FROM well_screen AS ws
-            WHERE ws.thing_id = t.id
-        ) AS scr ON TRUE
+        LEFT JOIN screens AS scr ON scr.thing_id = t.id
         LEFT JOIN LATERAL (
             -- group_thing_association has no unique constraint on
             -- (group_id, thing_id), so DISTINCT before aggregating. Both

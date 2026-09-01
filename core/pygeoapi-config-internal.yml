@@ -85,14 +85,16 @@ resources:
       every other well layer answers a scientific question, this one answers an
       operational one: whether a crew may go to a well, what they are permitted
       to do when they get there, and whether it is overdue. It pairs the well's
-      construction and measuring-point detail with its current well,
-      monitoring, access, open and datalogger-suitability status, the standing
-      landowner permissions for water-level measurement, chemistry sampling and
-      logger installation, the logger installed in it if any, how long it has
+      construction, completion formation and aquifer system with its
+      measuring-point detail, current well, monitoring, open and
+      datalogger-suitability status, the standing landowner permissions for
+      water-level measurement, chemistry sampling and logger installation, every
+      sensor currently deployed at it (not just data loggers), how long it has
       been since it was last measured and last sampled, and the landowner
-      contact and access notes needed to reach it. Published on the internal
-      mount only, because it carries personal contact details for landowners
-      and operators alongside staff-written access instructions.
+      contact and staff-written notes -- access, directions, maintenance and
+      the rest -- needed to reach it. Published on the internal mount only,
+      because it carries personal contact details for landowners and operators
+      alongside staff-written access instructions.
     keywords:
       [
         water-wells,
@@ -100,7 +102,8 @@ resources:
         landowner-contacts,
         access-permissions,
         monitoring-status,
-        data-logger,
+        currently-installed-equipment,
+        aquifer-system,
         internal,
       ]
     extents:

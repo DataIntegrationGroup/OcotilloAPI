@@ -2103,17 +2103,14 @@ minor_chemistry_wells:
 # contact details and staff-written access notes, so it has no public twin.
 # See docs/water-well-field-operations-layer.md.
 water_well_field_operations:
-  quad_name:
-    title: USGS quadrangle
+  station_type:
+    title: Feature type
     description: >-
-      Name of the USGS 7.5-minute topographic quadrangle the well falls in.
-  elevation_method:
-    title: Elevation method
-    description: >-
-      How the ground-surface elevation was determined, such as GPS survey or
-      read from a digital elevation model. Governs how much precision the
-      elevation deserves.
-    enum-lexicon: collection_method
+      Controlled-vocabulary type of the monitoring point. Named station_type
+      rather than thing_type in this layer to match the naming already
+      established on the public thing-type views; every row on this layer is
+      a water well, so the value is always the same literal.
+    enum-lexicon: thing_type
   latitude:
     title: Latitude
     description: >-
@@ -2137,38 +2134,56 @@ water_well_field_operations:
       Identifiers other organisations use for this well, each written as
       organisation followed by the identifier and separated by commas. Empty
       where no cross-reference has been recorded.
-  well_purposes:
+  well_purpose:
     title: Well purposes
     description: >-
       What the well is used for, from the controlled well-purpose vocabulary --
       domestic, irrigation, monitoring, and so on. A well may serve more than
       one purpose, in which case the purposes are separated by commas.
-  well_casing_materials:
+  well_casing_material:
     title: Casing materials
     description: >-
       Materials the well casing is made of, from the controlled casing-material
       vocabulary. Separated by commas where a well has more than one.
+  formation_completion_description:
+    title: Completion formation, description
+    description: >-
+      Human-readable definition of the geologic formation named by
+      formation_completion_code, looked up from the lexicon. Null where the
+      code has no matching lexicon entry.
+  aquifer_system_name:
+    title: Aquifer system(s)
+    description: >-
+      Name(s) of the aquifer system(s) the well is associated with, separated
+      by commas where it is associated with more than one; order carries no
+      meaning beyond de-duplication.
   screen_count:
     title: Screened intervals
     description: >-
       Number of discrete screened intervals recorded for the well. Zero means
       no screen record exists, which is not the same as an unscreened well.
   screen_depth_top:
-    title: Shallowest screen top
+    title: Screen top depth(s)
     description: >-
-      Depth to the top of the shallowest screened interval, below ground
-      surface.
-    x-ogc-unit: https://qudt.org/vocab/unit/FT
-    x-ogc-unitLang: QUDT
+      Depth to the top of each screened interval, below ground surface, in
+      feet. A well with more than one screen lists each interval's top
+      depth, semicolon-separated, ordered shallowest first. screen_depth_top,
+      screen_depth_bottom, and screen_description are ordered the same way
+      and COALESCEd to an empty string where a value is missing, so position
+      N in one list is always the same interval as position N in the
+      others -- never a dropped position from a different one.
   screen_depth_bottom:
-    title: Deepest screen bottom
+    title: Screen bottom depth(s)
     description: >-
-      Depth to the bottom of the deepest screened interval, below ground
-      surface. With the shallowest screen top this gives the outer extent of
-      the screened section, not the length of any one screen.
-    x-ogc-unit: https://qudt.org/vocab/unit/FT
-    x-ogc-unitLang: QUDT
-  measuring_point_height:
+      Depth to the bottom of each screened interval, below ground surface,
+      in feet. See screen_depth_top for how multiple intervals are listed
+      and ordered.
+  screen_description:
+    title: Screen description(s)
+    description: >-
+      Free-text description of each screened interval. See screen_depth_top
+      for how multiple intervals are listed and ordered.
+  mp_height:
     title: Measuring point height
     description: >-
       Height of the current measuring point above the ground surface. Manual
@@ -2176,19 +2191,13 @@ water_well_field_operations:
       a raw reading to a depth below ground surface.
     x-ogc-unit: https://qudt.org/vocab/unit/FT
     x-ogc-unitLang: QUDT
-  measuring_point_description:
+  mp_description:
     title: Measuring point description
     description: >-
       Where on the wellhead the measuring point is, as written for the person
       standing at the well -- for example the north side of the casing at the
       top of the PVC. The single most useful string on this layer for a crew
       about to take a reading.
-  measuring_point_start_date:
-    title: Measuring point in use since
-    description: >-
-      Date the current measuring point configuration took effect. A recent date
-      means the wellhead was altered and readings before it are referenced to a
-      different point.
   well_status:
     title: Well status
     description: >-
@@ -2198,9 +2207,6 @@ water_well_field_operations:
       - Inactive, exists but not used
       - Destroyed, exists but not usable
       - Abandoned
-  well_status_since:
-    title: Well status since
-    description: Date the current well status took effect.
   monitoring_status:
     title: Monitoring status
     description: >-
@@ -2209,25 +2215,6 @@ water_well_field_operations:
     enum:
       - Currently monitored
       - Not currently monitored
-  monitoring_status_since:
-    title: Monitoring status since
-    description: Date the current monitoring status took effect.
-  monitoring_status_reason:
-    title: Monitoring status reason
-    description: >-
-      Why the well carries its current monitoring status, in the words of the
-      staff member who recorded it. This is where a landowner's request to stop
-      visiting is written down.
-  access_status:
-    title: Access status
-    description: >-
-      Current recorded state of physical access to the well. No values are
-      scoped to this status type in the controlled vocabulary yet, so the
-      column is expected to be sparse; treat a null as "not recorded" and
-      confirm access from the access notes and the landowner contact.
-  access_status_since:
-    title: Access status since
-    description: Date the current access status took effect.
   open_status:
     title: Open status
     description: >-
@@ -2238,9 +2225,6 @@ water_well_field_operations:
       - Open
       - Open (unequipped)
       - Closed
-  open_status_since:
-    title: Open status since
-    description: Date the current open status took effect.
   datalogger_suitability_status:
     title: Datalogger suitability
     description: >-
@@ -2250,9 +2234,6 @@ water_well_field_operations:
     enum:
       - Datalogger can be installed
       - Datalogger cannot be installed
-  datalogger_suitability_status_since:
-    title: Datalogger suitability since
-    description: Date the current datalogger suitability status took effect.
   may_measure_water_level:
     title: May measure water level
     description: >-
@@ -2286,9 +2267,6 @@ water_well_field_operations:
       How often the well is scheduled to be visited under its current
       monitoring plan. Null where no frequency is on record.
     enum-lexicon: monitoring_frequency
-  monitoring_frequency_since:
-    title: Monitoring frequency since
-    description: Date the current monitoring frequency took effect.
   group_names:
     title: Groups
     description: >-
@@ -2352,7 +2330,7 @@ water_well_field_operations:
       Number of recorded visits to the well. Broader than either measurement
       count: a visit that produced no reading, because the gate was locked or
       the well was dry, is still a visit.
-  field_event_last_date:
+  date_last_visited:
     title: Last field visit
     description: >-
       Date of the most recent recorded visit, as a UTC calendar date. A gap
@@ -2361,55 +2339,73 @@ water_well_field_operations:
   has_datalogger:
     title: Has a datalogger
     description: >-
-      Whether a logger is currently installed in the well -- a deployment with
-      an installation date and no removal date, of a data logger, pressure
-      transducer, DiverLink or diver cable. Other equipment deployed at the
-      well does not count.
+      Whether a logger -- a data logger, pressure transducer, DiverLink, or
+      diver cable -- is currently installed in the well, regardless of what
+      other equipment (a camera, a weather station) may also be deployed
+      there. See sensor_type for every currently-installed sensor, logger or
+      not.
   datalogger_deployment_count:
     title: Current logger deployments
     description: >-
-      Number of logger deployments currently open at the well. Normally zero or
-      one; a higher number means the single logger columns describe only the
-      most recently installed of several.
-  datalogger_sensor_type:
-    title: Logger type
-    description: Kind of logger currently installed.
-    enum:
-      - Data Logger
-      - Pressure Transducer
-      - DiverLink
-      - Diver Cable
-  datalogger_model:
-    title: Logger model
-    description: Model of the logger currently installed.
-  datalogger_serial_no:
-    title: Logger serial number
+      Number of logger deployments currently open at the well -- data
+      loggers, pressure transducers, DiverLinks, and diver cables only.
+      Normally zero or one. Other currently-installed equipment is not
+      counted here; see sensor_type for the full list.
+  sensor_type:
+    title: Currently installed sensor type(s)
     description: >-
-      Serial number of the logger currently installed, for matching the
-      instrument in hand against the record.
-  datalogger_sensor_status:
-    title: Logger status
+      Type(s) of sensor currently deployed at the well (a deployment with an
+      installation date and no removal date), from a controlled vocabulary,
+      not limited to data loggers -- a camera, weather station, or other
+      equipment counts too. A well running more than one sensor at once
+      lists all of them, semicolon-separated, ordered the same way as model,
+      serial_no, sensor_status, installed_date, recording_interval,
+      recording_interval_units, and hanging_point_desc, so position N in one
+      list is always the same deployment as position N in the others -- an
+      empty segment in one of those other fields (e.g. "; 15" for a well
+      with two sensors) means that particular sensor has no value recorded
+      for that field, not that it doesn't exist. See has_datalogger for the
+      narrower "is a logger installed" question.
+  model:
+    title: Currently installed sensor model(s)
     description: >-
-      Service state of the installed logger. A logger still recorded as
-      installed but marked retired or lost is a record worth correcting in the
-      field.
-    enum-lexicon: sensor_status
-  datalogger_installed_date:
-    title: Logger installed
-    description: Date the current logger deployment began.
-  datalogger_recording_interval:
-    title: Logger recording interval
+      Model of each currently deployed sensor. See sensor_type for how
+      multiple concurrent deployments are listed and ordered.
+  serial_no:
+    title: Currently installed sensor serial number(s)
     description: >-
-      How often the installed logger records a reading, in the units given by
-      the recording interval units column.
-  datalogger_recording_interval_units:
-    title: Logger recording interval units
-    description: Time units the logger recording interval is expressed in.
-  datalogger_hanging_point_description:
-    title: Logger hanging point
+      Serial number of each currently deployed sensor, for matching the
+      instrument in hand against the record. See sensor_type for how
+      multiple concurrent deployments are listed and ordered.
+  sensor_status:
+    title: Currently installed sensor status(es)
     description: >-
-      Where the logger cable is secured at the wellhead, as written for the
-      person about to pull it. Null where the deployment did not record one.
+      Equipment status of each currently deployed sensor, such as In Service
+      or In Repair, from a controlled vocabulary. See sensor_type for how
+      multiple concurrent deployments are listed and ordered.
+  installed_date:
+    title: Currently installed sensor installation date(s)
+    description: >-
+      Date each currently deployed sensor was installed. See sensor_type for
+      how multiple concurrent deployments are listed and ordered.
+  recording_interval:
+    title: Currently installed sensor recording interval(s)
+    description: >-
+      Recording interval of each currently deployed sensor. See sensor_type
+      for how multiple concurrent deployments are listed and ordered.
+  recording_interval_units:
+    title: Currently installed sensor recording interval unit(s)
+    description: >-
+      Unit of recording_interval for each currently deployed sensor. See
+      sensor_type for how multiple concurrent deployments are listed and
+      ordered.
+  hanging_point_desc:
+    title: Currently installed sensor hanging point description(s)
+    description: >-
+      Where each currently deployed sensor's cable is secured at the
+      wellhead, as written for the person about to pull it. See sensor_type
+      for how multiple concurrent deployments are listed and ordered. Null
+      where a deployment did not record one.
   continuous_reading_count:
     title: Continuous readings
     description: >-
@@ -2489,6 +2485,77 @@ water_well_field_operations:
       Staff-written directions for finding the well on the ground, which
       coordinates alone do not give. Where several notes exist they are
       separated by vertical bars, most recently recorded first.
+  communication_notes:
+    title: Communication notes
+    description: >-
+      Staff-written record of communications about the well -- calls,
+      emails, or conversations worth keeping with the record. Where several
+      notes exist they are separated by vertical bars, most recently
+      recorded first.
+  construction_notes:
+    title: Construction notes
+    description: >-
+      Staff-written notes about how the well was built, beyond what the
+      construction columns capture. Where several notes exist they are
+      separated by vertical bars, most recently recorded first.
+  maintenance_notes:
+    title: Maintenance notes
+    description: >-
+      Staff-written notes about repairs or upkeep performed at the well.
+      Where several notes exist they are separated by vertical bars, most
+      recently recorded first.
+  historical_notes:
+    title: Historical notes
+    description: >-
+      Staff-written notes about the well's history that do not fit elsewhere
+      on the record. Where several notes exist they are separated by
+      vertical bars, most recently recorded first.
+  general_notes:
+    title: General notes
+    description: >-
+      Staff-written notes that do not fall into any of this layer's other
+      note categories. Where several notes exist they are separated by
+      vertical bars, most recently recorded first.
+  water_notes:
+    title: Water notes
+    description: >-
+      Staff-written notes about the well's water, distinct from the
+      structured water-chemistry and water-level records elsewhere in the
+      catalogue. Where several notes exist they are separated by vertical
+      bars, most recently recorded first.
+  water_quality_notes:
+    title: Water quality notes
+    description: >-
+      Staff-written notes about water quality observed at the well, distinct
+      from the structured chemistry analyte results elsewhere in the
+      catalogue. Where several notes exist they are separated by vertical
+      bars, most recently recorded first.
+  sampling_procedure_notes:
+    title: Sampling procedure notes
+    description: >-
+      Staff-written notes about how to sample this particular well --
+      anything a standard procedure does not already cover. Where several
+      notes exist they are separated by vertical bars, most recently
+      recorded first.
+  coordinate_notes:
+    title: Coordinate notes
+    description: >-
+      Staff-written notes about how the well's coordinates were obtained, or
+      any doubt about their accuracy. Where several notes exist they are
+      separated by vertical bars, most recently recorded first.
+  owner_comment_notes:
+    title: Owner comment notes
+    description: >-
+      Comments attributed to the well's owner, as recorded by staff. Where
+      several notes exist they are separated by vertical bars, most recently
+      recorded first.
+  site_notes_legacy:
+    title: Site notes (legacy)
+    description: >-
+      Free-text site notes carried over from the legacy NM_Aquifer record,
+      kept for continuity rather than actively maintained. Where several
+      exist they are separated by vertical bars, most recently recorded
+      first.
 
 # EDR collections. Keys here are parameter names read out of the data, not
 # column names -- ogc_waterlevels stamps a single literal, while
