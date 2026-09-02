@@ -850,6 +850,7 @@ def test_ogc_springs_schema_drops_well_only_columns(ogc_client):
         "id",
         "name",
         "first_visit_date",
+        "last_observation_date",
         "release_status",
         "elevation",
     }
