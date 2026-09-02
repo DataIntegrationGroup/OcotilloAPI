@@ -1,23 +1,16 @@
 """split springs view to drop well-specific columns
 
-All 11 Group A thing-type views (ogc_water_wells, ogc_springs, ...) share one
-view template (_create_thing_view in f4a5b6c7d8e9 / 2d3c3a268652), which
-carries 12 well-specific columns -- nma_pk_welldata, well_depth, hole_depth,
-well_casing_diameter, well_casing_depth, well_completion_date,
-well_driller_name, well_construction_method, well_pump_type, well_pump_depth,
-formation_completion_code, nma_formation_zone -- on every layer, well or not.
-A consumer browsing ogc_springs sees a well_depth column that is always NULL
-for every spring, with nothing to say it will never hold data.
+The 11 Group A views share one template, so ogc_springs carries 12
+well-only columns (well_depth, well_completion_date, etc.) that are always
+NULL. First of a staged split: only ogc_springs / ogc_internal_springs move
+to a non-well template here; the other 9 non-well layers move later, one at
+a time. ogc_water_wells is unaffected.
 
-This is the first of a staged split: only ogc_springs and
-ogc_internal_springs move to a non-well template here (6 columns: id, name,
-first_visit_date, release_status, elevation, point). The other 9 non-well
-layers keep the well-carrying template for now and move in follow-up
-migrations, one at a time. ogc_water_wells is unaffected either way -- it
-actually needs the well columns.
+last_observation_date (added to all 11 views by b8c9d0e1f2a3) is generic,
+not well-specific, so the non-well template keeps it.
 
-downgrade() recreates both springs views with the exact original 18-column
-SQL, so it's fully reversible.
+downgrade() restores the exact pre-migration SQL (well columns +
+last_observation_date).
 
 Revision ID: a2b3c4d5e6f7
 Revises: e1f2a3b4c5d6
@@ -40,6 +33,10 @@ REQUIRED_TABLES = {
     "thing",
     "location",
     "location_thing_association",
+    "observation",
+    "sample",
+    "field_activity",
+    "field_event",
 }
 
 LATEST_LOCATION_CTE = """
@@ -77,9 +74,13 @@ def _check_required_tables() -> None:
 
 
 def _create_non_well_thing_view(view_name: str, public_only: bool) -> str:
-    """Non-well Group A template: drops the 12 well-specific columns."""
+    """Non-well Group A template: drops the 12 well-specific columns, keeps
+    the generic last_observation_date lookup from b8c9d0e1f2a3."""
     safe_view_name = _safe_relation_name(view_name)
     release_filter = " AND t.release_status = 'public'" if public_only else ""
+    observation_release_filter = (
+        "\n                  AND o.release_status = 'public'" if public_only else ""
+    )
     return f"""
         CREATE VIEW {safe_view_name} AS
         WITH latest_location AS (
@@ -89,21 +90,37 @@ def _create_non_well_thing_view(view_name: str, public_only: bool) -> str:
             t.id,
             t.name,
             t.first_visit_date,
+            (
+                last_obs.last_observation_datetime AT TIME ZONE 'UTC'
+            )::date AS last_observation_date,
             t.release_status,
             l.elevation,
             l.point
         FROM thing AS t
         JOIN latest_location AS ll ON ll.thing_id = t.id
         JOIN location AS l ON l.id = ll.location_id
+        LEFT JOIN LATERAL (
+            SELECT MAX(o.observation_datetime) AS last_observation_datetime
+            FROM observation AS o
+            JOIN sample AS s ON s.id = o.sample_id
+            JOIN field_activity AS fa ON fa.id = s.field_activity_id
+            JOIN field_event AS fe ON fe.id = fa.field_event_id
+            WHERE fe.thing_id = t.id{observation_release_filter}
+        ) AS last_obs ON TRUE
         WHERE t.thing_type = 'spring'{release_filter}
     """
 
 
 def _create_thing_view_with_well_columns(view_name: str, public_only: bool) -> str:
-    """Original shared Group A template, kept here only so downgrade() can
-    restore ogc_springs / ogc_internal_springs byte-identically."""
+    """Template as it stood immediately before this migration (well columns
+    + last_observation_date, per b8c9d0e1f2a3), kept here only so
+    downgrade() can restore ogc_springs / ogc_internal_springs
+    byte-identically."""
     safe_view_name = _safe_relation_name(view_name)
     release_filter = " AND t.release_status = 'public'" if public_only else ""
+    observation_release_filter = (
+        "\n                  AND o.release_status = 'public'" if public_only else ""
+    )
     return f"""
         CREATE VIEW {safe_view_name} AS
         WITH latest_location AS (
@@ -113,6 +130,9 @@ def _create_thing_view_with_well_columns(view_name: str, public_only: bool) -> s
             t.id,
             t.name,
             t.first_visit_date,
+            (
+                last_obs.last_observation_datetime AT TIME ZONE 'UTC'
+            )::date AS last_observation_date,
             t.nma_pk_welldata,
             t.well_depth,
             t.hole_depth,
@@ -131,6 +151,14 @@ def _create_thing_view_with_well_columns(view_name: str, public_only: bool) -> s
         FROM thing AS t
         JOIN latest_location AS ll ON ll.thing_id = t.id
         JOIN location AS l ON l.id = ll.location_id
+        LEFT JOIN LATERAL (
+            SELECT MAX(o.observation_datetime) AS last_observation_datetime
+            FROM observation AS o
+            JOIN sample AS s ON s.id = o.sample_id
+            JOIN field_activity AS fa ON fa.id = s.field_activity_id
+            JOIN field_event AS fe ON fe.id = fa.field_event_id
+            WHERE fe.thing_id = t.id{observation_release_filter}
+        ) AS last_obs ON TRUE
         WHERE t.thing_type = 'spring'{release_filter}
     """
 
