@@ -831,6 +831,50 @@ def test_ogc_collections(ogc_client):
     )
 
 
+def test_ogc_springs_schema_drops_well_only_columns(ogc_client):
+    well_only_columns = {
+        "nma_pk_welldata",
+        "well_depth",
+        "hole_depth",
+        "well_casing_diameter",
+        "well_casing_depth",
+        "well_completion_date",
+        "well_driller_name",
+        "well_construction_method",
+        "well_pump_type",
+        "well_pump_depth",
+        "formation_completion_code",
+        "nma_formation_zone",
+    }
+    generic_columns = {
+        "id",
+        "name",
+        "first_visit_date",
+        "release_status",
+        "elevation",
+    }
+
+    for mount, collection_id in (
+        ("/ogcapi", "springs"),
+        ("/ogcapi-internal", "springs"),
+    ):
+        response = ogc_client.get(f"{mount}/collections/{collection_id}/schema")
+        assert response.status_code == 200
+        payload = response.json()
+        properties = set(payload["properties"])
+
+        assert properties.isdisjoint(well_only_columns)
+        assert generic_columns.issubset(properties)
+        # geom_field "point" is exposed as the GeoJSON "geometry" key, not
+        # as its own schema property.
+        assert "geometry" in payload["properties"]
+
+    # water_wells is unaffected -- it still carries the well columns.
+    response = ogc_client.get("/ogcapi/collections/water_wells/schema")
+    assert response.status_code == 200
+    assert well_only_columns.issubset(set(response.json()["properties"]))
+
+
 def test_ogc_new_collection_items_endpoints(ogc_client):
     for collection_id in (
         "latest_tds_wells",
