@@ -92,7 +92,9 @@ def _check_required_tables() -> None:
         )
 
 
-def _create_non_well_thing_view(view_name: str, thing_type: str, public_only: bool) -> str:
+def _create_non_well_thing_view(
+    view_name: str, thing_type: str, public_only: bool
+) -> str:
     """Non-well Group A template: drops the 12 well-specific columns, keeps
     the generic last_observation_date lookup from b8c9d0e1f2a3."""
     safe_view_name = _safe_relation_name(view_name)
@@ -190,7 +192,9 @@ def upgrade() -> None:
     for view_name, thing_type, public_only in VIEWS:
         safe_view_name = _safe_relation_name(view_name)
         op.execute(text(f"DROP VIEW IF EXISTS {safe_view_name}"))
-        op.execute(text(_create_non_well_thing_view(view_name, thing_type, public_only)))
+        op.execute(
+            text(_create_non_well_thing_view(view_name, thing_type, public_only))
+        )
 
 
 def downgrade() -> None:
@@ -198,5 +202,7 @@ def downgrade() -> None:
         safe_view_name = _safe_relation_name(view_name)
         op.execute(text(f"DROP VIEW IF EXISTS {safe_view_name}"))
         op.execute(
-            text(_create_thing_view_with_well_columns(view_name, thing_type, public_only))
+            text(
+                _create_thing_view_with_well_columns(view_name, thing_type, public_only)
+            )
         )
