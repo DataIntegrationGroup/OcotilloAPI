@@ -31,7 +31,7 @@ from db import (
     NMA_Chemistry_SampleInfo,
     Notes,
     Observation,
-    PermissionHistory,
+    FieldAccessConsent,
     Sample,
     Thing,
     ThingContactAssociation,
@@ -1393,11 +1393,11 @@ def _execute_permissions(pointids: list[str]) -> ScopedFamilyResult:
         existing_permissions = {
             (target_id, contact_id, permission_type)
             for target_id, contact_id, permission_type in session.query(
-                PermissionHistory.target_id,
-                PermissionHistory.contact_id,
-                PermissionHistory.permission_type,
+                FieldAccessConsent.target_id,
+                FieldAccessConsent.contact_id,
+                FieldAccessConsent.permission_type,
             )
-            .filter(PermissionHistory.target_table == "thing")
+            .filter(FieldAccessConsent.target_table == "thing")
             .all()
         }
 

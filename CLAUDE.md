@@ -227,6 +227,75 @@ the pinned pygeoapi version — most sharply, `BaseProvider.fields` returns
 **`docs/ogc-field-descriptions.md`** before changing field metadata or
 upgrading pygeoapi.
 
+### Access control and release state
+
+**`ADR5.md`** decides the shape of the access-control work: two grant tables
+(internal permission vs landowner publication consent), one visibility layer,
+one field-projection chokepoint.
+
+The storage and the evaluator exist; the field projection does not.
+
+- **`services/visibility.py` is the only evaluator.** `may()` answers internal
+  authorization, `published_things()` answers "what does this destination
+  get". It loads rows and calls `domain/access.py`, which holds the rules and
+  touches no database. Do not filter by grant or consent anywhere else --
+  migration `baba91fe5e83` is what distributed filtering already cost.
+- **`api/access.py` (`/access`) is its only tenant.** Grants, destinations,
+  consent, and a `/access/decision` introspection route. No pre-existing
+  endpoint consults the layer yet, so release_status still governs what the
+  OGC views publish. The prefix is `/access`, not `/publication`, because
+  `api/publication.py` is the bibliography.
+- **Fields are published by allowlist, per audience.**
+  `core/field-allowlists.yml` says what each audience receives;
+  `services/field_projection.py` applies it below the routes, so a new route
+  cannot skip it. An audience with no entry gets an empty record, and the
+  `never_public` block overrides every allowlist. Protection includes
+  transformation -- public coordinates are rounded, not withheld. The public
+  OGC collections go through it too: `core/feature_provider.py` turns each
+  collection's allowlist into pygeoapi's `properties`, so an unlisted column
+  is never selected, and a collection with no entry publishes nothing. The
+  internal mount is outside it. Read
+  **`docs/access-field-projection.md`** before touching the allowlists.
+- **The role baseline is seeded by hand, per environment.**
+  `oco seed-access-grants` writes one global grant per (Authentik role,
+  capability, data type) so today's roles keep today's access; it previews by
+  default and needs `--apply` to write. Idempotent, and it will not resurrect
+  a seeded grant somebody revoked, because narrowing the baseline is the point.
+  Until it is run in an environment, `/access/decision` denies everyone there.
+- **Default deny, no wildcards, expiry at use.** A grant with no matching row
+  is a no; a grant names its `data_type` (there is no term meaning "all"); and
+  nothing sweeps expired rows, so every check compares against the date asked
+  about. `services/access_admin.py` writes an `authorization_audit` row in the
+  same transaction as every change.
+
+- **Embargo is a scheduled level change, not a read-path rule.**
+  `release_status = 'embargoed'` plus a `release_at` date withholds a record;
+  `oco release-embargoed --apply` flips it to `public` when the date arrives,
+  and must run before the 09:00 UTC materialized-view refresh. Nothing on the
+  read path reads `release_at` -- seven public collections are materialized
+  views where `current_date` is frozen at refresh time, so a date predicate
+  would buy nothing there. Embargo only ever *widens* visibility; withdrawing
+  something published is an immediate `release_status` change. The public
+  water-level views exclude embargoed rows with `IS DISTINCT FROM 'embargoed'`
+  at every level of the observation chain -- deliberately not `= 'public'`,
+  which would also drop draft and NULL rows. Chemistry cannot be embargoed per
+  record: those collections read the legacy `NMA_*` tables, which have no
+  release columns. Read **`docs/data-embargo.md`** before changing any of it.
+
+Two vocabulary fixes from it have landed and matter when reading models:
+
+- **`db/field_access_consent.py`** (`FieldAccessConsent`, table
+  `field_access_consent`, formerly `PermissionHistory` / `permission_history`)
+  is a landowner's consent to *physical site access*. It is not authorization.
+  Its `permission_type` / `permission_allowed` columns keep their names, and
+  Thing responses still publish it under the `permissions` key.
+- **`ReleaseMixin` has two axes**: `release_status` is the release *level*
+  (who may see it) and `data_maturity` is the review state (`provisional`,
+  `in review`, `approved`, NULL = not stated). The `release_status` lexicon
+  still lists `provisional` and `final` for historical rows; new code should
+  put review state in `data_maturity`. A third column, `release_at`, is
+  the embargo date and is NULL for every record that is not embargoed.
+
 ### Database Configuration
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):
@@ -353,3 +422,70 @@ transferers directly.
 - **OGC API**: `http://localhost:8000/ogcapi` for OGC API - Features endpoints
 - **CLI**: `oco --help` for Ocotillo CLI commands
 - **Sentry**: Error tracking and performance monitoring integrated
+
+## Working Guidelines
+
+Behavioral guidelines to reduce common LLM coding mistakes. These bias toward
+caution over speed; for trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" -> "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" -> "Write a test that reproduces it, then make it pass"
+- "Refactor X" -> "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] -> verify: [check]
+2. [Step] -> verify: [check]
+3. [Step] -> verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it
+work") require constant clarification.
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer
+rewrites due to overcomplication, and clarifying questions come before
+implementation rather than after mistakes.

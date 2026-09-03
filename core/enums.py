@@ -83,4 +83,13 @@ GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale
 Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
 FormationCode: type[Enum] = build_enum_from_lexicon_category("formation_code")
 NoteType: type[Enum] = build_enum_from_lexicon_category("note_type")
+
+# Access control (ADR5). Vocabularies rather than hardcoded literals so a new
+# destination kind is a lexicon entry, not a deploy. There is deliberately no
+# access_data_type meaning "all".
+PrincipalType: type[Enum] = build_enum_from_lexicon_category("principal_type")
+Capability: type[Enum] = build_enum_from_lexicon_category("capability")
+GrantScopeType: type[Enum] = build_enum_from_lexicon_category("grant_scope_type")
+AccessDataType: type[Enum] = build_enum_from_lexicon_category("access_data_type")
+DestinationKind: type[Enum] = build_enum_from_lexicon_category("destination_kind")
 # ============= EOF =============================================

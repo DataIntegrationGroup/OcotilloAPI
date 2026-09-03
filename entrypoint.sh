@@ -19,6 +19,13 @@ echo "PostgreSQL is ready!"
 if [ "$RUN_MIGRATIONS" = "true" ]; then
   echo "Applying migrations..."
   alembic upgrade head
+
+  # Lexicon terms (principal_type, capability, ...) are seeded from
+  # core/lexicon.json separately from the migration that adds the tables
+  # referencing them -- see alembic/versions/79a3ab24627e_add_access_control_tables.py.
+  # Idempotent (on_conflict_do_nothing), safe to run on every start.
+  echo "Seeding lexicon..."
+  oco initialize-lexicon
 fi
 
 echo "Starting the application..."

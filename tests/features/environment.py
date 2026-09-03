@@ -39,7 +39,7 @@ from db import (
     Deployment,
     TransducerObservationBlock,
     WellCasingMaterial,
-    PermissionHistory,
+    FieldAccessConsent,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
@@ -247,7 +247,7 @@ def add_contact(context, session):
 
 
 @add_context_object_container("permission_histories")
-def add_permission_history(
+def add_field_access_consent(
     context,
     session,
     contact_id,
@@ -259,7 +259,7 @@ def add_permission_history(
     target_id,
     target_table,
 ):
-    permission_history = PermissionHistory(
+    field_access_consent = FieldAccessConsent(
         contact_id=contact_id,
         permission_type=permission_type,
         permission_allowed=permission_allowed,
@@ -269,12 +269,12 @@ def add_permission_history(
         target_id=target_id,
         target_table=target_table,
     )
-    session.add(permission_history)
+    session.add(field_access_consent)
     session.commit()
-    session.refresh(permission_history)
+    session.refresh(field_access_consent)
 
-    context.objects["permission_histories"].append(permission_history)
-    return permission_history
+    context.objects["permission_histories"].append(field_access_consent)
+    return field_access_consent
 
 
 @add_context_object_container("sensors")
@@ -702,7 +702,7 @@ def before_all(context):
             "Water Level Sample",
             "Water Chemistry Sample",
         ]:
-            add_permission_history(
+            add_field_access_consent(
                 context,
                 session,
                 contact_id=context.objects["contacts"][0].id,

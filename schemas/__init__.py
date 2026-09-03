@@ -16,12 +16,14 @@
 from datetime import datetime, timezone, date
 from typing import Annotated
 
-from core.enums import ReleaseStatus
+from core.enums import DataMaturity, ReleaseStatus
+from domain.release import validate_release
 from pydantic import (
     BaseModel,
     ConfigDict,
     AwareDatetime,
     field_validator,
+    model_validator,
 )
 from pydantic.functional_validators import AfterValidator
 from pydantic.json_schema import JsonSchemaValue
@@ -36,6 +38,12 @@ class ResourceNotFoundResponse(BaseModel):
 
 class BaseCreateModel(BaseModel):
     release_status: ReleaseStatus = "draft"
+    # Orthogonal to release_status: data can be published and provisional at
+    # the same time (ADR5). NULL means not stated.
+    data_maturity: DataMaturity | None = None
+    # The date an embargoed record becomes public. NULL for everything that is
+    # not embargoed. See docs/data-embargo.md.
+    release_at: date | None = None
 
     @field_validator("release_status", mode="before")
     @classmethod
@@ -47,9 +55,36 @@ class BaseCreateModel(BaseModel):
                 raise ValueError(f"Invalid release_status: {v}")
         return v
 
+    @model_validator(mode="after")
+    def check_release_schedule(self):
+        """An embargo names its date, and a date means an embargo.
+
+        Sound here because a create payload is the whole row. The same pair is
+        enforced by a CHECK constraint on every ReleaseMixin table, which is
+        what covers the paths this validator cannot see -- a PATCH that sets
+        one half, the CLI, a transfer, raw SQL.
+        """
+        # release_status arrives as the lexicon-backed enum or as the plain
+        # string, depending on whether the subclass narrowed the annotation.
+        status = self.release_status
+        validate_release(getattr(status, "value", status), self.release_at)
+        return self
+
 
 class BaseUpdateModel(BaseCreateModel):
     release_status: ReleaseStatus | None = None
+
+    @model_validator(mode="after")
+    def check_release_schedule(self):
+        """Deliberately not checked here.
+
+        An update payload is a fragment: `{"release_status": "embargoed"}` on a
+        row that already carries a release_at is legitimate, and so is clearing
+        an embargo by setting the level back. The invariant is about the
+        resulting row, which this schema cannot see, so it is left to the CHECK
+        constraint that guards the table itself.
+        """
+        return self
 
 
 def past_or_today_validator(
@@ -113,6 +148,8 @@ class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: UTCAwareDatetime
     release_status: ReleaseStatus
+    data_maturity: DataMaturity | None = None
+    release_at: date | None = None
 
     model_config = ConfigDict(
         from_attributes=True,

@@ -247,6 +247,26 @@
     {
       "name": "data_maturity",
       "description": "How far through review a measurement is, on USGS terms. Orthogonal to release_status, which controls visibility rather than trust."
+    },
+    {
+      "name": "principal_type",
+      "description": "What kind of thing an access grant is made to: a person, a role, or an API key. Destinations are not principals -- publishing is recorded as consent (ADR5)."
+    },
+    {
+      "name": "capability",
+      "description": "What a principal may do: read, enter measurements, correct records, administer grants (ADR5)."
+    },
+    {
+      "name": "grant_scope_type",
+      "description": "How far a grant reaches: the whole institution, one group/project, or one thing (ADR5)."
+    },
+    {
+      "name": "access_data_type",
+      "description": "The kind of data a grant or a publication consent names. Deliberately coarse, and deliberately without a term meaning 'all' (ADR5, PUB-U11)."
+    },
+    {
+      "name": "destination_kind",
+      "description": "What sort of place published data is offered to: the public web, a harvesting agency, a partner with a standing connection (ADR5)."
     }
   ],
   "terms": [
@@ -1810,6 +1830,13 @@
     },
     {
       "categories": [
+        "release_status"
+      ],
+      "term": "embargoed",
+      "definition": "withheld from public release until release_at, then published by the scheduled release job"
+    },
+    {
+      "categories": [
         "relation"
       ],
       "term": "same_as",
@@ -1859,7 +1886,8 @@
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "access_data_type"
       ],
       "term": "water chemistry",
       "definition": "water chemistry"
@@ -8529,6 +8557,118 @@
       ],
       "term": "in review",
       "definition": "Under review and not yet approved. Intermediate state from the USGS Aquarius approval levels used for continuous records."
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "user",
+      "definition": "A person, referenced by their Authentik subject identifier."
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "role",
+      "definition": "An Authentik group, carrying the stable institutional part of access."
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "api key",
+      "definition": "A key issued to a client that has no person behind it."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "read",
+      "definition": "May see the data."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "enter",
+      "definition": "May record new measurements."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "correct",
+      "definition": "May revise existing records."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "administer",
+      "definition": "May grant and revoke access."
+    },
+    {
+      "categories": [
+        "grant_scope_type"
+      ],
+      "term": "global",
+      "definition": "Reaches every thing. Used for the broad role grants that preserve today's access."
+    },
+    {
+      "categories": [
+        "grant_scope_type"
+      ],
+      "term": "group",
+      "definition": "Reaches the things in one group -- a project, a network."
+    },
+    {
+      "categories": [
+        "grant_scope_type"
+      ],
+      "term": "thing",
+      "definition": "Reaches exactly one thing."
+    },
+    {
+      "categories": [
+        "access_data_type"
+      ],
+      "term": "water level",
+      "definition": "Depth-to-water readings, manual and continuous."
+    },
+    {
+      "categories": [
+        "access_data_type"
+      ],
+      "term": "well construction",
+      "definition": "Casing, screen, borehole and completion detail."
+    },
+    {
+      "categories": [
+        "access_data_type"
+      ],
+      "term": "site metadata",
+      "definition": "Where the thing is and what it is: name, location, type, status."
+    },
+    {
+      "categories": [
+        "destination_kind"
+      ],
+      "term": "public web",
+      "definition": "Offered to anyone, unauthenticated."
+    },
+    {
+      "categories": [
+        "destination_kind"
+      ],
+      "term": "harvester",
+      "definition": "A machine consumer that pulls on a schedule, such as NGWMN."
+    },
+    {
+      "categories": [
+        "destination_kind"
+      ],
+      "term": "partner agency",
+      "definition": "A named organization reading through a standing connection."
     }
   ]
 }
