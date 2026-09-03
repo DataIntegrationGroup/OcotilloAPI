@@ -2125,9 +2125,9 @@ sqlalchemy-continuum==1.7.0 \
     --hash=sha256:30efaa26a0c6325ac70d034847e6e972ae70616b6553bb016a27f7ed2f1a1003 \
     --hash=sha256:6bdce869bfc0b6f22b51ea3552669b68acfa05791a6349b29457cd1bab84dd7a
     # via ocotilloapi
-sqlalchemy-searchable==2.1.0 \
-    --hash=sha256:89d120ed1a752d22e32b3f028f62cae571241ccce081df8d8a42e1fa9a53da93 \
-    --hash=sha256:a4ef31d6ba60face514563beed6c4a72b5639add67503689e83d5f7d9a6c76ec
+sqlalchemy-searchable==3.0.0 \
+    --hash=sha256:6bed911f2cb6c9b90383a082446c7245d4b9df0dbb9f8b25c2325f717b85505b \
+    --hash=sha256:7b92d3137e0c30044df3e590cfc1140199f76fe0e7dfba9f523724ed2dc5be6b
     # via ocotilloapi
 sqlalchemy-utils==0.42.1 \
     --hash=sha256:243cfe1b3a1dae3c74118ae633f1d1e0ed8c787387bc33e556e37c990594ac80 \
