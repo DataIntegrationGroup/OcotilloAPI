@@ -240,7 +240,21 @@ upgrading pygeoapi.
 (internal permission vs landowner publication consent), one visibility layer,
 one field-projection chokepoint.
 
-The storage and the evaluator exist; the field projection does not.
+The storage, the evaluator and the field projection all exist. What each one
+governs is worth knowing before changing any of it:
+
+- **Data types reach columns** through `core/data-type-fields.yml`, which
+  classifies every field of `thing` and `location` and every field of the
+  responses built from them. Exhaustive and disjoint, validated at load: a new
+  column fails the process rather than defaulting into visibility or silence.
+- **Publication consent governs the public collections**, but only
+  `ogc_water_wells` and the three NGWMN views so far. The other 24 public
+  relations still publish on `release_status` alone.
+- **Internal reads are not projected by any route yet.**
+  `services/visibility.readable_thing_record` applies a caller's data-type
+  grants to a record and nothing calls it, because `WellResponse` is served
+  through a pydantic `response_model` and changing what that emits per caller
+  is a separate decision.
 
 - **`services/visibility.py` is the only evaluator.** `may()` answers internal
   authorization, `published_things()` answers "what does this destination
