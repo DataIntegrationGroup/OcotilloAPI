@@ -118,4 +118,38 @@ def consent_on_publication(
     return written
 
 
+PUBLIC = "public"
+
+
+def _actor_name(user) -> str:
+    """Who to record the consent against.
+
+    A transfer or a CLI run has no user dict, and the row still needs an
+    author -- an unattributed consent row is worse than a coarse one.
+    """
+    if isinstance(user, dict):
+        return user.get("name") or user.get("sub") or "unknown"
+    return "system"
+
+
+def consent_for_public_thing(session, thing, user=None) -> list:
+    """Record publication consent when a thing is public. No-op otherwise.
+
+    Called from the create and patch paths rather than from `model_patcher`,
+    which is generic over every ReleaseMixin model: consent is per thing, and
+    an observation going public is that thing's publication, not its own.
+
+    Unconditional on a public thing rather than only on the draft -> public
+    transition, because it is idempotent and because a thing published before
+    this existed then gets its rows the next time anybody edits it. The cost is
+    two queries on a path that already writes.
+    """
+    status = getattr(thing, "release_status", None)
+    status = getattr(status, "value", status)
+    if status != PUBLIC:
+        return []
+
+    return consent_on_publication(session, actor=_actor_name(user), thing_id=thing.id)
+
+
 # ============= EOF =============================================
