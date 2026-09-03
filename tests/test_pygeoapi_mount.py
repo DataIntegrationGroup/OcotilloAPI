@@ -17,6 +17,8 @@ import os
 import re
 import sys
 
+import pytest
+
 from core import pygeoapi
 
 PUBLIC_MODULE = "pygeoapi.starlette_app__ocotillo_public"
@@ -59,6 +61,20 @@ def _provider_tables(api):
     }
 
 
+@pytest.fixture(scope="module")
+def loaded_mounts():
+    """Both mounts, loaded once.
+
+    Loading a mount reads a configuration and builds a provider per collection,
+    about five seconds for the pair. Four of the tests below only inspect what
+    the load produced, so they share one. The two that exercise the *loading*
+    itself -- module isolation and environment restoration -- keep calling
+    `_load_both()`, because a shared load would have already finished by the
+    time they looked at it.
+    """
+    return _load_both()
+
+
 def test_each_mount_gets_independent_module_globals():
     public_module, internal_module = _load_both()
 
@@ -68,8 +84,8 @@ def test_each_mount_gets_independent_module_globals():
     assert public_module.api_ is not internal_module.api_
 
 
-def test_public_mount_does_not_resolve_to_internal_relations():
-    public_module, internal_module = _load_both()
+def test_public_mount_does_not_resolve_to_internal_relations(loaded_mounts):
+    public_module, internal_module = loaded_mounts
 
     public_tables = _provider_tables(public_module.api_)
     assert public_tables, "public config exposed no provider-backed collections"
@@ -90,8 +106,8 @@ def test_public_mount_does_not_resolve_to_internal_relations():
     assert not misrouted, f"internal mount resolves to public relations: {misrouted}"
 
 
-def test_each_mount_advertises_its_own_server_url():
-    public_module, internal_module = _load_both()
+def test_each_mount_advertises_its_own_server_url(loaded_mounts):
+    public_module, internal_module = loaded_mounts
 
     public_url = public_module.api_.config["server"]["url"]
     internal_url = internal_module.api_.config["server"]["url"]
@@ -127,8 +143,8 @@ INTERNAL_ONLY_COLLECTIONS = {
 }
 
 
-def test_hidden_layers_are_internal_only():
-    public_module, internal_module = _load_both()
+def test_hidden_layers_are_internal_only(loaded_mounts):
+    public_module, internal_module = loaded_mounts
 
     public_ids = set(public_module.api_.config["resources"])
     internal_ids = set(internal_module.api_.config["resources"])
@@ -145,11 +161,11 @@ def test_hidden_layers_are_internal_only():
 PLACEHOLDER_TERMS = ("todo", "tbd", "xxx", "placeholder", "example.com", "lorem")
 
 
-def test_every_collection_description_explains_the_layer():
+def test_every_collection_description_explains_the_layer(loaded_mounts):
     # A description has to tell a non-specialist how the layer was derived and
     # what it is for -- not repeat the title. Short entries are the failure
     # mode this guards: they are what the catalog shipped with before.
-    for module in _load_both():
+    for module in loaded_mounts:
         for name, resource in module.api_.config["resources"].items():
             description = resource.get("description", "")
             lowered = description.lower()

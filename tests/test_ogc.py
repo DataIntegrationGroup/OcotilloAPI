@@ -29,7 +29,6 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from core.factory import create_api_app
 from db import (
     Group,
     GroupThingAssociation,
@@ -48,8 +47,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module", autouse=True)
-def ogc_client():
-    app = create_api_app()
+def ogc_client(ogc_app):
+    app = ogc_app
     app.dependency_overrides[admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
