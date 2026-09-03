@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 import importlib
+
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select
@@ -27,11 +29,20 @@ publish_project_areas = importlib.import_module(
 backfill_acoustic_maturity = importlib.import_module(
     "data_migrations.migrations.20260820_0001_backfill_acoustic_data_maturity"
 )
+seed_legacy_access = importlib.import_module(
+    "data_migrations.migrations.20260829_0001_seed_legacy_access_grants"
+)
+from db.authorization_audit import AuthorizationAudit
+from db.destination import Destination
 from db.location import Location
+from db.permission_grant import PermissionGrant
+from db.publication_consent import PublicationConsent
+from db.thing import Thing
 from db.notes import Notes
 from db.group import Group
 from db.engine import session_ctx
 from db.transducer import TransducerObservation
+from services.access_seed import SEED_ACTOR, data_types
 from tests import get_parameter_id
 
 
@@ -232,4 +243,258 @@ def test_backfill_acoustic_data_maturity_is_idempotent(
                     TransducerObservation.id == observation_id
                 )
             )
+            session.commit()
+
+
+def _consents_for(session, thing_id):
+    return (
+        session.execute(
+            select(PublicationConsent).where(PublicationConsent.thing_id == thing_id)
+        )
+        .scalars()
+        .all()
+    )
+
+
+def test_grandfathering_covers_public_things_and_leaves_the_rest_alone():
+    """release_status='public' already publishes everything about a record, so
+    the grandfathered consent is the widest one: every data type."""
+    with session_ctx() as session:
+        public = Thing(name="Grandfathered Well", thing_type="water well")
+        public.release_status = "public"
+        private = Thing(name="Unpublished Well", thing_type="water well")
+        private.release_status = "draft"
+        session.add_all([public, private])
+        session.commit()
+        public_id, private_id = public.id, private.id
+
+        try:
+            seed_legacy_access.run(session)
+
+            granted = _consents_for(session, public_id)
+            destinations = {
+                row.destination.slug: {
+                    consent.data_type
+                    for consent in granted
+                    if consent.destination_id == row.destination_id
+                }
+                for row in granted
+            }
+            assert destinations == {
+                spec.slug: set(seed_legacy_access.consented_data_types(spec))
+                for spec in seed_legacy_access.BASELINE_DESTINATIONS
+            }
+            assert all(
+                row.recorded_by == seed_legacy_access.GRANDFATHER_ACTOR
+                for row in granted
+            )
+            # Institutional, not a landowner's: no contact is invented.
+            assert all(row.contact_id is None for row in granted)
+            assert _consents_for(session, private_id) == []
+        finally:
+            session.execute(
+                delete(PublicationConsent).where(
+                    PublicationConsent.recorded_by
+                    == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(AuthorizationAudit).where(
+                    AuthorizationAudit.actor == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(PermissionGrant).where(PermissionGrant.granted_by == SEED_ACTOR)
+            )
+            session.execute(
+                delete(AuthorizationAudit).where(AuthorizationAudit.actor == SEED_ACTOR)
+            )
+            session.execute(
+                delete(Destination).where(
+                    Destination.slug.in_(
+                        [spec.slug for spec in seed_legacy_access.BASELINE_DESTINATIONS]
+                    )
+                )
+            )
+            session.execute(delete(Thing).where(Thing.id.in_([public_id, private_id])))
+            session.commit()
+
+
+def test_grandfathering_twice_writes_nothing_the_second_time():
+    with session_ctx() as session:
+        thing = Thing(name="Twice Grandfathered Well", thing_type="water well")
+        thing.release_status = "public"
+        session.add(thing)
+        session.commit()
+        thing_id = thing.id
+
+        try:
+            first = seed_legacy_access._grandfather_public_things(session)
+            second = seed_legacy_access._grandfather_public_things(session)
+            ngwmn = seed_legacy_access._grandfather_public_things(
+                session, seed_legacy_access.NGWMN_DESTINATION
+            )
+
+            ngwmn_types = seed_legacy_access.consented_data_types(
+                seed_legacy_access.NGWMN_DESTINATION
+            )
+            assert first >= len(data_types())
+            assert second == 0
+            assert ngwmn >= len(ngwmn_types)
+            assert len(_consents_for(session, thing_id)) == len(data_types()) + len(
+                ngwmn_types
+            )
+        finally:
+            session.execute(
+                delete(PublicationConsent).where(
+                    PublicationConsent.recorded_by
+                    == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(AuthorizationAudit).where(
+                    AuthorizationAudit.actor == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(Destination).where(
+                    Destination.slug.in_(
+                        [spec.slug for spec in seed_legacy_access.BASELINE_DESTINATIONS]
+                    )
+                )
+            )
+            session.execute(delete(Thing).where(Thing.id == thing_id))
+            session.commit()
+
+
+def test_every_grandfathered_consent_is_audited():
+    """No row that changes what is published lands without a trace."""
+    with session_ctx() as session:
+        thing = Thing(name="Audited Grandfathered Well", thing_type="water well")
+        thing.release_status = "public"
+        session.add(thing)
+        session.commit()
+        thing_id = thing.id
+
+        try:
+            seed_legacy_access._grandfather_public_things(session)
+            consent_ids = {row.id for row in _consents_for(session, thing_id)}
+            events = (
+                session.execute(
+                    select(AuthorizationAudit).where(
+                        AuthorizationAudit.subject_id.in_(consent_ids),
+                        AuthorizationAudit.subject_table == "publication_consent",
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            assert {event.subject_id for event in events} == consent_ids
+            assert {event.event_type for event in events} == {"consent.recorded"}
+            assert all(
+                event.detail["grandfathered_from"] == "public" for event in events
+            )
+        finally:
+            session.execute(
+                delete(PublicationConsent).where(
+                    PublicationConsent.recorded_by
+                    == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(AuthorizationAudit).where(
+                    AuthorizationAudit.actor == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(Destination).where(
+                    Destination.slug.in_(
+                        [spec.slug for spec in seed_legacy_access.BASELINE_DESTINATIONS]
+                    )
+                )
+            )
+            session.execute(delete(Thing).where(Thing.id == thing_id))
+            session.commit()
+
+
+def test_a_destination_registered_under_another_kind_is_refused():
+    """The kind picks the field allowlist, so publishing under the wrong one
+    would send a different set of fields than anybody chose."""
+    spec = seed_legacy_access.NGWMN_DESTINATION
+    with session_ctx() as session:
+        wrong = Destination(
+            slug=spec.slug,
+            name=spec.name,
+            destination_kind="public web",
+            active=True,
+        )
+        session.add(wrong)
+        session.commit()
+
+        try:
+            with pytest.raises(seed_legacy_access.DestinationKindConflict):
+                seed_legacy_access._destination(session, spec)
+        finally:
+            session.execute(delete(Destination).where(Destination.slug == spec.slug))
+            session.commit()
+
+
+def test_ngwmn_is_not_grandfathered_for_water_chemistry():
+    """The harvester was never offered chemistry. Grandfathering it would hand
+    a federal network a data type nobody agreed to send."""
+    spec = seed_legacy_access.NGWMN_DESTINATION
+    consented = seed_legacy_access.consented_data_types(spec)
+
+    assert "water chemistry" not in consented
+    assert set(consented) == set(data_types()) - {"water chemistry"}
+    # The public web keeps everything: that is what the column already meant.
+    assert set(
+        seed_legacy_access.consented_data_types(seed_legacy_access.PUBLIC_DESTINATION)
+    ) == set(data_types())
+
+
+def test_the_excluded_type_is_absent_from_the_rows_written():
+    with session_ctx() as session:
+        thing = Thing(name="Chemistry Excluded Well", thing_type="water well")
+        thing.release_status = "public"
+        session.add(thing)
+        session.commit()
+        thing_id = thing.id
+
+        try:
+            seed_legacy_access._grandfather_public_things(
+                session, seed_legacy_access.NGWMN_DESTINATION
+            )
+            written = {
+                row.data_type
+                for row in _consents_for(session, thing_id)
+                if row.destination.slug == "ngwmn"
+            }
+
+            assert "water chemistry" not in written
+            assert written == set(
+                seed_legacy_access.consented_data_types(
+                    seed_legacy_access.NGWMN_DESTINATION
+                )
+            )
+        finally:
+            session.execute(
+                delete(PublicationConsent).where(
+                    PublicationConsent.thing_id == thing_id
+                )
+            )
+            session.execute(
+                delete(AuthorizationAudit).where(
+                    AuthorizationAudit.actor == seed_legacy_access.GRANDFATHER_ACTOR
+                )
+            )
+            session.execute(
+                delete(Destination).where(
+                    Destination.slug.in_(
+                        [spec.slug for spec in seed_legacy_access.BASELINE_DESTINATIONS]
+                    )
+                )
+            )
+            session.execute(delete(Thing).where(Thing.id == thing_id))
             session.commit()

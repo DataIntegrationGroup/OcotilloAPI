@@ -157,20 +157,27 @@ place. Read **`ADR4.md`** before extending the layer.
 The system uses **Authentik** for OAuth2 authentication with role-based access control:
 
 **Permission Levels** (defined in `core/dependencies.py`):
-- **Viewer**: Read-only access to all public entities
-- **Editor**: Can modify existing records (includes Viewer permissions)
-- **Admin**: Can create new records (includes Editor + Viewer permissions)
+- **`AMP.Viewer`**: Read-only access to all public entities
+- **`AMP.Editor`**: Can modify existing records (includes Viewer permissions)
+- **`AMP.Admin`**: Can create new records (includes Editor + Viewer permissions)
 
 The hierarchy is enforced in code, via `authenticated(any_of=[...])` group lists —
-`Admin` satisfies an editor- or viewer-gated route without needing all three
+`AMP.Admin` satisfies an editor- or viewer-gated route without needing all three
 Authentik groups granted.
 
-**AMP-Specific Roles**: `AMPAdmin`, `AMPEditor`, `AMPViewer` for legacy AMPAPI integration
+**One ladder, dotted names.** There used to be three families gating on names
+the UI never checked (`Admin`/`Editor`/`Viewer`, `AMP*`, `Lexicon*`). They are
+consolidated into the dotted groups the UI already reads: `AMP.Admin`,
+`AMP.Editor`, `AMP.Viewer`, plus `Lexicon.Editor` and `OGC.Internal`. The
+`admin_*` and `amp_admin_*` dependencies are now aliases for the same groups —
+either spelling works on a route, and neither is a separate tier.
+`Lexicon.Editor` is the only lexicon group, so what required lexicon *admin* is
+now reachable by a lexicon editor.
 
-**Role families are orthogonal**: general `Admin` confers nothing in the AMP or
-Lexicon families. Only tiers *within* a family nest.
+**Vocabulary and the GIS mount stay outside the ladder**: `AMP.Admin` confers
+nothing in `Lexicon.Editor`, `OGC.Internal`, or `AMP.Staging`.
 
-**`AMP.Staging`** is a standalone group, not a fourth AMP tier — `AMPAdmin`
+**`AMP.Staging`** is a standalone group, not a fourth AMP tier — `AMP.Admin`
 does not satisfy it. It gates the hydrograph corrector's publish and range-delete
 routes while the workbench is being validated against real logger files, so they
 ship dark. Read **`docs/hydrograph-correction-publish.md`** before changing
@@ -194,7 +201,7 @@ that genuinely have none.
 
 **`/ogcapi-internal` is gated outside `Depends()`.** It is a raw Starlette
 Mount, so `core/internal_ogc_auth.py` gates it at the ASGI layer instead. It
-accepts a bearer Authentik JWT carrying `OGCInternal`, **or** a static API key
+accepts a bearer Authentik JWT carrying `OGC.Internal`, **or** a static API key
 presented as a bearer token, as the Basic password, or as `?token=`. Only the
 key digests are stored, as `label:sha256hex` entries in `INTERNAL_OGC_API_KEYS`
 — sourced in deployed environments from the Secret Manager secret
@@ -258,10 +265,21 @@ The storage and the evaluator exist; the field projection does not.
   **`docs/access-field-projection.md`** before touching the allowlists.
 - **The role baseline is seeded by hand, per environment.**
   `oco seed-access-grants` writes one global grant per (Authentik role,
-  capability, data type) so today's roles keep today's access; it previews by
-  default and needs `--apply` to write. Idempotent, and it will not resurrect
-  a seeded grant somebody revoked, because narrowing the baseline is the point.
-  Until it is run in an environment, `/access/decision` denies everyone there.
+  capability, data type) and one per (role, UI surface) for the five groups
+  that exist — `AMP.Admin`, `AMP.Editor`, `AMP.Viewer`, `OGC.Internal`,
+  `Lexicon.Editor` — so today's roles keep today's access; it previews by default and needs `--apply` to write.
+  Idempotent, and it will not resurrect a seeded grant somebody revoked,
+  because narrowing the baseline is the point. Until it is run in an
+  environment, `/access/decision` denies everyone there.
+- **Legacy publication is grandfathered, not re-consented.** Data migration
+  `20260829_0001_seed_legacy_access_grants` runs that seeder and writes one
+  `publication_consent` row per (`release_status='public'` thing, access data
+  type) against each baseline destination — `public-web` (kind `public web`)
+  and `ngwmn` (kind `harvester`) — because that is what the column already
+  meant for both. The kind is not decoration: it picks the audience in
+  `core/field-allowlists.yml`, so the migration refuses to write against a
+  destination already registered under a different kind. One-shot per
+  environment and run by hand like every data migration here.
 - **Default deny, no wildcards, expiry at use.** A grant with no matching row
   is a no; a grant names its `data_type` (there is no term meaning "all"); and
   nothing sweeps expired rows, so every check compares against the date asked

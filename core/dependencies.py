@@ -35,35 +35,55 @@ Admin, can do everything Editor and Viewer can do
     + create new objects
 
 That hierarchy is enforced here, by `any_of=` group lists rather than by
-Authentik group membership overlap: an Admin-only account satisfies an
-editor- or viewer-gated route because "Admin" appears in those lists. Before
-this was explicit, `authenticated(permissions=["Viewer"])` required the
-literal Viewer group, so the hierarchy held only as long as whoever
-provisioned the Authentik groups granted all three tiers to every admin.
+Authentik group membership overlap: an admin account satisfies an editor- or
+viewer-gated route because `AMP.Admin` appears in those lists. Before this was
+explicit, `authenticated(permissions=["Viewer"])` required the literal Viewer
+group, so the hierarchy held only as long as whoever provisioned the Authentik
+groups granted all three tiers to every admin.
 
-The three families below are deliberately orthogonal -- general `Admin` does
-not confer `AMPAdmin` or `LexiconAdmin`. Only tiers *within* a family nest.
+## One family, dotted names
+
+There used to be three orthogonal families -- a general `Admin`/`Editor`/
+`Viewer` set, an `AMP*` set, and a `Lexicon*` set -- gating on names the UI
+never checked (`src/utils/accessControl.ts` reads `AMP.Viewer` and friends).
+The two vocabularies were disjoint, which meant a token satisfying one side
+could satisfy nothing on the other.
+
+The groups are now the dotted ones, and the general family is the AMP family:
+`AMP.Admin`, `AMP.Editor`, `AMP.Viewer`, plus `Lexicon.Editor` for vocabulary
+and `OGC.Internal` for the desktop-GIS mount. The `admin_*` and `amp_admin_*`
+dependencies therefore resolve to the same groups. Both spellings are kept so
+route signatures did not all have to change in one commit; they are aliases,
+not tiers, and a route may use either.
+
+`Lexicon.Editor` is the only lexicon group: what were the `LexiconAdmin` and
+`LexiconEditor` tiers are one group now, so a lexicon editor reaches the
+routes that used to require lexicon admin. That is a widening, and it is the
+consolidation, not an accident.
+
+`AMP.Staging` keeps its own spelling and stays outside the ladder.
 """
 
 # General Purpose Authentication/Permissions -----------------------------------
+# Aliases for the AMP groups below; see the module docstring.
 
-admin_function = authenticated(any_of=["Admin"])
-editor_function = authenticated(any_of=["Admin", "Editor"])
-viewer_function = authenticated(any_of=["Admin", "Editor", "Viewer"])
+admin_function = authenticated(any_of=["AMP.Admin"])
+editor_function = authenticated(any_of=["AMP.Admin", "AMP.Editor"])
+viewer_function = authenticated(any_of=["AMP.Admin", "AMP.Editor", "AMP.Viewer"])
 
 
 # AMP-Specific Authentication/Permissions --------------------------------------
 
-amp_admin_function = authenticated(any_of=["AMPAdmin"])
-amp_editor_function = authenticated(any_of=["AMPAdmin", "AMPEditor"])
-amp_viewer_function = authenticated(any_of=["AMPAdmin", "AMPEditor", "AMPViewer"])
+amp_admin_function = authenticated(any_of=["AMP.Admin"])
+amp_editor_function = authenticated(any_of=["AMP.Admin", "AMP.Editor"])
+amp_viewer_function = authenticated(any_of=["AMP.Admin", "AMP.Editor", "AMP.Viewer"])
 
 
 # Hydrograph-Corrector Staging Permissions -------------------------------------
 # The hydrograph corrector's publish and range-delete routes write and destroy
 # transducer records, and the workbench driving them is still being validated
 # against real logger files. `AMP.Staging` is its own group with no tier below
-# it and no AMP tier above it -- an AMPAdmin does not satisfy it. Nobody holds
+# it and no AMP tier above it -- an `AMP.Admin` does not satisfy it. Nobody holds
 # it until it is granted in Authentik, so the routes ship dark and reachable
 # only by whoever is testing them.
 #
@@ -76,12 +96,12 @@ amp_staging_function = authenticated(any_of=["AMP.Staging"])
 
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
-lexicon_admin_function = authenticated(any_of=["LexiconAdmin"])
-lexicon_editor_function = authenticated(any_of=["LexiconAdmin", "LexiconEditor"])
+lexicon_admin_function = authenticated(any_of=["Lexicon.Editor"])
+lexicon_editor_function = authenticated(any_of=["Lexicon.Editor"])
 
 
 # OGC-Internal Authentication/Permissions --------------------------------------
-# INTERNAL_OGC_GROUP ("OGCInternal") lives in core/permissions.py, not here --
+# INTERNAL_OGC_GROUP ("OGC.Internal") lives in core/permissions.py, not here --
 # it gates core/internal_ogc_auth.py's ASGI middleware in front of the
 # /ogcapi-internal mount, which runs outside FastAPI's Depends() machinery.
 

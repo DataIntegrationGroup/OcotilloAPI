@@ -38,6 +38,17 @@ The mapping mirrors the role families in ``core/dependencies.py``. It is a
 starting point, not a statement about what each role should have: narrowing it
 is the point of the whole exercise, and every narrowing is a revocation
 somebody makes deliberately.
+
+Two axes are seeded, because a grant names one or the other:
+
+* **Data.** ``ROLE_BASELINE`` -- role x capability x access data type.
+* **Screens.** ``SURFACE_BASELINE`` -- role x UI surface, always ``view``
+  and always global, because that is the only shape a surface grant has.
+
+The screen half is widen-only: ``services/visibility.may_see_surface`` answers
+whether a *grant* opens a screen, and the UI falls back to its own role policy
+when the answer is no. Seeding it therefore takes nothing away; it writes
+today's screen access down as grants so the fallback can eventually go.
 """
 
 from dataclasses import dataclass, field
@@ -50,8 +61,10 @@ from db.permission_grant import PermissionGrant
 from domain.access import (
     CAPABILITY_ADMINISTER,
     CAPABILITY_CORRECT,
+    CAPABILITY_DELETE,
     CAPABILITY_ENTER,
     CAPABILITY_READ,
+    CAPABILITY_VIEW,
     PRINCIPAL_ROLE,
     SCOPE_GLOBAL,
 )
@@ -68,24 +81,64 @@ SEED_REASON = (
 
 READ_ONLY = (CAPABILITY_READ,)
 EDIT = (CAPABILITY_READ, CAPABILITY_ENTER, CAPABILITY_CORRECT)
-FULL = EDIT + (CAPABILITY_ADMINISTER,)
+# `delete` sits with `administer` at the top rather than with the editing
+# verbs. That mirrors where destruction is gated today: assets are an
+# editor's to remove, but the routes that delete the records these data types
+# name -- things, groups, observations -- are all admin-gated.
+FULL = EDIT + (CAPABILITY_DELETE, CAPABILITY_ADMINISTER)
 
 # Authentik group -> capabilities, mirroring core/dependencies.py. The tiers
-# nest within a family, so an Admin's row set is a superset of an Editor's.
+# nest, so `AMP.Admin`'s row set is a superset of `AMP.Editor`'s.
 #
-# Lexicon* is absent: it gates vocabulary, not data. AMP.Staging is absent
+# One ladder, not three: the general Admin/Editor/Viewer family and the AMP
+# family were consolidated into the dotted groups the UI already reads.
+#
+# `Lexicon.Editor` is absent here: it gates vocabulary, not data, so it holds
+# a screen grant below and no data grants at all. `AMP.Staging` is absent
 # because it gates a workbench that ships dark, and seeding it would be the
 # one thing nobody intended -- granting access to something still being
 # validated.
 ROLE_BASELINE = {
-    "Viewer": READ_ONLY,
-    "Editor": EDIT,
-    "Admin": FULL,
-    "AMPViewer": READ_ONLY,
-    "AMPEditor": EDIT,
-    "AMPAdmin": FULL,
+    "AMP.Viewer": READ_ONLY,
+    "AMP.Editor": EDIT,
+    "AMP.Admin": FULL,
     # The desktop-GIS mount reads; it has never written.
-    "OGCInternal": READ_ONLY,
+    "OGC.Internal": READ_ONLY,
+}
+
+# Screens every role that reaches data at all can already open.
+BROWSE_SURFACES = (
+    "ocotillo.map",
+    "ocotillo.thing-well",
+    "ocotillo.thing-well-projects",
+    "ocotillo.contact",
+    "ocotillo.location",
+    "ocotillo.collections",
+    "ocotillo.asset-unassociated",
+)
+# Field sheets are printed by the people who go to the well.
+EDIT_SURFACES = BROWSE_SURFACES + ("ocotillo.thing-well-batch-export",)
+
+# Authentik group -> UI surfaces. Capability is `view` throughout: a surface
+# grant means "may open this screen", and what may be done once inside is the
+# data half above, which speaks in `read`/`enter`/`correct`/`administer`.
+#
+# Two surfaces are deliberately unseeded:
+#
+# * `ocotillo.hydrograph-correction` gates a workbench that ships dark behind
+#   AMP.Staging while it is validated against real logger files. Seeding it
+#   would grant access to the one thing nobody intended to hand out yet.
+# * `ocotillo.access-grants` goes to `AMP.Admin` only. It is the console that
+#   changes who may see what, and that is the top of the one ladder.
+#
+# `Lexicon.Editor` appears here although it is absent from ROLE_BASELINE: it
+# gates vocabulary rather than data, so it gets the vocabulary screen and no
+# data grants, and `AMP.Admin` does not inherit the screen from it.
+SURFACE_BASELINE = {
+    "AMP.Viewer": BROWSE_SURFACES,
+    "AMP.Editor": EDIT_SURFACES,
+    "AMP.Admin": EDIT_SURFACES + ("ocotillo.access-grants",),
+    "Lexicon.Editor": ("ocotillo.lexicon",),
 }
 
 
@@ -97,8 +150,9 @@ class SeedPlan:
     skipped: list = field(default_factory=list)
 
     def describe(self, entry) -> str:
-        role, capability, data_type = entry
-        return f"role:{role} may {capability} {data_type} (global)"
+        role, capability, data_type, ui_surface = entry
+        subject = data_type if data_type else f"the {ui_surface} screen"
+        return f"role:{role} may {capability} {subject} (global)"
 
 
 def data_types() -> tuple:
@@ -111,16 +165,27 @@ def data_types() -> tuple:
 
 
 def planned_entries() -> list:
-    return [
-        (role, capability, data_type)
+    """Every baseline row, as (role, capability, data type, UI surface).
+
+    One of the last two is always None, because a grant names exactly one
+    subject.
+    """
+    data_entries = [
+        (role, capability, data_type, None)
         for role, capabilities in ROLE_BASELINE.items()
         for capability in capabilities
         for data_type in data_types()
     ]
+    surface_entries = [
+        (role, CAPABILITY_VIEW, None, ui_surface)
+        for role, surfaces in SURFACE_BASELINE.items()
+        for ui_surface in surfaces
+    ]
+    return data_entries + surface_entries
 
 
 def _already_seeded(session) -> set:
-    """Every (role, capability, data type) this seeder has ever written.
+    """Every entry this seeder has ever written.
 
     Revoked rows count. A grant somebody took away is not re-created by
     running the seeder again.
@@ -130,12 +195,13 @@ def _already_seeded(session) -> set:
             PermissionGrant.principal_id,
             PermissionGrant.capability,
             PermissionGrant.data_type,
+            PermissionGrant.ui_surface,
         ).where(
             PermissionGrant.principal_type == PRINCIPAL_ROLE,
             PermissionGrant.granted_by == SEED_ACTOR,
         )
     ).all()
-    return {(role, capability, data_type) for role, capability, data_type in rows}
+    return {tuple(row) for row in rows}
 
 
 def seed_role_grants(session, starts_at: date = None, apply: bool = True) -> SeedPlan:
@@ -157,7 +223,7 @@ def seed_role_grants(session, starts_at: date = None, apply: bool = True) -> See
         if not apply:
             continue
 
-        role, capability, data_type = entry
+        role, capability, data_type, ui_surface = entry
         create_grant(
             session,
             SEED_ACTOR,
@@ -167,6 +233,7 @@ def seed_role_grants(session, starts_at: date = None, apply: bool = True) -> See
             scope_type=SCOPE_GLOBAL,
             scope_id=None,
             data_type=data_type,
+            ui_surface=ui_surface,
             starts_at=starts_at,
             ends_at=None,
             reason=SEED_REASON,

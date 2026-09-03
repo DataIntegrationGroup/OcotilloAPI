@@ -164,18 +164,20 @@ def test_public_schema_advertises_only_anonymous_routes():
 @pytest.mark.parametrize(
     "groups, expected",
     [
-        (["Admin"], True),
-        (["Editor"], True),
-        (["Viewer"], True),
-        (["AMPAdmin"], False),
+        (["AMP.Admin"], True),
+        (["AMP.Editor"], True),
+        (["AMP.Viewer"], True),
+        (["Lexicon.Editor"], False),
         ([], False),
     ],
 )
 def test_admin_satisfies_viewer_tier(groups, expected):
-    """Admin > Editor > Viewer is enforced in code, not by Authentik overlap."""
+    """AMP.Admin > AMP.Editor > AMP.Viewer is enforced in code, not by
+    Authentik overlap."""
     assert (
         permissions.authorize_groups(
-            {"groups": groups}, require_any=["Admin", "Editor", "Viewer"]
+            {"groups": groups},
+            require_any=["AMP.Admin", "AMP.Editor", "AMP.Viewer"],
         )
         is expected
     )
@@ -184,42 +186,44 @@ def test_admin_satisfies_viewer_tier(groups, expected):
 @pytest.mark.parametrize(
     "groups, expected",
     [
-        (["Admin"], True),
-        (["Editor"], False),
-        (["Viewer"], False),
+        (["AMP.Admin"], True),
+        (["AMP.Editor"], False),
+        (["AMP.Viewer"], False),
     ],
 )
 def test_admin_tier_does_not_accept_lower_roles(groups, expected):
     assert (
-        permissions.authorize_groups({"groups": groups}, require_any=["Admin"])
+        permissions.authorize_groups({"groups": groups}, require_any=["AMP.Admin"])
         is expected
     )
 
 
-def test_role_families_stay_orthogonal():
-    """General Admin confers nothing in the AMP or Lexicon families."""
-    payload = {"groups": ["Admin"]}
-    assert not permissions.authorize_groups(
-        payload, require_any=["AMPAdmin", "AMPEditor", "AMPViewer"]
-    )
-    assert not permissions.authorize_groups(
-        payload, require_any=["LexiconAdmin", "LexiconEditor"]
-    )
+def test_data_roles_confer_nothing_over_vocabulary():
+    """The ladder was consolidated into one AMP family, but vocabulary and the
+    desktop-GIS mount stay outside it: the top of the data ladder is not a
+    lexicon editor."""
+    payload = {"groups": ["AMP.Admin"]}
+    assert not permissions.authorize_groups(payload, require_any=["Lexicon.Editor"])
+    assert not permissions.authorize_groups(payload, require_any=["OGC.Internal"])
+    assert not permissions.authorize_groups(payload, require_any=["AMP.Staging"])
 
 
 def test_require_all_demands_every_group():
     assert permissions.authorize_groups(
-        {"groups": ["Admin", "AMPAdmin"]}, require_all=["Admin", "AMPAdmin"]
+        {"groups": ["AMP.Admin", "Lexicon.Editor"]},
+        require_all=["AMP.Admin", "Lexicon.Editor"],
     )
     assert not permissions.authorize_groups(
-        {"groups": ["Admin"]}, require_all=["Admin", "AMPAdmin"]
+        {"groups": ["AMP.Admin"]}, require_all=["AMP.Admin", "Lexicon.Editor"]
     )
 
 
 def test_missing_groups_claim_denies():
     """A token with no `groups` claim must not satisfy a role requirement."""
-    assert not permissions.authorize_groups({}, require_any=["Viewer"])
-    assert not permissions.authorize_groups({"groups": None}, require_any=["Viewer"])
+    assert not permissions.authorize_groups({}, require_any=["AMP.Viewer"])
+    assert not permissions.authorize_groups(
+        {"groups": None}, require_any=["AMP.Viewer"]
+    )
 
 
 # Bypass configuration guard ---------------------------------------------------

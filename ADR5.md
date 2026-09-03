@@ -75,7 +75,7 @@ for merging those tables into the access-control model.
 ### Principals are already more than users
 
 `/ogcapi-internal` is gated at the ASGI layer by `core/internal_ogc_auth.py`,
-which accepts an Authentik JWT carrying `OGCInternal` **or** a static API key,
+which accepts an Authentik JWT carrying `OGC.Internal` **or** a static API key,
 because ArcGIS Pro cannot present a bearer token. That key is a principal with
 no user behind it, and today its scope is "everything the internal mount
 serves." Any model that assumes principal == person is already wrong here.
@@ -101,8 +101,9 @@ second axis, because some destinations want approved data only.
 ### 1. Two tables
 
 **`permission_grant`** — internal authorization. Principal (user subject, role,
-API key), capability (read, enter, correct, administer), scope (project, thing,
-data type, field group), time bounds, `granted_by`, `granted_at`, `reason`.
+API key), capability (read, enter, correct, delete, administer), scope
+(project, thing, data type, field group), time bounds, `granted_by`,
+`granted_at`, `reason`.
 Governed by data services staff. Answers "is this person trusted with this."
 
 **`publication_consent`** — landowner-facing publication. One row per
@@ -222,11 +223,28 @@ told.
    `entered_by`.
 5. **Per environment, by hand:** `oco seed-access-grants` writes the day-one
    role baseline (ADR5, 5.2) -- one global grant per Authentik role,
-   capability and data type, so nobody's access changes when the layer starts
-   being consulted. Until it runs, that environment denies everyone.
-   Idempotent, and it does not resurrect a revoked seeded grant.
+   capability and data type, plus one per role and UI surface, so nobody's
+   access changes when the layer starts being consulted. Until it runs, that
+   environment denies everyone. Idempotent, and it does not resurrect a
+   revoked seeded grant.
+
+   Data migration `20260829_0001_seed_legacy_access_grants` runs that seeder
+   and grandfathers the consent half in the same pass: every thing carrying
+   `release_status='public'` gets a consent row per access data type against
+   each baseline destination — `public-web` and `ngwmn`. Both, because
+   `release_status` never distinguished them: a public well was in the OGC
+   collections and in what NGWMN harvests, and there was no way to say yes to
+   one and no to the other. There is now, and saying no is a revocation. **That takes the grandfathering branch of
+   PUB-D13** (below) for the legacy data, on the reading that
+   `release_status='public'` already publishes everything about a record, so
+   the widest consent is the one that describes what is true today. Narrowing
+   it is a revocation somebody makes deliberately, per data type, in the
+   console. Data migrations have no CD path, so this too is run by hand per
+   environment.
 6. Console administration.
-7. Healy migration, after the data owner decides grandfathering.
+7. Healy migration, after the data owner decides grandfathering. The legacy
+   rows are grandfathered by step 5; what remains is whether Healy's wells are
+   re-consented per data type rather than inheriting that.
 
 ## References
 

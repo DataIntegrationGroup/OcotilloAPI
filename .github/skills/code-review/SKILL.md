@@ -26,9 +26,9 @@ router-level `dependencies=[...]`. Two failure modes to flag:
    value (`user=viewer_dependency`). The latter silently disables the dependency, and FastAPI
    reinterprets it as a query parameter. Flag this every time.
 
-Role families are orthogonal: general `Admin` confers nothing in the `AMP*` or `Lexicon*`
-families. Only tiers within one family nest. A diff that treats `Admin` as a superset of
-`AMPEditor` is wrong.
+The role groups are `AMP.Admin` > `AMP.Editor` > `AMP.Viewer`, one ladder, plus
+`Lexicon.Editor`, `OGC.Internal` and `AMP.Staging` outside it. A diff that treats
+`AMP.Admin` as a superset of `Lexicon.Editor` or `AMP.Staging` is wrong.
 
 `@in_public_schema` controls anonymous OpenAPI visibility only. It grants no access and
 removes no dependency; flag any use that appears to be standing in for authorization.

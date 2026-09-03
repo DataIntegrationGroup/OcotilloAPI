@@ -54,7 +54,7 @@ from services.field_projection import (
 )
 from domain.access import (
     AccessRequest,
-    CAPABILITY_READ,
+    CAPABILITY_VIEW,
     Consent,
     Grant,
     PRINCIPAL_ROLE,
@@ -171,7 +171,8 @@ def may_see_surface(
     """May these principals see this screen?
 
     A thin reading of ``may``: surface grants are always global and always
-    ``read``, so the caller does not restate either. Widen-only by
+    carry ``view`` -- the screen verb, distinct from the ``read`` that reaches
+    data -- so the caller does not restate either. Widen-only by
     construction -- this answers whether a *grant* opens the screen, and the
     UI falls back to its role policy when the answer is no, so a missing grant
     can never take away what a role already allows.
@@ -179,7 +180,7 @@ def may_see_surface(
     return may(
         session,
         principals,
-        capability=CAPABILITY_READ,
+        capability=CAPABILITY_VIEW,
         ui_surface=ui_surface,
         on_date=on_date,
     )
