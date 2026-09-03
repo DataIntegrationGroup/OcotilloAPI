@@ -50,10 +50,12 @@ from services.field_projection import (
     THING,
     location_record,
     project_entity,
+    project_entity_for_data_types,
     thing_record,
 )
 from domain.access import (
     AccessRequest,
+    CAPABILITY_READ,
     CAPABILITY_VIEW,
     Consent,
     Grant,
@@ -183,6 +185,74 @@ def may_see_surface(
         capability=CAPABILITY_VIEW,
         ui_surface=ui_surface,
         on_date=on_date,
+    )
+
+
+def readable_data_types(
+    session,
+    principals: tuple[tuple[str, str], ...],
+    thing_id: int = None,
+    on_date: date = None,
+) -> tuple[str, ...]:
+    """Which data types these principals may read, here.
+
+    Asked per type rather than answered from the grant rows directly, so scope
+    and expiry are decided by ``may`` and not restated. The types come from the
+    lexicon, so one added next year is asked about without editing this.
+    """
+    from core.enums import AccessDataType
+
+    return tuple(
+        data_type.value
+        for data_type in AccessDataType
+        if may(
+            session,
+            principals,
+            capability=CAPABILITY_READ,
+            data_type=data_type.value,
+            thing_id=thing_id,
+            on_date=on_date,
+        )
+    )
+
+
+def readable_thing_record(
+    session,
+    principals: tuple[tuple[str, str], ...],
+    thing,
+    on_date: date = None,
+) -> dict:
+    """One thing, as these principals may read it.
+
+    The field-by-field half of ADR5 applied to an internal read rather than to
+    a publication: the caller's data-type grants decide which columns come
+    back, and a column no grant reaches is absent rather than null.
+
+    Default deny falls out of the grant table: no grants means `always` only.
+    """
+    data_types = readable_data_types(
+        session, principals, thing_id=thing.id, on_date=on_date
+    )
+    return project_entity_for_data_types(THING, thing_record(thing), data_types)
+
+
+def readable_location_record(
+    session,
+    principals: tuple[tuple[str, str], ...],
+    location,
+    thing_id: int = None,
+    on_date: date = None,
+) -> dict:
+    """One location, as these principals may read it.
+
+    ``thing_id`` is the well the location is being read through, because a
+    grant scoped to a thing or a group reaches the location by way of it.
+    """
+    data_types = readable_data_types(
+        session, principals, thing_id=thing_id, on_date=on_date
+    )
+    return project_entity_for_data_types(
+        LOCATION, location_record(location), data_types
     )
 
 
