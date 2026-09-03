@@ -46,11 +46,12 @@ from db import (
     search,
 )
 from services.audit_helper import audit_add
+from services.publication import consent_for_public_thing
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
 from services.env import get_bool_env
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter, simple_get_by_id
+from services.query_helper import order_sort_filter, simple_get_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -514,6 +515,12 @@ def add_thing(
         else:
             session.flush()
 
+        # A thing created public is published, and since c5d6e7f8a9b0 the
+        # public collections read consent as well as release_status. Without
+        # this the well appears as a row of nulls.
+        if consent_for_public_thing(session, thing, user) and commit:
+            session.commit()
+
     except Exception as e:
         if commit:
             session.rollback()
@@ -565,6 +572,13 @@ def patch_thing(
     verify_thing_type_correspondence(thing, thing_type)
 
     thing = model_patcher(session, Thing, thing_id, payload, user)
+
+    # The publish transition happens here: a PATCH setting release_status to
+    # 'public' is what publishing a well is. Idempotent, so a well that was
+    # already public simply keeps the rows it has.
+    if consent_for_public_thing(session, thing, user):
+        session.commit()
+
     return thing
 
 

@@ -32,7 +32,7 @@ from urllib.parse import urlparse
 
 from alembic import command
 from behave import given, when, then
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from core.dependencies import (
     viewer_function,
@@ -62,7 +62,10 @@ from db import (
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
 )
+from db.destination import Destination
 from db.engine import session_ctx
+from services.access_admin import register_destination
+from services.publication import consent_for_public_thing
 from tests import get_parameter_id
 from tests.features.environment import _alembic_config, reset_pygeoapi_reflection
 
@@ -188,7 +191,43 @@ def _seed_thing_with_location(session, thing_type, release_status, name):
     session.add(assoc)
     session.commit()
     session.refresh(thing)
+
+    # Since c5d6e7f8a9b0 the public collections read publication_consent as
+    # well as release_status, so a thing seeded public with no consent rows
+    # publishes as a row of nulls. Recording it the way the API's publish path
+    # does keeps the fixture honest rather than exempting the suite from the
+    # rule it is meant to exercise. A no-op unless release_status is 'public',
+    # so the argument above still decides what this thing is.
+    _ensure_publication_destinations(session)
+    consent_for_public_thing(session, thing)
+    session.commit()
+
     return thing
+
+
+def _ensure_publication_destinations(session) -> None:
+    """The two baseline destinations, as a deployed environment would have them.
+
+    Registered here rather than in before_all because the behave suite rebuilds
+    the schema per run, and a destination that does not exist is default deny
+    doing its job -- consent written against it would be silently dropped.
+    """
+    for slug, name, kind in (
+        ("public-web", "Public web", "public web"),
+        ("ngwmn", "National Ground Water Monitoring Network", "harvester"),
+    ):
+        existing = session.execute(
+            select(Destination).where(Destination.slug == slug)
+        ).scalar_one_or_none()
+        if existing is None:
+            register_destination(
+                session,
+                actor="behave",
+                slug=slug,
+                name=name,
+                destination_kind=kind,
+            )
+    session.flush()
 
 
 def _seed_water_well(session, release_status, name, monitoring_group):

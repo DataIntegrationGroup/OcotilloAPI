@@ -8669,6 +8669,20 @@
     },
     {
       "categories": [
+        "access_data_type"
+      ],
+      "term": "pii",
+      "definition": "Personally identifying information about people connected to a thing: landowners, drillers, staff contacts, and their details."
+    },
+    {
+      "categories": [
+        "access_data_type"
+      ],
+      "term": "field operations",
+      "definition": "How the Bureau works a site: consent for physical access, and the internal notes staff write for staff."
+    },
+    {
+      "categories": [
         "ui_surface"
       ],
       "term": "ocotillo.map",
