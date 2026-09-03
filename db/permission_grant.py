@@ -24,12 +24,22 @@ landowner's half -- what an owner agreed to publish about their well -- is
 ``db/publication_consent.py``, a separate table with separate governance and
 the same grammar. Both are evaluated by ``services/visibility.py``.
 
+A grant names exactly one subject: either a ``data_type`` (what data it
+reaches) or a ``ui_surface`` (what screen it opens). Both axes are lexicon
+terms, both are nullable in the table, and the XOR between them is enforced in
+``domain/access.py`` rather than as a check constraint, so the rule holds for
+every writer and reads as one sentence.
+
 Invariants, enforced in ``domain/access.py`` before a row is written:
 
-* ``data_type`` is never null and there is no term meaning "all", so a data
-  type added later is not covered by an existing grant.
+* Exactly one of ``data_type`` / ``ui_surface`` is set. Neither is a wildcard
+  and there is no term meaning "all", so a data type or screen added later is
+  not covered by an existing grant.
 * A ``global`` grant carries no ``scope_id``; a ``group`` or ``thing`` grant
   requires one.
+* A ``ui_surface`` grant is always ``global``. Navigation is app-wide -- the UI
+  never asks "may I see this nav item *for this well*" -- so a scoped screen
+  grant would be a row that could never match.
 * Expiry is read at use. Nothing sweeps this table, so a missed job cannot
   leave a grant standing past its end date.
 """
@@ -58,7 +68,10 @@ class PermissionGrant(Base, AutoBaseMixin):
     capability: Mapped[str] = lexicon_term(nullable=False)
     scope_type: Mapped[str] = lexicon_term(nullable=False)
     scope_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    data_type: Mapped[str] = lexicon_term(nullable=False)
+    # Exactly one of these two is set; see the module docstring. Nullable in
+    # the table, XOR in domain/access.py.
+    data_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
+    ui_surface: Mapped[Optional[str]] = lexicon_term(nullable=True)
 
     # --- When ---
     starts_at: Mapped[date] = mapped_column(nullable=False)
@@ -89,9 +102,10 @@ class PermissionGrant(Base, AutoBaseMixin):
     )
 
     def __str__(self):
+        subject = self.data_type or self.ui_surface
         return (
             f"{self.principal_type}:{self.principal_id} may {self.capability} "
-            f"{self.data_type} ({self.scope_type})"
+            f"{subject} ({self.scope_type})"
         )
 
 

@@ -265,6 +265,10 @@
       "description": "The kind of data a grant or a publication consent names. Deliberately coarse, and deliberately without a term meaning 'all' (ADR5, PUB-U11)."
     },
     {
+      "name": "ui_surface",
+      "description": "A screen or navigation item in the admin UI that a grant can open up. Named by the resource identifier the UI already checks, so a term and a nav item cannot drift apart (ADR5)."
+    },
+    {
       "name": "destination_kind",
       "description": "What sort of place published data is offered to: the public web, a harvesting agency, a partner with a standing connection (ADR5)."
     }
@@ -8648,6 +8652,83 @@
       ],
       "term": "site metadata",
       "definition": "Where the thing is and what it is: name, location, type, status."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.map",
+      "definition": "The map view."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.thing-well",
+      "definition": "The wells list and well records."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.thing-well-projects",
+      "definition": "The projects list."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.thing-well-batch-export",
+      "definition": "Field sheet batch export."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.contact",
+      "definition": "The contacts list and contact records."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.collections",
+      "definition": "The published OGC datasets catalogue."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.asset-unassociated",
+      "definition": "Assets not yet attached to a thing."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.location",
+      "definition": "The locations list."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.lexicon",
+      "definition": "The controlled-vocabulary editor."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.hydrograph-correction",
+      "definition": "The hydrograph correction workbench."
+    },
+    {
+      "categories": [
+        "ui_surface"
+      ],
+      "term": "ocotillo.access-grants",
+      "definition": "This access-control console."
     },
     {
       "categories": [
