@@ -23,7 +23,7 @@ copy tables.
 from xml.etree import ElementTree as etree
 
 import pytest
-from sqlalchemy import delete, text
+from sqlalchemy import delete, select, text
 
 from db import (
     Deployment,
@@ -40,11 +40,34 @@ from db import (
     WellScreen,
 )
 from db.engine import session_ctx
+from db.destination import Destination
+from services.access_admin import register_destination
+from services.publication import consent_on_publication
 from tests import client, get_parameter_id
 
 POINT_ID = "NGWMN-TEST-0001"
 MERGED_POINT_ID = "NGWMN-TEST-0002"
 PRIVATE_POINT_ID = "NGWMN-TEST-0003"
+
+
+def _ensure_destinations(session):
+    """The two baseline destinations, as an environment would have them."""
+    for slug, name, kind in (
+        ("public-web", "Public web", "public web"),
+        ("ngwmn", "National Ground Water Monitoring Network", "harvester"),
+    ):
+        existing = session.execute(
+            select(Destination).where(Destination.slug == slug)
+        ).scalar_one_or_none()
+        if existing is None:
+            register_destination(
+                session,
+                actor="tests",
+                slug=slug,
+                name=name,
+                destination_kind=kind,
+            )
+    session.flush()
 
 
 @pytest.fixture(scope="module")
@@ -176,6 +199,17 @@ def ngwmn_well():
         thing_id = thing.id
         formation_id = formation.id
 
+    # The NGWMN views read publication_consent as well as release_status
+    # (d6e7f8a9b0c1), so a public well with no consent harvests as nothing.
+    # Recording it the way publishing does keeps the fixture honest rather
+    # than special-casing the test. The destinations come first: an
+    # environment that has not registered one publishes nothing to it, which
+    # is default deny doing its job and not something to work around here.
+    with session_ctx() as session:
+        _ensure_destinations(session)
+        consent_on_publication(session, actor="tests", thing_id=thing_id)
+        session.commit()
+
     yield POINT_ID
 
     with session_ctx() as session:
@@ -288,6 +322,12 @@ def ngwmn_merged_well():
         sensor_id = sensor.id
 
         session.execute(text("REFRESH MATERIALIZED VIEW transducer_daily_data"))
+        session.commit()
+
+    # Consent, for the same reason as ngwmn_well above.
+    with session_ctx() as session:
+        _ensure_destinations(session)
+        consent_on_publication(session, actor="tests", thing_id=thing_id)
         session.commit()
 
     yield MERGED_POINT_ID
