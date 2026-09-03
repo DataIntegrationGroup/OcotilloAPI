@@ -73,7 +73,7 @@ dependencies = [
   "pyjwt==2.13.0",
   "pygeoapi==0.24.0",
   "pyproj==3.7.2",
-  "pyshp==2.3.1",
+  "pyshp==3.1.6",
   "python-dateutil==2.9.0.post0",
   "python-jose>=3.5.0",
   "python-multipart==0.0.32",
