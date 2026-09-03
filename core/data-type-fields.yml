@@ -33,6 +33,11 @@ thing:
     # who cannot see them cannot tell a published measurement from a draft.
     - release_status
     - data_maturity
+    # The scheduled end of an embargo, in the same category for the same
+    # reason: it says when this record changes level, not anything about the
+    # well. Nothing on the read path consults it (db/base.py), so classifying
+    # it would gate a column no projection outcome depends on.
+    - release_at
     - created_at
     - created_by_name
     - created_by_id
@@ -80,6 +85,7 @@ location:
     - id
     - release_status
     - data_maturity
+    - release_at
     - created_at
     - created_by_name
     - created_by_id
