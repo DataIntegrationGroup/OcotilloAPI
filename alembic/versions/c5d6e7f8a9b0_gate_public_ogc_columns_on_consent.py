@@ -161,8 +161,7 @@ def _projected_columns() -> str:
 def upgrade() -> None:
     """Upgrade schema."""
     op.execute(CONSENT_FUNCTION)
-    op.execute(
-        f"""
+    op.execute(f"""
         CREATE OR REPLACE VIEW ogc_water_wells AS
         SELECT
 {_projected_columns()}
@@ -170,8 +169,7 @@ def upgrade() -> None:
         LEFT JOIN LATERAL (
             SELECT public_web_consent_types(base.id) AS types
         ) consent ON TRUE;
-        """
-    )
+        """)
 
 
 def downgrade() -> None:
