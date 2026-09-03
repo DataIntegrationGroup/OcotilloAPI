@@ -196,22 +196,41 @@ def readable_data_types(
 ) -> tuple[str, ...]:
     """Which data types these principals may read, here.
 
-    Asked per type rather than answered from the grant rows directly, so scope
-    and expiry are decided by ``may`` and not restated. The types come from the
-    lexicon, so one added next year is asked about without editing this.
+    The grants and the thing's groups are loaded once and every data type is
+    decided against them in memory. Calling ``may`` per type instead reloaded
+    both on each call -- twelve queries to project one record, and a hundred
+    and twenty-five to project ten, which is the shape that makes a list
+    endpoint unusable.
+
+    The rules are still ``domain.access``'s: this loads, it does not decide.
+    The types come from the lexicon, so one added next year is asked about
+    without editing this.
     """
     from core.enums import AccessDataType
+
+    if not principals:
+        return ()
+
+    grants = load_grants(session, principals)
+    if not grants:
+        return ()
+
+    group_ids = group_ids_for_thing(session, thing_id)
+    on_date = on_date or date.today()
 
     return tuple(
         data_type.value
         for data_type in AccessDataType
-        if may(
-            session,
-            principals,
-            capability=CAPABILITY_READ,
-            data_type=data_type.value,
-            thing_id=thing_id,
-            on_date=on_date,
+        if any_grant_allows(
+            grants,
+            AccessRequest(
+                capability=CAPABILITY_READ,
+                data_type=data_type.value,
+                principals=tuple(principals),
+                thing_id=thing_id,
+                group_ids=group_ids,
+            ),
+            on_date,
         )
     )
 
