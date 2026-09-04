@@ -939,7 +939,7 @@ class TestWellInventoryErrorHandling:
             assert result.exit_code == 1
 
     def test_upload_invalid_utm_coordinates(self):
-        """Upload fails when UTM coordinates are outside New Mexico."""
+        """Upload fails when UTM coordinates are outside the expected range."""
         file_path = Path("tests/features/data/well-inventory-invalid-utm.csv")
         if file_path.exists():
             result = well_inventory_csv(file_path)
@@ -1051,6 +1051,23 @@ class TestWellInventoryHelpers:
         model.utm_northing = 3900000.0
         model.utm_zone = "12N"
         model.elevation_ft = 4500.0
+
+        location = _make_location(model)
+
+        assert location is not None
+        assert location.point is not None
+        assert location.elevation is not None
+
+    def test_make_location_utm_zone_19n(self):
+        """A zone outside NM's historical 12N/13N range still projects."""
+        from services.well_inventory_csv import _make_location
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.utm_easting = 500000.0
+        model.utm_northing = 4700000.0
+        model.utm_zone = "19N"
+        model.elevation_ft = 200.0
 
         location = _make_location(model)
 
@@ -1364,6 +1381,57 @@ class TestWellInventoryHelpers:
             # Clean up
             session.delete(test_group)
             session.commit()
+
+
+class TestWellInventoryRowUtmValidation:
+    """WellInventoryRow's UTM zone/coordinate checks, post NM-restriction removal."""
+
+    def test_lowercase_zone_is_accepted(self):
+        # utm_zone is normalized before the SRID lookup downstream; a row that
+        # used to pass here and fail case-sensitively at persist time now
+        # succeeds end to end.
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "13n"
+
+        model = WellInventoryRow(**row)
+
+        assert model.utm_zone == "13N"
+
+    def test_zone_outside_conus_range_is_rejected(self):
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "20N"
+
+        with pytest.raises(ValueError, match="Unsupported UTM zone"):
+            WellInventoryRow(**row)
+
+    def test_coordinates_far_outside_expected_range_are_rejected(self):
+        # Zone 13N easting/northing well south of the sanity range (~9N lat).
+        row = _minimal_valid_well_inventory_row()
+        row["utm_easting"] = 500000
+        row["utm_northing"] = 1000000
+
+        with pytest.raises(ValueError, match="outside the expected range"):
+            WellInventoryRow(**row)
+
+    def test_badly_scaled_coordinates_raise_out_of_range_error(self):
+        # utm.to_latlon itself rejects an easting/northing outside its valid
+        # domain (e.g. a value entered in the wrong units). This becomes
+        # reachable for more zones now that the NM-only allowlist is gone.
+        row = _minimal_valid_well_inventory_row()
+        row["utm_easting"] = 99999999
+
+        with pytest.raises(ValueError, match="easting out of range"):
+            WellInventoryRow(**row)
+
+    def test_zone_outside_nm_but_inside_conus_is_accepted(self):
+        row = _minimal_valid_well_inventory_row()
+        row["utm_zone"] = "11N"
+        row["utm_easting"] = 500000
+        row["utm_northing"] = 4000000
+
+        model = WellInventoryRow(**row)
+
+        assert model.utm_zone == "11N"
 
 
 class TestWellInventoryRowAliases:

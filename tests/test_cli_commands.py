@@ -72,10 +72,11 @@ def test_refresh_materialized_views_defaults(monkeypatch):
         "REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells",
         "REFRESH MATERIALIZED VIEW ogc_water_chemistry",
         "REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry",
+        "REFRESH MATERIALIZED VIEW ogc_internal_water_well_field_operations_stats",
         "REFRESH MATERIALIZED VIEW transducer_daily_data",
     ]
     assert commit_called["value"] is True
-    assert "Refreshed 10 materialized view(s)." in result.output
+    assert "Refreshed 11 materialized view(s)." in result.output
 
 
 def test_refresh_materialized_views_custom_and_concurrently(

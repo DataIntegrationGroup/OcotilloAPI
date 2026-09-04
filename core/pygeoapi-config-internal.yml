@@ -77,6 +77,53 @@ resources:
         table: ogc_internal_locations
         geom_field: point
 
+  water_well_field_operations:
+    type: collection
+    title: Water Well Field Operations
+    description: >-
+      One record per water well, assembled for the crews who visit them. Where
+      every other well layer answers a scientific question, this one answers an
+      operational one: whether a crew may go to a well, what they are permitted
+      to do when they get there, and whether it is overdue. It pairs the well's
+      construction, completion formation and aquifer system with its
+      measuring-point detail, current well, monitoring, open and
+      datalogger-suitability status, the standing landowner permissions for
+      water-level measurement, chemistry sampling and logger installation, every
+      sensor currently deployed at it (not just data loggers), how long it has
+      been since it was last measured and last sampled, and the landowner
+      contact and staff-written notes -- access, directions, maintenance and
+      the rest -- needed to reach it. Published on the internal mount only,
+      because it carries personal contact details for landowners and operators
+      alongside staff-written access instructions.
+    keywords:
+      [
+        water-wells,
+        field-operations,
+        landowner-contacts,
+        access-permissions,
+        monitoring-status,
+        currently-installed-equipment,
+        aquifer-system,
+        internal,
+      ]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: core.feature_provider.DescribedPostgreSQLProvider
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_internal_water_well_field_operations
+        geom_field: point
+
   latest_depth_to_water_wells:
     type: collection
     title: Latest Depth to Water (Water Wells)
@@ -109,7 +156,7 @@ resources:
 
   avg_tds_wells:
     type: collection
-    title: Average TDS (Water Wells)
+    title: Average Total Dissolved Solids (Water Wells)
     description: >-
       The arithmetic mean of all total dissolved solids (TDS) results on
       record for each water well. Treat with care: across the catalog the
@@ -141,7 +188,7 @@ resources:
 
   latest_tds_wells:
     type: collection
-    title: Latest TDS (Water Wells)
+    title: Latest Total Dissolved Solids (Water Wells)
     description: >-
       Total dissolved solids (TDS) measures how much mineral matter is
       dissolved in the water -- in plain terms, how salty it is. This layer
@@ -286,7 +333,7 @@ resources:
 
   well_water_column:
     type: collection
-    title: Well Water Column (Water Wells)
+    title: Water Column (Water Wells)
     description: >-
       One row per water well, reporting how much standing water the well
       holds: the well's depth minus its depth to water, in feet, worked out

@@ -150,7 +150,10 @@ Feature: Bulk upload well inventory from CSV via CLI
 #    And all optional date fields contain valid ISO 8601 timestamps when provided
 
     When I run the well inventory bulk upload command
-    # assumes users are entering datetimes as Mountain Time because location is restricted to New Mexico
+    # America/Denver is an explicit convention for timezone-naive datetimes, not
+    # a consequence of a geographic restriction -- imports are no longer limited
+    # to New Mexico. Submitters outside Mountain Time should include a UTC
+    # offset (see kas/docs/WELL_INVENTORY_INGESTION.md).
     Then all datetime objects are normalized to UTC
     And timezone-naive datetimes are interpreted as Mountain Time before conversion
     And timezone-aware datetimes are converted to UTC using their provided offset
@@ -324,8 +327,8 @@ Feature: Bulk upload well inventory from CSV via CLI
     And 1 well is imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has utm_easting utm_northing and utm_zone values that are not within New Mexico
-    Given my CSV file contains a row with utm_easting utm_northing and utm_zone values that are not within New Mexico
+  Scenario: Upload fails when a row has utm_easting utm_northing and utm_zone values that are outside the expected coordinate range
+    Given my CSV file contains a row with utm_easting utm_northing and utm_zone values that are outside the expected coordinate range
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the invalid UTM coordinates

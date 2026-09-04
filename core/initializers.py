@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 from fastapi_pagination import add_pagination
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
 
@@ -105,13 +105,22 @@ def init_lexicon(path: str = None) -> None:
         category_rows = [
             {"name": category["name"], "description": category["description"]}
             for category in categories
-            if category["name"] not in existing_categories
         ]
         if category_rows:
+            # Insert every category, not just the missing ones, so that a
+            # category seeded before it had a description gets backfilled.
+            # coalesce keeps a description already in the database, so an
+            # edit made through /lexicon survives re-running the seed.
+            stmt = insert(LexiconCategory).values(category_rows)
             session.execute(
-                insert(LexiconCategory)
-                .values(category_rows)
-                .on_conflict_do_nothing(index_elements=["name"])
+                stmt.on_conflict_do_update(
+                    index_elements=["name"],
+                    set_={
+                        "description": func.coalesce(
+                            LexiconCategory.description, stmt.excluded.description
+                        )
+                    },
+                )
             )
             session.commit()
             existing_categories = dict(

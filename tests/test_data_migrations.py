@@ -16,7 +16,7 @@
 import importlib
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 move_notes = importlib.import_module(
     "data_migrations.migrations.20260205_0001_move_nma_location_notes"
@@ -27,6 +27,10 @@ publish_project_areas = importlib.import_module(
 backfill_acoustic_maturity = importlib.import_module(
     "data_migrations.migrations.20260820_0001_backfill_acoustic_data_maturity"
 )
+backfill_category_descriptions = importlib.import_module(
+    "data_migrations.migrations." "20260901_0001_backfill_lexicon_category_descriptions"
+)
+from db.lexicon import LexiconCategory
 from db.location import Location
 from db.notes import Notes
 from db.group import Group
@@ -233,3 +237,58 @@ def test_backfill_acoustic_data_maturity_is_idempotent(
                 )
             )
             session.commit()
+
+
+def test_backfill_lexicon_category_descriptions_fills_null_and_keeps_edits():
+    """A NULL description is filled from the seed; an edited one survives."""
+    with session_ctx() as session:
+        # conftest seeds the lexicon, so these categories already exist.
+        session.execute(
+            update(LexiconCategory)
+            .where(LexiconCategory.name == "unit")
+            .values(description=None)
+        )
+        session.execute(
+            update(LexiconCategory)
+            .where(LexiconCategory.name == "spring_type")
+            .values(description="HAND EDITED")
+        )
+        session.commit()
+
+        try:
+            backfill_category_descriptions.run(session)
+
+            seeded = backfill_category_descriptions._seed_descriptions()
+            assert _description(session, "unit") == seeded["unit"]
+            assert _description(session, "spring_type") == "HAND EDITED"
+        finally:
+            session.execute(
+                update(LexiconCategory)
+                .where(LexiconCategory.name.in_(["unit", "spring_type"]))
+                .values(description=None)
+            )
+            session.commit()
+            backfill_category_descriptions.run(session)
+
+
+def test_backfill_lexicon_category_descriptions_is_idempotent():
+    with session_ctx() as session:
+        session.execute(
+            update(LexiconCategory)
+            .where(LexiconCategory.name == "unit")
+            .values(description=None)
+        )
+        session.commit()
+
+        backfill_category_descriptions.run(session)
+        first = _description(session, "unit")
+        backfill_category_descriptions.run(session)
+
+        assert _description(session, "unit") == first
+        assert first is not None
+
+
+def _description(session, name):
+    return session.execute(
+        select(LexiconCategory.description).where(LexiconCategory.name == name)
+    ).scalar_one()
