@@ -1281,12 +1281,23 @@ def data_migrations_run(
     force: bool = typer.Option(
         False, "--force", help="Re-run even if already applied."
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Report the planned changes without writing anything.",
+    ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
 ):
     from db.engine import session_ctx
-    from data_migrations.runner import run_migration_by_id
+    from data_migrations.runner import dry_run_migration_by_id, run_migration_by_id
+
+    if dry_run:
+        with session_ctx() as session:
+            dry_run_migration_by_id(session, migration_id)
+        typer.echo("dry run complete; nothing written")
+        return
 
     with session_ctx() as session:
         ran = run_migration_by_id(session, migration_id, force=force)
@@ -1408,25 +1419,40 @@ def refresh_materialized_views(
 @cli.command("import-project-area-boundaries")
 def import_project_area_boundaries_command(
     layer_url: str = typer.Option(
-        (
-            "https://maps.nmt.edu/server/rest/services/Water/"
-            "Water_Resources/MapServer/17"
-        ),
+        None,
         "--layer-url",
-        help="ArcGIS Feature Layer URL for project area boundaries.",
+        help=(
+            "ArcGIS Feature Layer URL for project area boundaries. "
+            "Defaults to PROJECT_AREA_LAYER_URL."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Report what would change and write nothing.",
     ),
 ):
-    from cli.project_area_import import import_project_area_boundaries
+    from cli.project_area_import import (
+        PROJECT_AREA_LAYER_URL,
+        import_project_area_boundaries,
+    )
 
-    result = import_project_area_boundaries(layer_url=layer_url)
+    result = import_project_area_boundaries(
+        layer_url=layer_url or PROJECT_AREA_LAYER_URL,
+        dry_run=dry_run,
+    )
+    if dry_run:
+        typer.echo("DRY RUN -- nothing written.")
     typer.echo(f"Fetched {result.fetched} feature(s).")
-    typer.echo(f"Matched {result.matched} group row(s).")
     typer.echo(f"Created {result.created} group(s).")
-    typer.echo(f"Updated {result.updated} group project area(s).")
-    typer.echo(f"Skipped {result.skipped} unchanged group(s).")
-    if result.unmatched_locations:
+    typer.echo(f"Updated {result.updated} group(s).")
+    typer.echo(f"Published {result.published} group(s).")
+    typer.echo(f"Unchanged {result.unchanged} group(s).")
+    typer.echo(f"Skipped {result.skipped} feature(s).")
+    for action in result.skips:
         typer.echo(
-            "Unmatched locations: " + ", ".join(result.unmatched_locations),
+            f"  skipped OBJECTID {action.object_id} "
+            f"({action.location!r}): {action.reason}",
             err=True,
         )
 
