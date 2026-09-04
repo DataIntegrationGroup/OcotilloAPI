@@ -11,9 +11,13 @@ Areas webmap, and to verify it worked.
 **Order matters: migration first, importer second.** The importer claims features by
 OBJECTID and writes to whichever group owns the mapped name, and those names are the
 post-consolidation ones. Running it second lands each boundary on the surviving row.
-Running it first is not destructive, but the project row gets its boundary while the
-Geographic Area still holds a stale copy, and the migration then reports that pair as a
-conflict and skips it.
+
+Running it first is not destructive, but it can leave work behind. The project record gets
+its boundary while the Geographic Area still holds a copy, and what the merge pass does
+next depends on whether those two polygons match. Identical, and it merges anyway, since
+that is also what a half-applied run looks like. Different, because upstream has drifted
+since the last import, and it reports a conflict and skips the pair, leaving two rows
+holding two boundaries for someone to reconcile by hand.
 
 **This migration deletes rows and there is no down path.** Data migrations have no
 `downgrade`, and both foreign keys into `group` are `ON DELETE CASCADE`. Take a backup

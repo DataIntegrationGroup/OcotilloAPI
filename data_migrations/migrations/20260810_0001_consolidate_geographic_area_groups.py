@@ -90,10 +90,14 @@ verification queries.
 
 Run this before ``oco import-project-area-boundaries``. The importer claims
 features by OBJECTID and writes to whatever group owns the mapped name, so
-running it second lands each boundary on the surviving row. Running it first is
-not destructive but is wasted work: the project row gets a fresh boundary while
-the Geographic Area still holds its stale one, and the conflict guard below
-then reports that pair and skips it.
+running it second lands each boundary on the surviving row.
+
+Running it first is not destructive, but it can leave work behind. The project
+record gets its boundary while the Geographic Area still holds a copy, and what
+the merge pass does next turns on whether those two polygons match. Identical,
+and it merges anyway, since that is also what a half-applied run looks like.
+Different, because upstream drifted since the last import, and the conflict
+guard reports the pair and skips it, leaving two rows holding two boundaries.
 """
 
 from __future__ import annotations
