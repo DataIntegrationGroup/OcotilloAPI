@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import importlib
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select, update
@@ -604,3 +605,538 @@ def test_consolidate_refuses_two_areas_claiming_one_target():
         assert target.project_area is None
 
         _delete_groups(session, first, second, target)
+
+
+def test_consolidate_publishes_draft_target_inheriting_public_area():
+    """ogc_project_areas filters on release_status, so the boundary must stay
+    public when the row carrying it is deleted."""
+    with session_ctx() as session:
+        plan_group = Group(name="Publish Basin", group_type="Monitoring Plan")
+        area_group = Group(
+            name="Publish Basin",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add_all([plan_group, area_group])
+        session.commit()
+        session.refresh(plan_group)
+        session.refresh(area_group)
+        assert plan_group.release_status == "draft"
+
+        consolidate_groups.run(session)
+
+        assert session.get(Group, area_group.id) is None
+        session.refresh(plan_group)
+        assert plan_group.project_area is not None
+        assert plan_group.release_status == "public"
+
+        _delete_groups(session, plan_group)
+
+
+def test_consolidate_does_not_demote_public_target():
+    """Consolidation only ever raises visibility, so a draft Geographic Area
+    cannot pull a published project back off the layer."""
+    with session_ctx() as session:
+        plan_group = Group(
+            name="Demote Basin",
+            group_type="Monitoring Plan",
+            release_status="public",
+        )
+        area_group = Group(
+            name="Demote Basin",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="draft",
+        )
+        session.add_all([plan_group, area_group])
+        session.commit()
+        session.refresh(plan_group)
+        session.refresh(area_group)
+
+        plan = consolidate_groups.dry_run(session)
+        merges = [
+            merge for merge in plan.merges if merge.geographic_area_id == area_group.id
+        ]
+        assert len(merges) == 1
+        assert merges[0].publishes_target is False
+
+        consolidate_groups.run(session)
+
+        session.refresh(plan_group)
+        assert plan_group.release_status == "public"
+
+        _delete_groups(session, plan_group)
+
+
+def test_consolidate_publishes_target_when_geometry_already_matches():
+    """Identical geometries copy nothing, but the public row is still deleted,
+    so the target still has to be published."""
+    with session_ctx() as session:
+        plan_group = Group(
+            name="Twin Geometry Basin",
+            group_type="Monitoring Plan",
+            project_area=AREA_A,
+        )
+        area_group = Group(
+            name="Twin Geometry Basin",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add_all([plan_group, area_group])
+        session.commit()
+        session.refresh(plan_group)
+        session.refresh(area_group)
+
+        plan = consolidate_groups.dry_run(session)
+        merges = [
+            merge for merge in plan.merges if merge.geographic_area_id == area_group.id
+        ]
+        assert len(merges) == 1
+        assert merges[0].copies_geometry is False
+        assert merges[0].publishes_target is True
+
+        consolidate_groups.run(session)
+
+        assert session.get(Group, area_group.id) is None
+        session.refresh(plan_group)
+        assert plan_group.release_status == "public"
+
+        _delete_groups(session, plan_group)
+
+
+def test_consolidate_dry_run_reports_publish_without_writing():
+    with session_ctx() as session:
+        plan_group = Group(name="Preview Publish Basin", group_type="Monitoring Plan")
+        area_group = Group(
+            name="Preview Publish Basin",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add_all([plan_group, area_group])
+        session.commit()
+        session.refresh(plan_group)
+        session.refresh(area_group)
+
+        plan = consolidate_groups.dry_run(session)
+        merges = [
+            merge for merge in plan.merges if merge.geographic_area_id == area_group.id
+        ]
+        assert len(merges) == 1
+        assert merges[0].publishes_target is True
+
+        session.refresh(plan_group)
+        assert plan_group.release_status == "draft"
+
+        _delete_groups(session, area_group, plan_group)
+
+
+# ==============================================================================
+# BDMS-1143: the duplicate-project pre-pass
+# ==============================================================================
+
+
+@contextmanager
+def _operations(*operations):
+    """Swap in a table naming only this test's rows, so nothing real is touched."""
+    original = consolidate_groups.DUPLICATE_PLAN_OPERATIONS
+    consolidate_groups.DUPLICATE_PLAN_OPERATIONS = tuple(operations)
+    try:
+        yield
+    finally:
+        consolidate_groups.DUPLICATE_PLAN_OPERATIONS = original
+
+
+def _operation(keep_name, delete_name, membership, rename_to=None, **kw):
+    return consolidate_groups.DuplicatePlanOperation(
+        keep_name=keep_name,
+        delete_name=delete_name,
+        group_type=kw.pop("group_type", "Monitoring Plan"),
+        membership=membership,
+        rename_to=rename_to,
+        expected_keep_id=kw.pop("expected_keep_id", None),
+        expected_delete_id=kw.pop("expected_delete_id", None),
+        note="test",
+    )
+
+
+def _linked_thing_ids(session, group_id):
+    return set(
+        session.scalars(
+            select(GroupThingAssociation.thing_id).where(
+                GroupThingAssociation.group_id == group_id
+            )
+        ).all()
+    )
+
+
+def test_prepass_merges_identical_plans_and_renames_survivor():
+    with session_ctx() as session:
+        keep = Group(name="Prepass Keep", group_type="Monitoring Plan")
+        drop = Group(name="Prepass Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        first = _make_thing(session, "Prepass Well One")
+        second = _make_thing(session, "Prepass Well Two")
+        for group in (keep, drop):
+            _link(session, group, first)
+            _link(session, group, second)
+
+        drop_id = drop.id
+        with _operations(
+            _operation("Prepass Keep", "Prepass Drop", "identical", "Prepass Renamed")
+        ):
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop_id) is None
+        session.refresh(keep)
+        assert keep.name == "Prepass Renamed"
+        assert _linked_thing_ids(session, keep.id) == {first.id, second.id}
+
+        _delete_groups(session, keep)
+        session.delete(session.get(Thing, first.id))
+        session.delete(session.get(Thing, second.id))
+        session.commit()
+
+
+def test_prepass_merges_subset_plan_without_duplicating_links():
+    with session_ctx() as session:
+        keep = Group(name="Subset Keep", group_type="Monitoring Plan")
+        drop = Group(name="Subset Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        shared = _make_thing(session, "Subset Well Shared")
+        extra = _make_thing(session, "Subset Well Extra")
+        _link(session, keep, shared)
+        _link(session, keep, extra)
+        _link(session, drop, shared)
+
+        drop_id = drop.id
+        with _operations(_operation("Subset Keep", "Subset Drop", "superset")):
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop_id) is None
+        links = session.scalars(
+            select(GroupThingAssociation.thing_id).where(
+                GroupThingAssociation.group_id == keep.id
+            )
+        ).all()
+        # The shared link is dropped rather than re-pointed, so it stays single.
+        assert sorted(links) == sorted([shared.id, extra.id])
+
+        _delete_groups(session, keep)
+        session.delete(session.get(Thing, shared.id))
+        session.delete(session.get(Thing, extra.id))
+        session.commit()
+
+
+def test_prepass_merges_disjoint_plans_and_unions_membership():
+    with session_ctx() as session:
+        keep = Group(name="Disjoint Keep", group_type="Monitoring Plan")
+        drop = Group(name="Disjoint Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        mine = _make_thing(session, "Disjoint Well Mine")
+        yours = _make_thing(session, "Disjoint Well Yours")
+        _link(session, keep, mine)
+        _link(session, drop, yours)
+
+        drop_id = drop.id
+        with _operations(_operation("Disjoint Keep", "Disjoint Drop", "disjoint")):
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop_id) is None
+        assert _linked_thing_ids(session, keep.id) == {mine.id, yours.id}
+
+        _delete_groups(session, keep)
+        session.delete(session.get(Thing, mine.id))
+        session.delete(session.get(Thing, yours.id))
+        session.commit()
+
+
+def test_prepass_rename_only_operation_renames_without_deleting():
+    with session_ctx() as session:
+        keep = Group(name="Rename Only", group_type="Monitoring Plan")
+        session.add(keep)
+        session.commit()
+        session.refresh(keep)
+
+        with _operations(_operation("Rename Only", None, "none", "Rename Only Reach")):
+            consolidate_groups.run(session)
+
+        session.refresh(keep)
+        assert keep.name == "Rename Only Reach"
+
+        _delete_groups(session, keep)
+
+
+def test_prepass_rename_lets_geographic_area_pass_find_its_target():
+    """The Tiffany case: the area can only match a name the pre-pass creates."""
+    with session_ctx() as session:
+        keep = Group(name="Ordering Restoration", group_type="Monitoring Plan")
+        drop = Group(name="Ordering Recovery", group_type="Monitoring Plan")
+        area = Group(
+            name="Ordering Fire",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add_all([keep, drop, area])
+        session.commit()
+        for group in (keep, drop, area):
+            session.refresh(group)
+
+        well = _make_thing(session, "Ordering Well")
+        _link(session, keep, well)
+        _link(session, drop, well)
+
+        area_id, drop_id = area.id, drop.id
+        with _operations(
+            _operation(
+                "Ordering Restoration",
+                "Ordering Recovery",
+                "identical",
+                "Ordering Fire",
+            )
+        ):
+            plan = consolidate_groups.dry_run(session)
+            assert len(plan.plan_merges) == 1
+            assert [merge.target_id for merge in plan.merges] == [keep.id]
+            # Nothing written yet.
+            session.refresh(keep)
+            assert keep.name == "Ordering Restoration"
+            assert session.get(Group, area_id) is not None
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop_id) is None
+        assert session.get(Group, area_id) is None
+        session.refresh(keep)
+        assert keep.name == "Ordering Fire"
+        assert keep.group_type == "Monitoring Plan"
+        assert keep.project_area is not None
+        assert keep.release_status == "public"
+        assert _linked_thing_ids(session, keep.id) == {well.id}
+
+        _delete_groups(session, keep)
+        session.delete(session.get(Thing, well.id))
+        session.commit()
+
+
+def test_prepass_allows_rename_when_only_a_geographic_area_holds_the_name():
+    """uq_group_name_type is on the pair, so a Geographic Area is not a clash."""
+    with session_ctx() as session:
+        keep = Group(name="Pair Keep", group_type="Monitoring Plan")
+        area = Group(
+            name="Pair Target", group_type="Geographic Area", project_area=AREA_A
+        )
+        session.add_all([keep, area])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(area)
+
+        with _operations(_operation("Pair Keep", None, "none", "Pair Target")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_merges) == 1, plan.plan_refused
+
+        _delete_groups(session, area, keep)
+
+
+def test_prepass_refuses_when_rename_target_pair_is_taken():
+    with session_ctx() as session:
+        keep = Group(name="Taken Keep", group_type="Monitoring Plan")
+        blocker = Group(name="Taken Target", group_type="Monitoring Plan")
+        session.add_all([keep, blocker])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(blocker)
+
+        with _operations(_operation("Taken Keep", None, "none", "Taken Target")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "uq_group_name_type" in plan.plan_refused[0].reason
+
+            consolidate_groups.run(session)
+
+        session.refresh(keep)
+        assert keep.name == "Taken Keep"
+
+        _delete_groups(session, blocker, keep)
+
+
+def test_prepass_refuses_when_membership_expectation_violated():
+    with session_ctx() as session:
+        keep = Group(name="Violated Keep", group_type="Monitoring Plan")
+        drop = Group(name="Violated Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        shared = _make_thing(session, "Violated Well Shared")
+        stray = _make_thing(session, "Violated Well Stray")
+        _link(session, keep, shared)
+        _link(session, drop, shared)
+        _link(session, drop, stray)  # breaks "identical"
+
+        drop_id = drop.id
+        with _operations(_operation("Violated Keep", "Violated Drop", "identical")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "identical membership" in plan.plan_refused[0].reason
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop_id) is not None
+
+        _delete_groups(session, drop, keep)
+        session.delete(session.get(Thing, shared.id))
+        session.delete(session.get(Thing, stray.id))
+        session.commit()
+
+
+def test_prepass_refuses_when_row_to_delete_has_children():
+    with session_ctx() as session:
+        keep = Group(name="Parent Keep", group_type="Monitoring Plan")
+        drop = Group(name="Parent Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        child = Group(
+            name="Parent Drop Child",
+            group_type="Monitoring Plan",
+            parent_group_id=drop.id,
+        )
+        session.add(child)
+        session.commit()
+        session.refresh(child)
+
+        with _operations(_operation("Parent Keep", "Parent Drop", "disjoint")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "child group" in plan.plan_refused[0].reason
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, child.id) is not None
+
+        _delete_groups(session, child, drop, keep)
+
+
+def test_prepass_refuses_when_row_to_delete_holds_a_boundary():
+    with session_ctx() as session:
+        keep = Group(name="Boundary Keep", group_type="Monitoring Plan")
+        drop = Group(
+            name="Boundary Drop", group_type="Monitoring Plan", project_area=AREA_B
+        )
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        with _operations(_operation("Boundary Keep", "Boundary Drop", "disjoint")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "project_area" in plan.plan_refused[0].reason
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop.id) is not None
+
+        _delete_groups(session, drop, keep)
+
+
+def test_prepass_refuses_when_the_named_rows_are_absent():
+    """Guards the production table against ever acting on an unrelated database."""
+    with session_ctx() as session:
+        with _operations(_operation("Absent Keep", "Absent Drop", "identical")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "expected exactly one group" in plan.plan_refused[0].reason
+
+
+def test_prepass_is_idempotent():
+    with session_ctx() as session:
+        keep = Group(name="Twice Keep", group_type="Monitoring Plan")
+        drop = Group(name="Twice Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        operation = _operation("Twice Keep", "Twice Drop", "disjoint", "Twice Renamed")
+        with _operations(operation):
+            consolidate_groups.run(session)
+            consolidate_groups.run(session)
+
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_already_applied) == 1
+            assert plan.plan_merges == []
+
+        session.refresh(keep)
+        assert keep.name == "Twice Renamed"
+
+        _delete_groups(session, keep)
+
+
+def test_duplicate_plan_operations_table_is_internally_consistent():
+    survivors = set()
+    deletions = set()
+    for operation in consolidate_groups.DUPLICATE_PLAN_OPERATIONS:
+        assert operation.membership in consolidate_groups._MEMBERSHIP_RULES
+        # 'none' skips the membership comparison, so it must not be paired with
+        # a deletion or the operation would merge unchecked.
+        if operation.membership == "none":
+            assert operation.delete_name is None
+        assert operation.keep_name != operation.delete_name
+        assert operation.rename_to is None or operation.rename_to
+        assert operation.note
+        survivors.add(operation.keep_name)
+        if operation.delete_name:
+            deletions.add(operation.delete_name)
+    assert not survivors & deletions
+
+
+def test_manual_matches_do_not_reference_a_renamed_group():
+    """A stale target fails soft: the boundary quietly never lands."""
+    renamed = {
+        operation.keep_name
+        for operation in consolidate_groups.DUPLICATE_PLAN_OPERATIONS
+        if operation.rename_to
+    }
+    assert not renamed & set(consolidate_groups.MANUAL_MATCHES.values())
+
+
+def test_prepass_refuses_membership_none_paired_with_a_deletion():
+    """'none' skips the comparison, so it must never guard a real merge."""
+    with session_ctx() as session:
+        keep = Group(name="Mislabelled Keep", group_type="Monitoring Plan")
+        drop = Group(name="Mislabelled Drop", group_type="Monitoring Plan")
+        session.add_all([keep, drop])
+        session.commit()
+        session.refresh(keep)
+        session.refresh(drop)
+
+        with _operations(_operation("Mislabelled Keep", "Mislabelled Drop", "none")):
+            plan = consolidate_groups.resolve_plan_operations(session)
+            assert len(plan.plan_refused) == 1
+            assert "rename-only" in plan.plan_refused[0].reason
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, drop.id) is not None
+
+        _delete_groups(session, drop, keep)

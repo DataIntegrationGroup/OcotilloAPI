@@ -14,23 +14,31 @@
 # limitations under the License.
 # ===============================================================================
 """
-BDMS-1143: merge duplicate Geographic Area groups into the project they duplicate.
+BDMS-1143: collapse duplicate groups so one real-world project is one record.
 
 A single real-world project can exist twice in the group table: once as the
 project record and once as a Geographic Area carrying the boundary geometry
-(``project_area``). This migration copies the geometry onto the project
+(``project_area``). The main pass copies the geometry onto the project
 record, re-points everything that referenced the Geographic Area, and then
 deletes the Geographic Area row so one project is one record.
 
-``group_type`` is not provenance. Two importers claim rows by name:
-``cli/project_area_import.py`` matches only ``group_type == 'Geographic Area'``
-and creates a row when it misses, while ``transfers/group_transfer.py`` matches
-by name with no type filter and only upgrades a row to ``'Monitoring Plan'``
-when one of its wells is currently monitored. Whichever ran first decides the
-surviving row's type, so a legacy NM_Aquifer project may live as a Monitoring
-Plan, as ``group_type = NULL``, or as a Geographic Area. Merge targets are
-therefore any group that is not itself a Geographic Area, and a target's
-``group_type`` is left exactly as found.
+A first pass runs before it for the duplicates that pass cannot see: two
+*project* rows that duplicate each other. Nothing about their names says which
+is which, so ``DUPLICATE_PLAN_OPERATIONS`` lists them explicitly, each entry
+reviewed by hand against well membership. That pass also renames survivors,
+which is what lets the Geographic Area pass find targets it otherwise could
+not -- ``Tiffany Fire`` is only resolvable once one of the two Tiffany plans
+carries that name.
+
+``group_type`` is not provenance. Two importers claimed rows by name:
+``cli/project_area_import.py`` used to match only
+``group_type == 'Geographic Area'`` and create a row when it missed, while
+``transfers/group_transfer.py`` matches by name with no type filter and only
+upgrades a row to ``'Monitoring Plan'`` when one of its wells is currently
+monitored. Whichever ran first decided the surviving row's type, so a legacy
+NM_Aquifer project may live as a Monitoring Plan, as ``group_type = NULL``, or
+as a Geographic Area. Merge targets are therefore any group that is not itself
+a Geographic Area, and a target's ``group_type`` is left exactly as found.
 
 That same collision makes deletion dangerous in one specific case: a Geographic
 Area whose name is a legacy project name *is* that project's row, not a
@@ -39,6 +47,14 @@ into a group -- ``group_thing_association.group_id`` and
 ``group.parent_group_id`` -- are ``ON DELETE CASCADE``, so deleting one would
 take its wells with it. Re-pointing is re-queried at apply time rather than
 replayed from the plan for the same reason.
+
+Publication travels with the boundary. ``ogc_project_areas`` serves
+``project_area IS NOT NULL AND release_status = 'public'``, so moving a polygon
+off a public Geographic Area and onto a draft project row would drop it from
+the public layer silently -- the row simply stops matching the predicate. Where
+the Geographic Area was public, the target is published to match. Never the
+reverse: a target that is already public is left alone, and nothing is
+published whose Geographic Area was not already visible.
 
 Matching is deliberately conservative: names are compared after case folding
 and collapsing non-alphanumeric runs, and nothing else. Anything that does not
@@ -51,18 +67,33 @@ because the two name sets come from different systems.
 Duplicates knowingly left out of ``MANUAL_MATCHES`` because they need a
 decision rather than a reading:
 
-* ``Tiffany Fire`` contains ``Tiffany Fire Recovery`` and ``Tiffany Fire
-  Restoration`` at 100% each, with identical well counts -- those two plans are
-  duplicates of each other, which is a different ticket.
 * ``Eastern Tularosa Basin`` and ``Northeastern Tularosa Basin`` both point at
   the single ``Tularosa Basin`` plan, and this migration merges one Geographic
   Area into one target, so someone has to say which boundary wins first.
 * ``San Juan Basin`` scores highly against ``Animas River`` only because the
   Animas is a tributary inside the basin. Containment is not identity.
 
+Everything downstream of the first pass speaks post-rename names. A
+``MANUAL_MATCHES`` value naming a group that the first pass renames would fail
+soft -- ``_resolve_target`` reports a missing target and the boundary quietly
+never lands -- so ``test_manual_matches_do_not_reference_a_renamed_group``
+pins the rule instead of relying on it being noticed.
+
 Run the dry run and review its report before applying:
 
     oco data-migrations run 20260810_0001_consolidate_geographic_area_groups --dry-run
+
+Apply this migration by id, never through ``run-all``: registry order is
+filename-alphabetical, which puts the publish migration before this one. See
+``docs/bdms-1143-geographic-area-consolidation-runbook.md`` for the
+verification queries.
+
+Run this before ``oco import-project-area-boundaries``. The importer claims
+features by OBJECTID and writes to whatever group owns the mapped name, so
+running it second lands each boundary on the surviving row. Running it first is
+not destructive but is wasted work: the project row gets a fresh boundary while
+the Geographic Area still holds its stale one, and the conflict guard below
+then reports that pair and skips it.
 """
 
 from __future__ import annotations
@@ -79,6 +110,11 @@ from transfers.logger import logger
 
 GEOGRAPHIC_AREA = "Geographic Area"
 HISTORICAL = "Historical"
+
+# The only release_status the OGC views recognise. The lexicon category also
+# contains 'published' and 'final', which no view predicate matches, so compare
+# against this literal rather than anything that merely reads as released.
+PUBLIC = "public"
 
 # Geographic Area rows that are really the legacy NM_Aquifer project's own row,
 # identified by their name appearing in the Project column of the legacy
@@ -112,9 +148,11 @@ MANUAL_MATCHES: dict[str, str] = {
     # Name-only readings: an abbreviation the target uses, a qualifier only the
     # Geographic Area carries, or the same words in a different order.
     "Southern Taos Valley": "S.Taos Valley",
-    "Southern Sacramento Mountains": "Sacramento Mtns",
-    "Sacramento Mountains Watershed Study": "SM Watershed",
+    # Post-rename name. DUPLICATE_PLAN_OPERATIONS renames 'Sacramento Mtns'
+    # before this pass runs.
+    "Southern Sacramento Mountains": "Sacramento Mountains",
     "White Sands National Monument": "White Sands",
+    "Arroyo Hondo Area": "Arroyo Hondo",
     "La Cienega Wetlands": "La Cienega",
     "Northern Taos Plateau": "Taos Plateau",
     "ABCWUA Groundwater Recharge": "ABCWUA",
@@ -132,6 +170,91 @@ MANUAL_MATCHES: dict[str, str] = {
 
 
 @dataclass(frozen=True)
+class DuplicatePlanOperation:
+    """One reviewed duplicate-project fix: fold a row away, rename, or both."""
+
+    keep_name: str
+    delete_name: str | None  # None means rename-only
+    group_type: str | None  # expected on both rows
+    membership: str  # see _MEMBERSHIP_RULES
+    rename_to: str | None
+    expected_keep_id: int | None  # advisory: reported, never a gate
+    expected_delete_id: int | None
+    note: str
+
+
+# What the two memberships must look like for the operation to be the one that
+# was reviewed. Checked against live data at apply time, because a pair that
+# has diverged since the review is a different question than the one answered.
+_MEMBERSHIP_RULES = ("identical", "superset", "disjoint", "none")
+
+# Keyed by name and group_type rather than by id: uq_group_name_type makes that
+# pair unique, and ids are NOT stable across environments -- on staging
+# 'water Level Network' is 126, on production 126 is 'Copper Replacement
+# Deposits'. Deleting by id would destroy the wrong group there. The ids below
+# are the staging values, reported when they disagree so a surprise is visible,
+# never used to select a row.
+DUPLICATE_PLAN_OPERATIONS: tuple[DuplicatePlanOperation, ...] = (
+    DuplicatePlanOperation(
+        keep_name="Tiffany Fire Restoration",
+        delete_name="Tiffany Fire Recovery",
+        group_type="Monitoring Plan",
+        membership="identical",
+        rename_to="Tiffany Fire",
+        expected_keep_id=20,
+        expected_delete_id=47,
+        note=(
+            "Both plans hold the same 277 wells. Either could survive; the "
+            "lower id is kept. The rename is what lets the Geographic Area "
+            "pass match 'Tiffany Fire' (id 119) and hand over its boundary."
+        ),
+    ),
+    DuplicatePlanOperation(
+        keep_name="Sacramento Mtns",
+        delete_name="SM Watershed",
+        group_type="Monitoring Plan",
+        membership="superset",
+        rename_to="Sacramento Mountains",
+        expected_keep_id=5,
+        expected_delete_id=8,
+        note=(
+            "'SM Watershed' holds 492 wells, all of them also in 'Sacramento "
+            "Mtns' (493), so keeping the superset loses nothing. Its boundary "
+            "arrives from Geographic Area 'Southern Sacramento Mountains'."
+        ),
+    ),
+    DuplicatePlanOperation(
+        keep_name="Water Level Network",
+        delete_name="water Level Network",
+        group_type="Monitoring Plan",
+        membership="disjoint",
+        rename_to=None,
+        expected_keep_id=39,
+        expected_delete_id=126,
+        note=(
+            "A capitalisation typo that became its own group. The two names "
+            "differ only in case, so lookup has to be case-sensitive: "
+            "_normalize casefolds and cannot tell these apart."
+        ),
+    ),
+    DuplicatePlanOperation(
+        keep_name="San Acacia",
+        delete_name=None,
+        group_type="Monitoring Plan",
+        membership="none",
+        rename_to="San Acacia Reach",
+        expected_keep_id=56,
+        expected_delete_id=None,
+        note=(
+            "Rename only, so the boundary the importer pulls for the "
+            "'San Acacia Reach' study area lands on this plan instead of "
+            "creating a second row beside it."
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True)
 class PlannedMerge:
     """One Geographic Area that will be folded into one target group."""
 
@@ -142,6 +265,7 @@ class PlannedMerge:
     target_type: str | None
     matched_by: str
     copies_geometry: bool
+    publishes_target: bool
     thing_links_moved: int
     thing_links_dropped: int
     child_groups_moved: int
@@ -157,6 +281,31 @@ class SkippedGeographicArea:
     reason: str
 
 
+@dataclass(frozen=True)
+class PlannedPlanMerge:
+    """One duplicate-project operation that will be applied."""
+
+    keep_id: int
+    keep_name: str
+    delete_id: int | None
+    delete_name: str | None
+    group_type: str | None
+    renames_to: str | None
+    membership: str
+    thing_links_moved: int
+    thing_links_dropped: int
+    id_notes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SkippedPlanOperation:
+    """A duplicate-project operation left untouched, and why."""
+
+    keep_name: str
+    delete_name: str | None
+    reason: str
+
+
 @dataclass
 class ConsolidationPlan:
     merges: list[PlannedMerge] = field(default_factory=list)
@@ -164,6 +313,9 @@ class ConsolidationPlan:
     conflicts: list[SkippedGeographicArea] = field(default_factory=list)
     ambiguous: list[SkippedGeographicArea] = field(default_factory=list)
     unmatched: list[SkippedGeographicArea] = field(default_factory=list)
+    plan_merges: list[PlannedPlanMerge] = field(default_factory=list)
+    plan_refused: list[SkippedPlanOperation] = field(default_factory=list)
+    plan_already_applied: list[SkippedPlanOperation] = field(default_factory=list)
 
 
 def _normalize(name: str | None) -> str:
@@ -176,14 +328,271 @@ def _geometries_equal(session: Session, left_id: int, right_id: int) -> bool:
     return bool(session.execute(select(func.ST_Equals(left, right))).scalar())
 
 
+def _lookup_group(session: Session, name: str, group_type: str | None) -> list:
+    """Every group with exactly this name and type. Case-sensitive by design."""
+    stmt = select(
+        Group.id,
+        Group.name,
+        Group.group_type,
+        Group.parent_group_id,
+        Group.project_area.isnot(None).label("has_area"),
+    ).where(Group.name == name)
+    stmt = stmt.where(
+        Group.group_type.is_(None)
+        if group_type is None
+        else Group.group_type == group_type
+    )
+    return session.execute(stmt).all()
+
+
+def _membership_holds(rule: str, keep: set[int], delete: set[int]) -> bool:
+    if rule == "identical":
+        return keep == delete
+    if rule == "superset":
+        return delete <= keep
+    if rule == "disjoint":
+        return not (keep & delete)
+    return True  # "none": there is no row to compare against
+
+
+def _describe_membership(keep: set[int], delete: set[int]) -> str:
+    return (
+        f"keep holds {len(keep)}, delete holds {len(delete)}, "
+        f"{len(keep & delete)} shared, {len(delete - keep)} only in delete"
+    )
+
+
+def _resolve_plan_operation(
+    session: Session, operation: DuplicatePlanOperation
+) -> tuple[PlannedPlanMerge | None, SkippedPlanOperation | None, bool]:
+    """Return (planned, refusal, already_applied). At most one is meaningful."""
+
+    def refuse(reason: str):
+        return (
+            None,
+            SkippedPlanOperation(
+                keep_name=operation.keep_name,
+                delete_name=operation.delete_name,
+                reason=reason,
+            ),
+            False,
+        )
+
+    if operation.membership not in _MEMBERSHIP_RULES:
+        return refuse(f"unknown membership rule {operation.membership!r}")
+    if operation.membership == "none" and operation.delete_name is not None:
+        # "none" means there is no second row, so _membership_holds has nothing
+        # to compare and returns True. Pairing it with a deletion would read as
+        # "no constraint" and silently skip the one check that stops a mis-merge.
+        return refuse(
+            "membership 'none' is only valid for a rename-only operation, "
+            f"but this one deletes {operation.delete_name!r}"
+        )
+    if operation.keep_name in PROTECTED_NAMES or (
+        operation.delete_name in PROTECTED_NAMES
+    ):
+        return refuse("names a protected legacy project row")
+
+    # Accept the post-rename name too, so a half-applied run resolves forward
+    # instead of refusing on work it already did.
+    survivors = _lookup_group(session, operation.keep_name, operation.group_type)
+    renamed = (
+        _lookup_group(session, operation.rename_to, operation.group_type)
+        if operation.rename_to
+        else []
+    )
+    if len(survivors) == 1 and renamed:
+        # Both names are live, so this is not a half-applied run: some other
+        # group already owns the name the survivor would take.
+        return refuse(
+            f"group {renamed[0].id} already holds "
+            f"({operation.rename_to!r}, {operation.group_type or 'NULL'}), "
+            "which uq_group_name_type forbids duplicating"
+        )
+    if len(survivors) + len(renamed) != 1:
+        return refuse(
+            f"expected exactly one group named {operation.keep_name!r} "
+            f"(or {operation.rename_to!r}) of type "
+            f"{operation.group_type or 'NULL'}, found "
+            f"{len(survivors) + len(renamed)}"
+        )
+    keep = (survivors or renamed)[0]
+    already_renamed = not survivors
+
+    to_delete = (
+        _lookup_group(session, operation.delete_name, operation.group_type)
+        if operation.delete_name
+        else []
+    )
+    if len(to_delete) > 1:
+        return refuse(
+            f"{len(to_delete)} groups named {operation.delete_name!r} of type "
+            f"{operation.group_type or 'NULL'}; refusing to pick one"
+        )
+    if operation.delete_name and not to_delete:
+        if already_renamed or operation.rename_to is None:
+            return (
+                None,
+                SkippedPlanOperation(
+                    keep_name=operation.keep_name,
+                    delete_name=operation.delete_name,
+                    reason="already applied",
+                ),
+                True,
+            )
+        return refuse(
+            f"no group named {operation.delete_name!r} of type "
+            f"{operation.group_type or 'NULL'}, but the survivor still carries "
+            "its original name, so this is not a completed run"
+        )
+    if not operation.delete_name and already_renamed:
+        return (
+            None,
+            SkippedPlanOperation(
+                keep_name=operation.keep_name,
+                delete_name=None,
+                reason="already applied",
+            ),
+            True,
+        )
+
+    delete = to_delete[0] if to_delete else None
+
+    if delete is not None:
+        if delete.has_area:
+            return refuse(
+                f"group {delete.id} ({delete.name!r}) holds a project_area; "
+                "this pass has no geometry-copy path and deleting it would "
+                "destroy the boundary"
+            )
+        children = session.execute(
+            select(Group.id).where(Group.parent_group_id == delete.id)
+        ).all()
+        if children:
+            return refuse(
+                f"group {delete.id} ({delete.name!r}) has "
+                f"{len(children)} child group(s), which ON DELETE CASCADE "
+                "would take with it"
+            )
+        if keep.parent_group_id == delete.id:
+            return refuse(
+                f"the survivor hangs off group {delete.id} ({delete.name!r}); "
+                "re-parenting is not this pass's job"
+            )
+
+    ids_by_group = _thing_ids_by_group(
+        session, [group.id for group in (keep, delete) if group is not None]
+    )
+    keep_things = ids_by_group.get(keep.id, set())
+    delete_things = ids_by_group.get(delete.id, set()) if delete else set()
+    if not _membership_holds(operation.membership, keep_things, delete_things):
+        return refuse(
+            f"expected {operation.membership} membership, but "
+            f"{_describe_membership(keep_things, delete_things)}"
+        )
+
+    if operation.rename_to and not already_renamed:
+        # The (rename_to, group_type) pair is already known to be free: the
+        # survivor lookup above refuses when both names are live.
+        #
+        # A second non-Geographic-Area group normalizing the same way would make
+        # the Geographic Area pass ambiguous the moment it looked for a target.
+        clashes = session.execute(
+            select(Group.id, Group.name).where(
+                Group.group_type.is_distinct_from(GEOGRAPHIC_AREA),
+                Group.id.not_in([group.id for group in (keep, delete) if group]),
+            )
+        ).all()
+        clashes = [
+            row
+            for row in clashes
+            if _normalize(row.name) == _normalize(operation.rename_to)
+        ]
+        if clashes:
+            return refuse(
+                f"renaming to {operation.rename_to!r} would collide with group "
+                f"{clashes[0].id} ({clashes[0].name!r}) once names are "
+                "normalized, leaving the Geographic Area pass ambiguous"
+            )
+
+    id_notes = []
+    if operation.expected_keep_id is not None and keep.id != operation.expected_keep_id:
+        id_notes.append(
+            f"survivor is id {keep.id}, review recorded "
+            f"{operation.expected_keep_id}"
+        )
+    if (
+        delete is not None
+        and operation.expected_delete_id is not None
+        and delete.id != operation.expected_delete_id
+    ):
+        id_notes.append(
+            f"deleted row is id {delete.id}, review recorded "
+            f"{operation.expected_delete_id}"
+        )
+
+    return (
+        PlannedPlanMerge(
+            keep_id=keep.id,
+            keep_name=keep.name,
+            delete_id=delete.id if delete else None,
+            delete_name=delete.name if delete else None,
+            group_type=operation.group_type,
+            renames_to=None if already_renamed else operation.rename_to,
+            membership=operation.membership,
+            thing_links_moved=len(delete_things - keep_things),
+            thing_links_dropped=len(delete_things & keep_things),
+            id_notes=tuple(id_notes),
+        ),
+        None,
+        False,
+    )
+
+
+def resolve_plan_operations(session: Session) -> ConsolidationPlan:
+    """Resolve the hand-reviewed duplicate-project pass. Writes nothing."""
+    plan = ConsolidationPlan()
+    for operation in DUPLICATE_PLAN_OPERATIONS:
+        planned, refusal, already_applied = _resolve_plan_operation(session, operation)
+        if planned is not None:
+            plan.plan_merges.append(planned)
+        elif already_applied:
+            plan.plan_already_applied.append(refusal)
+        else:
+            plan.plan_refused.append(refusal)
+    return plan
+
+
 def build_plan(session: Session) -> ConsolidationPlan:
-    """Work out every change without making any of them."""
+    """
+    Work out every change without making any of them.
+
+    The Geographic Area pass has to see the renamed world or it reports merges
+    that will not happen and misses ones that will, so the duplicate-project
+    pass is applied inside a SAVEPOINT that is always rolled back.
+    """
+    plan = resolve_plan_operations(session)
+    savepoint = session.begin_nested()
+    try:
+        for merge in plan.plan_merges:
+            _apply_plan_merge(session, merge)
+        build_geographic_area_plan(session, plan)
+    finally:
+        savepoint.rollback()
+    return plan
+
+
+def build_geographic_area_plan(
+    session: Session, plan: ConsolidationPlan
+) -> ConsolidationPlan:
+    """Fill in the Geographic Area merges for the state the session is in."""
     rows = session.execute(
         select(
             Group.id,
             Group.name,
             Group.group_type,
             Group.parent_group_id,
+            Group.release_status,
             Group.project_area.isnot(None).label("has_area"),
         ).where(
             (Group.group_type.is_(None)) | (Group.group_type != HISTORICAL),
@@ -211,7 +620,6 @@ def build_plan(session: Session) -> ConsolidationPlan:
         session, [row.id for row in geographic_areas]
     )
 
-    plan = ConsolidationPlan()
     for area in geographic_areas:
         if area.name in PROTECTED_NAMES:
             plan.protected.append(
@@ -269,6 +677,13 @@ def build_plan(session: Session) -> ConsolidationPlan:
                     "manual" if area.name in MANUAL_MATCHES else "normalized name"
                 ),
                 copies_geometry=copies_geometry,
+                # Not gated on copies_geometry: when both rows already carry the
+                # same polygon nothing is copied, but the public source row is
+                # still deleted, so a draft target would still cost the layer a
+                # row.
+                publishes_target=(
+                    area.release_status == PUBLIC and target.release_status != PUBLIC
+                ),
                 thing_links_moved=len(area_things - target_things),
                 thing_links_dropped=len(area_things & target_things),
                 child_groups_moved=len(
@@ -387,6 +802,51 @@ def _children_by_parent(
 
 
 def log_plan(plan: ConsolidationPlan) -> None:
+    log_plan_operations(plan)
+    log_geographic_area_plan(plan)
+
+
+def log_plan_operations(plan: ConsolidationPlan) -> None:
+    logger.info(
+        "Duplicate project consolidation: %s operation(s), %s refused, "
+        "%s already applied",
+        len(plan.plan_merges),
+        len(plan.plan_refused),
+        len(plan.plan_already_applied),
+    )
+    for merge in plan.plan_merges:
+        logger.info(
+            "  keep group %s (%r, type=%s)%s%s: thing links moved=%s "
+            "dropped=%s, membership=%s%s",
+            merge.keep_id,
+            merge.keep_name,
+            merge.group_type or "NULL",
+            (
+                f", delete {merge.delete_id} ({merge.delete_name!r})"
+                if merge.delete_id is not None
+                else ""
+            ),
+            f", rename to {merge.renames_to!r}" if merge.renames_to else "",
+            merge.thing_links_moved,
+            merge.thing_links_dropped,
+            merge.membership,
+            f" [{'; '.join(merge.id_notes)}]" if merge.id_notes else "",
+        )
+    for label, skipped in (
+        ("refused", plan.plan_refused),
+        ("already applied", plan.plan_already_applied),
+    ):
+        for item in skipped:
+            logger.info(
+                "  %s: %r / %r -- %s",
+                label,
+                item.keep_name,
+                item.delete_name,
+                item.reason,
+            )
+
+
+def log_geographic_area_plan(plan: ConsolidationPlan) -> None:
     logger.info(
         "Geographic Area consolidation: %s merge(s), %s protected, "
         "%s conflict(s), %s ambiguous, %s unmatched",
@@ -399,7 +859,7 @@ def log_plan(plan: ConsolidationPlan) -> None:
     for merge in plan.merges:
         logger.info(
             "  merge group %s (%r) into %s (%r, type=%s) [%s]: geometry=%s, "
-            "thing links moved=%s dropped=%s, child groups moved=%s%s",
+            "thing links moved=%s dropped=%s, child groups moved=%s%s%s",
             merge.geographic_area_id,
             merge.geographic_area_name,
             merge.target_id,
@@ -410,6 +870,7 @@ def log_plan(plan: ConsolidationPlan) -> None:
             merge.thing_links_moved,
             merge.thing_links_dropped,
             merge.child_groups_moved,
+            ", publishes the target" if merge.publishes_target else "",
             ", reparents the target" if merge.reparents_target else "",
         )
     for label, skipped in (
@@ -440,6 +901,14 @@ def _apply_merge(session: Session, merge: PlannedMerge) -> None:
             update(Group)
             .where(Group.id == target_id, Group.project_area.is_(None))
             .values(project_area=source_area)
+        )
+
+    if merge.publishes_target:
+        # The boundary was on the public layer before this merge. Deleting the
+        # row that carried it would take it off unless the row inheriting it is
+        # public too.
+        session.execute(
+            update(Group).where(Group.id == target_id).values(release_status=PUBLIC)
         )
 
     # Re-query the links rather than trusting the plan: both foreign keys
@@ -480,15 +949,61 @@ def _apply_merge(session: Session, merge: PlannedMerge) -> None:
     )
 
     session.execute(delete(Group).where(Group.id == area_id))
-    session.commit()
+
+
+def _apply_plan_merge(session: Session, merge: PlannedPlanMerge) -> None:
+    """
+    Fold one duplicate project into another and rename the survivor.
+
+    Same cascade reasoning as ``_apply_merge``: the links are re-queried here
+    rather than replayed from the plan, because anything still pointing at the
+    deleted row when it goes is destroyed with it.
+    """
+    if merge.delete_id is not None:
+        survivor_thing_ids = select(GroupThingAssociation.thing_id).where(
+            GroupThingAssociation.group_id == merge.keep_id
+        )
+        session.execute(
+            delete(GroupThingAssociation).where(
+                GroupThingAssociation.group_id == merge.delete_id,
+                GroupThingAssociation.thing_id.in_(survivor_thing_ids),
+            )
+        )
+        session.execute(
+            update(GroupThingAssociation)
+            .where(GroupThingAssociation.group_id == merge.delete_id)
+            .values(group_id=merge.keep_id)
+        )
+        # Delete before renaming, so the rename can never collide with the row
+        # on its way out.
+        session.execute(delete(Group).where(Group.id == merge.delete_id))
+
+    if merge.renames_to is not None:
+        session.execute(
+            update(Group).where(Group.id == merge.keep_id).values(name=merge.renames_to)
+        )
 
 
 def run(session: Session) -> None:
-    plan = build_plan(session)
-    log_plan(plan)
+    plan = resolve_plan_operations(session)
+    log_plan_operations(plan)
+    for plan_merge in plan.plan_merges:
+        _apply_plan_merge(session, plan_merge)
+        session.commit()
+
+    # Built only now: the Geographic Area pass matches on name, and the pass
+    # above has just changed some of them.
+    build_geographic_area_plan(session, plan)
+    log_geographic_area_plan(plan)
     for merge in plan.merges:
         _apply_merge(session, merge)
-    logger.info("Consolidated %s Geographic Area group(s)", len(plan.merges))
+        session.commit()
+
+    logger.info(
+        "Consolidated %s duplicate project(s) and %s Geographic Area group(s)",
+        len(plan.plan_merges),
+        len(plan.merges),
+    )
 
 
 def dry_run(session: Session) -> ConsolidationPlan:
@@ -500,12 +1015,18 @@ def dry_run(session: Session) -> ConsolidationPlan:
 MIGRATION = DataMigration(
     id="20260810_0001_consolidate_geographic_area_groups",
     alembic_revision="66ac1af4ba69",
-    name="Consolidate duplicate Geographic Area groups",
+    name="Consolidate duplicate groups",
     description=(
-        "BDMS-1143. Copies project_area geometry from each duplicate "
+        "BDMS-1143. First folds together the hand-reviewed pairs of project "
+        "rows that duplicate each other (Tiffany Fire, Sacramento Mtns, Water "
+        "Level Network) and renames the survivors, which is what lets the "
+        "second pass find targets such as 'Tiffany Fire' at all. Then copies "
+        "project_area geometry from each duplicate "
         "Geographic Area group onto the group that already represents the "
         "project (typed Monitoring Plan or left NULL, whichever the importers "
-        "produced), re-points linked things and child groups, then deletes "
+        "produced), re-points linked things and child groups, publishes the "
+        "target when the Geographic Area it inherits from was public so the "
+        "boundary stays on ogc_project_areas, then deletes "
         "the Geographic Area. Geographic Areas named after a legacy project "
         "are protected because they are that project's row. Targets already "
         "carrying a different project_area, ambiguous name matches, and "
