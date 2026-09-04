@@ -243,6 +243,8 @@ def revoke_api_key(
         # Expired but never revoked. Stamp it so the list stops showing it as
         # merely aged and the reason it stopped working is unambiguous.
         key.revoked_at = now
+        key.updated_by_id = owner_sub
+        key.updated_by_name = owner_name
         session.commit()
 
 
