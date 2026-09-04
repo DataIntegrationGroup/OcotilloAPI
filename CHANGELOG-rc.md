@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.4.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0-rc...v1.4.0-rc.1) (2026-09-04)
+
+
+### Features
+
+* **api_key:** user-issued API keys for /ogcapi-internal ([79f5163](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/79f5163c51a0c6e22ab74ff5f16e24766f485ae8))
+* **lexicon:** add new "Hilton Ranch" organization term ([0ccb615](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0ccb615125c179c040691bf653b7cc7c5608ced3))
+* **lexicon:** add new "Hilton Ranch" organization term ([cce2a36](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cce2a36071b5e0d7790b1a0bc7b26f8d753927e0))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([ebe9cf3](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ebe9cf30e93cc3c3e31bd098e4d4585b131f63cd))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([bea6168](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bea61682470f6ac477ebb6ae7bc04af4416ead51))
+* **ogc:** add the water well field operations internal layer ([6fd64fa](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/6fd64fa159042134754c7991e7d7cf4b5ef8c85a))
+* **ogc:** add the water well field operations internal layer ([9fb2410](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/9fb2410af513b220e5e5a82c84c7a9219b541f1e))
+* **ogc:** apply Level 1 title naming pass across layers ([#906](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/906)) ([30bac8a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/30bac8ad5f58b85f1c2a18ae26a5d0be4a7247c9))
+* **ogc:** consolidate field-operations columns ([809c899](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/809c899e042e140144596ca54d59983a01e52a78))
+* **ogc:** drop well-only columns from the springs view(BDMS-986) ([#918](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/918)) ([8a20849](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8a208494e9bf5323c6a5cd52bbd1163774614461))
+
+
+### Bug Fixes
+
+* **alembic:** linearize api_key migration onto staging head ([5211d9e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/5211d9e9694f94a9a8435ae9892f9d326e4db2dc))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([7d0d071](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7d0d071a883eeaa5d99fce0888f9eddda5444e92))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([1677f90](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1677f900c1fbafabd236d25b67ae867910231bce))
+* **ogc:** allow internal relations with no public twin ([19cd51e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/19cd51e87cfffdc1dcfc108ecd618e3c7718d2b7))
+
 ## [1.4.0-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0...v1.4.0-rc) (2026-08-28)
 
 
