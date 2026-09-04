@@ -23,7 +23,6 @@ a format and an x-ogc-role.
 import pytest
 from fastapi.testclient import TestClient
 
-from core.factory import create_api_app
 from core.dependencies import (
     admin_function,
     amp_admin_function,
@@ -39,8 +38,8 @@ GEOMETRY_PROPERTY = "geometry"
 
 
 @pytest.fixture(scope="module")
-def ogc_client():
-    app = create_api_app()
+def ogc_client(ogc_app):
+    app = ogc_app
     for dependency in (
         admin_function,
         editor_function,

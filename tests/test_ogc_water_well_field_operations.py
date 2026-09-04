@@ -40,7 +40,6 @@ from core.dependencies import (
     editor_function,
     viewer_function,
 )
-from core.factory import create_api_app
 from db import (
     AquiferSystem,
     Deployment,
@@ -89,8 +88,8 @@ def last_year(today):
 
 
 @pytest.fixture(scope="module")
-def ogc_client():
-    app = create_api_app()
+def ogc_client(ogc_app):
+    app = ogc_app
     for dependency in (
         admin_function,
         editor_function,

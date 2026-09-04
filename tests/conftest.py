@@ -68,6 +68,24 @@ def _delete_if_present(session, obj) -> None:
         session.delete(persistent)
 
 
+@pytest.fixture(scope="session")
+def ogc_app():
+    """The API application, built once for the whole session.
+
+    `create_api_app()` mounts pygeoapi, which loads two configurations and
+    builds a provider for every collection -- seven to nine seconds. Three test
+    modules each built their own, so the suite paid that three times over
+    before running a single assertion.
+
+    Shared safely because the modules that use it apply their dependency
+    overrides in their own fixture and clear them on the way out; nothing else
+    mutates the app.
+    """
+    from core.factory import create_api_app
+
+    return create_api_app()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_db():
     """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
