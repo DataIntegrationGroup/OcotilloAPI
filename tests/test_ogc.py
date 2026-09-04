@@ -831,6 +831,66 @@ def test_ogc_collections(ogc_client):
     )
 
 
+WELL_ONLY_COLUMNS = {
+    "nma_pk_welldata",
+    "well_depth",
+    "hole_depth",
+    "well_casing_diameter",
+    "well_casing_depth",
+    "well_completion_date",
+    "well_driller_name",
+    "well_construction_method",
+    "well_pump_type",
+    "well_pump_depth",
+    "formation_completion_code",
+    "nma_formation_zone",
+}
+
+# Group A layers other than water_wells and other_things (internal-only
+# catch-all, not a real feature type).
+NON_WELL_GROUP_A_LAYERS = [
+    "springs",
+    "diversions_surface_water",
+    "ephemeral_streams",
+    "lakes_ponds_reservoirs",
+    "meteorological_stations",
+    "outfalls_wastewater_return_flow",
+    "perennial_streams",
+    "rock_sample_locations",
+    "soil_gas_sample_locations",
+]
+
+
+@pytest.mark.parametrize("collection_id", NON_WELL_GROUP_A_LAYERS)
+def test_ogc_non_well_group_a_layers_drop_well_only_columns(ogc_client, collection_id):
+    generic_columns = {
+        "id",
+        "name",
+        "first_visit_date",
+        "last_observation_date",
+        "release_status",
+        "elevation",
+    }
+
+    for mount in ("/ogcapi", "/ogcapi-internal"):
+        response = ogc_client.get(f"{mount}/collections/{collection_id}/schema")
+        assert response.status_code == 200
+        payload = response.json()
+        properties = set(payload["properties"])
+
+        assert properties.isdisjoint(WELL_ONLY_COLUMNS)
+        assert generic_columns.issubset(properties)
+        # geom_field "point" is exposed as the GeoJSON "geometry" key, not
+        # as its own schema property.
+        assert "geometry" in properties
+
+
+def test_ogc_water_wells_schema_keeps_well_columns(ogc_client):
+    response = ogc_client.get("/ogcapi/collections/water_wells/schema")
+    assert response.status_code == 200
+    assert WELL_ONLY_COLUMNS.issubset(set(response.json()["properties"]))
+
+
 def test_ogc_new_collection_items_endpoints(ogc_client):
     for collection_id in (
         "latest_tds_wells",
