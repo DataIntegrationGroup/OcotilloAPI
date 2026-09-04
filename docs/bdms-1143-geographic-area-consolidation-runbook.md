@@ -19,6 +19,12 @@ conflict and skips it.
 `downgrade`, and both foreign keys into `group` are `ON DELETE CASCADE`. Take a backup
 before applying to anything you cannot rebuild.
 
+**The webmap is the source of truth for boundaries.** A group that came from the webmap and
+is no longer in the layer is deleted. A legacy group in the same position keeps its row but
+loses its boundary and drops to draft, because a legacy project is not the webmap's to
+delete. Both halves are driven by hand-reviewed name lists rather than by a general rule, so
+the migration can only touch rows somebody looked at.
+
 **Ids differ between environments.** On staging `water Level Network` is id 126; on
 production 126 is `Copper Replacement Deposits`. Every operation in the migration is keyed
 on `(name, group_type)` for that reason, and every verification query below selects on
@@ -85,11 +91,12 @@ select count(*) from ogc_actively_monitored_wells;
 select count(*) from "group" where project_area is not null and release_status = 'draft';
 ```
 
-On staging as of 2026-09-03 these were 97, 46, 56, 222 and 0.
+On staging as of 2026-09-04 these were 97, 46, 56, 222 and 0.
 
 The last one matters: it is the invariant `20260714_0001_publish_project_areas`
-established, that every group holding a boundary is public. It must still read 0 at the
-end of section 7.
+established, that every group holding a boundary is public. It must still read 0 after the
+import in section 5, and it is the one number the removal pass could plausibly break, since
+stripping a boundary and setting draft has to happen together or not at all.
 
 ---
 
@@ -99,17 +106,22 @@ end of section 7.
 POSTGRES_HOST=127.0.0.1 uv run oco data-migrations run 20260810_0001_consolidate_geographic_area_groups --dry-run
 ```
 
-Writes nothing. `dry_run_migration` rolls back in a `finally` and never touches
-`data_migration_history`, and the migration's own preview applies the first pass inside a
-SAVEPOINT that is always rolled back. That SAVEPOINT is what makes the preview honest:
-the `Tiffany Fire` merge only exists once the rename has happened, so a preview that
-skipped it would under-report.
+Writes nothing that survives. `dry_run_migration` rolls back in a `finally` and never
+touches `data_migration_history`, and the migration's own preview applies all three passes
+inside a SAVEPOINT that is always rolled back.
 
-The report comes in two blocks.
+That SAVEPOINT is what makes the preview honest, because each pass reads what the one
+before it produced. The `Tiffany Fire` merge only exists once the rename has happened, and
+the removals only know what to delete once the merges have moved their boundaries. A preview
+that skipped the writes would under-report the first and over-report the second.
 
-Everything below was measured on staging on 2026-09-03. Compare the report against it
-line by line; a difference means the data has moved since, not that the table is wrong to
-care.
+It does mean a dry run takes brief row locks on `group` and `group_thing_association`. A
+second or two, and nothing persists even if the connection drops, since Postgres aborts an
+uncommitted transaction server-side.
+
+The report comes in three blocks. Everything below was measured on staging on 2026-09-04.
+Compare the report against it line by line; a difference means the data has moved since,
+not that the table is wrong to care.
 
 **Duplicate project operations** (the hand-reviewed table, `DUPLICATE_PLAN_OPERATIONS`).
 Expect `4 operation(s), 0 refused, 0 already applied`: three merges plus one rename-only.
@@ -124,22 +136,39 @@ Expect `4 operation(s), 0 refused, 0 already applied`: three merges plus one ren
 Ids are advisory. They are the staging values and are reported only when they disagree
 with what the review recorded, because ids differ between environments.
 
-**Geographic Area merges: 15 merges, 9 protected, 0 conflicts, 0 ambiguous, 22
-unmatched**, with 14 reporting `publishes the target`. That is the 14/9/0/0/23 this
-migration produced before the first pass existed, plus `Arroyo Hondo Area` entering the
-merge list, minus `Sacramento Mountains Watershed Study` leaving it, plus `Tiffany Fire`
-becoming resolvable once the first pass renames its target.
+**Geographic Area merges: 11 merges, 9 protected, 0 conflicts, 0 ambiguous, 26
+unmatched**, with 10 reporting `publishes the target`.
 
-Three lines are worth reading closely, because they are the ones the first pass makes
-possible:
+Two lines are worth reading closely. `merge group 119 ('Tiffany Fire') into 20
+('Tiffany Fire', type=Monitoring Plan) [normalized name]` confirms the rename happened
+before the match was attempted, which is the whole reason the first pass exists.
+`Animas River` is the only merge **not** publishing its target, because both rows already
+hold identical geometry and group 27 is already public.
 
-- `merge group 119 ('Tiffany Fire') into 20 ('Tiffany Fire', type=Monitoring Plan)
-  [normalized name]` confirms the rename happened before the match was attempted.
-- `merge group 92 ('Southern Sacramento Mountains') into 5 ('Sacramento Mountains')
-  [manual]` confirms the retargeted `MANUAL_MATCHES` entry resolves post-rename.
-- `Animas River` is the only merge **not** publishing its target, because both rows
-  already hold identical geometry and group 27 is already public. That is the one
-  `ogc_project_areas` row consolidation costs.
+Every one of the 11 sources is still in the webmap. That is not a coincidence: four pairs
+were dropped from `MANUAL_MATCHES` when the layer lost their areas, so `Pueblo of Picuris`,
+`Arroyo Seco Area`, `Arroyo Hondo Area` and `Southern Sacramento Mountains` now fall through
+to the removal pass instead of donating boundaries. That is why `Sacramento Mountains`,
+`Picuris Pueblo`, `Arroyo Seco` and `Arroyo Hondo` all end up draft with no boundary.
+
+**Webmap removals: 15 deletions, 8 boundary strips, 0 refused.**
+
+The 15 deletions are webmap rows the layer no longer has. Only `Ambrosia Lake` carries any
+membership, reported as `3 thing link(s) lost`; the wells themselves survive, because
+`thing` has no foreign key to `group` and the cascade can only reach the association rows.
+
+| deleted | | |
+|---|---|---|
+| `Ambrosia Lake` | `Arroyo Chico-Torreon Wash` | `Arroyo Hondo Area` |
+| `Arroyo Seco Area` | `central and western Dona Ana County` | `De Baca County` |
+| `Grant County` | `Guadalupe County` | `Hydrogeology of Aztec Quadrangle` |
+| `Lea County` | `north-eastern Socorro County` | `Pueblo of Picuris` |
+| `Sandia and northern Manzano Mountains` | `Southern Sacramento Mountains` | `eastern Valencia County` |
+
+The 8 strips are legacy rows keeping their identity and losing a boundary nothing backs:
+`Albuquerque Basin`, `Colfax County`, `Eddy County`, `El Morro`, `Placitas`, `Quay County`,
+`San Miguel County`, `Torrance County`. Six were `protected` in the merge pass, which still
+holds: protection stops a row being deleted, not a boundary being retired.
 
 Anything in `refused`, `conflicts` or `ambiguous` is a stop, not a warning. Those are
 cases the migration will not guess at. A `refused` line quotes the actual membership it
@@ -166,21 +195,25 @@ consolidation and never republish. Run this migration by id.
 
 ## 4. Verify the consolidation
 
-Re-run the queries from step 1. The "after" column is derived from the measured dry run,
-not observed post-apply, so treat a mismatch as worth investigating rather than as proof
-the table is stale.
+Re-run the queries from step 1. The "after migration" and "after import" columns were
+measured on staging on 2026-09-04 by applying all three passes inside a savepoint and
+counting before rolling back, so they are observations rather than arithmetic. A mismatch
+is worth investigating rather than proof the table is stale.
 
-| Check | Before | After |
-|---|---|---|
-| `group` rows | 97 | **79** |
-| Geographic Area rows | 46 | **31** |
-| `ogc_project_areas` rows | 56 | **55** |
-| `ogc_actively_monitored_wells` rows | 222 | **471** |
-| groups with a boundary and `release_status = 'draft'` | 0 | **0** |
+| | before | after migration | after import |
+|---|---|---|---|
+| `group` rows | 97 | **68** | **78** |
+| typed Geographic Area | 46 | **20** | **30** |
+| `release_status = 'public'` | 56 | **32** | **44** |
+| `release_status = 'draft'` | 41 | **36** | **34** |
+| `ogc_project_areas` rows | 56 | **32** | **44** |
+| holding a boundary while draft | 0 | **0** | **0** |
+| `ogc_actively_monitored_wells` rows | 222 | **453** | **458** |
 
-97 − 3 first-pass deletions − 15 merges = 79. The single lost view row is the
-`Animas River` duplicate, whose two rows held identical geometry; that is the intended
-outcome, not a regression. Any other number means stop and investigate.
+29 rows go: 3 duplicate Monitoring Plans, 11 Geographic Areas merged away, 15 removed. Ten
+arrive from the import. Public and `ogc_project_areas` track each other exactly, both
+before and after, because a group is public precisely when it holds a boundary. If those
+two ever diverge, that is the thing to chase, not the totals.
 
 Then the row-level checks:
 
@@ -189,7 +222,7 @@ select g.name, g.group_type, g.release_status, g.project_area is not null as has
        (select count(*) from group_thing_association a where a.group_id = g.id) as things
 from "group" g
 where g.name in ('Tiffany Fire', 'Water Level Network', 'Sacramento Mountains',
-                 'San Acacia Reach', 'Arroyo Hondo',
+                 'San Acacia Reach', 'Arroyo Hondo', 'El Morro',
                  'Sacramento Mountains Watershed Study')
 order by g.name;
 ```
@@ -198,28 +231,59 @@ Expect exactly one row each:
 
 - `Tiffany Fire`, Monitoring Plan, public, has a boundary, **277** things
 - `Water Level Network`, Monitoring Plan, draft, no boundary, **487** things
-- `Sacramento Mountains`, Monitoring Plan, public, has a boundary, **493** things
-- `San Acacia Reach`, Monitoring Plan, draft, no boundary yet, 47 things
-- `Arroyo Hondo`, public, has a boundary, 54 things
+- `Sacramento Mountains`, Monitoring Plan, **draft, no boundary**, **493** things. The area
+  that would have supplied one is gone from the webmap.
+- `San Acacia Reach`, Monitoring Plan, draft with no boundary until the import, then public
+  with one, 47 things
+- `Arroyo Hondo`, draft, no boundary, 54 things
+- `El Morro`, Monitoring Plan, **draft, no boundary**, 18 things. The row survives the
+  strip; only the boundary goes.
 - `Sacramento Mountains Watershed Study`, still a public Geographic Area, untouched
 
-And that the old names are gone:
+And that the deleted names are gone. This should return no rows:
 
 ```sql
 select name from "group"
 where name in ('Tiffany Fire Recovery', 'Tiffany Fire Restoration', 'SM Watershed',
-               'water Level Network', 'Sacramento Mtns', 'San Acacia');
+               'water Level Network', 'Sacramento Mtns', 'San Acacia',
+               'Ambrosia Lake', 'Grant County', 'Southern Sacramento Mountains');
 ```
+
+`Ambrosia Lake` is the only deleted group holding wells, and they are meant to survive it.
+Capture its membership **before** applying, because afterwards there is nothing left to
+join through:
+
+```sql
+select thing_id from group_thing_association
+where group_id = (select id from "group" where name = 'Ambrosia Lake');
+```
+
+Then confirm those three things still exist and simply have no group:
+
+```sql
+select t.id, t.name,
+       (select count(*) from group_thing_association a where a.thing_id = t.id) as groups
+from thing t
+where t.id in (<the three ids>);
+```
+
+Three rows, `groups` = 0. On production this check is moot: `Ambrosia Lake` has no members
+there.
 
 ### About the wells layer jump
 
-222 to 471 is expected. `ogc_actively_monitored_wells` inner-joins group memberships
-filtered to `release_status = 'public'`, so a well only appears if it belongs to at least
-one public group; publishing 14 merge targets brings their wells in. This is not new
-exposure. The wells come from `ogc_water_well_summary`, which is transitively restricted
-to public things (its `wl_agg` join requires water-level observations, and that CTE
-filters `thing.release_status = 'public'`), so what changes is that already-published
-wells now show their project membership. Record the before and after counts anyway.
+222 to 453 is expected, and it is a net of two opposing effects.
+`ogc_actively_monitored_wells` inner-joins group memberships filtered to
+`release_status = 'public'`, so a well appears only if it belongs to at least one public
+group. Publishing 10 merge targets brings their wells in. The removals push the other way,
+deleting 15 public groups and demoting 8 more to draft, which takes their memberships back
+out. The import then adds 5 more by publishing `Carrizozo` and `San Acacia Reach`.
+
+None of this is new exposure. The wells come from `ogc_water_well_summary`, which is
+transitively restricted to public things: its `wl_agg` join requires water-level
+observations, and that CTE filters `thing.release_status = 'public'`. Verified on staging,
+the view holds zero non-public things. So what changes is that already-published wells now
+show their project membership. Record the before and after counts anyway.
 
 No view needs refreshing. Every relation that reads `group` or
 `group_thing_association` is a plain view: `ogc_project_areas`,
@@ -265,8 +329,13 @@ Then apply:
 POSTGRES_HOST=127.0.0.1 uv run oco import-project-area-boundaries
 ```
 
-Final state: `ogc_project_areas` 67, `ogc_actively_monitored_wells` 476, Geographic Areas
-41, `group` rows 89, and groups with a boundary and `release_status = 'draft'` back to 0.
+Final state: `group` rows 78, Geographic Areas 30, `ogc_project_areas` 44,
+`ogc_actively_monitored_wells` 458, and groups with a boundary and
+`release_status = 'draft'` still 0.
+
+The removals do not change what the importer does. All 34 mapped names that already exist
+own a live feature, which is precisely why none of them was removed, so the same 32 come back
+unchanged and the same 2 are updated.
 
 ---
 
@@ -300,3 +369,33 @@ Two consequences worth knowing:
   from "group"
   where project_area is not null and release_status is distinct from 'public';
   ```
+
+  After the removals this is sharper than it used to be. Eight rows were deliberately left
+  draft with their boundary removed, so if one somehow keeps a boundary, `--force` would
+  republish exactly what the removal pass just retired.
+
+---
+
+## 7. What the removal pass will and will not touch
+
+Removals are driven by two hand-reviewed name lists in the migration, not by a general
+rule, and that is deliberate.
+
+`WEBMAP_ORIGIN_NAMES` holds the 37 groups that came from the webmap, taken from the
+`group name origin` column of `before-after-STAGING-kas2`. Nothing in the `group` table
+records provenance, so this cannot be derived. `STALE_BOUNDARY_NAMES` holds the 8 legacy
+rows whose boundary is retired.
+
+The tempting version is a rule: *strip any boundary from any group that owns no live
+feature*. It describes the same 8 rows today. It also describes any group somebody creates
+between now and the day this runs on production, and a one-time migration should not be
+able to retire a boundary nobody reviewed. If the layer changes again, the lists get
+re-derived from a fresh sheet and re-reviewed. That is the intended maintenance path.
+
+Two consequences:
+
+- A webmap area added and then removed *after* this review will not be removed. It is not in
+  the list, so the migration leaves it, and someone has to notice.
+- Running this against a database whose group names differ from staging's will remove less
+  than expected rather than more. Under-reaching is the safe direction, and the dry run
+  shows the shortfall as missing lines rather than as an error.
