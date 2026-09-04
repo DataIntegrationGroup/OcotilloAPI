@@ -104,6 +104,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from cli.project_area_import import PROJECT_AREA_MAPPINGS
 from data_migrations.base import DataMigration
 from db.group import Group, GroupThingAssociation
 from transfers.logger import logger
@@ -115,6 +116,7 @@ HISTORICAL = "Historical"
 # contains 'published' and 'final', which no view predicate matches, so compare
 # against this literal rather than anything that merely reads as released.
 PUBLIC = "public"
+DRAFT = "draft"
 
 # Geographic Area rows that are really the legacy NM_Aquifer project's own row,
 # identified by their name appearing in the Project column of the legacy
@@ -148,11 +150,7 @@ MANUAL_MATCHES: dict[str, str] = {
     # Name-only readings: an abbreviation the target uses, a qualifier only the
     # Geographic Area carries, or the same words in a different order.
     "Southern Taos Valley": "S.Taos Valley",
-    # Post-rename name. DUPLICATE_PLAN_OPERATIONS renames 'Sacramento Mtns'
-    # before this pass runs.
-    "Southern Sacramento Mountains": "Sacramento Mountains",
     "White Sands National Monument": "White Sands",
-    "Arroyo Hondo Area": "Arroyo Hondo",
     "La Cienega Wetlands": "La Cienega",
     "Northern Taos Plateau": "Taos Plateau",
     "ABCWUA Groundwater Recharge": "ABCWUA",
@@ -162,11 +160,88 @@ MANUAL_MATCHES: dict[str, str] = {
     # the legacy project's wells inside the boundary and the share of the
     # boundary's wells belonging to that project; both must be high, or the
     # pair is containment rather than identity.
-    "Pueblo of Picuris": "Picuris Pueblo",  # 100% / 98%
-    "Arroyo Seco Area": "Arroyo Seco",  # 98.6% / 86.4%
     "El Camino Real and Spaceport America": "Jornada Del Muerto",  # 83.8% / 96.6%
     "Questa Area": "Questa Red River",  # 81.8% / 77.1%
 }
+
+# Four pairs were removed from MANUAL_MATCHES when the webmap became the source
+# of truth: 'Pueblo of Picuris', 'Arroyo Seco Area', 'Arroyo Hondo Area' and
+# 'Southern Sacramento Mountains'. Each was a defensible pairing on well
+# membership, but none of the four exists in the layer any more, so there is no
+# longer a live boundary to donate. They fall through this pass unmatched and
+# the removal pass deletes them, which is why 'Sacramento Mountains' ends up
+# boundary at all.
+
+# Group names that came from the webmap, taken from the 'group name origin'
+# column of before-after-STAGING-kas2 in groups_and_well_counts.xlsx. Hand
+# authored: nothing in the group table records where a row came from, and the
+# distinction decides whether a stale row is deleted or merely stripped.
+#
+# A name here is a claim about provenance, not about the current layer. Whether
+# a group still has a live counterpart is answered by PROJECT_AREA_MAPPINGS.
+WEBMAP_ORIGIN_NAMES: frozenset[str] = frozenset(
+    {
+        "ABCWUA Groundwater Recharge",
+        "Ambrosia Lake",
+        "Animas River",
+        "Arroyo Chico-Torreon Wash",
+        "Arroyo Hondo Area",
+        "Arroyo Seco Area",
+        "Central High Plains",
+        "Curry Roosevelt Quay Region",
+        "De Baca County",
+        "El Camino Real and Spaceport America",
+        # The spreadsheet drops the tilde; the group row does not.
+        "Española Basin and Santa Fe Area",
+        "Estancia Basin",
+        "Grant County",
+        "Guadalupe County",
+        "High Plains Aquifer Monitoring",
+        "Hydrogeology of Aztec Quadrangle",
+        "La Cienega Wetlands",
+        "Lea County",
+        "Northeastern Tularosa Basin",
+        "Northern Taos Plateau",
+        "Pecos Slope",
+        "Plains of San Agustin",
+        "Pueblo of Picuris",
+        "Questa Area",
+        "Roswell Artesian Basin",
+        "Sacramento Mountains Watershed Study",
+        "San Juan Basin",
+        "Sandia and northern Manzano Mountains",
+        "Snowy River",
+        "Southern Sacramento Mountains",
+        "Southern Taos Valley",
+        "Springs of the Rio Grande Gorge",
+        "Tiffany Fire",
+        "White Sands National Monument",
+        "central and western Dona Ana County",
+        "eastern Valencia County",
+        "north-eastern Socorro County",
+    }
+)
+
+# Groups that are not from the webmap, hold a boundary, and have no counterpart
+# left in the layer. The row stays, because a legacy project is not the
+# webmap's to delete, but the boundary goes and the row drops back to draft.
+#
+# Listed by name rather than derived from "holds a boundary and owns no
+# feature", which describes the same eight rows today but would also describe
+# any group somebody adds between now and the day this runs. A one-time
+# migration should not be able to strip a boundary nobody reviewed.
+STALE_BOUNDARY_NAMES: frozenset[str] = frozenset(
+    {
+        "Albuquerque Basin",
+        "Colfax County",
+        "Eddy County",
+        "El Morro",
+        "Placitas",
+        "Quay County",
+        "San Miguel County",
+        "Torrance County",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -306,6 +381,27 @@ class SkippedPlanOperation:
     reason: str
 
 
+@dataclass(frozen=True)
+class PlannedRemoval:
+    """One stale row the webmap no longer backs."""
+
+    group_id: int
+    group_name: str
+    group_type: str | None
+    action: str  # "delete" | "strip"
+    thing_links_lost: int
+    was_public: bool
+
+
+@dataclass(frozen=True)
+class SkippedRemoval:
+    """A stale row the removal pass refuses to touch, and why."""
+
+    group_id: int
+    group_name: str
+    reason: str
+
+
 @dataclass
 class ConsolidationPlan:
     merges: list[PlannedMerge] = field(default_factory=list)
@@ -316,6 +412,8 @@ class ConsolidationPlan:
     plan_merges: list[PlannedPlanMerge] = field(default_factory=list)
     plan_refused: list[SkippedPlanOperation] = field(default_factory=list)
     plan_already_applied: list[SkippedPlanOperation] = field(default_factory=list)
+    removals: list[PlannedRemoval] = field(default_factory=list)
+    removals_refused: list[SkippedRemoval] = field(default_factory=list)
 
 
 def _normalize(name: str | None) -> str:
@@ -563,13 +661,103 @@ def resolve_plan_operations(session: Session) -> ConsolidationPlan:
     return plan
 
 
+def build_webmap_removals(
+    session: Session, plan: ConsolidationPlan
+) -> ConsolidationPlan:
+    """
+    Plan the removal of rows the webmap no longer backs.
+
+    Must run last. ``PROJECT_AREA_MAPPINGS`` records who owns each feature
+    *after* consolidation, so a Geographic Area that is about to donate its
+    boundary owns nothing by this measure. Removed first it would be deleted
+    and its polygon destroyed; removed last it is already gone, having handed the
+    polygon to the row the map names.
+    """
+    owners = {mapping.group_name for mapping in PROJECT_AREA_MAPPINGS.values()}
+    rows = session.execute(
+        select(
+            Group.id,
+            Group.name,
+            Group.group_type,
+            Group.release_status,
+            Group.project_area.isnot(None).label("has_area"),
+        ).where(
+            Group.name.in_(sorted(WEBMAP_ORIGIN_NAMES | STALE_BOUNDARY_NAMES)),
+        )
+    ).all()
+
+    candidates = [row for row in rows if row.name not in owners]
+    thing_ids_by_group = _thing_ids_by_group(session, [row.id for row in candidates])
+    children_by_parent = _children_by_parent(session, [row.id for row in candidates])
+
+    for row in candidates:
+        if row.name in WEBMAP_ORIGIN_NAMES:
+            children = children_by_parent.get(row.id, [])
+            if children:
+                plan.removals_refused.append(
+                    SkippedRemoval(
+                        group_id=row.id,
+                        group_name=row.name,
+                        reason=(
+                            f"has {len(children)} child group(s), which "
+                            "ON DELETE CASCADE would take with it"
+                        ),
+                    )
+                )
+                continue
+            plan.removals.append(
+                PlannedRemoval(
+                    group_id=row.id,
+                    group_name=row.name,
+                    group_type=row.group_type,
+                    action="delete",
+                    thing_links_lost=len(thing_ids_by_group.get(row.id, set())),
+                    was_public=row.release_status == PUBLIC,
+                )
+            )
+            continue
+
+        if not row.has_area:
+            # Already stripped, or never held one. Nothing to do, and saying so
+            # keeps a re-run quiet rather than reporting phantom work.
+            continue
+
+        plan.removals.append(
+            PlannedRemoval(
+                group_id=row.id,
+                group_name=row.name,
+                group_type=row.group_type,
+                action="strip",
+                thing_links_lost=0,
+                was_public=row.release_status == PUBLIC,
+            )
+        )
+
+    return plan
+
+
+def _apply_removal(session: Session, removal: PlannedRemoval) -> None:
+    if removal.action == "delete":
+        # Only the association rows go. `thing` has no foreign key to `group`,
+        # so the wells survive and are simply left without this membership.
+        session.execute(delete(Group).where(Group.id == removal.group_id))
+        return
+
+    session.execute(
+        update(Group)
+        .where(Group.id == removal.group_id)
+        .values(project_area=None, release_status=DRAFT)
+    )
+
+
 def build_plan(session: Session) -> ConsolidationPlan:
     """
     Work out every change without making any of them.
 
-    The Geographic Area pass has to see the renamed world or it reports merges
-    that will not happen and misses ones that will, so the duplicate-project
-    pass is applied inside a SAVEPOINT that is always rolled back.
+    Each pass reads the state the one before it produced, so the preview has to
+    apply them for real and then throw the work away. A SAVEPOINT does that: the
+    Geographic Area pass sees the renamed world, the removals see the post-merge
+    world, and nothing is written.
     """
     plan = resolve_plan_operations(session)
     savepoint = session.begin_nested()
@@ -577,6 +765,9 @@ def build_plan(session: Session) -> ConsolidationPlan:
         for merge in plan.plan_merges:
             _apply_plan_merge(session, merge)
         build_geographic_area_plan(session, plan)
+        for merge in plan.merges:
+            _apply_merge(session, merge)
+        build_webmap_removals(session, plan)
     finally:
         savepoint.rollback()
     return plan
@@ -804,6 +995,44 @@ def _children_by_parent(
 def log_plan(plan: ConsolidationPlan) -> None:
     log_plan_operations(plan)
     log_geographic_area_plan(plan)
+    log_webmap_removals(plan)
+
+
+def log_webmap_removals(plan: ConsolidationPlan) -> None:
+    deletes = [item for item in plan.removals if item.action == "delete"]
+    strips = [item for item in plan.removals if item.action == "strip"]
+    logger.info(
+        "Webmap removals: %s deletion(s), %s boundary strip(s), %s refused",
+        len(deletes),
+        len(strips),
+        len(plan.removals_refused),
+    )
+    for removal in deletes:
+        logger.info(
+            "  delete group %s (%r, type=%s): absent from the webmap, "
+            "%s thing link(s) lost%s",
+            removal.group_id,
+            removal.group_name,
+            removal.group_type or "NULL",
+            removal.thing_links_lost,
+            ", was public" if removal.was_public else "",
+        )
+    for removal in strips:
+        logger.info(
+            "  strip group %s (%r, type=%s): keeps the row, loses the boundary "
+            "no live feature backs%s",
+            removal.group_id,
+            removal.group_name,
+            removal.group_type or "NULL",
+            ", and is set draft" if removal.was_public else "",
+        )
+    for item in plan.removals_refused:
+        logger.info(
+            "  refused: group %s (%r) left untouched -- %s",
+            item.group_id,
+            item.group_name,
+            item.reason,
+        )
 
 
 def log_plan_operations(plan: ConsolidationPlan) -> None:
@@ -999,10 +1228,19 @@ def run(session: Session) -> None:
         _apply_merge(session, merge)
         session.commit()
 
+    # Built last of all, so every boundary that was going to move has moved.
+    build_webmap_removals(session, plan)
+    log_webmap_removals(plan)
+    for removal in plan.removals:
+        _apply_removal(session, removal)
+        session.commit()
+
     logger.info(
-        "Consolidated %s duplicate project(s) and %s Geographic Area group(s)",
+        "Consolidated %s duplicate project(s) and %s Geographic Area group(s), "
+        "then removed %s stale row(s)",
         len(plan.plan_merges),
         len(plan.merges),
+        len(plan.removals),
     )
 
 

@@ -1140,3 +1140,272 @@ def test_prepass_refuses_membership_none_paired_with_a_deletion():
         assert session.get(Group, drop.id) is not None
 
         _delete_groups(session, drop, keep)
+
+
+# ==============================================================================
+# BDMS-1143: webmap removals
+# ==============================================================================
+
+
+@contextmanager
+def _webmap(origin=(), stale=(), owners=()):
+    """
+    Point the removal pass at this test's rows only.
+
+    PROJECT_AREA_MAPPINGS is patched on the migration module, not on
+    cli.project_area_import, because the `from ... import` binding was made at
+    import time and does not follow the source module.
+    """
+    from cli.project_area_import import ProjectAreaMapping
+
+    saved = (
+        consolidate_groups.WEBMAP_ORIGIN_NAMES,
+        consolidate_groups.STALE_BOUNDARY_NAMES,
+        consolidate_groups.PROJECT_AREA_MAPPINGS,
+    )
+    consolidate_groups.WEBMAP_ORIGIN_NAMES = frozenset(origin)
+    consolidate_groups.STALE_BOUNDARY_NAMES = frozenset(stale)
+    consolidate_groups.PROJECT_AREA_MAPPINGS = {
+        index: ProjectAreaMapping(name) for index, name in enumerate(owners, start=1)
+    }
+    try:
+        yield
+    finally:
+        (
+            consolidate_groups.WEBMAP_ORIGIN_NAMES,
+            consolidate_groups.STALE_BOUNDARY_NAMES,
+            consolidate_groups.PROJECT_AREA_MAPPINGS,
+        ) = saved
+
+
+def test_removal_deletes_a_webmap_area_the_layer_no_longer_has():
+    with session_ctx() as session:
+        area = Group(
+            name="Removal Gone Area",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add(area)
+        session.commit()
+        session.refresh(area)
+
+        well = _make_thing(session, "Removal Gone Well")
+        _link(session, area, well)
+        area_id = area.id
+
+        with _webmap(origin={"Removal Gone Area"}):
+            consolidate_groups.run(session)
+
+        assert session.get(Group, area_id) is None
+        # The wells outlive the group. thing has no FK to group, so the cascade
+        # can only reach the association rows.
+        assert session.get(Thing, well.id) is not None
+        assert _linked_thing_ids(session, area_id) == set()
+
+        session.delete(session.get(Thing, well.id))
+        session.commit()
+
+
+def test_removal_strips_a_legacy_boundary_and_leaves_the_row():
+    with session_ctx() as session:
+        legacy = Group(
+            name="Removal Legacy Project",
+            group_type="Monitoring Plan",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add(legacy)
+        session.commit()
+        session.refresh(legacy)
+
+        well = _make_thing(session, "Removal Legacy Well")
+        _link(session, legacy, well)
+
+        with _webmap(stale={"Removal Legacy Project"}):
+            consolidate_groups.run(session)
+
+        session.refresh(legacy)
+        assert legacy.project_area is None
+        assert legacy.release_status == "draft"
+        assert _linked_thing_ids(session, legacy.id) == {well.id}
+
+        _delete_groups(session, legacy)
+        session.delete(session.get(Thing, well.id))
+        session.commit()
+
+
+def test_removal_leaves_a_group_that_still_owns_a_live_feature():
+    with session_ctx() as session:
+        kept = Group(
+            name="Removal Live Area",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add(kept)
+        session.commit()
+        session.refresh(kept)
+
+        with _webmap(origin={"Removal Live Area"}, owners={"Removal Live Area"}):
+            plan = consolidate_groups.dry_run(session)
+            assert [s for s in plan.removals if s.group_id == kept.id] == []
+            consolidate_groups.run(session)
+
+        session.refresh(kept)
+        assert kept.project_area is not None
+        assert kept.release_status == "public"
+
+        _delete_groups(session, kept)
+
+
+def test_removal_runs_after_the_merge_so_the_boundary_is_donated_first():
+    """
+    The ordering the whole design turns on.
+
+    The area is webmap-origin and owns no feature, so a removal pass that ran first
+    would delete it and destroy the polygon. Running last, it finds the area
+    already merged away and the polygon on the project record.
+    """
+    with session_ctx() as session:
+        target = Group(name="Removal Order Target", group_type="Monitoring Plan")
+        area = Group(
+            name="Removal Order Area",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add_all([target, area])
+        session.commit()
+        session.refresh(target)
+        session.refresh(area)
+        area_id = area.id
+
+        consolidate_groups.MANUAL_MATCHES["Removal Order Area"] = "Removal Order Target"
+        try:
+            with _webmap(
+                origin={"Removal Order Area"}, owners={"Removal Order Target"}
+            ):
+                consolidate_groups.run(session)
+        finally:
+            consolidate_groups.MANUAL_MATCHES.pop("Removal Order Area", None)
+
+        assert session.get(Group, area_id) is None
+        session.refresh(target)
+        assert target.project_area is not None
+        assert target.release_status == "public"
+
+        _delete_groups(session, target)
+
+
+def test_removal_refuses_to_delete_a_group_with_children():
+    with session_ctx() as session:
+        parent = Group(
+            name="Removal Parent Area",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add(parent)
+        session.commit()
+        session.refresh(parent)
+
+        child = Group(
+            name="Removal Parent Child",
+            group_type="Monitoring Plan",
+            parent_group_id=parent.id,
+        )
+        session.add(child)
+        session.commit()
+        session.refresh(child)
+
+        with _webmap(origin={"Removal Parent Area"}):
+            plan = consolidate_groups.dry_run(session)
+            refusals = [r for r in plan.removals_refused if r.group_id == parent.id]
+            assert len(refusals) == 1
+            assert "child group" in refusals[0].reason
+
+            consolidate_groups.run(session)
+
+        assert session.get(Group, parent.id) is not None
+        assert session.get(Group, child.id) is not None
+
+        _delete_groups(session, child, parent)
+
+
+def test_removal_is_idempotent():
+    with session_ctx() as session:
+        legacy = Group(
+            name="Removal Twice Project",
+            group_type="Monitoring Plan",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        session.add(legacy)
+        session.commit()
+        session.refresh(legacy)
+
+        with _webmap(stale={"Removal Twice Project"}):
+            consolidate_groups.run(session)
+            consolidate_groups.run(session)
+
+            plan = consolidate_groups.dry_run(session)
+            assert [s for s in plan.removals if s.group_id == legacy.id] == []
+
+        session.refresh(legacy)
+        assert legacy.project_area is None
+        assert legacy.release_status == "draft"
+
+        _delete_groups(session, legacy)
+
+
+def test_removal_dry_run_reports_both_actions_without_writing():
+    with session_ctx() as session:
+        area = Group(
+            name="Removal Preview Area",
+            group_type="Geographic Area",
+            project_area=AREA_A,
+            release_status="public",
+        )
+        legacy = Group(
+            name="Removal Preview Project",
+            group_type="Monitoring Plan",
+            project_area=AREA_B,
+            release_status="public",
+        )
+        session.add_all([area, legacy])
+        session.commit()
+        session.refresh(area)
+        session.refresh(legacy)
+
+        with _webmap(
+            origin={"Removal Preview Area"}, stale={"Removal Preview Project"}
+        ):
+            plan = consolidate_groups.dry_run(session)
+
+        actions = {s.group_name: s.action for s in plan.removals}
+        assert actions == {
+            "Removal Preview Area": "delete",
+            "Removal Preview Project": "strip",
+        }
+
+        assert session.get(Group, area.id) is not None
+        session.refresh(legacy)
+        assert legacy.project_area is not None
+        assert legacy.release_status == "public"
+
+        _delete_groups(session, area, legacy)
+
+
+def test_manual_matches_are_all_webmap_origin():
+    """A merge donates a boundary, so its source must be a webmap area."""
+    assert set(consolidate_groups.MANUAL_MATCHES) <= (
+        consolidate_groups.WEBMAP_ORIGIN_NAMES
+    )
+
+
+def test_removal_name_lists_do_not_overlap():
+    """A name cannot be both deleted and stripped."""
+    assert not (
+        consolidate_groups.WEBMAP_ORIGIN_NAMES & consolidate_groups.STALE_BOUNDARY_NAMES
+    )
