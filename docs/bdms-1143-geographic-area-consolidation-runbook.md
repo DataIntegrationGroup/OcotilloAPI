@@ -42,11 +42,37 @@ name. Do not translate these steps into id-based SQL.
 
 ### Take a snapshot
 
-`gcloud sql backups create` is the fuller option, but it needs an authenticated
-`gcloud` session. Without one, a two-table dump is still a complete restore source for
-everything in this runbook: only `group_thing_association.group_id` and
-`group.parent_group_id` reference `group.id`, and neither the migration nor the importer
-writes anywhere else. Both tables are small, and neither carries PII.
+The instance already has daily automated backups and point-in-time recovery, so the
+question is not whether a safety net exists. It is how quickly you can undo *this* change
+without disturbing anything else.
+
+**Record the UTC timestamp immediately before you apply.** PITR can rewind to any moment,
+but only if somebody knows which moment to ask for, and "sometime Thursday afternoon" is
+not a recovery plan.
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ | tee applied-at.txt
+```
+
+Then take the targeted dump below anyway. The three options do different jobs:
+
+| | covers | cost to restore |
+|---|---|---|
+| two-table dump | `group`, `group_thing_association` | truncate and reload, seconds |
+| PITR | everything, to the second | clones to a **new** instance, then extract |
+| daily backup | everything, up to 24h stale | full instance restore |
+
+PITR and the daily backup are instance-wide, and Cloud SQL restores them to a new instance
+rather than in place. Undoing eight bad boundary strips that way means cloning, extracting
+two tables, and copying them back, or rolling back everything anyone else did to
+`ocotillo-staging` in the meantime. The dump makes the likely failure, "the removals did
+the wrong thing to a handful of rows", a two-minute fix.
+
+A two-table dump is a complete restore source for everything in this runbook: only
+`group_thing_association.group_id` and `group.parent_group_id` reference `group.id`, and
+neither the migration nor the importer writes anywhere else. Both tables are small, and
+neither carries PII. Reload order matters, since `group_thing_association` has a foreign
+key to `thing`.
 
 ```bash
 set -a; source .env; set +a
