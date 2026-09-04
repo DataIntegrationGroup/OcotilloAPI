@@ -138,13 +138,60 @@ def test_refresh_materialized_views_rejects_invalid_identifier():
     assert "Invalid SQL identifier" in result.output
 
 
-def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
-    class FakeGroup:
-        def __init__(self):
-            self.project_area = None
+class _FakeAreaGroup:
+    """Stands in for a Group row without needing the database."""
 
-    fake_group = FakeGroup()
+    def __init__(self, group_id=1, release_status="public", project_area=None):
+        self.id = group_id
+        self.release_status = release_status
+        self.project_area = project_area
 
+
+class _FakeAreaSession:
+    """Answers the one name lookup per feature that the planner makes."""
+
+    def __init__(self, lookups):
+        self._lookups = list(lookups)
+        self.commit_called = False
+        self.rollback_called = False
+        self.added = []
+
+    def scalars(self, stmt):
+        groups = self._lookups.pop(0) if self._lookups else []
+        return SimpleNamespace(all=lambda: groups)
+
+    def get(self, model, item_id):
+        return self.by_id[item_id]
+
+    def add(self, obj):
+        self.added.append(obj)
+
+    def commit(self):
+        self.commit_called = True
+
+    def rollback(self):
+        self.rollback_called = True
+
+
+def _area_feature(object_id, location, x=-106.9, y=33.9):
+    return {
+        "properties": {"OBJECTID": object_id, "location": location},
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [x, y],
+                    [x + 0.2, y],
+                    [x + 0.2, y + 0.2],
+                    [x, y + 0.2],
+                    [x, y],
+                ]
+            ],
+        },
+    }
+
+
+def _patch_area_import(monkeypatch, features, lookups, session=None):
     class FakeClient:
         def __init__(self, *args, **kwargs):
             pass
@@ -155,92 +202,118 @@ def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
         def __exit__(self, exc_type, exc, tb):
             return False
 
+    seen = {}
+
+    def fake_fetch(client, layer_url):
+        seen["layer_url"] = layer_url
+        return features
+
     monkeypatch.setattr("cli.project_area_import.httpx.Client", FakeClient)
     monkeypatch.setattr(
-        "cli.project_area_import._fetch_project_area_features",
-        lambda client, layer_url: [
-            {
-                "properties": {"location": "Test Group"},
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-106.9, 33.9],
-                            [-106.7, 33.9],
-                            [-106.7, 34.1],
-                            [-106.9, 34.1],
-                            [-106.9, 33.9],
-                        ]
-                    ],
-                },
-            },
-            {
-                "properties": {"location": "Missing Group"},
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-105.0, 33.0],
-                            [-104.8, 33.0],
-                            [-104.8, 33.2],
-                            [-105.0, 33.2],
-                            [-105.0, 33.0],
-                        ]
-                    ],
-                },
-            },
-        ],
+        "cli.project_area_import._fetch_project_area_features", fake_fetch
     )
 
-    class FakeScalarResult:
-        def __init__(self, groups):
-            self._groups = groups
-
-        def all(self):
-            return self._groups
-
-    class FakeSession:
-        def __init__(self):
-            self.commit_called = False
-            self.scalar_calls = 0
-            self.added = []
-
-        def scalars(self, stmt):
-            self.scalar_calls += 1
-            if self.scalar_calls == 1:
-                return FakeScalarResult([fake_group])
-            return FakeScalarResult([])
-
-        def add(self, obj):
-            self.added.append(obj)
-
-        def commit(self):
-            self.commit_called = True
+    fake_session = session or _FakeAreaSession(lookups)
+    fake_session.by_id = {group.id: group for groups in lookups for group in groups}
 
     class FakeSessionCtx:
         def __enter__(self):
-            self.session = FakeSession()
-            return self.session
+            return fake_session
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(
-        "cli.project_area_import.session_ctx",
-        lambda: FakeSessionCtx(),
+    monkeypatch.setattr("cli.project_area_import.session_ctx", lambda: FakeSessionCtx())
+    return fake_session, seen
+
+
+def test_import_project_area_boundaries_updates_mapped_group_by_objectid(monkeypatch):
+    # OBJECTID 29 maps to 'S.Taos Valley', whose location is 'Southern Taos
+    # Valley' -- the case that name matching cannot get right.
+    group = _FakeAreaGroup(group_id=2)
+    session, _ = _patch_area_import(
+        monkeypatch,
+        [_area_feature(29, "Southern Taos Valley")],
+        [[group]],
     )
 
-    runner = CliRunner()
-    result = runner.invoke(cli, ["import-project-area-boundaries"])
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries"])
 
     assert result.exit_code == 0, result.output
-    assert "Fetched 2 feature(s)." in result.output
-    assert "Matched 2 group row(s)." in result.output
-    assert "Created 1 group(s)." in result.output
-    assert "Updated 1 group project area(s)." in result.output
-    assert "Skipped 0 unchanged group(s)." in result.output
-    assert "Unmatched locations: Missing Group" in result.output
-    assert fake_group.project_area is not None
+    assert "Updated 1 group(s)." in result.output
+    assert group.project_area is not None
+    assert session.commit_called is True
+
+
+def test_import_project_area_boundaries_publishes_a_draft_group_it_writes_to(
+    monkeypatch,
+):
+    group = _FakeAreaGroup(group_id=57, release_status="draft")
+    _patch_area_import(monkeypatch, [_area_feature(12, "Carrizozo")], [[group]])
+
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries"])
+
+    assert result.exit_code == 0, result.output
+    assert "Published 1 group(s)." in result.output
+    assert group.release_status == "public"
+
+
+def test_import_project_area_boundaries_skips_unmapped_objectid(monkeypatch):
+    session, _ = _patch_area_import(
+        monkeypatch, [_area_feature(9999, "Somewhere New")], []
+    )
+
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries"])
+
+    assert result.exit_code == 0, result.output
+    assert "Skipped 1 feature(s)." in result.output
+    assert "not in PROJECT_AREA_MAPPINGS" in result.output
+    assert session.added == []
+
+
+def test_import_project_area_boundaries_keeps_duplicate_locations_apart(monkeypatch):
+    # 40 and 41 share the location 'Gila-Animas'; each has its own group name,
+    # and neither exists yet, so both are created rather than colliding.
+    session, _ = _patch_area_import(
+        monkeypatch,
+        [_area_feature(40, "Gila-Animas"), _area_feature(41, "Gila-Animas")],
+        [[], []],
+    )
+
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries"])
+
+    assert result.exit_code == 0, result.output
+    assert "Created 2 group(s)." in result.output
+    assert sorted(group.name for group in session.added) == [
+        "Gila-Animas 1 (AEM)",
+        "Gila-Animas 2 (AEM)",
+    ]
+
+
+def test_import_project_area_boundaries_dry_run_writes_nothing(monkeypatch):
+    group = _FakeAreaGroup(group_id=2)
+    session, _ = _patch_area_import(
+        monkeypatch, [_area_feature(29, "Southern Taos Valley")], [[group]]
+    )
+
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert "DRY RUN -- nothing written." in result.output
+    assert "Updated 1 group(s)." in result.output
+    assert group.project_area is None
+    assert session.commit_called is False
+    assert session.rollback_called is True
+
+
+def test_import_project_area_boundaries_defaults_to_layer_18(monkeypatch):
+    """Layer 17 was retired and 404s; a silent revert would break every import."""
+    _, seen = _patch_area_import(monkeypatch, [], [])
+
+    result = CliRunner().invoke(cli, ["import-project-area-boundaries"])
+
+    assert result.exit_code == 0, result.output
+    assert seen["layer_url"].endswith("/MapServer/18")
 
 
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
@@ -705,10 +778,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             {header}
             {row}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
