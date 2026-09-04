@@ -42,7 +42,7 @@ literal Viewer group, so the hierarchy held only as long as whoever
 provisioned the Authentik groups granted all three tiers to every admin.
 
 The three families below are deliberately orthogonal -- general `Admin` does
-not confer `AMPAdmin` or `LexiconAdmin`. Only tiers *within* a family nest.
+not confer `AMPAdmin` or `Lexicon.Admin`. Only tiers *within* a family nest.
 """
 
 # General Purpose Authentication/Permissions -----------------------------------
@@ -76,18 +76,18 @@ amp_staging_function = authenticated(any_of=["AMP.Staging"])
 
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
-lexicon_admin_function = authenticated(any_of=["LexiconAdmin"])
-lexicon_editor_function = authenticated(any_of=["LexiconAdmin", "LexiconEditor"])
+lexicon_admin_function = authenticated(any_of=["Lexicon.Admin"])
+lexicon_editor_function = authenticated(any_of=["Lexicon.Admin", "Lexicon.Editor"])
 
 
 # OGC-Internal Authentication/Permissions --------------------------------------
-# INTERNAL_OGC_GROUP ("OGCInternal") still lives in core/permissions.py, where
+# INTERNAL_OGC_GROUP ("OGC.Internal") still lives in core/permissions.py, where
 # core/internal_ogc_auth.py's ASGI middleware reads it -- that middleware gates
 # the /ogcapi-internal mount outside FastAPI's Depends() machinery. This is the
 # Depends()-shaped view of the same group, for the API key routes.
 #
 # The key routes are gated on this group and not on a general role on purpose.
-# An API key is a pre-authorized stand-in for OGCInternal: it reaches the
+# An API key is a pre-authorized stand-in for OGC.Internal: it reaches the
 # unfiltered, draft-inclusive internal collections. Minting one is therefore
 # exactly as privileged as holding the group, and gating creation on, say,
 # viewer_dependency would let any Viewer issue themselves that access with a

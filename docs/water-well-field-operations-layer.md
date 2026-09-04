@@ -116,7 +116,7 @@ means for a field crew, and it is why the layer is internal-only.
 
 The consequence is not confined to this layer. `/ogcapi-internal` is reachable
 two ways on this branch (`core/internal_ogc_auth.py`): an Authentik JWT
-carrying `OGCInternal`, or a static API key from `INTERNAL_OGC_API_KEYS`.
+carrying `OGC.Internal`, or a static API key from `INTERNAL_OGC_API_KEYS`.
 **Shipping this layer means every one of those credentials becomes a credential
 that dispenses landowner personal information**, and any credential path added
 later -- the user-issued keys on `feat/api-key-management` among them --

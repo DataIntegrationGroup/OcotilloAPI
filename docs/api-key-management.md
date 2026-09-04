@@ -27,7 +27,7 @@ That doc already names the exit: *"or to a keys table in Postgres."* This is it.
 
 ## The one security decision
 
-An API key today is a pre-authorized stand-in for the `OGCInternal` Authentik
+An API key today is a pre-authorized stand-in for the `OGC.Internal` Authentik
 group. It buys access to the unfiltered, draft-inclusive internal collections.
 
 So **the route that mints a key must be gated on the group the key stands in
@@ -37,7 +37,7 @@ a privilege escalation with a UI button on it.
 
 ```python
 # core/dependencies.py
-internal_ogc_function = authenticated(any_of=["OGCInternal"])
+internal_ogc_function = authenticated(any_of=["OGC.Internal"])
 internal_ogc_dependency: TypeAlias = Annotated[dict, Depends(internal_ogc_function)]
 ```
 
@@ -46,7 +46,7 @@ nothing Depends()-shaped needed it. This adds the first such consumer; the
 constant stays where it is and `core/dependencies.py` references it.
 
 Consequence for the UI: the API keys card is only meaningful for accounts in
-`OGCInternal`. Everyone else should get an empty state explaining that, not a
+`OGC.Internal`. Everyone else should get an empty state explaining that, not a
 Generate button that 403s. That is a change to PR #360.
 
 ## Scope: what a key authorizes
@@ -256,7 +256,7 @@ back to its inert placeholder.
   lifetime, and clamps a longer one to the maximum.
 - Revocation takes effect on the next request, with no redeploy and no cache flush.
 - Another user's key is invisible to GET and 404s on PATCH and DELETE.
-- A user without `OGCInternal` gets 403 on POST — the escalation test.
+- A user without `OGC.Internal` gets 403 on POST — the escalation test.
 - Env-var keys still work with the table empty, and a table key still works with
   `INTERNAL_OGC_API_KEYS` unset.
 - `tests/test_authorization.py`'s anonymous-route allowlist is unchanged: every
@@ -286,7 +286,7 @@ assumptions is wrong for this design.
    in `src/utils/apiKeys.ts`. The expiry belongs in the table with a warning as
    it nears — a key that stops working a year later with no warning is a support
    ticket, not a security win.
-2. **The card is only meaningful for `OGCInternal` accounts.** Everyone else needs
+2. **The card is only meaningful for `OGC.Internal` accounts.** Everyone else needs
    an empty state that says the keys are for desktop GIS access and how to request
    the group — not a Generate button that 403s. *Still open: hide the section
    entirely, or show it disabled with the explanation?*

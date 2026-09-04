@@ -23,7 +23,7 @@ no credential is ever embedded (see services/gis_artifacts).
 
 The internal connection file is gated, not because the file is secret, but
 because the internal mount's existence is not something to advertise to
-anonymous callers. Holding it still gets you nothing without an `OGCInternal`
+anonymous callers. Holding it still gets you nothing without an `OGC.Internal`
 API key.
 
 Read docs/ogc-desktop-gis-artifacts.md before changing what is emitted.
@@ -159,7 +159,7 @@ def qgis_connections_internal(user: viewer_dependency) -> Response:
     """QGIS connections file covering the public and internal mounts.
 
     Carries no credential. The internal entry only resolves for a client that
-    attaches its own `OGCInternal` API key -- see
+    attaches its own `OGC.Internal` API key -- see
     docs/internal-ogc-desktop-gis.md for how one is issued and attached.
     """
     body = qgis_connections_xml(
@@ -229,7 +229,8 @@ def gis_index(request: Request, f: Annotated[str | None, Query()] = None) -> Res
         f'<td><a href="arcgis/layers/{layer.id}.lyrx">.lyrx</a></td></tr>'
         for layer in load_curated_layers()
     )
-    return HTMLResponse(f"""<!doctype html><html><head><meta charset="utf-8">
+    return HTMLResponse(
+        f"""<!doctype html><html><head><meta charset="utf-8">
 <title>Desktop GIS downloads</title></head>
 <body style="{_PAGE_STYLE}">
 <h1>Using our OGC layers in QGIS and ArcGIS Pro</h1>
@@ -260,7 +261,8 @@ OGC API - EDR time series at <code>{base}/collections/waterlevels</code> and
 <code>{base}/collections/water_chemistry</code>. Neither QGIS nor ArcGIS Pro
 can read EDR, so the layers above carry the same measurements summarised per
 site instead.</p>
-</body></html>""")
+</body></html>"""
+    )
 
 
 # ============= EOF =============================================
