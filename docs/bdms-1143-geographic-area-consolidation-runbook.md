@@ -191,10 +191,27 @@ membership, reported as `3 thing link(s) lost`; the wells themselves survive, be
 | `Lea County` | `north-eastern Socorro County` | `Pueblo of Picuris` |
 | `Sandia and northern Manzano Mountains` | `Southern Sacramento Mountains` | `eastern Valencia County` |
 
-The 8 strips are legacy rows keeping their identity and losing a boundary nothing backs:
-`Albuquerque Basin`, `Colfax County`, `Eddy County`, `El Morro`, `Placitas`, `Quay County`,
-`San Miguel County`, `Torrance County`. Six were `protected` in the merge pass, which still
-holds: protection stops a row being deleted, not a boundary being retired.
+The 8 strips are legacy rows that keep their identity and lose a boundary nothing backs.
+Six of them are also in `PROTECTED_NAMES`, which looks alarming in the report and is
+correct. Protection stops a row being **deleted**, because its name is a legacy project
+name and deleting it would cascade away that project's wells. It has never had anything to
+say about boundaries.
+
+| protected and boundary removed | boundary removed, not protected | protected, keeps boundary |
+|---|---|---|
+| `Albuquerque Basin` | `El Morro` | `Eastern Tularosa Basin` |
+| `Colfax County` | `Placitas` | `Mimbres Basin` |
+| `Eddy County` | | `Rio Rancho` |
+| `Quay County` | | |
+| `San Miguel County` | | |
+| `Torrance County` | | |
+
+The third column keeps its boundaries because those three areas are still in the webmap,
+not because they are protected. Everything in the first two columns loses its polygon for
+the same single reason: the project no longer exists in the current webmap, and the webmap
+is the source of truth for boundaries.
+
+Confirmed with the layer owner on 2026-09-04: those six should leave the public layer.
 
 Anything in `refused`, `conflicts` or `ambiguous` is a stop, not a warning. Those are
 cases the migration will not guess at. A `refused` line quotes the actual membership it

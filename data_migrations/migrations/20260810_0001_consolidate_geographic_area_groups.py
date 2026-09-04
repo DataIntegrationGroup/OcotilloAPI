@@ -129,6 +129,13 @@ DRAFT = "draft"
 #     set(pd.read_csv(".../Projects.csv")["Project"]) & {geographic area names}
 #
 # Verified 2026-08-10 against 57 legacy projects and 36 geographic areas.
+#
+# Protection covers deletion only, and deliberately so. Six of these names are
+# also in STALE_BOUNDARY_NAMES and do lose their boundary: the row and its wells
+# survive, the polygon does not, because the project is not in the current
+# webmap and the webmap is the source of truth for boundaries. Confirmed with
+# the layer owner 2026-09-04. See the table in section 2 of
+# docs/bdms-1143-geographic-area-consolidation-runbook.md.
 PROTECTED_NAMES: frozenset[str] = frozenset(
     {
         "Albuquerque Basin",
