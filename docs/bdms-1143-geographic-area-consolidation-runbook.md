@@ -31,8 +31,34 @@ name. Do not translate these steps into id-based SQL.
 - [ ] `uv sync --locked`, and the branch is rebased onto `staging` (the migration's
       alembic gate walks the deployed head back through this checkout's revision files;
       a head the checkout has never seen raises `ResolutionError`).
-- [ ] Backup or snapshot of the target database taken.
+- [ ] Snapshot of the target database taken. See below.
 - [ ] The merge pairs have been reviewed and signed off. The dry run is that review.
+
+### Take a snapshot
+
+`gcloud sql backups create` is the fuller option, but it needs an authenticated
+`gcloud` session. Without one, a two-table dump is still a complete restore source for
+everything in this runbook: only `group_thing_association.group_id` and
+`group.parent_group_id` reference `group.id`, and neither the migration nor the importer
+writes anywhere else. Both tables are small, and neither carries PII.
+
+```bash
+set -a; source .env; set +a
+PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h 127.0.0.1 -p 5432 \
+  -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -t 'public."group"' -t public.group_thing_association \
+  --no-owner --no-acl -f "groups-$(date +%Y%m%dT%H%M%S).sql"
+```
+
+A dump you have not checked is not a backup. Confirm it holds both schema and data, and
+that the row counts match the live table:
+
+```bash
+grep -c 'CREATE TABLE public' groups-*.sql          # expect 2
+awk '/^COPY public."group" /,/^\\\.$/' groups-*.sql | sed '1d;$d' | wc -l
+```
+
+The second number must equal `select count(*) from "group"` from section 1.
 
 ### Confirm the database target first
 
