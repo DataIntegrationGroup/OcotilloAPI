@@ -2,247 +2,247 @@
   "categories": [
     {
       "name": "activity_type",
-      "description": null
+      "description": "Kinds of field activity recorded under a field event: well inventory, groundwater level, water chemistry. Determines which activity-specific tables a visit populates."
     },
     {
       "name": "address_type",
-      "description": null
+      "description": "Role an address plays for a contact (Primary, Work, Mailing, Physical). Describes the address's use, not its format."
     },
     {
       "name": "analysis_method_type",
-      "description": null
+      "description": "Broad class of analysis behind a result: laboratory, field procedure, or calculation. Coarser than the named method itself."
     },
     {
       "name": "aquifer_type",
-      "description": null
+      "description": "Confinement and saturation state of the aquifer a well or spring taps, e.g. confined, unconfined, perched, aquitard."
     },
     {
       "name": "casing_material",
-      "description": null
+      "description": "Material a well's casing is made of. Paired with screen_type, which records the same materials for the screened interval."
     },
     {
       "name": "collection_method",
-      "description": null
+      "description": "Method used to collect a value recorded on data_provenance. Union of the legacy NM_Aquifer LU_AltitudeMethod and LU_CoordinateMethod lookups, so it spans both elevation and horizontal position."
     },
     {
       "name": "well_construction_method",
-      "description": null
+      "description": "Drilling or excavation technique used to construct a well, e.g. air-rotary, cable-tool, bored or augered."
     },
     {
       "name": "contact_type",
-      "description": null
+      "description": "Role a contact holds for a record: primary, secondary, or field event participant."
     },
     {
       "name": "coordinate_method",
-      "description": null
+      "description": "Method used to determine a horizontal position. Legacy NM_Aquifer LU_CoordinateMethod; its terms also feed the broader collection_method category."
     },
     {
       "name": "country",
-      "description": null
+      "description": "Country names used in addresses and geographic references. No terms are seeded; populated as needed."
     },
     {
       "name": "county",
-      "description": null
+      "description": "County names used in addresses and location references. No terms are seeded; populated as needed."
     },
     {
       "name": "data_quality",
-      "description": null
+      "description": "Accuracy statement for a groundwater level measurement, mostly the USGS accuracy levels (nearest foot, tenth, hundredth). Records precision, not review state; see data_maturity for that."
     },
     {
       "name": "data_reliability",
-      "description": null
+      "description": "Whether a legacy record was field checked and by whom, e.g. checked by the reporting agency, or not field checked but considered reliable."
     },
     {
       "name": "data_source",
-      "description": null
+      "description": "Who supplied a value in the legacy NM_Aquifer record (driller's log, well owner, NMBGMR staff). Legacy LU_DataSource; its terms also feed origin_type."
     },
     {
       "name": "depth_completion_source",
-      "description": null
+      "description": "Source of a reported well depth or completion detail. Legacy NM_Aquifer LU_Depth_CompletionSource; its terms also feed origin_type."
     },
     {
       "name": "discharge_source",
-      "description": null
+      "description": "Who supplied a surface-water discharge value, e.g. another agency, a published report, a Bureau scientist."
     },
     {
       "name": "drilling_fluid",
-      "description": null
+      "description": "Fluid circulated while drilling a well."
     },
     {
       "name": "elevation_method",
-      "description": null
+      "description": "Method used to determine a land-surface or measuring-point elevation. Legacy NM_Aquifer LU_AltitudeMethod; its terms also feed collection_method."
     },
     {
       "name": "email_type",
-      "description": null
+      "description": "Role an email address plays for a contact: primary, work, or personal."
     },
     {
       "name": "participant_role",
-      "description": null
+      "description": "Role a contact played at a field event: lead, participant, observer, or visitor."
     },
     {
       "name": "geochronology",
-      "description": null
+      "description": "Radiometric dating systems used to report a geologic age, e.g. Ar/Ar, K/Ar, U/Pb."
     },
     {
       "name": "geographic_scale",
-      "description": null
+      "description": "Extent of an aquifer system: major, regional, local, or minor."
     },
     {
       "name": "groundwater_level_reason",
-      "description": null
+      "description": "USGS-style condition codes explaining why a water level reads as it does or could not be measured, e.g. site dry, frozen, flowing, obstructed, or being pumped."
     },
     {
       "name": "group_type",
-      "description": null
+      "description": "What a group of things represents: a monitoring plan, a geographic area, or a historical grouping. Not a provenance marker."
     },
     {
       "name": "horizontal_datum",
-      "description": null
+      "description": "Datum a horizontal coordinate was reported against (WGS84, NAD83, NAD27). Stored geometry is always WGS84 / SRID 4326 regardless."
     },
     {
       "name": "level_status",
-      "description": null
+      "description": "Trend of a water level over time: stable, rising, or falling."
     },
     {
       "name": "limit_type",
-      "description": null
+      "description": "Kind of regulatory or analytical threshold a limit value represents, e.g. MCL, SMCL, GWQS, MDL, PQL, RL."
     },
     {
       "name": "measurement_method",
-      "description": null
+      "description": "Method used to take a measurement where no more specific method category applies."
     },
     {
       "name": "monitoring_frequency",
-      "description": null
+      "description": "How often a site is scheduled to be visited or measured, from monthly through decadal, plus event-based."
     },
     {
       "name": "note_type",
-      "description": null
+      "description": "Subject of a free-text note attached to a record, e.g. access, directions, construction, water quality."
     },
     {
       "name": "parameter_name",
-      "description": null
+      "description": "Names of measured or analyzed parameters, e.g. groundwater level, pH, calcium. Backs the parameter table; every observation points at one of these."
     },
     {
       "name": "organization",
-      "description": null
+      "description": "Agencies, companies, water associations, ranches and other organizations named as owners, drillers, or data sources."
     },
     {
       "name": "parameter_type",
-      "description": null
+      "description": "Broad class a parameter falls into: field parameter, metal, radionuclide, major or minor element, physical property."
     },
     {
       "name": "phone_type",
-      "description": null
+      "description": "Role a phone number plays for a contact: primary, work, home, or mobile."
     },
     {
       "name": "publication_type",
-      "description": null
+      "description": "Form a bibliography entry takes, e.g. map, report, dataset, thesis, webpage."
     },
     {
       "name": "qc_type",
-      "description": null
+      "description": "Quality-control role of a collected sample: normal, duplicate, split, or one of the blank types."
     },
     {
       "name": "quality_flag",
-      "description": null
+      "description": "Judgement of an individual result: good, questionable, estimated, or rejected."
     },
     {
       "name": "relation",
-      "description": null
+      "description": "Predicates used by lexicon triples and by cross-system identifier links, e.g. same_as, OSEWellTagID, OSEPOD, PLSS."
     },
     {
       "name": "release_status",
-      "description": null
+      "description": "Release level of a record, i.e. who may see it. Also holds historical review-state terms (provisional, final) kept for old rows; new code puts review state in data_maturity."
     },
     {
       "name": "review_status",
-      "description": null
+      "description": "Two-state review marker on transducer records: approved or not reviewed."
     },
     {
       "name": "role",
-      "description": null
+      "description": "Role a person or organization plays for a well or project, e.g. owner, driller, hydrologist, principal investigator."
     },
     {
       "name": "sample_matrix",
-      "description": null
+      "description": "Physical medium a sample was collected from: water, groundwater, or soil."
     },
     {
       "name": "sample_method",
-      "description": null
+      "description": "Technique used to obtain a measurement or sample, e.g. transducer, airline measurement, pressure gage, sonic water level meter."
     },
     {
       "name": "sample_type",
-      "description": null
+      "description": "Purpose a collected sample serves, e.g. standard field sample, background, repeat, or one of the blank and duplicate types."
     },
     {
       "name": "screen_type",
-      "description": null
+      "description": "Material of a well's screened interval. Same term set as casing_material, which covers the casing instead."
     },
     {
       "name": "sensor_type",
-      "description": null
+      "description": "Kind of instrument deployed at a site, e.g. pressure transducer, barometer, tipping bucket, weather station."
     },
     {
       "name": "sensor_status",
-      "description": null
+      "description": "Service state of a deployed sensor: in service, in repair, retired, or lost."
     },
     {
       "name": "spring_type",
-      "description": null
+      "description": "Character of a spring, e.g. artesian, ephemeral, perennial, thermal, mineral."
     },
     {
       "name": "state",
-      "description": null
+      "description": "State or province names used in addresses and location references. No terms are seeded; populated as needed."
     },
     {
       "name": "status",
-      "description": null
+      "description": "Generic status category, currently holding only 'Unknown'. Status tracked over time uses status_type and status_value on status_history instead."
     },
     {
       "name": "thing_type",
-      "description": null
+      "description": "Kind of monitoring point a thing is, e.g. observation well, piezometer, production well, spring, stream."
     },
     {
       "name": "unit",
-      "description": null
+      "description": "Units of measure for observations and accuracy values, e.g. ft, ftbgs, mg/L, deg C."
     },
     {
       "name": "vertical_datum",
-      "description": null
+      "description": "Datum a vertical coordinate or elevation is referenced to: NAVD88, NGVD29, or WGS84."
     },
     {
       "name": "well_purpose",
-      "description": null
+      "description": "Use a well is put to, e.g. domestic, irrigation, livestock, public supply, observation."
     },
     {
       "name": "status_type",
-      "description": null
+      "description": "Which status axis a status_history entry tracks, e.g. well status, monitoring status, access status, datalogger suitability status."
     },
     {
       "name": "status_value",
-      "description": null
+      "description": "Values a status_history entry may take across the status_type axes, e.g. open, closed, abandoned, currently monitored."
     },
     {
       "name": "origin_type",
-      "description": null
+      "description": "Where a value recorded on data_provenance came from. Union of the legacy NM_Aquifer LU_DataSource and LU_Depth_CompletionSource lookups."
     },
     {
       "name": "well_pump_type",
-      "description": null
+      "description": "Kind of pump installed in a well: submersible, jet, line shaft, hand, or windmill."
     },
     {
       "name": "permission_type",
-      "description": null
+      "description": "Activity a landowner has consented to at a site: water level sampling, water chemistry sampling, or datalogger installation. Site-access consent, not authorization."
     },
     {
       "name": "formation_code",
-      "description": null
+      "description": "Short codes identifying geologic formations, e.g. '120ELRT'. Used as the controlled vocabulary for geologic_formation.formation_code."
     },
     {
       "name": "lithology",
-      "description": null
+      "description": "Rock and sediment types recorded in drill and formation logs, e.g. alluvium, basalt, clay, caliche, conglomerate."
     },
     {
       "name": "data_maturity",
