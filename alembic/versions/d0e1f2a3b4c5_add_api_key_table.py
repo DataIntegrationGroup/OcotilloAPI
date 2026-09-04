@@ -20,7 +20,7 @@ survives revocation, since "when was this compromised key last used" is a
 question that only comes up afterwards.
 
 Revision ID: d0e1f2a3b4c5
-Revises: c9d0e1f2a3b4
+Revises: b3c4d5e6f7a9
 Create Date: 2026-08-28 00:00:00.000000
 """
 
@@ -31,7 +31,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "d0e1f2a3b4c5"
-down_revision: Union[str, Sequence[str], None] = "c9d0e1f2a3b4"
+down_revision: Union[str, Sequence[str], None] = "b3c4d5e6f7a9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
