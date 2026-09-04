@@ -204,6 +204,16 @@ ArcGIS Pro cannot send a bearer token at all and neither desktop client can
 refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
 changing the credential paths.
 
+**User-issued API keys** live in the `api_key` table and are the preferred
+source. `/api_key` mints, lists, renames, and revokes them; revocation takes
+effect on the next request, and every key expires (365 days, default and
+ceiling). Only the SHA-256 digest is stored. The routes are gated on
+`internal_ogc_dependency` — the `OGCInternal` group — **not** on a general
+role: a key is a pre-authorized stand-in for that group, so minting one is
+exactly as privileged as holding it, and a lower gate would let a Viewer issue
+themselves internal-mount access. Keys authorize `/ogcapi-internal` and nothing
+else. Read **`docs/api-key-management.md`** before widening that scope.
+
 **`/ogcapi-internal` carries landowner PII.** The `water_well_field_operations`
 collection publishes contact name, organization, role, phone and email for well
 owners and operators, plus staff-written access notes. Every credential the

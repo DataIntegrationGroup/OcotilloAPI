@@ -41,11 +41,20 @@ this mount exists for cannot all carry an Authentik bearer token:
     QGIS regression where OGC API - Features requests dropped the
     Authorization header (qgis/QGIS#60473).
 
-The Basic and query-parameter transports carry a *static API key* (see
-`api_key_label`) rather than a JWT, since neither ArcGIS nor QGIS can refresh
-an Authentik access token before it expires. A bearer JWT is still accepted
-and still checked for INTERNAL_OGC_GROUP membership; an API key is a
-pre-authorized stand-in for that same group.
+The Basic and query-parameter transports carry an *API key* rather than a JWT,
+since neither ArcGIS nor QGIS can refresh an Authentik access token before it
+expires. A bearer JWT is still accepted and still checked for
+INTERNAL_OGC_GROUP membership; an API key is a pre-authorized stand-in for
+that same group.
+
+Keys come from two places, checked in that order:
+
+  * `api_key_label` -- operator-issued digests in the INTERNAL_OGC_API_KEYS
+    environment variable, rendered from Secret Manager at deploy time. Free to
+    check, but revoking one requires a redeploy.
+  * `_database_api_key_valid` -- user-issued keys in the api_key table, minted
+    from the settings page. One indexed lookup, and revocation takes effect on
+    the very next request.
 
 The query-parameter transport puts the secret in the request URL, which App
 Engine's request log records. Prefer Basic where the client supports it, and
@@ -193,6 +202,23 @@ async def _send_json(
     await send({"type": "http.response.body", "body": body})
 
 
+def _database_api_key_valid(secret: str) -> bool:
+    """Whether `secret` is a live key in the api_key table.
+
+    The user-issued counterpart to api_key_label(): same standing as an
+    OGCInternal group membership, but revocable on the next request instead of
+    on the next deploy. See docs/api-key-management.md.
+
+    Imported lazily. This module is deliberately free of database imports at
+    import time -- it is loaded from core/pygeoapi.py, and pulling db.engine in
+    at module scope reintroduces the circular import this file was split out to
+    avoid.
+    """
+    from services.api_key_auth import resolve_api_key_in_new_session
+
+    return resolve_api_key_in_new_session(secret) is not None
+
+
 class InternalOGCAuthMiddleware:
     """Gates every request under `mount_path` behind an API key or
     INTERNAL_OGC_GROUP membership; requests to any other path pass straight
@@ -235,8 +261,9 @@ class InternalOGCAuthMiddleware:
             await _send_json(send, 401, "Unauthorized", challenge=True)
             return
 
-        if api_key_label(secret) is None:
-            # Not a static key, so it has to be an Authentik access token.
+        if api_key_label(secret) is None and not _database_api_key_valid(secret):
+            # Neither an operator-issued static key nor a user-issued one from
+            # the api_key table, so it has to be an Authentik access token.
             try:
                 payload = permissions.decode_token_payload(secret)
             except permissions.TokenInvalid:

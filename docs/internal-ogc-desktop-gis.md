@@ -49,7 +49,24 @@ pygeoapi, so it never lands in the `self`/`next` links pygeoapi echoes into
 response bodies. It is still recorded in App Engine's request log — prefer Basic
 where the client supports it.
 
-## Where the keys live
+## Two kinds of key
+
+Since `feat/api-key-management` there are two sources of API key, and the
+middleware checks them in this order:
+
+| | Issued by | Revoked by | Expires |
+| --- | --- | --- | --- |
+| `INTERNAL_OGC_API_KEYS` | An operator, by hand, into Secret Manager | A redeploy | Never |
+| `api_key` table | The holder, from the settings page | The next request | 365 days |
+
+Prefer the table for anything new. The environment variable stays supported
+because existing keys are saved in ArcGIS Pro and QGIS connection dialogs and
+breaking them buys nothing, but it is the slower path in every sense that
+matters. See `docs/api-key-management.md`.
+
+The rest of this section describes the environment-variable keys.
+
+## Where the operator-issued keys live
 
 Only the **SHA-256 digests** are stored, never the keys themselves. The digest
 list lives in a Google Secret Manager secret named `internal-ogc-api-keys`, one
@@ -75,19 +92,22 @@ Consequences worth knowing:
   The parser skips any entry whose digest is not 64 hex characters, so that
   value is inert and means "bearer-JWT access only".
 
-- **Revoking a key requires a redeploy.** Adding a secret version does not
-  affect a running instance. If revocation ever needs to be immediate, that is
-  the point to switch to a runtime fetch with a TTL cache (same shape as the
-  JWKS cache in `core/permissions.py`) or to a keys table in Postgres.
+- **Revoking one of these keys requires a redeploy.** Adding a secret version
+  does not affect a running instance. When revocation has to be immediate, issue
+  the key from the settings page instead — the `api_key` table exists for
+  exactly this, and a row revoked there stops working on the next request.
 
 - The deploy service account needs `roles/secretmanager.secretAccessor` on
   `internal-ogc-api-keys` in each project, alongside the four it already has.
 
-## Issuing a key
+## Issuing an operator key
 
 ```bash
 python -c "import secrets,hashlib;k=secrets.token_urlsafe(32);print('key:   ',k);print('digest:',hashlib.sha256(k.encode()).hexdigest())"
 ```
+
+Only for a credential that has to outlive 365 days or belong to no particular
+person; otherwise have the holder issue their own from the settings page.
 
 Give the **key** to the user over a secure channel and keep only the digest.
 Append `<label>:<digest>` to the secret's value — comma- or whitespace-separated
@@ -145,5 +165,6 @@ different host than the public `/ogcapi` mount.
 | --- | --- |
 | 401 with `WWW-Authenticate: Basic` | No credential reached the server. In QGIS, confirm the auth config is selected on the *connection*, not just created. |
 | 403 | Valid Authentik token, but the account is not in the `OGCInternal` group. |
+| 401 on a key that used to work | Revoked, or past its 365-day expiry. Check the settings page; issue a new one. |
 | 424 | `AUTHENTIK_DISABLE_AUTHENTICATION=1` with `MODE` other than `development`. Misconfigured deploy. |
 | First page loads, paging fails against `localhost` | `PYGEOAPI_SERVER_URL` unset or wrong for the environment. |

@@ -77,6 +77,7 @@ AUTH_DEPENDENCY_CALLABLES = frozenset(
         dependencies.amp_staging_function,
         dependencies.lexicon_admin_function,
         dependencies.lexicon_editor_function,
+        dependencies.internal_ogc_function,
         dependencies.no_permission_function,
     }
 )

@@ -18,7 +18,7 @@ from typing import Annotated, TypeAlias
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from core.permissions import authenticated
+from core.permissions import authenticated, INTERNAL_OGC_GROUP
 from db.engine import get_db_session
 
 session_dependency: TypeAlias = Annotated[Session, Depends(get_db_session)]
@@ -81,9 +81,18 @@ lexicon_editor_function = authenticated(any_of=["LexiconAdmin", "LexiconEditor"]
 
 
 # OGC-Internal Authentication/Permissions --------------------------------------
-# INTERNAL_OGC_GROUP ("OGCInternal") lives in core/permissions.py, not here --
-# it gates core/internal_ogc_auth.py's ASGI middleware in front of the
-# /ogcapi-internal mount, which runs outside FastAPI's Depends() machinery.
+# INTERNAL_OGC_GROUP ("OGCInternal") still lives in core/permissions.py, where
+# core/internal_ogc_auth.py's ASGI middleware reads it -- that middleware gates
+# the /ogcapi-internal mount outside FastAPI's Depends() machinery. This is the
+# Depends()-shaped view of the same group, for the API key routes.
+#
+# The key routes are gated on this group and not on a general role on purpose.
+# An API key is a pre-authorized stand-in for OGCInternal: it reaches the
+# unfiltered, draft-inclusive internal collections. Minting one is therefore
+# exactly as privileged as holding the group, and gating creation on, say,
+# viewer_dependency would let any Viewer issue themselves that access with a
+# button. See docs/api-key-management.md.
+internal_ogc_function = authenticated(any_of=[INTERNAL_OGC_GROUP])
 
 
 # Testing-Specific Authentication/Permissions ----------------------------------
@@ -105,6 +114,8 @@ amp_editor_dependency: TypeAlias = Annotated[dict, Depends(amp_editor_function)]
 amp_viewer_dependency: TypeAlias = Annotated[dict, Depends(amp_viewer_function)]
 
 amp_staging_dependency: TypeAlias = Annotated[dict, Depends(amp_staging_function)]
+
+internal_ogc_dependency: TypeAlias = Annotated[dict, Depends(internal_ogc_function)]
 
 no_permission_dependency: TypeAlias = Annotated[dict, Depends(no_permission_function)]
 # ============= EOF =============================================
