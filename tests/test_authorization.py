@@ -204,7 +204,7 @@ def test_role_families_stay_orthogonal():
         payload, require_any=["AMPAdmin", "AMPEditor", "AMPViewer"]
     )
     assert not permissions.authorize_groups(
-        payload, require_any=["LexiconAdmin", "LexiconEditor"]
+        payload, require_any=["Lexicon.Admin", "Lexicon.Editor"]
     )
 
 

@@ -206,7 +206,7 @@ def _database_api_key_valid(secret: str) -> bool:
     """Whether `secret` is a live key in the api_key table.
 
     The user-issued counterpart to api_key_label(): same standing as an
-    OGCInternal group membership, but revocable on the next request instead of
+    OGC.Internal group membership, but revocable on the next request instead of
     on the next deploy. See docs/api-key-management.md.
 
     Imported lazily. This module is deliberately free of database imports at

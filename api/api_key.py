@@ -16,7 +16,7 @@
 """
 Personal API keys for /ogcapi-internal.
 
-Every route is gated on `internal_ogc_dependency` -- the OGCInternal group --
+Every route is gated on `internal_ogc_dependency` -- the OGC.Internal group --
 rather than on a general role. A key is a pre-authorized stand-in for that
 group, so minting one is exactly as privileged as holding it. Gating creation
 on a lower tier would let a Viewer issue themselves access to the unfiltered

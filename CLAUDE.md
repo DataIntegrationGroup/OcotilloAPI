@@ -194,7 +194,7 @@ that genuinely have none.
 
 **`/ogcapi-internal` is gated outside `Depends()`.** It is a raw Starlette
 Mount, so `core/internal_ogc_auth.py` gates it at the ASGI layer instead. It
-accepts a bearer Authentik JWT carrying `OGCInternal`, **or** a static API key
+accepts a bearer Authentik JWT carrying `OGC.Internal`, **or** a static API key
 presented as a bearer token, as the Basic password, or as `?token=`. Only the
 key digests are stored, as `label:sha256hex` entries in `INTERNAL_OGC_API_KEYS`
 — sourced in deployed environments from the Secret Manager secret
@@ -208,7 +208,7 @@ changing the credential paths.
 source. `/api_key` mints, lists, renames, and revokes them; revocation takes
 effect on the next request, and every key expires (365 days, default and
 ceiling). Only the SHA-256 digest is stored. The routes are gated on
-`internal_ogc_dependency` — the `OGCInternal` group — **not** on a general
+`internal_ogc_dependency` — the `OGC.Internal` group — **not** on a general
 role: a key is a pre-authorized stand-in for that group, so minting one is
 exactly as privileged as holding it, and a lower gate would let a Viewer issue
 themselves internal-mount access. Keys authorize `/ogcapi-internal` and nothing
