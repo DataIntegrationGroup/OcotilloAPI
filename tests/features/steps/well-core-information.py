@@ -162,7 +162,7 @@ def step_then_the_response_should_include_the_source_of_the_well_depth(context):
         and r.target_table == "thing"
         and r.target_id == context.objects["wells"][0].id
     ]
-    well_depth_source = well_depth_source_records[0].origin_type
+    well_depth_source = well_depth_source_records[0].source_type
 
     assert context.water_well_data["well_depth_source"] == well_depth_source
 

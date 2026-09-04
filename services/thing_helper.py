@@ -358,7 +358,7 @@ def add_thing(
                     target_id=thing.id,
                     target_table="thing",
                     field_name="well_completion_date",
-                    origin_type=well_completion_date_source,
+                    source_type=well_completion_date_source,
                 )
                 audit_add(user, dp)
                 session.add(dp)
@@ -368,7 +368,7 @@ def add_thing(
                     target_id=thing.id,
                     target_table="thing",
                     field_name="well_depth",
-                    origin_type=well_depth_source,
+                    source_type=well_depth_source,
                 )
                 audit_add(user, dp)
                 session.add(dp)
@@ -378,7 +378,7 @@ def add_thing(
                     target_id=thing.id,
                     target_table="thing",
                     field_name="well_construction_method",
-                    origin_source=well_construction_method_source,
+                    source_reference=well_construction_method_source,
                 )
                 audit_add(user, dp)
                 session.add(dp)

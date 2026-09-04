@@ -711,21 +711,21 @@ class WellTransferer(Transferer):
                 "CompletionSource",
                 {
                     "field_name": "well_completion_date",
-                    "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
+                    "source_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
                 },
             ),
             (
                 "DataSource",
                 {
                     "field_name": "well_construction_method",
-                    "origin_source": row.DataSource,
+                    "source_reference": row.DataSource,
                 },
             ),
             (
                 "DepthSource",
                 {
                     "field_name": "well_depth",
-                    "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
+                    "source_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
                 },
             ),
         )
@@ -733,9 +733,9 @@ class WellTransferer(Transferer):
         for row_field, kw in provenance_specs:
             value = getattr(row, row_field, None)
             if notna(value):
-                if "origin_type" in kw:
+                if "source_type" in kw:
                     try:
-                        kw["origin_type"] = lexicon_mapper.map_value(kw["origin_type"])
+                        kw["source_type"] = lexicon_mapper.map_value(kw["source_type"])
                     except KeyError:
                         continue
                 session.add(

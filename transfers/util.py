@@ -663,7 +663,7 @@ def make_location_data_provenance(
             target_id=location.id,
             target_table="location",
             field_name="elevation",
-            origin_source=None,
+            source_reference=None,
             collection_method=elevation_method,
             accuracy_value=(
                 None
