@@ -236,7 +236,9 @@ def register_api_routes(app):
     from api.geothermal import router as geothermal_router
     from api.chemisty import router as chemistry_router
     from api.gis_artifacts import router as gis_artifacts_router
+    from api.access import router as access_router
 
+    app.include_router(access_router)
     app.include_router(asset_router)
     app.include_router(chemistry_router)
     app.include_router(author_router)

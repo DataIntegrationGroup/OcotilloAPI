@@ -1431,6 +1431,83 @@ def import_project_area_boundaries_command(
         )
 
 
+@cli.command("seed-access-grants")
+def seed_access_grants(
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Write the grants. Without this the command only shows the plan.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="List every grant, not just the counts."
+    ),
+):
+    """Give the Authentik roles the access they already had (ADR5, 5.2).
+
+    An empty grant table means default deny, which is correct and useless: the
+    visibility layer says no to everyone until the roles that exist today are
+    written down as role principals.
+
+    Previews by default. Idempotent, and it will not resurrect a seeded grant
+    somebody revoked.
+    """
+    from db.engine import session_ctx
+    from services.access_seed import seed_role_grants
+
+    with session_ctx() as session:
+        plan = seed_role_grants(session, apply=apply)
+
+    verb = "Created" if apply else "Would create"
+    typer.echo(f"{verb} {len(plan.created)} grant(s).")
+    typer.echo(f"Left {len(plan.skipped)} existing grant(s) alone.")
+
+    if verbose:
+        for entry in plan.created:
+            typer.echo(f"  + {plan.describe(entry)}")
+
+    if plan.created and not apply:
+        typer.echo("Nothing was written. Re-run with --apply.")
+
+
+@cli.command("release-embargoed")
+def release_embargoed(
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Write the changes. Without this the command only shows the plan.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", help="List every record, not just the counts."
+    ),
+):
+    """Publish records whose embargo date has arrived.
+
+    Flips `release_status` from `embargoed` to `public` where `release_at` has
+    been reached, and writes an authorization_audit row for each. Meant to run
+    daily, before the 09:00 UTC materialized-view refresh -- a record released
+    after the refresh waits another day to appear in the OGC collections.
+
+    Previews by default. Idempotent: a released record is no longer embargoed.
+    """
+    from db.engine import session_ctx
+    from services.release_schedule import lift_due_embargoes
+
+    with session_ctx() as session:
+        plan = lift_due_embargoes(session, apply=apply)
+
+    verb = "Released" if apply else "Would release"
+    typer.echo(f"{verb} {len(plan.lifted)} record(s).")
+    for table, count in sorted(plan.by_table().items()):
+        typer.echo(f"  {table}: {count}")
+
+    if verbose:
+        for entry in plan.lifted:
+            typer.echo(f"  + {plan.describe(entry)}")
+
+    if plan.lifted and not apply:
+        typer.echo("Nothing was written. Re-run with --apply.")
+
+
 if __name__ == "__main__":
     cli()
 
