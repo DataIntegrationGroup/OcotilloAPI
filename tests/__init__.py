@@ -19,9 +19,13 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-# Load .env file BEFORE importing anything else
-# Use override=False so explicit shell environment variables can override .env
-load_dotenv(override=False)
+# Set test env vars BEFORE loading .env (per BDMS-630)
+os.environ["POSTGRES_PORT"] = "5432"
+# Always use test database, never dev
+os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+
+# Load .env file AFTER setting test vars (so they're not stomped)
+load_dotenv()
 
 
 def _normalize_test_db_host() -> None:
@@ -37,11 +41,6 @@ def _normalize_test_db_host() -> None:
 
 
 _normalize_test_db_host()
-
-# for safety don't test on the production database port
-os.environ["POSTGRES_PORT"] = "5432"
-# Always use test database, never dev
-os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 from fastapi.testclient import TestClient
 

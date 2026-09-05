@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 from services.materialized_views import MATERIALIZED_VIEWS
 
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
-load_dotenv(override=False)
+load_dotenv()
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")
