@@ -5,6 +5,7 @@ Revises: e1f2a3b4c5d6
 Create Date: 2026-09-04 10:35:20.442868
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -12,10 +13,9 @@ import geoalchemy2
 import sqlalchemy as sa
 import sqlalchemy_utils
 
-
 # revision identifiers, used by Alembic.
-revision: str = '4730aa951398'
-down_revision: Union[str, Sequence[str], None] = 'e1f2a3b4c5d6'
+revision: str = "4730aa951398"
+down_revision: Union[str, Sequence[str], None] = "e1f2a3b4c5d6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
