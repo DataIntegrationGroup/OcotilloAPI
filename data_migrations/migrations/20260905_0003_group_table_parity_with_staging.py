@@ -33,12 +33,17 @@ environment assigns:
 2. Re-parent. Each group's ``parent_group_id`` is set to match the snapshot,
    resolved by the parent's name. Groups unparented in the snapshot are
    unparented here too.
-3. Prune, conservatively. A group present in the target but absent from the
-   snapshot is deleted only when it is safe: no ``group_thing_association`` rows
-   and no child groups. ``group`` has two ``ON DELETE CASCADE`` foreign keys
-   (``group_thing_association.group_id`` and ``group.parent_group_id``), so a
-   group carrying well memberships is never deleted -- it is kept and reported.
-   Exact parity for those rows is a separate decision, made by hand.
+3. Prune, narrowly. A group present in the target but absent from the snapshot
+   is deleted only when it is both safe (no ``group_thing_association`` rows and
+   no child groups) and an orphan -- its boundary exactly equals a boundary that
+   is in the snapshot, marking it a leftover duplicate from an earlier import.
+   A snapshot-absent group with its own distinct boundary (or none) is a genuine
+   target-only group and is preserved, not deleted, so parity adds staging's
+   groups without removing the target's own. ``group`` has two
+   ``ON DELETE CASCADE`` foreign keys (``group_thing_association.group_id`` and
+   ``group.parent_group_id``), so a group carrying well memberships is never
+   deleted either -- it is kept and reported. Exact parity for those is a
+   separate decision, made by hand.
 
 This reconciles the ``group`` table only. Well memberships
 (``group_thing_association``) are environment-specific and are neither copied nor
@@ -59,7 +64,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from geoalchemy2 import WKTElement
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from data_migrations.base import DataMigration
@@ -71,6 +76,28 @@ SNAPSHOT_PATH = (
     Path(__file__).resolve().parent.parent
     / "data"
     / "20260905_0003_group_parity_snapshot.json"
+)
+
+# Snapshot-absent groups that are orphan duplicates from the layer-18 import:
+# each is an ArcGIS ``location``-named row whose boundary the consolidation and
+# import moved onto a differently-named owner (e.g. "La Cienega Wetlands" ->
+# "La Cienega"). Staging removed these; parity removes them from the target too.
+# Matched by geometry when the target's copy is bit-identical to staging's, and
+# by this reviewed name list otherwise -- a target's own copy can carry a drifted
+# boundary that ST_Equals would miss. A name here is deleted only when it is also
+# safe (no wells, no children); anything else absent from the snapshot is kept.
+ORPHAN_DUPLICATE_NAMES: frozenset[str] = frozenset(
+    {
+        "El Camino Real and Spaceport America",
+        "Española Basin and Santa Fe Area",
+        "ABCWUA Groundwater Recharge",
+        "Questa Area",
+        "Southern Taos Valley",
+        "Plains of San Agustin",
+        "La Cienega Wetlands",
+        "Northern Taos Plateau",
+        "White Sands National Monument",
+    }
 )
 
 
@@ -92,6 +119,25 @@ class ParityPlan:
     reparent: list[str] = field(default_factory=list)
     delete_safe: list[str] = field(default_factory=list)
     delete_blocked: list[str] = field(default_factory=list)
+    preserve: list[str] = field(default_factory=list)
+
+
+def _geom_duplicates_snapshot(
+    session: Session, group: Group, snapshot_wkts: list[str]
+) -> bool:
+    """True if the group's boundary exactly equals any snapshot boundary."""
+    if group.project_area is None or not snapshot_wkts:
+        return False
+    match = or_(
+        *[
+            Group.project_area.ST_Equals(WKTElement(wkt, srid=SRID))
+            for wkt in snapshot_wkts
+        ]
+    )
+    return (
+        session.scalar(select(Group.id).where(Group.id == group.id, match).limit(1))
+        is not None
+    )
 
 
 def _wkt_matches(group: Group, wkt: str | None, session: Session) -> bool:
@@ -138,6 +184,7 @@ def _plan(session: Session, snapshot: list[dict]) -> ParityPlan:
         if current_parent != row["parent_name"]:
             plan.reparent.append(row["name"])
 
+    snapshot_wkts = [row["wkt"] for row in snapshot if row["wkt"]]
     for name, group in existing.items():
         if name in snapshot_names:
             continue
@@ -148,21 +195,33 @@ def _plan(session: Session, snapshot: list[dict]) -> ParityPlan:
             )
             is not None
         )
-        (
-            plan.delete_blocked if (has_assoc or has_children) else plan.delete_safe
-        ).append(name)
+        if has_assoc or has_children:
+            plan.delete_blocked.append(name)
+        elif name in ORPHAN_DUPLICATE_NAMES or _geom_duplicates_snapshot(
+            session, group, snapshot_wkts
+        ):
+            # A snapshot-absent orphan from the layer-18 import: a reviewed
+            # location-named duplicate, or one whose boundary still exactly
+            # equals a snapshot boundary. Safe to remove.
+            plan.delete_safe.append(name)
+        else:
+            # Snapshot-absent, but a distinct group in its own right (its own
+            # boundary or none). Preserved -- parity adds staging's groups without
+            # removing a target's genuine extras.
+            plan.preserve.append(name)
     return plan
 
 
 def _log_plan(plan: ParityPlan) -> None:
     logger.info(
         "group parity plan: create=%d update=%d unchanged=%d reparent=%d "
-        "delete_safe=%d delete_blocked=%d",
+        "delete_safe=%d preserve=%d delete_blocked=%d",
         len(plan.create),
         len(plan.update),
         len(plan.unchanged),
         len(plan.reparent),
         len(plan.delete_safe),
+        len(plan.preserve),
         len(plan.delete_blocked),
     )
     for label, names in (
@@ -170,10 +229,17 @@ def _log_plan(plan: ParityPlan) -> None:
         ("update", plan.update),
         ("reparent", plan.reparent),
         ("delete_safe", plan.delete_safe),
+        ("preserve", plan.preserve),
         ("delete_blocked", plan.delete_blocked),
     ):
         for name in names:
             logger.info("  %-14s %s", label, name)
+    if plan.preserve:
+        logger.info(
+            "Preserved (absent from staging, not a boundary duplicate -- kept as "
+            "genuine target-only groups): %s",
+            ", ".join(plan.preserve),
+        )
     if plan.delete_blocked:
         logger.warning(
             "Kept (absent from staging but carry wells or children; parity for "
