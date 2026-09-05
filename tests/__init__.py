@@ -20,7 +20,6 @@ from functools import lru_cache
 from dotenv import load_dotenv
 
 # Set test env vars BEFORE loading .env (per BDMS-630)
-# for safety don't test on the production database port
 os.environ["POSTGRES_PORT"] = "5432"
 # Always use test database, never dev
 os.environ["POSTGRES_DB"] = "ocotilloapi_test"
