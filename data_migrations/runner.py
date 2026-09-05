@@ -181,6 +181,31 @@ def run_migration_by_id(
     return run_migration(session, migration, force=force)
 
 
+def dry_run_migration(session: Session, migration: DataMigration) -> None:
+    """
+    Report what a migration would change without writing anything.
+
+    Rolls back afterwards so a preview can never leave state behind, and does
+    not touch data_migration_history.
+    """
+    if migration.dry_run is None:
+        raise ValueError(f"Data migration {migration.id} has no dry run")
+
+    _ensure_alembic_applied(session, migration)
+    logger.info("Dry run of data migration %s - %s", migration.id, migration.name)
+    try:
+        migration.dry_run(session)
+    finally:
+        session.rollback()
+
+
+def dry_run_migration_by_id(session: Session, migration_id: str) -> None:
+    migration = get_migration(migration_id)
+    if migration is None:
+        raise ValueError(f"Unknown data migration: {migration_id}")
+    dry_run_migration(session, migration)
+
+
 def run_all(
     session: Session,
     *,
