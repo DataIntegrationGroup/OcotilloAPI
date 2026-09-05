@@ -370,6 +370,36 @@ resources:
         table: ogc_project_areas
         geom_field: project_area
 
+  aem_project_areas:
+    type: collection
+    title: AEM Project Areas
+    description: >-
+      Airborne electromagnetic (AEM) study-area boundaries, as polygons. These
+      are the AEM survey footprints from the Aquifer Mapping Study Areas layer,
+      grouped separately from the general project areas. Use them to see where
+      AEM data was collected, or to clip other layers to a survey's footprint.
+    keywords: [
+      aem, airborne-electromagnetic, project-areas, study-areas, boundaries,
+      polygons
+    ]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: core.feature_provider.DescribedPostgreSQLProvider
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_aem_project_areas
+        geom_field: project_area
+
 {thing_collections_block}
 
   geothermal_wells_bht:

@@ -244,6 +244,19 @@ project_areas:
       Kind of grouping the record represents, such as a project or a
       geographic area.
 
+aem_project_areas:
+  name:
+    title: Study area name
+    description: Name of the AEM study area.
+  description:
+    title: Study area description
+    description: Free-text description of the AEM study area.
+  group_type:
+    title: Group type
+    description: >-
+      Kind of grouping the record represents, such as a project or a
+      geographic area.
+
 well_water_column:
   water_column_latest:
     title: Water column, latest reading
