@@ -482,7 +482,7 @@ resources:
 
   project_areas:
     type: collection
-    title: Project Areas
+    title: AMP Project Areas
     description: >-
       The study-area boundaries of Bureau projects, as polygons. Any project
       group that has a mapped boundary is published here with its name and
