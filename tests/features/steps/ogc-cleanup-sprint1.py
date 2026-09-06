@@ -32,7 +32,7 @@ from urllib.parse import urlparse
 
 from alembic import command
 from behave import given, when, then
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from core.dependencies import (
     viewer_function,
@@ -333,6 +333,25 @@ def _seed_water_well(session, release_status, name, monitoring_group):
     return well
 
 
+# ogc_project_areas is scoped to the children of this container group
+# (migration c5d6e7f8a9b0), so seeded project-area groups must be parented under
+# it to appear in the layer.
+LAYER18_PARENT_NAME = "Aquifer Mapping Study Areas"
+
+
+def _get_or_create_layer18_parent(session):
+    parent = session.execute(
+        select(Group).where(Group.name == LAYER18_PARENT_NAME)
+    ).scalar_one_or_none()
+    if parent is None:
+        parent = Group(
+            name=LAYER18_PARENT_NAME, group_type=None, release_status="public"
+        )
+        session.add(parent)
+        session.commit()
+    return parent
+
+
 def _seed_all(session):
     """Seed one public/private/draft row per relevant thing type, one
     draft Group with a project_area, and one standalone Location per
@@ -364,6 +383,7 @@ def _seed_all(session):
         seed_ids["water_wells"][status] = well.id
 
     seed_ids["project_areas"] = {}
+    layer18_parent = _get_or_create_layer18_parent(session)
     for status in STATUSES:
         group = Group(
             name=f"A1 project area {status}",
@@ -373,6 +393,7 @@ def _seed_all(session):
                 "MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, "
                 "-106.6 34.2, -107.2 34.2, -107.2 33.6)))"
             ),
+            parent_group_id=layer18_parent.id,
         )
         session.add(group)
         session.commit()
@@ -410,7 +431,9 @@ def _teardown_a1_seed_data():
         session.execute(text("DELETE FROM thing WHERE name LIKE 'A1 %'"))
         session.execute(
             text(
-                "DELETE FROM \"group\" WHERE name LIKE 'A1 %' OR name = 'Water Level Network'"
+                "DELETE FROM \"group\" WHERE name LIKE 'A1 %' "
+                "OR name = 'Water Level Network' "
+                "OR name = 'Aquifer Mapping Study Areas'"
             )
         )
         session.commit()
@@ -572,6 +595,7 @@ def step_given_56_project_areas_updated_to_public(context):
     )
     command.upgrade(_alembic_config(), "head")
     with session_ctx() as session:
+        layer18_parent = _get_or_create_layer18_parent(session)
         groups = [
             Group(
                 name=f"A1 56-count project area {i}",
@@ -581,6 +605,7 @@ def step_given_56_project_areas_updated_to_public(context):
                     "MULTIPOLYGON(((-107.0 33.0, -106.9 33.0, "
                     "-106.9 33.1, -107.0 33.1, -107.0 33.0)))"
                 ),
+                parent_group_id=layer18_parent.id,
             )
             for i in range(56)
         ]
