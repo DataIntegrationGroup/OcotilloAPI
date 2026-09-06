@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.4.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0-rc...v1.4.0-rc.1) (2026-09-06)
+
+
+### Features
+
+* **api_key:** user-issued API keys for /ogcapi-internal ([79f5163](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/79f5163c51a0c6e22ab74ff5f16e24766f485ae8))
+* **cli:** match webmap project areas by OBJECTID ([65b1747](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/65b17476c9388d10368724d99e725c4b302ef9d2))
+* **data-migrations:** add dry-run support to the runner and CLI ([8f2e782](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8f2e78280318841ea9afede93fbb2a90141798c4))
+* **groups:** add group-table parity migration from a staging snapshot ([a35b141](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a35b141bd7c58f722bd18480a5884cae553a749f))
+* **groups:** collapse duplicate project rows ([ae4d988](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ae4d9887c5d2374193ca201aa01e491e975f4f15))
+* **groups:** consolidate duplicate Geographic Area groups ([0e3e084](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0e3e084b17ca1b5ae56ca641e082686adbc0de70))
+* **groups:** consolidate duplicate Geographic Area groups (BDMS-1143) ([49f3dfb](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/49f3dfbe5644dbeb87e0fa5cc4cd097f87850e00))
+* **groups:** drop what the webmap no longer backs ([23aea8b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/23aea8bf4d4d92295e49992b517d52c243c3e1e5))
+* **lexicon:** add new "Hilton Ranch" organization term ([0ccb615](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0ccb615125c179c040691bf653b7cc7c5608ced3))
+* **lexicon:** add new "Hilton Ranch" organization term ([cce2a36](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cce2a36071b5e0d7790b1a0bc7b26f8d753927e0))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([ebe9cf3](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ebe9cf30e93cc3c3e31bd098e4d4585b131f63cd))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([bea6168](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bea61682470f6ac477ebb6ae7bc04af4416ead51))
+* **ogc:** add the water well field operations internal layer ([6fd64fa](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/6fd64fa159042134754c7991e7d7cf4b5ef8c85a))
+* **ogc:** add the water well field operations internal layer ([9fb2410](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/9fb2410af513b220e5e5a82c84c7a9219b541f1e))
+* **ogc:** apply Level 1 title naming pass across layers ([#906](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/906)) ([30bac8a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/30bac8ad5f58b85f1c2a18ae26a5d0be4a7247c9))
+* **ogc:** consolidate field-operations columns ([809c899](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/809c899e042e140144596ca54d59983a01e52a78))
+* **ogc:** drop well-only columns from the springs view(BDMS-986) ([#918](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/918)) ([8a20849](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8a208494e9bf5323c6a5cd52bbd1163774614461))
+* **project-areas:** add a separate AEM project-areas layer ([90014d9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/90014d9278e4ddd1f3ce9fa5d6a9f4ce4d0eb1ef))
+* **project-areas:** scope OGC layer to ArcGIS layer 18 + separate AEM layer ([d9b83bc](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d9b83bcabbdacdeee750dfc7096858cb65c84d5d))
+* **project-areas:** scope OGC layer to the ArcGIS layer-18 study areas ([cae9811](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cae98112b5f632110182768297e93b39f276b9a4))
+
+
+### Bug Fixes
+
+* **alembic:** linearize api_key migration onto staging head ([5211d9e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/5211d9e9694f94a9a8435ae9892f9d326e4db2dc))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([7d0d071](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7d0d071a883eeaa5d99fce0888f9eddda5444e92))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([1677f90](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1677f900c1fbafabd236d25b67ae867910231bce))
+* **groups:** scope parity deletes to reviewed layer-18 orphans ([94b899d](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/94b899d22c556e4e7c11bf1885a3dca4d8309c6f))
+* **ogc:** allow internal relations with no public twin ([19cd51e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/19cd51e87cfffdc1dcfc108ecd618e3c7718d2b7))
+
 ## [1.4.0-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0...v1.4.0-rc) (2026-08-28)
 
 
