@@ -909,12 +909,76 @@ def test_ogc_new_collection_items_endpoints(ogc_client):
 
 
 def test_ogc_project_areas_items_expose_groups_with_project_areas(ogc_client, group):
-    response = ogc_client.get("/ogcapi/collections/project_areas/items?limit=20")
+    # project_areas now serves only children of the "Aquifer Mapping Study Areas"
+    # container group (migration c5d6e7f8a9b0), so parent the fixture group under
+    # it before querying.
+    with session_ctx() as session:
+        parent = Group(name="Aquifer Mapping Study Areas", group_type=None)
+        session.add(parent)
+        session.commit()
+        session.refresh(parent)
+        parent_id = parent.id
+        session.execute(
+            text('UPDATE "group" SET parent_group_id = :pid WHERE id = :gid'),
+            {"pid": parent_id, "gid": group.id},
+        )
+        session.commit()
 
-    assert response.status_code == 200
-    payload = response.json()
-    ids = {str(feature["id"]) for feature in payload["features"]}
-    assert str(group.id) in ids
+    try:
+        response = ogc_client.get("/ogcapi/collections/project_areas/items?limit=20")
+
+        assert response.status_code == 200
+        payload = response.json()
+        ids = {str(feature["id"]) for feature in payload["features"]}
+        assert str(group.id) in ids
+    finally:
+        with session_ctx() as session:
+            session.execute(
+                text('UPDATE "group" SET parent_group_id = NULL WHERE id = :gid'),
+                {"gid": group.id},
+            )
+            session.execute(
+                text('DELETE FROM "group" WHERE id = :pid'), {"pid": parent_id}
+            )
+            session.commit()
+
+
+def test_ogc_aem_project_areas_items_expose_only_aem_children(ogc_client, group):
+    # aem_project_areas serves only children of the "AEM Project Areas" container
+    # (migration d6e7f8a9b0c1). The fixture group parented there appears in the
+    # AEM layer and not in the general project_areas layer.
+    with session_ctx() as session:
+        aem_parent = Group(name="AEM Project Areas", group_type=None)
+        session.add(aem_parent)
+        session.commit()
+        session.refresh(aem_parent)
+        aem_parent_id = aem_parent.id
+        session.execute(
+            text('UPDATE "group" SET parent_group_id = :pid WHERE id = :gid'),
+            {"pid": aem_parent_id, "gid": group.id},
+        )
+        session.commit()
+
+    try:
+        aem = ogc_client.get("/ogcapi/collections/aem_project_areas/items?limit=20")
+        assert aem.status_code == 200
+        aem_ids = {str(feature["id"]) for feature in aem.json()["features"]}
+        assert str(group.id) in aem_ids
+
+        general = ogc_client.get("/ogcapi/collections/project_areas/items?limit=20")
+        assert general.status_code == 200
+        general_ids = {str(feature["id"]) for feature in general.json()["features"]}
+        assert str(group.id) not in general_ids
+    finally:
+        with session_ctx() as session:
+            session.execute(
+                text('UPDATE "group" SET parent_group_id = NULL WHERE id = :gid'),
+                {"gid": group.id},
+            )
+            session.execute(
+                text('DELETE FROM "group" WHERE id = :pid'), {"pid": aem_parent_id}
+            )
+            session.commit()
 
 
 def test_ogc_wells_items_and_item(ogc_client, water_well_thing):
