@@ -34,6 +34,7 @@ from core.enums import (
     DestinationKind,
     GrantScopeType,
     PrincipalType,
+    UISurface,
 )
 from schemas import UTCAwareDatetime
 
@@ -71,7 +72,11 @@ class CreatePermissionGrant(BaseModel):
     # rule is enforced in domain/access.py rather than here, so it holds for
     # every writer, not only this route.
     scope_id: int | None = None
-    data_type: AccessDataType
+    # Exactly one of these. A grant reaches data, or it opens a screen; the
+    # XOR and the global-only rule for surfaces live in domain/access.py, for
+    # the same reason the scope rule does.
+    data_type: AccessDataType | None = None
+    ui_surface: UISurface | None = None
     starts_at: date
     ends_at: date | None = None
     reason: str | None = None
@@ -86,7 +91,8 @@ class PermissionGrantResponse(BaseModel):
     capability: Capability
     scope_type: GrantScopeType
     scope_id: int | None
-    data_type: AccessDataType
+    data_type: AccessDataType | None
+    ui_surface: UISurface | None
     starts_at: date
     ends_at: date | None
     granted_by: str
@@ -100,7 +106,8 @@ class AccessDecision(BaseModel):
 
     allowed: bool
     capability: Capability
-    data_type: AccessDataType
+    data_type: AccessDataType | None = None
+    ui_surface: UISurface | None = None
     thing_id: int | None
     principals: list[str]
 

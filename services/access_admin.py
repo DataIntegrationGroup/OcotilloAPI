@@ -116,6 +116,7 @@ def create_grant(
     starts_at: date,
     ends_at: date = None,
     reason: str = None,
+    ui_surface: str = None,
 ) -> PermissionGrant:
     validate_grant(
         principal_type=principal_type,
@@ -125,6 +126,7 @@ def create_grant(
         data_type=data_type,
         starts_at=starts_at,
         ends_at=ends_at,
+        ui_surface=ui_surface,
     )
 
     grant = PermissionGrant(
@@ -134,6 +136,7 @@ def create_grant(
         scope_type=scope_type,
         scope_id=scope_id,
         data_type=data_type,
+        ui_surface=ui_surface,
         starts_at=starts_at,
         ends_at=ends_at,
         granted_by=actor,
@@ -154,6 +157,7 @@ def create_grant(
             "scope_type": scope_type,
             "scope_id": scope_id,
             "data_type": data_type,
+            "ui_surface": ui_surface,
             "starts_at": starts_at.isoformat(),
             "ends_at": ends_at.isoformat() if ends_at else None,
             "reason": reason,
