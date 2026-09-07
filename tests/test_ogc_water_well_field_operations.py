@@ -45,7 +45,7 @@ from db import (
     Deployment,
     LexiconTerm,
     Notes,
-    PermissionHistory,
+    FieldAccessConsent,
     Sensor,
     StatusHistory,
     Thing,
@@ -315,7 +315,7 @@ def test_permission_distinguishes_granted_from_refused(
     water_well_thing, contact, last_year
 ):
     with session_ctx() as session:
-        granted = PermissionHistory(
+        granted = FieldAccessConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",
@@ -323,7 +323,7 @@ def test_permission_distinguishes_granted_from_refused(
             permission_allowed=True,
             start_date=last_year,
         )
-        refused = PermissionHistory(
+        refused = FieldAccessConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",
@@ -356,7 +356,7 @@ def test_expired_permission_is_not_current(
     water_well_thing, contact, last_year, yesterday
 ):
     with session_ctx() as session:
-        expired = PermissionHistory(
+        expired = FieldAccessConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",

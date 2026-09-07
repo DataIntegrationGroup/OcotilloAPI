@@ -35,7 +35,7 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-from schemas.permission_history import PermissionHistoryResponse
+from schemas.field_access_consent import FieldAccessConsentResponse
 
 # -------- VALIDATE ----------
 
@@ -274,7 +274,7 @@ class WellResponse(BaseThingResponse):
     water_notes: list[NoteResponse] = []
     construction_notes: list[NoteResponse] = []
     contacts: list[WellContactSummaryResponse] = []
-    permissions: list[PermissionHistoryResponse]
+    permissions: list[FieldAccessConsentResponse]
     formation_completion_code: FormationCode | None
     nma_formation_zone: str | None
     well_location_note: list[str] = []
@@ -299,7 +299,7 @@ class WellResponse(BaseThingResponse):
         return materials
 
     @field_validator("permissions", mode="before")
-    def populate_permission_history_with_latest_records(cls, permissions):
+    def populate_field_access_consent_with_latest_records(cls, permissions):
         """
         Populate the permission history with the latest records for each
         type of permission. If multiple records exist for the same permission type
@@ -326,7 +326,7 @@ class WellResponse(BaseThingResponse):
                 permissions_to_return.append(latest_record)
             else:
                 permissions_to_return.append(
-                    PermissionHistoryResponse(
+                    FieldAccessConsentResponse(
                         permission_type=permission_type,
                         permission_allowed=None,
                         start_date=None,

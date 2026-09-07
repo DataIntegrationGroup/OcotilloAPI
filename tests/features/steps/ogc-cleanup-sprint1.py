@@ -448,10 +448,17 @@ def _ensure_head(context):
 
 @given("a clean database state before the Sprint 1 migration")
 def step_given_clean_database_state(context):
-    command.downgrade(_alembic_config(), PRE_A1_REVISION)
+    # Seed at head, then downgrade -- not the other way around. _seed_all()
+    # writes through the ORM, whose models carry every column added by
+    # migrations newer than PRE_A1_REVISION (data_maturity, for one), so
+    # seeding against the downgraded schema fails on the missing columns.
+    # Downgrading afterwards drops those columns but keeps the rows, which
+    # is exactly the pre-migration state these scenarios need.
+    command.upgrade(_alembic_config(), "head")
     with session_ctx() as session:
         context.seed_ids = _seed_all(session)
     context.add_cleanup(_teardown_a1_seed_data)
+    command.downgrade(_alembic_config(), PRE_A1_REVISION)
 
 
 @when("the Sprint 1 Alembic migration is applied")
@@ -675,12 +682,15 @@ def _seed_already_consistent_layers(session):
 
 @given("the following layers were already filtering correctly before the migration:")
 def step_given_already_consistent_layers(context):
-    command.downgrade(_alembic_config(), PRE_A1_REVISION)
-    reset_pygeoapi_reflection()
+    # Seed at head before downgrading, for the reason given in
+    # step_given_clean_database_state.
+    command.upgrade(_alembic_config(), "head")
     with session_ctx() as session:
         _seed_already_consistent_layers(session)
         session.commit()
     context.add_cleanup(_teardown_a1_seed_data)
+    command.downgrade(_alembic_config(), PRE_A1_REVISION)
+    reset_pygeoapi_reflection()
 
     context.already_consistent_counts = {}
     for row in context.table:
