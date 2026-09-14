@@ -56,3 +56,6 @@ app.yaml
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
+
+# mise
+mise.toml
