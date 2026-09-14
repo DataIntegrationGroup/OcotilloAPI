@@ -31,15 +31,9 @@ from db import (
     Sample,
     Observation,
     Parameter,
-    Contact,
-    FieldEventParticipant,
 )
 from db.engine import session_ctx
-from domain.field_staff import (
-    FIELD_STAFF_ORGANIZATION,
-    field_staff_contact_payload,
-    field_staff_entries,
-)
+from domain.field_staff import field_staff_entries
 from domain.samples import water_level_sample_name
 from domain.water_levels import (
     GROUNDWATER_LEVEL_ACTIVITY_TYPE,
@@ -59,7 +53,10 @@ from schemas.water_level_csv import (
 )
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-from services.contact_helper import add_contact
+from services.field_event_participant_helper import (
+    ensure_field_event_participants,
+    resolve_measuring_participant,
+)
 from services.thing_helper import find_water_wells_by_name
 
 REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
@@ -414,9 +411,11 @@ def _create_records(
             _apply_observation_values(observation, row, parameter_id)
             # Add participants after required sample/observation fields are populated
             # so the contact lookup does not trigger an autoflush of incomplete rows.
-            participants = _ensure_field_event_participants(session, field_event, row)
-            sample.field_event_participant = _resolve_measuring_participant(
-                row, participants
+            participants = ensure_field_event_participants(
+                session, field_event, row.field_staff_entries
+            )
+            sample.field_event_participant = resolve_measuring_participant(
+                row.sampler, participants
             )
             session.flush()
             savepoint.commit()
@@ -486,90 +485,6 @@ def _find_existing_observation(sample: Sample, parameter_id: int) -> Observation
         if observation.parameter_id == parameter_id:
             return observation
     return None
-
-
-def _ensure_field_event_participants(
-    session: Session, field_event: FieldEvent, row: _ValidatedRow
-) -> list[FieldEventParticipant]:
-    """Return event participants for imported staff names, creating any missing ones."""
-    existing_participants = session.scalars(
-        select(FieldEventParticipant)
-        .options(selectinload(FieldEventParticipant.participant))
-        .where(FieldEventParticipant.field_event_id == field_event.id)
-        .order_by(FieldEventParticipant.id.asc())
-    ).all()
-
-    for staff_name, role in row.field_staff_entries:
-        contact = _get_or_create_field_staff_contact(session, staff_name)
-        participant = next(
-            (
-                existing
-                for existing in existing_participants
-                if existing.contact_id == contact.id
-                and existing.participant_role == role
-            ),
-            None,
-        )
-        if participant is None:
-            participant = FieldEventParticipant(
-                field_event=field_event,
-                contact_id=contact.id,
-                participant_role=role,
-            )
-            session.add(participant)
-            # Attach the resolved contact eagerly so downstream matching can use
-            # participant.participant.name without an extra lookup.
-            participant.participant = contact
-            existing_participants.append(participant)
-
-    return existing_participants
-
-
-def _get_or_create_field_staff_contact(session: Session, staff_name: str) -> Contact:
-    """Resolve or create the contact record used by field event participants."""
-    # Contact uniqueness is enforced on (name, organization), so the lookup
-    # must use the same key to avoid missing an existing row with a different
-    # contact_type and attempting a duplicate insert.
-    contact = session.scalars(
-        select(Contact)
-        .where(Contact.name == staff_name)
-        .where(Contact.organization == FIELD_STAFF_ORGANIZATION)
-    ).first()
-
-    if contact is None:
-        contact = add_contact(
-            session, field_staff_contact_payload(staff_name), None, commit=False
-        )
-
-    return contact
-
-
-def _resolve_measuring_participant(
-    row: _ValidatedRow, participants: list[FieldEventParticipant]
-) -> FieldEventParticipant:
-    """Return the unique participant matching measuring_person or raise a row error."""
-    matching_participants = [
-        participant
-        for participant in participants
-        if participant.participant is not None
-        and participant.participant.name == row.sampler
-    ]
-    if len(matching_participants) == 1:
-        return matching_participants[0]
-
-    if not matching_participants:
-        raise ValueError(
-            "measuring_person "
-            f"'{row.sampler}' could not be matched to a field event participant"
-        )
-
-    raise ValueError(
-        "measuring_person "
-        f"'{row.sampler}' matched multiple field event participants; "
-        # Ambiguous staff rows should fail so the importer never guesses which
-        # participant performed the measurement.
-        "field_staff values must identify exactly one measuring person"
-    )
 
 
 def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -> None:
