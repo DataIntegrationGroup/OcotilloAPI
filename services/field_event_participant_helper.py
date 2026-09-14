@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session, selectinload
 from db import Contact, FieldEvent, FieldEventParticipant
 from domain.field_staff import (
     FIELD_STAFF_ORGANIZATION,
+    LEAD_ROLE,
     field_staff_contact_payload,
 )
 from services.contact_helper import add_contact
@@ -108,11 +109,15 @@ def resolve_measuring_participant(
     sampler: str, participants: list[FieldEventParticipant]
 ) -> FieldEventParticipant:
     """Return the unique participant matching ``sampler`` or raise a row error."""
+    # Compare on stripped names: the well inventory reader hands the row's
+    # values through unstripped, so " A Lopez" in one column and "A Lopez" in
+    # another would otherwise fail a row over nothing.
+    sampler = sampler.strip()
     matching_participants = [
         participant
         for participant in participants
         if participant.participant is not None
-        and participant.participant.name == sampler
+        and participant.participant.name.strip() == sampler
     ]
     if len(matching_participants) == 1:
         return matching_participants[0]
@@ -130,6 +135,26 @@ def resolve_measuring_participant(
         # participant performed the measurement.
         "field_staff values must identify exactly one measuring person"
     )
+
+
+def lead_participant(
+    participants: list[FieldEventParticipant],
+) -> FieldEventParticipant | None:
+    """
+    Return the participant from the ``field_staff`` column, if there is one.
+
+    Only for formats where the measuring person column is optional. A row that
+    names staff but no measurer still has one identifiable collector -- the lead
+    -- so the sample is linked to them rather than left orphaned.
+    """
+    leads = [
+        participant
+        for participant in participants
+        if participant.participant_role == LEAD_ROLE
+    ]
+    if len(leads) == 1:
+        return leads[0]
+    return None
 
 
 # ============= EOF =============================================
