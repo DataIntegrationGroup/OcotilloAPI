@@ -19,7 +19,8 @@ Read-only on purpose. The table is a reference vocabulary -- MCLs, SMCLs, state
 groundwater quality standards -- and a limit changes when a rule is published,
 not when a field crew visits a well. Rows are loaded deliberately, by a data
 migration, so nothing here writes. Whoever adds the write path should know that
-`limit_source` is a foreign key to lexicon_term and 'EPA' is not a term yet.
+`limit_source` is a foreign key to lexicon_term, so an agency has to be a term
+before it can source a limit: 'EPA' and 'NMED' are, nothing else is.
 """
 
 from typing import Annotated, Optional

@@ -29,10 +29,10 @@ class RegulatoryLimitResponse(BaseResponseModel):
 
     ``limit_source`` is a plain string, unlike the other three lexicon-backed
     columns. It is a foreign key to lexicon_term like they are, but no single
-    lexicon category collects the issuing agencies -- 'NMED' is an
-    `organization` term and 'EPA' is not a term at all yet -- so there is no
-    category to build an enum from. Typing it as one of the existing categories
-    would reject values the column accepts.
+    lexicon category collects the issuing agencies: 'EPA' and 'NMED' are both
+    `organization` terms, alongside 300 well owners and drillers. There is no
+    category to build an enum from, and building one from `organization` would
+    advertise every landowner as a source of regulatory limits.
     """
 
     parameter_id: int
