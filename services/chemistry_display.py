@@ -18,15 +18,13 @@ from db.nma_legacy import (
 )
 from db.thing import Thing
 from schemas.chemistry import (
-    ChemistryDisplayCrosstabColumnResponse,
-    ChemistryDisplayCrosstabResponse,
-    ChemistryDisplayCrosstabRowResponse,
     ChemistryDisplayResponse,
+    ChemistryDisplayGeneralResponse,
     ChemistryDisplayResultResponse,
     ChemistryDisplaySampleResponse,
+    ChemistryDisplaySectionResponse,
     ChemistryDisplayStandardResponse,
     ChemistryDisplayStandardsSummaryResponse,
-    ChemistryDisplayTabResponse,
 )
 from services.legacy_chemistry import canonical_parameter_name
 
@@ -131,7 +129,6 @@ def build_chemistry_display_payload(
     thing_id: int,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    sample_info_id: int | None = None,
 ) -> ChemistryDisplayResponse | None:
     thing = session.get(Thing, thing_id)
     if thing is None or thing.release_status != "public":
@@ -146,49 +143,42 @@ def build_chemistry_display_payload(
     if not samples:
         return None
 
-    selected = _select_sample(samples, sample_info_id)
-    if selected is None:
-        return None
+    selected_sample_id = samples[0].id
 
     sample_ids = [sample.id for sample in samples]
     sample_responses = [_sample_response(sample) for sample in samples]
     results = _get_results(session, sample_ids)
-    tabs = {
-        "field_parameters": _tab_payload(
-            sample_responses,
-            selected.id,
-            [result for result in results if result.source == "field"],
-        ),
-        "general_chemistry": _tab_payload(
-            sample_responses,
-            selected.id,
-            [result for result in results if _is_general_chemistry(result)],
-            include_standards_summary=True,
-        ),
-        "environmental_tracers": _tab_payload(
-            sample_responses,
-            selected.id,
-            [result for result in results if _is_environmental_tracer(result)],
-        ),
-        "additional_analyses": _tab_payload(
-            sample_responses,
-            selected.id,
-            [
-                result
-                for result in results
-                if result.source != "field"
-                and not _is_general_chemistry(result)
-                and not _is_environmental_tracer(result)
-            ],
-        ),
-    }
+    field_results = []
+    general_results = []
+    tracer_results = []
+    additional_results = []
+    for result in results:
+        is_general = _is_general_chemistry(result)
+        is_tracer = _is_environmental_tracer(result)
+        if result.source == "field":
+            field_results.append(result)
+        if is_general:
+            general_results.append(result)
+        if is_tracer:
+            tracer_results.append(result)
+        if result.source != "field" and not is_general and not is_tracer:
+            additional_results.append(result)
+    current_general_results = [
+        result
+        for result in general_results
+        if result.sample_info_id == selected_sample_id
+    ]
+    standards_summary = _standards_summary(current_general_results)
 
     return ChemistryDisplayResponse(
-        thing_id=thing_id,
-        selected_sample_info_id=selected.id,
         samples=sample_responses,
-        sample_note=selected.sample_notes,
-        tabs=tabs,
+        field_parameters=_section_payload(field_results),
+        general_chemistry=ChemistryDisplayGeneralResponse(
+            results=general_results,
+            standards_summary=standards_summary,
+        ),
+        environmental_tracers=_section_payload(tracer_results),
+        additional_analyses=_section_payload(additional_results),
     )
 
 
@@ -215,17 +205,6 @@ def _get_samples(
         NMA_Chemistry_SampleInfo.id.desc(),
     )
     return list(session.scalars(query))
-
-
-def _select_sample(
-    samples: list[NMA_Chemistry_SampleInfo], sample_info_id: int | None
-) -> NMA_Chemistry_SampleInfo | None:
-    if sample_info_id is None:
-        return samples[0]
-    return next(
-        (sample for sample in samples if sample.id == sample_info_id),
-        None,
-    )
 
 
 def _get_results(
@@ -323,74 +302,19 @@ def _sample_response(
     )
 
 
-def _tab_payload(
-    samples: list[ChemistryDisplaySampleResponse],
-    selected_sample_id: int,
+def _section_payload(
     results: list[ChemistryDisplayResultResponse],
-    *,
-    include_standards_summary: bool = False,
-) -> ChemistryDisplayTabResponse:
-    current_results = []
-    for result in results:
-        if result.sample_info_id == selected_sample_id:
-            current_results.append(result)
-    standards_summary = None
-    if include_standards_summary:
-        standards_summary = _standards_summary(current_results)
-
-    return ChemistryDisplayTabResponse(
-        current_results=current_results,
+) -> ChemistryDisplaySectionResponse:
+    return ChemistryDisplaySectionResponse(
         results=results,
-        crosstab=_crosstab(samples, results),
-        standards_summary=standards_summary,
-    )
-
-
-def _crosstab(
-    samples: list[ChemistryDisplaySampleResponse],
-    results: list[ChemistryDisplayResultResponse],
-) -> ChemistryDisplayCrosstabResponse:
-    columns_by_key = {}
-    for result in results:
-        columns_by_key.setdefault(
-            result.parameter_key,
-            ChemistryDisplayCrosstabColumnResponse(
-                parameter_key=result.parameter_key,
-                parameter_name=result.parameter_name,
-                symbol=result.symbol,
-                unit=result.unit,
-            ),
-        )
-
-    values_by_sample: dict[int, dict[str, ChemistryDisplayResultResponse]] = {
-        sample.id: {} for sample in samples
-    }
-    for result in results:
-        values_by_sample.setdefault(result.sample_info_id, {})[
-            result.parameter_key
-        ] = result
-
-    rows = [
-        ChemistryDisplayCrosstabRowResponse(
-            sample_info_id=sample.id,
-            sample_label=sample.label,
-            collection_date=sample.collection_date,
-            values=values_by_sample.get(sample.id, {}),
-            sample_notes=sample.sample_notes,
-        )
-        for sample in reversed(samples)
-    ]
-    return ChemistryDisplayCrosstabResponse(
-        columns=sorted(columns_by_key.values(), key=_column_sort_key),
-        rows=rows,
     )
 
 
 def _standards_summary(
-    current_results: list[ChemistryDisplayResultResponse],
+    results: list[ChemistryDisplayResultResponse],
 ) -> ChemistryDisplayStandardsSummaryResponse:
     standards = []
-    for result in current_results:
+    for result in results:
         if result.standard:
             standards.append(result.standard)
     compared = [
@@ -398,7 +322,7 @@ def _standards_summary(
         for standard in standards
         if standard.status not in {"no_limit", "not_compared"}
     ]
-    latest_analysis_date = _latest_analysis_date(current_results)
+    latest_analysis_date = _latest_analysis_date(results)
     return ChemistryDisplayStandardsSummaryResponse(
         above_mcl_count=sum(
             1 for standard in standards if standard.status == "above_mcl"
@@ -554,13 +478,3 @@ def _result_sort_key(
     except ValueError:
         index = len(GENERAL_PARAMETER_ORDER)
     return (index, result.parameter_name or "", result.id)
-
-
-def _column_sort_key(
-    column: ChemistryDisplayCrosstabColumnResponse,
-) -> tuple[int, str]:
-    try:
-        index = GENERAL_PARAMETER_ORDER.index(column.parameter_name or "")
-    except ValueError:
-        index = len(GENERAL_PARAMETER_ORDER)
-    return (index, column.parameter_name or "")

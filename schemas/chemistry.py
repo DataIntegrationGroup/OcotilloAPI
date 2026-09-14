@@ -110,7 +110,7 @@ class ChemistryDisplayResultResponse(BaseModel):
 
 
 class ChemistryDisplaySampleResponse(BaseModel):
-    """Sample event metadata for the display toolbar and crosstabs."""
+    """Sample event metadata for the chemistry display."""
 
     id: int
     thing_id: int
@@ -143,40 +143,6 @@ class ChemistryDisplaySampleResponse(BaseModel):
         return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-class ChemistryDisplayCrosstabColumnResponse(BaseModel):
-    """A parameter column available in a crosstab."""
-
-    parameter_key: str
-    parameter_name: str | None = None
-    symbol: str | None = None
-    unit: str | None = None
-
-
-class ChemistryDisplayCrosstabRowResponse(BaseModel):
-    """One sample row in a display crosstab."""
-
-    sample_info_id: int
-    sample_label: str
-    collection_date: datetime | None = None
-    values: dict[str, ChemistryDisplayResultResponse]
-    sample_notes: str | None = None
-
-    @field_serializer("collection_date")
-    def serialize_collection_date(self, value: datetime | None) -> str | None:
-        if value is None:
-            return None
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-class ChemistryDisplayCrosstabResponse(BaseModel):
-    """Crosstab-ready data for one display tab."""
-
-    columns: list[ChemistryDisplayCrosstabColumnResponse]
-    rows: list[ChemistryDisplayCrosstabRowResponse]
-
-
 class ChemistryDisplayStandardsSummaryResponse(BaseModel):
     """Summary counts for the selected sample's standards table."""
 
@@ -186,23 +152,26 @@ class ChemistryDisplayStandardsSummaryResponse(BaseModel):
     latest_analysis_date: date | datetime | None = None
 
 
-class ChemistryDisplayTabResponse(BaseModel):
-    """All display data for one chemistry tab."""
+class ChemistryDisplaySectionResponse(BaseModel):
+    """All display data for one chemistry section."""
 
-    current_results: list[ChemistryDisplayResultResponse]
     results: list[ChemistryDisplayResultResponse]
-    crosstab: ChemistryDisplayCrosstabResponse
-    standards_summary: ChemistryDisplayStandardsSummaryResponse | None = None
+
+
+class ChemistryDisplayGeneralResponse(ChemistryDisplaySectionResponse):
+    """General chemistry results plus standards summary."""
+
+    standards_summary: ChemistryDisplayStandardsSummaryResponse
 
 
 class ChemistryDisplayResponse(BaseModel):
     """Chemistry payload for the well details display."""
 
-    thing_id: int
-    selected_sample_info_id: int
     samples: list[ChemistryDisplaySampleResponse]
-    sample_note: str | None = None
-    tabs: dict[str, ChemistryDisplayTabResponse]
+    field_parameters: ChemistryDisplaySectionResponse
+    general_chemistry: ChemistryDisplayGeneralResponse
+    environmental_tracers: ChemistryDisplaySectionResponse
+    additional_analyses: ChemistryDisplaySectionResponse
 
 
 # ============= EOF =============================================

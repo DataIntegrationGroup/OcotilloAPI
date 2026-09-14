@@ -130,31 +130,48 @@ def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
         assert response.status_code == 200
         data = response.json()
 
-        assert data["thing_id"] == water_well_thing.id
-        assert data["selected_sample_info_id"] == selected_sample_id
+        assert "thing_id" not in data
+        assert "selected_sample_info_id" not in data
+        assert "sample_note" not in data
+        assert "tabs" not in data
         assert [sample["id"] for sample in data["samples"]] == [
             selected_sample_id,
             old_sample_id,
         ]
-        assert data["sample_note"] == "notes for WL-0001B"
 
-        general = data["tabs"]["general_chemistry"]
-        assert general["current_results"][0]["parameter_name"] == "Arsenic"
-        standard = general["current_results"][0]["standard"]
+        general = data["general_chemistry"]
+        assert "current_results" not in general
+        assert "crosstab" not in general
+        current_result = next(
+            result
+            for result in general["results"]
+            if result["sample_info_id"] == selected_sample_id
+        )
+        assert current_result["parameter_name"] == "Arsenic"
+        assert current_result["sample_info_id"] == selected_sample_id
+        standard = current_result["standard"]
         assert standard["status"] == "above_mcl"
         assert general["standards_summary"]["above_mcl_count"] == 1
         assert general["standards_summary"]["compared_parameter_count"] == 1
-        assert len(general["crosstab"]["rows"]) == 2
 
-        field = data["tabs"]["field_parameters"]
-        assert field["current_results"][0]["parameter_name"] == "pH"
-        assert field["current_results"][0]["notes"] == "stabilized"
+        field = data["field_parameters"]
+        assert "current_results" not in field
+        assert "crosstab" not in field
+        assert "standards_summary" not in field
+        assert field["results"][0]["parameter_name"] == "pH"
+        assert field["results"][0]["notes"] == "stabilized"
 
-        tracers = data["tabs"]["environmental_tracers"]
-        assert tracers["current_results"][0]["parameter_name"] == "Tritium"
+        tracers = data["environmental_tracers"]
+        assert "current_results" not in tracers
+        assert "crosstab" not in tracers
+        assert "standards_summary" not in tracers
+        assert tracers["results"][0]["parameter_name"] == "Tritium"
 
-        additional = data["tabs"]["additional_analyses"]
-        assert additional["current_results"][0]["parameter_name"] == "Barium"
+        additional = data["additional_analyses"]
+        assert "current_results" not in additional
+        assert "crosstab" not in additional
+        assert "standards_summary" not in additional
+        assert additional["results"][0]["parameter_name"] == "Barium"
 
         result_ids = str(data)
         assert "WL-0001C" not in result_ids
@@ -169,7 +186,7 @@ def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
             session.commit()
 
 
-def test_chemistry_display_honors_sample_and_date_filters(water_well_thing):
+def test_chemistry_display_honors_date_filters(water_well_thing):
     with session_ctx() as session:
         old_sample = _add_sample(
             session,
@@ -213,27 +230,29 @@ def test_chemistry_display_honors_sample_and_date_filters(water_well_thing):
             "/chemistry/display",
             params={
                 "thing_id": water_well_thing.id,
-                "sample_info_id": old_sample_id,
                 "start_time": "2024-01-01T00:00:00",
                 "end_time": "2025-01-01T00:00:00",
             },
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["selected_sample_info_id"] == old_sample_id
+        assert "thing_id" not in data
+        assert "selected_sample_info_id" not in data
+        assert "sample_note" not in data
+        assert "tabs" not in data
         assert [sample["id"] for sample in data["samples"]] == [old_sample_id]
-        current_results = data["tabs"]["general_chemistry"]["current_results"]
-        assert current_results[0]["value"] == 10
+        results = data["general_chemistry"]["results"]
+        assert results[0]["sample_info_id"] == old_sample_id
+        assert results[0]["value"] == 10
 
-        missing_selected = client.get(
+        no_samples_in_range = client.get(
             "/chemistry/display",
             params={
                 "thing_id": water_well_thing.id,
-                "sample_info_id": new_sample_id,
-                "end_time": "2025-01-01T00:00:00",
+                "start_time": "2026-01-01T00:00:00",
             },
         )
-        assert missing_selected.status_code == 404
+        assert no_samples_in_range.status_code == 404
     finally:
         with session_ctx() as session:
             session.execute(

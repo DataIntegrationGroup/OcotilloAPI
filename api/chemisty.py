@@ -29,14 +29,6 @@ from schemas.chemistry import (
 from services.chemistry_display import build_chemistry_display_payload
 from services.legacy_chemistry import canonical_parameter_name, result_kind
 
-# from services.validation.chemistry import validate_analyte
-
-# from db.chemistry import WaterChemistryAnalysis, WaterChemistryAnalysisSet
-# from schemas.create.chemistry import (
-#     CreateWaterChemistryAnalysis,
-#     CreateAnalysisSet,
-# )
-
 router = APIRouter(
     prefix="/chemistry",
 )
@@ -140,22 +132,19 @@ def get_chemistry_display(
     thing_id: int,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    sample_info_id: int | None = None,
 ) -> ChemistryDisplayResponse:
     """
     Retrieve UI-ready chemistry data for the well details chemistry display.
 
     The payload is grouped by released NMA chemistry sample events and includes
     major chemistry, minor/trace chemistry, and field parameter rows. The
-    newest released sample is selected by default unless `sample_info_id` is
-    supplied.
+    newest released sample is selected by default.
     """
     payload = build_chemistry_display_payload(
         session,
         thing_id=thing_id,
         start_time=start_time,
         end_time=end_time,
-        sample_info_id=sample_info_id,
     )
     if payload is None:
         raise HTTPException(
