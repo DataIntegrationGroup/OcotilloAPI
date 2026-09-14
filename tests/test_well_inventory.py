@@ -145,8 +145,10 @@ def test_well_inventory_db_contents_no_waterlevels():
             )
             assert thing.well_depth == float(file_content["total_well_depth_ft"])
             assert thing.hole_depth is None
-            assert thing.well_casing_diameter == float(
-                file_content["casing_diameter_ft"]
+            # The CSV column is feet; the column stores inches.
+            assert (
+                thing.well_casing_diameter
+                == float(file_content["casing_diameter_ft"]) * 12
             )
             assert thing.well_casing_depth is None
             assert (
