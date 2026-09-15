@@ -437,8 +437,6 @@ def _value_in_limit_unit(
         return value
     if normalized_unit in {"ug/l", "µg/l", "micrograms/liter"}:
         return value / 1000
-    if normalized_unit == "" and normalized_limit_unit == "mg/l":
-        return value
     return None
 
 

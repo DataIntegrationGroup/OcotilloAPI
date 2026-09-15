@@ -10,6 +10,7 @@ from db.nma_legacy import (
     NMA_MinorTraceChemistry,
     NMA_Radionuclides,
 )
+from services.chemistry_display import _standard_for_result
 from tests import client
 
 
@@ -38,6 +39,13 @@ def _add_sample(
     session.add(sample)
     session.flush()
     return sample
+
+
+def test_missing_unit_is_not_compared_to_standard():
+    for unit in ("", None):
+        standard = _standard_for_result("Arsenic", 0.012, unit)
+
+        assert standard.status == "not_compared"
 
 
 def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
