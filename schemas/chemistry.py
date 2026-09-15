@@ -109,7 +109,7 @@ class ChemistryDisplayResultResponse(BaseModel):
 
     id: str
     sample_info_id: int
-    source: Literal["major", "minor", "field"]
+    source: Literal["major", "minor", "radionuclide", "field"]
     parameter_key: str
     parameter_name: str | None = None
     analyte: str | None = None

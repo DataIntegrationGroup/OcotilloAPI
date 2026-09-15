@@ -8,6 +8,7 @@ from db.nma_legacy import (
     NMA_FieldParameters,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
 )
 from tests import client
 
@@ -106,6 +107,15 @@ def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
                     sample_value=0.2,
                     units="mg/L",
                 ),
+                NMA_Radionuclides(
+                    chemistry_sample_info_id=selected_sample.id,
+                    nma_sample_point_id="WL-0001B",
+                    analyte="Gross Alpha",
+                    symbol="GA",
+                    sample_value=3.2,
+                    units="pCi/L",
+                    analysis_date=datetime(2025, 6, 4, 13, 45),
+                ),
                 NMA_FieldParameters(
                     chemistry_sample_info_id=selected_sample.id,
                     nma_sample_point_id="WL-0001B",
@@ -176,6 +186,13 @@ def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
         assert "crosstab" not in additional
         assert "standards_summary" not in additional
         assert additional["results"][0]["parameter_name"] == "Barium"
+        radionuclide = next(
+            result
+            for result in additional["results"]
+            if result["source"] == "radionuclide"
+        )
+        assert radionuclide["parameter_name"] == "GA"
+        assert radionuclide["analysis_date"] == "2025-06-04"
 
         result_ids = str(data)
         assert "WL-0001C" not in result_ids

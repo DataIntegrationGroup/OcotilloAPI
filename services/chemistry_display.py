@@ -30,7 +30,7 @@ from schemas.chemistry import (
 )
 from services.legacy_chemistry import canonical_parameter_name
 
-SourceKind = Literal["major", "minor", "field"]
+SourceKind = Literal["major", "minor", "radionuclide", "field"]
 
 GENERAL_PARAMETER_ORDER = [
     "Arsenic",
@@ -216,6 +216,7 @@ def _get_results(
         *(
             _lab_results_query(NMA_MajorChemistry, "major", sample_ids),
             _lab_results_query(NMA_MinorTraceChemistry, "minor", sample_ids),
+            _lab_results_query(NMA_Radionuclides, "radionuclide", sample_ids),
             _field_results_query(sample_ids),
         )
     )
