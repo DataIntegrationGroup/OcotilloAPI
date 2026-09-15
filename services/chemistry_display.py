@@ -193,7 +193,10 @@ def _get_samples(
         NMA_Chemistry_SampleInfo.sample_notes,
     ).where(
         NMA_Chemistry_SampleInfo.thing_id == thing_id,
-        NMA_Chemistry_SampleInfo.public_release.is_(True),
+
+        # NULL means the flag was never recorded, not that the record is withheld.
+        # amp_viewer users are permitted to view unset records; only explicit False is dropped.
+        NMA_Chemistry_SampleInfo.public_release.isnot(False),
     )
     if start_time is not None:
         collection_date = NMA_Chemistry_SampleInfo.collection_date
