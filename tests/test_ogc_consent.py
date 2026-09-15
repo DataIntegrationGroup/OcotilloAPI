@@ -24,7 +24,7 @@ with nothing comparing them is exactly how they drift.
 
 import pytest
 
-from alembic.versions.c5d6e7f8a9b0_gate_public_ogc_columns_on_consent import (
+from alembic.versions.f3a7c1d5e9b2_gate_public_ogc_columns_on_consent import (
     WATER_WELLS_COLUMNS,
 )
 from services.field_projection import LOCATION, THING, _data_type_configuration
