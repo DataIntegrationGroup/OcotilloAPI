@@ -1,7 +1,7 @@
 """Index grants by principal, and ask for NGWMN consent once per row
 
-Revision ID: e7f8a9b0c1d2
-Revises: d6e7f8a9b0c1
+Revision ID: b5c9d3a7e1f4
+Revises: a8e2b6f4c0d7
 Create Date: 2026-09-03
 
 Two costs found reviewing the access-control stack, both in the read path.
@@ -29,14 +29,14 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "e7f8a9b0c1d2"
-down_revision: Union[str, Sequence[str], None] = "d6e7f8a9b0c1"
+revision: str = "b5c9d3a7e1f4"
+down_revision: Union[str, Sequence[str], None] = "a8e2b6f4c0d7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 # Imported rather than restated: the bodies these views are built from live in
 # the migration that first gated them, and a second copy would drift.
-from alembic.versions.d6e7f8a9b0c1_gate_ngwmn_views_on_consent import (  # noqa: E402
+from alembic.versions.a8e2b6f4c0d7_gate_ngwmn_views_on_consent import (  # noqa: E402
     LITHOLOGY,
     WATER_LEVELS,
     WELL_CONSTRUCTION,
