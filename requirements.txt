@@ -2371,9 +2371,9 @@ starlette==1.6.0 \
     #   fastapi
     #   ocotilloapi
     #   starlette-admin
-starlette-admin==0.17.1 \
-    --hash=sha256:685615945d55de636879e3523ec70a6419176f7cd6f04a17470e35670f96b972 \
-    --hash=sha256:7bdeaf1c30fd9036ef3779fb0255002d3d18aaf6f7e674200e21c604ee563fc7
+starlette-admin==1.0.1 \
+    --hash=sha256:0a818db92cbf5a2e24b3f1640028d6468d905228b20b8f6621d0ce97841122f8 \
+    --hash=sha256:846b97e7a08b6bc453a91ce4ea64d1fe241de3b4555a0207c39c520874dd2ae7
     # via ocotilloapi
 tinydb==4.9.0 \
     --hash=sha256:111f1f680978a1b7c534d698dd1d76739ff31c74c27fd26a111140b51d8b35d6 \
