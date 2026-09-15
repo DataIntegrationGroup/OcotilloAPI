@@ -1,7 +1,7 @@
 """Gate the NGWMN views on landowner consent
 
 Revision ID: d6e7f8a9b0c1
-Revises: c5d6e7f8a9b0
+Revises: f3a7c1d5e9b2
 Create Date: 2026-09-03
 
 c5d6e7f8a9b0 put the public-web destination under consent. This does the same
@@ -39,8 +39,8 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "d6e7f8a9b0c1"
-down_revision: Union[str, Sequence[str], None] = "c5d6e7f8a9b0"
+revision: str = "a8e2b6f4c0d7"
+down_revision: Union[str, Sequence[str], None] = "f3a7c1d5e9b2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
