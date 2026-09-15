@@ -25,6 +25,11 @@ The split is about *who decides and on what authority*. The join is about *where
 the answer is computed*. Those are different questions, and the current codebase
 already shows what happens when the second one is answered "in each view."
 
+Capabilities stay a closed set of four -- read, enter, correct, administer. A
+`suggest` grant, which would let a principal stage an edit for someone else to
+review and apply, is out of scope: the application has no representation for an
+unapplied change (section 4).
+
 ## Context
 
 ### Enforcement is currently distributed, and it has already drifted
@@ -133,6 +138,37 @@ after an incident — "who granted that, and when" — does not care which table
 row came from. `AuditMixin` and sqlalchemy-continuum cover data attribution and
 data history; this is a separate structure, written from the application, with a
 database-level backstop for writes that bypass it.
+
+### 4. Capabilities are a closed set, and `suggest` is not in it
+
+The whitepaper's capability list includes a `suggest` grant: a principal may
+stage an edit that somebody holding `correct` later reviews and applies, which
+is how a volunteer monitor or an outside collaborator contributes without being
+trusted to write. That grant is **explicitly out of scope for this record**. The
+`capability` lexicon category is the four terms named in section 1, and there is
+no fifth.
+
+The reason is not that the capability is undesirable. It is that Ocotillo has
+nowhere to put a staged edit. A write is applied to the row when the request
+succeeds; sqlalchemy-continuum records what the row used to be, and
+`data_maturity` records how far a written measurement is through review. Neither
+represents a change that has not happened yet. There is no pending-change
+relation, no queue, no apply-or-reject transition, and no route by which a
+reviewer would be told a suggestion is waiting. A `suggest` grant would
+therefore authorize an action the application cannot carry out -- the engine
+would answer "yes" to a question no endpoint can act on, which is worse than
+answering "no", because a grant in the table reads to staff as a promise to the
+person holding it.
+
+Adding it later is a data-model change first and an access-control change
+second. It needs a representation for an unapplied change, a surface on which to
+review one, a decision about what the record reads as while a suggestion is
+outstanding, and an answer for what happens to a suggestion whose underlying row
+moved on. None of that is decided here, and nothing here forecloses it: when
+that model exists, `suggest` becomes one more lexicon term evaluated by the same
+engine, against the same scopes, in the same audit log. Until then, a workflow
+that wants review before publication marks a written row with `data_maturity`,
+rather than holding an unwritten one.
 
 ## Why not the alternatives
 
