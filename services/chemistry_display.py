@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Literal
 
 from sqlalchemy import literal, select, union_all
-from sqlalchemy.engine import Row
+from sqlalchemy.engine import Row, RowMapping
 from sqlalchemy.orm import Session
 
 from db.nma_legacy import (
@@ -219,7 +219,7 @@ def _get_results(
         )
     )
     return sorted(
-        (_result_response(row) for row in session.execute(query)),
+        (_result_response(row) for row in session.execute(query).mappings()),
         key=_result_sort_key,
     )
 
@@ -229,15 +229,15 @@ def _lab_results_query(model, source: SourceKind, sample_ids: list[int]):
         literal(source).label("source"),
         model.id.label("source_id"),
         model.chemistry_sample_info_id.label("sample_info_id"),
-        model.analyte,
-        model.symbol,
+        model.analyte.label("analyte"),
+        model.symbol.label("symbol"),
         model.sample_value.label("value"),
         model.units.label("unit"),
-        model.uncertainty,
-        model.analysis_method,
-        model.analysis_date,
-        model.notes,
-        model.analyses_agency,
+        model.uncertainty.label("uncertainty"),
+        model.analysis_method.label("analysis_method"),
+        model.analysis_date.label("analysis_date"),
+        model.notes.label("notes"),
+        model.analyses_agency.label("analyses_agency"),
     ).where(model.chemistry_sample_info_id.in_(sample_ids))
 
 
@@ -253,29 +253,34 @@ def _field_results_query(sample_ids: list[int]):
         literal(None).label("uncertainty"),
         literal(None).label("analysis_method"),
         literal(None).label("analysis_date"),
-        NMA_FieldParameters.notes,
-        NMA_FieldParameters.analyses_agency,
+        NMA_FieldParameters.notes.label("notes"),
+        NMA_FieldParameters.analyses_agency.label("analyses_agency"),
     ).where(NMA_FieldParameters.chemistry_sample_info_id.in_(sample_ids))
 
 
-def _result_response(row: Row) -> ChemistryDisplayResultResponse:
-    parameter_name = canonical_parameter_name(row.symbol or row.analyte)
+def _result_response(row: RowMapping) -> ChemistryDisplayResultResponse:
+    source = row["source"]
+    symbol = row["symbol"]
+    analyte = row["analyte"]
+    value = row["value"]
+    unit = row["unit"]
+    parameter_name = canonical_parameter_name(symbol or analyte)
     return ChemistryDisplayResultResponse(
-        id=f"{row.source}-{row.source_id}",
-        sample_info_id=row.sample_info_id,
-        source=row.source,
-        parameter_key=_parameter_key(row.source, parameter_name, row.symbol),
+        id=f"{source}-{row['source_id']}",
+        sample_info_id=row["sample_info_id"],
+        source=source,
+        parameter_key=_parameter_key(source, parameter_name, symbol),
         parameter_name=parameter_name,
-        analyte=row.analyte,
-        symbol=row.symbol,
-        value=row.value,
-        unit=row.unit,
-        uncertainty=row.uncertainty,
-        analysis_method=row.analysis_method,
-        analysis_date=row.analysis_date,
-        notes=row.notes,
-        analyses_agency=row.analyses_agency,
-        standard=_standard_for_result(parameter_name, row.value, row.unit),
+        analyte=analyte,
+        symbol=symbol,
+        value=value,
+        unit=unit,
+        uncertainty=row["uncertainty"],
+        analysis_method=row["analysis_method"],
+        analysis_date=row["analysis_date"],
+        notes=row["notes"],
+        analyses_agency=row["analyses_agency"],
+        standard=_standard_for_result(parameter_name, value, unit),
     )
 
 
