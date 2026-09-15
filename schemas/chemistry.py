@@ -40,7 +40,7 @@ class WaterChemistryResultResponse(BaseModel):
     # When the lab ran this result -- often days or weeks after collection, and
     # different for different analytes in the same sample. None for field
     # parameters.
-    analysis_date: datetime | None = None
+    analysis_date: date | None = None
     # Which legacy table the result came from. A field measurement was read at
     # the wellhead and a lab one was not, which is the distinction an
     # owner-facing report has to draw -- and the legacy tables are the only
@@ -55,7 +55,7 @@ class WaterChemistryResultResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("observation_datetime", "analysis_date")
+    @field_validator("observation_datetime")
     @classmethod
     def assume_utc(cls, value: datetime | None) -> datetime | None:
         """Stamp naive legacy timestamps as UTC.
@@ -73,7 +73,12 @@ class WaterChemistryResultResponse(BaseModel):
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
 
-    @field_serializer("observation_datetime", "analysis_date")
+    @field_validator("analysis_date", mode="before")
+    @classmethod
+    def as_calendar_date(cls, value):
+        return value.date() if isinstance(value, datetime) else value
+
+    @field_serializer("observation_datetime")
     def serialize_datetime(self, value: datetime | None) -> str | None:
         if value is None:
             return None
@@ -113,7 +118,13 @@ class ChemistryDisplayResultResponse(BaseModel):
     unit: str | None = None
     uncertainty: float | None = None
     analysis_method: str | None = None
-    analysis_date: date | datetime | None = None
+    analysis_date: date | None = None
+
+    @field_validator("analysis_date", mode="before")
+    @classmethod
+    def as_calendar_date(cls, value):
+        return value.date() if isinstance(value, datetime) else value
+
     notes: str | None = None
     analyses_agency: str | None = None
     standard: ChemistryDisplayStandardResponse | None = None
@@ -159,7 +170,12 @@ class ChemistryDisplayStandardsSummaryResponse(BaseModel):
     above_mcl_count: int
     above_smcl_count: int
     compared_parameter_count: int
-    latest_analysis_date: date | datetime | None = None
+    latest_analysis_date: date | None = None
+
+    @field_validator("latest_analysis_date", mode="before")
+    @classmethod
+    def as_calendar_date(cls, value):
+        return value.date() if isinstance(value, datetime) else value
 
 
 class ChemistryDisplaySectionResponse(BaseModel):

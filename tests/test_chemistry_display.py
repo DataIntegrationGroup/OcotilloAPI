@@ -153,6 +153,10 @@ def test_chemistry_display_returns_tabs_and_standards(water_well_thing):
         assert standard["status"] == "above_mcl"
         assert general["standards_summary"]["above_mcl_count"] == 1
         assert general["standards_summary"]["compared_parameter_count"] == 1
+        standards_summary = general["standards_summary"]
+        latest_analysis_date = standards_summary["latest_analysis_date"]
+        assert latest_analysis_date == "2025-06-02"
+        assert current_result["analysis_date"] == "2025-06-02"
 
         field = data["field_parameters"]
         assert "current_results" not in field

@@ -16,6 +16,7 @@ from db.nma_legacy import (
     NMA_FieldParameters,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
 )
 from db.thing import Thing
 from schemas.chemistry import (
@@ -395,11 +396,12 @@ def _standard_for_result(
 
 def _latest_analysis_date(
     results: list[ChemistryDisplayResultResponse],
-) -> date | datetime | None:
+) -> date | None:
     values = list(filter(None, (result.analysis_date for result in results)))
     if not values:
         return None
-    return max(values, key=_analysis_date_sort_key)
+    latest = max(values, key=_analysis_date_sort_key)
+    return latest.date() if isinstance(latest, datetime) else latest
 
 
 def _analysis_date_sort_key(value: date | datetime) -> date:
