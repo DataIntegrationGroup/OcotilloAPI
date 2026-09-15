@@ -15,20 +15,19 @@
 # ===============================================================================
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import asc, desc, select
 
 from api.pagination import CustomPage
 from core.dependencies import amp_viewer_dependency, session_dependency
 from db.chemistry_views import WaterChemistryResultsView
-from schemas.chemistry import WaterChemistryResultResponse
+from schemas.chemistry import (
+    ChemistryDisplayResponse,
+    WaterChemistryResultResponse,
+)
+from services.chemistry_display import build_chemistry_display_payload
 from services.legacy_chemistry import canonical_parameter_name, result_kind
-
-# from services.validation.chemistry import validate_analyte
-
-# from db.chemistry import WaterChemistryAnalysis, WaterChemistryAnalysisSet
-# from schemas.create.chemistry import CreateWaterChemistryAnalysis, CreateAnalysisSet
 
 router = APIRouter(
     prefix="/chemistry",
@@ -46,7 +45,11 @@ _RESULT_SORT_COLUMNS = {
 }
 
 
-@router.get("/results", summary="Get water chemistry results", tags=["chemistry"])
+@router.get(
+    "/results",
+    summary="Get water chemistry results",
+    tags=["chemistry"],
+)
 def get_water_chemistry_results(
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -63,11 +66,6 @@ def get_water_chemistry_results(
     actually is -- the refactored `observation` table holds none of it. Rows
     come from the public view, so an unreleased thing or a sample flagged
     `PublicRelease = false` is not served here regardless of who is asking.
-
-    `observation_datetime` is when the sample was collected, so every result
-    from one sample shares it; `analysis_date` is when the lab ran that result.
-    The time window and the default sort are on the collection date: a sample
-    belongs to the year the water was drawn, not the year the lab got to it.
 
     `start_time` is inclusive and `end_time` exclusive, so a calendar year is
     `start_time=YYYY-01-01&end_time=YYYY+1-01-01` with no risk of picking up a
@@ -88,7 +86,8 @@ def get_water_chemistry_results(
         )
 
     if end_time is not None:
-        query = query.where(WaterChemistryResultsView.observation_datetime < end_time)
+        observed_at = WaterChemistryResultsView.observation_datetime
+        query = query.where(observed_at < end_time)
 
     sort_column = _RESULT_SORT_COLUMNS.get(
         sort or "observation_datetime",
@@ -96,94 +95,60 @@ def get_water_chemistry_results(
     )
     direction = asc if (order or "desc").lower() == "asc" else desc
 
-    # id is the tiebreaker so paging is stable: without it two analytes sharing
-    # a timestamp can swap pages between requests and be served twice or never.
-    query = query.order_by(direction(sort_column), WaterChemistryResultsView.id)
+    # id is the tiebreaker so paging is stable: without it two analytes
+    # sharing a timestamp can swap pages between requests and be served twice
+    # or never.
+    query = query.order_by(
+        direction(sort_column),
+        WaterChemistryResultsView.id,
+    )
 
     def transformer(rows):
         # Analytes come out of the legacy tables as symbols; the response
         # speaks the lexicon's names so a consumer can match a result to a
         # drinking water standard without knowing the legacy vocabulary.
-        return [
-            WaterChemistryResultResponse.model_validate(row).model_copy(
+        def response_for(row):
+            parameter_name = canonical_parameter_name(row.parameter_name)
+            return WaterChemistryResultResponse.model_validate(row).model_copy(
                 update={
-                    "parameter_name": canonical_parameter_name(row.parameter_name),
+                    "parameter_name": parameter_name,
                     "result_kind": result_kind(row.id),
                 }
             )
-            for row in rows
-        ]
+
+        return [response_for(row) for row in rows]
 
     return paginate(query=query, conn=session, transformer=transformer)
 
 
-# @router.get(
-#     "/analysis_set",
-#     response_model=CustomPage[WaterChemistryAnalysisSetResponse],
-#     tags=["chemistry"],
-# )
-# async def get_chemistry_analysis_set(
-#     query: str = None, within: str = None, session: Session = Depends(get_db_session)
-# ):
-#     """
-#     Retrieve chemistry analysis sets.
-#     """
-#     sql = select(WaterChemistryAnalysisSet)
-#     if within:
-#         sql = sql.join(Well)
-#         sql = sql.join(SampleLocation)
-#         sql = make_within_wkt(sql, within)
-#
-#     if query:
-#         sql = sql.where(make_query(WaterChemistryAnalysisSet, query))
-#
-#     return paginate(conn=session, query=sql)
-#
-#
-# @router.get(
-#     "/analysis",
-#     response_model=CustomPage[WaterChemistryAnalysisResponse],
-#     tags=["chemistry"],
-# )
-# async def get_chemistry_analysis(
-#     query: str = None, within: str = None, session: Session = Depends(get_db_session)
-# ):
-#     """
-#     Retrieve chemistry analysis data.
-#     """
-#     sql = select(WaterChemistryAnalysis)
-#     if within:
-#         sql = sql.join(WaterChemistryAnalysisSet)
-#         sql = sql.join(Well)
-#         sql = sql.join(SampleLocation)
-#         sql = make_within_wkt(sql, within)
-#
-#     if query:
-#         sql = sql.where(make_query(WaterChemistryAnalysis, query))
-#
-#     return paginate(conn=session, query=sql)
+@router.get(
+    "/display",
+    summary="Get chemistry display data for a well",
+    tags=["chemistry"],
+)
+def get_chemistry_display(
+    session: session_dependency,
+    user: amp_viewer_dependency,
+    thing_id: int,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+) -> ChemistryDisplayResponse:
+    """
+    Retrieve UI-ready chemistry data for the well details chemistry display.
 
-
-# ====== POST ===============
-# @router.post("/analysis_set", status_code=status.HTTP_201_CREATED)
-# async def add_chemistry_analysis_set(
-#     analysis_set_data: CreateAnalysisSet, session: Session = Depends(get_db_session)
-# ):
-#     """
-#     Add a set of new chemistry analyses.
-#     """
-#     return adder(session, WaterChemistryAnalysisSet, analysis_set_data)
-#
-#
-# @router.post("/analysis", status_code=status.HTTP_201_CREATED, tags=["chemistry"])
-# async def add_chemistry_analysis(
-#     analysis_data: CreateWaterChemistryAnalysis = Depends(validate_analyte),
-#     session: session_dependency
-# ):
-#     """
-#     Add a new chemistry analysis.
-#     """
-#     return adder(session, WaterChemistryAnalysis, analysis_data)
-
-
-# ============= EOF =============================================
+    The payload is grouped by released NMA chemistry sample events and includes
+    major chemistry, minor/trace chemistry, and field parameter rows. The
+    newest released sample is selected by default.
+    """
+    payload = build_chemistry_display_payload(
+        session,
+        thing_id=thing_id,
+        start_time=start_time,
+        end_time=end_time,
+    )
+    if payload is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No released chemistry display data found for this thing.",
+        )
+    return payload

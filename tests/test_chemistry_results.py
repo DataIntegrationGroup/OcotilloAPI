@@ -37,8 +37,9 @@ def override_authentication_dependency_fixture():
 
 
 def _refresh_views(session):
+    internal_view = "REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry"
     session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_chemistry"))
-    session.execute(text("REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry"))
+    session.execute(text(internal_view))
     session.commit()
 
 
@@ -46,7 +47,8 @@ def _add_sample(session, thing_id, collected_on, point_id):
     return session.execute(
         text(
             'INSERT INTO "NMA_Chemistry_SampleInfo" '
-            '(thing_id, "CollectionDate", "PublicRelease", "nma_SamplePointID") '
+            '(thing_id, "CollectionDate", "PublicRelease", '
+            '"nma_SamplePointID") '
             "VALUES (:tid, :collected, true, :point) RETURNING id"
         ),
         {"tid": thing_id, "collected": collected_on, "point": point_id},
@@ -60,7 +62,12 @@ def _add_major(session, sample_id, symbol, value, analysed_on):
             '(chemistry_sample_info_id, "Symbol", "SampleValue", "Units", '
             "\"AnalysisDate\") VALUES (:sid, :symbol, :val, 'mg/L', :analysed)"
         ),
-        {"sid": sample_id, "symbol": symbol, "val": value, "analysed": analysed_on},
+        {
+            "sid": sample_id,
+            "symbol": symbol,
+            "val": value,
+            "analysed": analysed_on,
+        },
     )
 
 
@@ -86,7 +93,8 @@ def _add_field(session, sample_id, parameter, value):
     session.execute(
         text(
             'INSERT INTO "NMA_FieldParameters" '
-            '(chemistry_sample_info_id, "FieldParameter", "SampleValue", "Units") '
+            '(chemistry_sample_info_id, "FieldParameter", "SampleValue", '
+            '"Units") '
             "VALUES (:sid, :parameter, :val, 'std units')"
         ),
         {"sid": sample_id, "parameter": parameter, "val": value},
@@ -107,18 +115,23 @@ def two_samples(water_well_thing):
             {"tid": water_well_thing.id},
         )
 
-        april = _add_sample(session, water_well_thing.id, "2019-04-09", "RES-APR")
+        thing_id = water_well_thing.id
+        april = _add_sample(session, thing_id, "2019-04-09", "RES-APR")
         _add_field(session, april, "pH", 7.4)
         _add_major(session, april, "Cl", 12.0, "2019-04-16")
         _add_major(session, april, "Ca", 40.0, "2019-04-22")
         _add_minor(session, april, "RES-APR", "As", 0.012, "2019-05-24")
 
-        december = _add_sample(session, water_well_thing.id, "2018-12-20", "RES-DEC")
+        december = _add_sample(session, thing_id, "2018-12-20", "RES-DEC")
         _add_major(session, december, "SO4", 80.0, "2019-01-07")
         session.commit()
         _refresh_views(session)
 
-        yield {"april": april, "december": december, "thing_id": water_well_thing.id}
+        yield {
+            "april": april,
+            "december": december,
+            "thing_id": water_well_thing.id,
+        }
 
         for table in (
             "NMA_MajorChemistry",
@@ -132,10 +145,10 @@ def two_samples(water_well_thing):
                 ),
                 {"a": april, "d": december},
             )
-        session.execute(
-            text('DELETE FROM "NMA_Chemistry_SampleInfo" WHERE id IN (:a, :d)'),
-            {"a": april, "d": december},
+        delete_samples = (
+            'DELETE FROM "NMA_Chemistry_SampleInfo" ' "WHERE id IN (:a, :d)"
         )
+        session.execute(text(delete_samples), {"a": april, "d": december})
         session.execute(
             text("UPDATE thing SET release_status = :status WHERE id = :tid"),
             {"status": original_status, "tid": water_well_thing.id},
@@ -160,9 +173,11 @@ def _results(thing_id, year):
 def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
     items = _results(two_samples["thing_id"], 2019)
 
-    april = [item for item in items if item["sample_id"] == two_samples["april"]]
+    april_sample_id = two_samples["april"]
+    april = [item for item in items if item["sample_id"] == april_sample_id]
     assert len(april) == 4
-    assert {item["observation_datetime"] for item in april} == {"2019-04-09T00:00:00Z"}
+    observation_dates = {item["observation_datetime"] for item in april}
+    assert observation_dates == {"2019-04-09T00:00:00Z"}
 
 
 def test_analysis_date_is_reported_separately(two_samples):
@@ -170,16 +185,19 @@ def test_analysis_date_is_reported_separately(two_samples):
     by_kind = {item["result_kind"]: item for item in items}
 
     assert by_kind["field"]["analysis_date"] is None
-    assert by_kind["minor"]["analysis_date"] == "2019-05-24T00:00:00Z"
-    assert {
-        item["analysis_date"] for item in items if item["result_kind"] == "major"
-    } == {"2019-04-16T00:00:00Z", "2019-04-22T00:00:00Z"}
+    assert by_kind["minor"]["analysis_date"] == "2019-05-24"
+    major_results = [item for item in items if item["result_kind"] == "major"]
+    major_analysis_dates = {item["analysis_date"] for item in major_results}
+    assert major_analysis_dates == {"2019-04-16", "2019-04-22"}
 
 
 def test_year_window_follows_collection_not_analysis(two_samples):
-    """A December sample analysed in January belongs to the year it was drawn."""
-    in_2019 = {item["sample_id"] for item in _results(two_samples["thing_id"], 2019)}
-    in_2018 = {item["sample_id"] for item in _results(two_samples["thing_id"], 2018)}
+    """A December sample analysed in January belongs to the year it was
+    drawn.
+    """
+    thing_id = two_samples["thing_id"]
+    in_2019 = {item["sample_id"] for item in _results(thing_id, 2019)}
+    in_2018 = {item["sample_id"] for item in _results(thing_id, 2018)}
 
     assert in_2019 == {two_samples["april"]}
     assert in_2018 == {two_samples["december"]}
