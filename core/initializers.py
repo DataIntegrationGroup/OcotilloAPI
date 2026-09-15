@@ -45,11 +45,13 @@ def init_parameter(path: str = None) -> None:
         default_parameter = json.load(f)
 
     with session_ctx() as session:
-        # A parameter is identified by name and matrix, so skip the ones already
-        # stored instead of letting every re-run trip the unique constraint.
-        existing = set(
-            session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+        # A parameter is identified by name and matrix, so skip the ones
+        # already stored instead of tripping the unique constraint.
+        parameter_identity_query = select(
+            Parameter.parameter_name,
+            Parameter.matrix,
         )
+        existing = set(session.execute(parameter_identity_query).all())
 
         for param in default_parameter:
             if (param["parameter_name"], param["matrix"]) in existing:
@@ -65,7 +67,8 @@ def init_parameter(path: str = None) -> None:
                 session.add(parameter_obj)
                 session.commit()
             except DatabaseError as e:
-                print(f"Failed to add parameter {param['parameter_name']}: error: {e}")
+                name = param["parameter_name"]
+                print(f"Failed to add parameter {name}: error: {e}")
                 session.rollback()
 
 
@@ -117,7 +120,8 @@ def init_lexicon(path: str = None) -> None:
                     index_elements=["name"],
                     set_={
                         "description": func.coalesce(
-                            LexiconCategory.description, stmt.excluded.description
+                            LexiconCategory.description,
+                            stmt.excluded.description,
                         )
                     },
                 )
@@ -160,9 +164,7 @@ def init_lexicon(path: str = None) -> None:
             )
 
         term_ids = [existing_terms.get(term_name) for term_name in term_names]
-        category_ids = [
-            existing_categories.get(category_name) for category_name in category_names
-        ]
+        category_ids = list(map(existing_categories.get, category_names))
         existing_links = set()
         if term_ids and category_ids:
             existing_links = set(
@@ -172,7 +174,7 @@ def init_lexicon(path: str = None) -> None:
                         LexiconTermCategoryAssociation.category_id,
                     ).where(
                         LexiconTermCategoryAssociation.term_id.in_(
-                            [term_id for term_id in term_ids if term_id is not None]
+                            list(filter(None, term_ids))
                         ),
                         LexiconTermCategoryAssociation.category_id.in_(
                             [
@@ -235,7 +237,7 @@ def register_api_routes(app):
     from api.feedback import router as feedback_router
     from api.disclaimer import router as disclaimer_router
     from api.geothermal import router as geothermal_router
-    from api.chemisty import router as chemistry_router
+    from api.chemistry import router as chemistry_router
     from api.gis_artifacts import router as gis_artifacts_router
 
     app.include_router(asset_router)

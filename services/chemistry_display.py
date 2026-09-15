@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import literal, select, union_all
+from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
 
 from db.nma_legacy import (
@@ -18,8 +19,8 @@ from db.nma_legacy import (
 )
 from db.thing import Thing
 from schemas.chemistry import (
-    ChemistryDisplayResponse,
     ChemistryDisplayGeneralResponse,
+    ChemistryDisplayResponse,
     ChemistryDisplayResultResponse,
     ChemistryDisplaySampleResponse,
     ChemistryDisplaySectionResponse,
@@ -49,6 +50,9 @@ GENERAL_PARAMETER_ORDER = [
     "Uranium (total, by ICP-MS)",
     "Uranium, total, unfiltered",
 ]
+GENERAL_PARAMETER_INDEX = {
+    name: index for index, name in enumerate(GENERAL_PARAMETER_ORDER)
+}
 GENERAL_PARAMETERS = {name.lower() for name in GENERAL_PARAMETER_ORDER}
 TRACER_SYMBOLS = {
     "3h",
@@ -77,43 +81,22 @@ class Limit:
     basis: str = "EPA drinking-water standards"
 
 
+EPA_PRIMARY_INORGANIC = "EPA primary inorganic chemicals table"
+EPA_SECONDARY = "EPA secondary standards table"
 EPA_LIMITS = {
-    "arsenic": Limit(
-        primary_mcl=0.010,
-        basis="EPA primary inorganic chemicals table",
-    ),
+    "arsenic": Limit(primary_mcl=0.010, basis=EPA_PRIMARY_INORGANIC),
     "fluoride": Limit(
         primary_mcl=4.0,
         secondary_smcl=2.0,
         basis="EPA primary and secondary standards",
     ),
-    "iron": Limit(
-        secondary_smcl=0.3,
-        basis="EPA secondary standards table",
-    ),
-    "manganese": Limit(
-        secondary_smcl=0.05,
-        basis="EPA secondary standards table",
-    ),
-    "total dissolved solids": Limit(
-        secondary_smcl=500.0, basis="EPA secondary standards table"
-    ),
-    "nitrate (as n)": Limit(
-        primary_mcl=10.0, basis="EPA primary inorganic chemicals table"
-    ),
-    "sulfate": Limit(
-        secondary_smcl=250.0,
-        basis="EPA secondary standards table",
-    ),
-    "chloride": Limit(
-        secondary_smcl=250.0,
-        basis="EPA secondary standards table",
-    ),
-    "ph": Limit(
-        secondary_smcl=(6.5, 8.5),
-        unit="pH",
-        basis="EPA secondary standards table",
-    ),
+    "iron": Limit(secondary_smcl=0.3, basis=EPA_SECONDARY),
+    "manganese": Limit(secondary_smcl=0.05, basis=EPA_SECONDARY),
+    "total dissolved solids": Limit(secondary_smcl=500.0, basis=EPA_SECONDARY),
+    "nitrate (as n)": Limit(primary_mcl=10.0, basis=EPA_PRIMARY_INORGANIC),
+    "sulfate": Limit(secondary_smcl=250.0, basis=EPA_SECONDARY),
+    "chloride": Limit(secondary_smcl=250.0, basis=EPA_SECONDARY),
+    "ph": Limit(secondary_smcl=(6.5, 8.5), unit="pH", basis=EPA_SECONDARY),
     "uranium (total, by icp-ms)": Limit(
         primary_mcl=0.030, basis="EPA primary radionuclides table"
     ),
@@ -130,8 +113,13 @@ def build_chemistry_display_payload(
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> ChemistryDisplayResponse | None:
-    thing = session.get(Thing, thing_id)
-    if thing is None or thing.release_status != "public":
+    public_thing_id = session.scalar(
+        select(Thing.id).where(
+            Thing.id == thing_id,
+            Thing.release_status == "public",
+        )
+    )
+    if public_thing_id is None:
         return None
 
     samples = _get_samples(
@@ -144,41 +132,40 @@ def build_chemistry_display_payload(
         return None
 
     selected_sample_id = samples[0].id
-
     sample_ids = [sample.id for sample in samples]
     sample_responses = [_sample_response(sample) for sample in samples]
-    results = _get_results(session, sample_ids)
-    field_results = []
-    general_results = []
-    tracer_results = []
-    additional_results = []
-    for result in results:
-        is_general = _is_general_chemistry(result)
-        is_tracer = _is_environmental_tracer(result)
-        if result.source == "field":
-            field_results.append(result)
-        if is_general:
-            general_results.append(result)
-        if is_tracer:
-            tracer_results.append(result)
-        if result.source != "field" and not is_general and not is_tracer:
-            additional_results.append(result)
+
+    sections: dict[str, list[ChemistryDisplayResultResponse]] = {
+        "field": [],
+        "general": [],
+        "tracer": [],
+        "additional": [],
+    }
+
+    for result in _get_results(session, sample_ids):
+        sections[_result_section(result)].append(result)
+
     current_general_results = [
         result
-        for result in general_results
+        for result in sections["general"]
         if result.sample_info_id == selected_sample_id
     ]
-    standards_summary = _standards_summary(current_general_results)
 
+    field_results = sections["field"]
+    field_parameters = ChemistryDisplaySectionResponse(results=field_results)
     return ChemistryDisplayResponse(
         samples=sample_responses,
-        field_parameters=_section_payload(field_results),
+        field_parameters=field_parameters,
         general_chemistry=ChemistryDisplayGeneralResponse(
-            results=general_results,
-            standards_summary=standards_summary,
+            results=sections["general"],
+            standards_summary=_standards_summary(current_general_results),
         ),
-        environmental_tracers=_section_payload(tracer_results),
-        additional_analyses=_section_payload(additional_results),
+        environmental_tracers=ChemistryDisplaySectionResponse(
+            results=sections["tracer"]
+        ),
+        additional_analyses=ChemistryDisplaySectionResponse(
+            results=sections["additional"]
+        ),
     )
 
 
@@ -188,8 +175,22 @@ def _get_samples(
     thing_id: int,
     start_time: datetime | None,
     end_time: datetime | None,
-) -> list[NMA_Chemistry_SampleInfo]:
-    query = select(NMA_Chemistry_SampleInfo).where(
+) -> list[Row]:
+    query = select(
+        NMA_Chemistry_SampleInfo.id,
+        NMA_Chemistry_SampleInfo.thing_id,
+        NMA_Chemistry_SampleInfo.nma_sample_point_id,
+        NMA_Chemistry_SampleInfo.nma_wclab_id,
+        NMA_Chemistry_SampleInfo.collection_date,
+        NMA_Chemistry_SampleInfo.collection_method,
+        NMA_Chemistry_SampleInfo.collected_by,
+        NMA_Chemistry_SampleInfo.analyses_agency,
+        NMA_Chemistry_SampleInfo.sample_type,
+        NMA_Chemistry_SampleInfo.water_type,
+        NMA_Chemistry_SampleInfo.data_source,
+        NMA_Chemistry_SampleInfo.data_quality,
+        NMA_Chemistry_SampleInfo.sample_notes,
+    ).where(
         NMA_Chemistry_SampleInfo.thing_id == thing_id,
         NMA_Chemistry_SampleInfo.public_release.is_(True),
     )
@@ -204,80 +205,81 @@ def _get_samples(
         NMA_Chemistry_SampleInfo.collection_date.desc().nullslast(),
         NMA_Chemistry_SampleInfo.id.desc(),
     )
-    return list(session.scalars(query))
+    return list(session.execute(query))
 
 
 def _get_results(
     session: Session, sample_ids: list[int]
 ) -> list[ChemistryDisplayResultResponse]:
-    results: list[ChemistryDisplayResultResponse] = []
-    major_rows = session.scalars(
-        select(NMA_MajorChemistry).where(
-            NMA_MajorChemistry.chemistry_sample_info_id.in_(sample_ids)
+    query = union_all(
+        *(
+            _lab_results_query(NMA_MajorChemistry, "major", sample_ids),
+            _lab_results_query(NMA_MinorTraceChemistry, "minor", sample_ids),
+            _field_results_query(sample_ids),
         )
     )
-    minor_rows = session.scalars(
-        select(NMA_MinorTraceChemistry).where(
-            NMA_MinorTraceChemistry.chemistry_sample_info_id.in_(sample_ids)
-        )
-    )
-    field_rows = session.scalars(
-        select(NMA_FieldParameters).where(
-            NMA_FieldParameters.chemistry_sample_info_id.in_(sample_ids)
-        )
+    return sorted(
+        (_result_response(row) for row in session.execute(query)),
+        key=_result_sort_key,
     )
 
-    results.extend(_lab_result("major", row) for row in major_rows)
-    results.extend(_lab_result("minor", row) for row in minor_rows)
-    results.extend(_field_result(row) for row in field_rows)
-    return sorted(results, key=_result_sort_key)
+
+def _lab_results_query(model, source: SourceKind, sample_ids: list[int]):
+    return select(
+        literal(source).label("source"),
+        model.id.label("source_id"),
+        model.chemistry_sample_info_id.label("sample_info_id"),
+        model.analyte,
+        model.symbol,
+        model.sample_value.label("value"),
+        model.units.label("unit"),
+        model.uncertainty,
+        model.analysis_method,
+        model.analysis_date,
+        model.notes,
+        model.analyses_agency,
+    ).where(model.chemistry_sample_info_id.in_(sample_ids))
 
 
-def _lab_result(source: SourceKind, row) -> ChemistryDisplayResultResponse:
+def _field_results_query(sample_ids: list[int]):
+    return select(
+        literal("field").label("source"),
+        NMA_FieldParameters.id.label("source_id"),
+        NMA_FieldParameters.chemistry_sample_info_id.label("sample_info_id"),
+        NMA_FieldParameters.field_parameter.label("analyte"),
+        NMA_FieldParameters.field_parameter.label("symbol"),
+        NMA_FieldParameters.sample_value.label("value"),
+        NMA_FieldParameters.units.label("unit"),
+        literal(None).label("uncertainty"),
+        literal(None).label("analysis_method"),
+        literal(None).label("analysis_date"),
+        NMA_FieldParameters.notes,
+        NMA_FieldParameters.analyses_agency,
+    ).where(NMA_FieldParameters.chemistry_sample_info_id.in_(sample_ids))
+
+
+def _result_response(row: Row) -> ChemistryDisplayResultResponse:
     parameter_name = canonical_parameter_name(row.symbol or row.analyte)
-    result = ChemistryDisplayResultResponse(
-        id=f"{source}-{row.id}",
-        sample_info_id=row.chemistry_sample_info_id,
-        source=source,
-        parameter_key=_parameter_key(source, parameter_name, row.symbol),
+    return ChemistryDisplayResultResponse(
+        id=f"{row.source}-{row.source_id}",
+        sample_info_id=row.sample_info_id,
+        source=row.source,
+        parameter_key=_parameter_key(row.source, parameter_name, row.symbol),
         parameter_name=parameter_name,
         analyte=row.analyte,
         symbol=row.symbol,
-        value=row.sample_value,
-        unit=row.units,
+        value=row.value,
+        unit=row.unit,
         uncertainty=row.uncertainty,
         analysis_method=row.analysis_method,
         analysis_date=row.analysis_date,
         notes=row.notes,
         analyses_agency=row.analyses_agency,
-    )
-    return result.model_copy(update={"standard": _standard_for_result(result)})
-
-
-def _field_result(row: NMA_FieldParameters) -> ChemistryDisplayResultResponse:
-    parameter_name = canonical_parameter_name(row.field_parameter)
-    return ChemistryDisplayResultResponse(
-        id=f"field-{row.id}",
-        sample_info_id=row.chemistry_sample_info_id,
-        source="field",
-        parameter_key=_parameter_key(
-            "field",
-            parameter_name,
-            row.field_parameter,
-        ),
-        parameter_name=parameter_name,
-        analyte=row.field_parameter,
-        symbol=row.field_parameter,
-        value=row.sample_value,
-        unit=row.units,
-        notes=row.notes,
-        analyses_agency=row.analyses_agency,
+        standard=_standard_for_result(parameter_name, row.value, row.unit),
     )
 
 
-def _sample_response(
-    sample: NMA_Chemistry_SampleInfo,
-) -> ChemistryDisplaySampleResponse:
+def _sample_response(sample: Row) -> ChemistryDisplaySampleResponse:
     date_label = (
         sample.collection_date.strftime("%b %d, %Y")
         if sample.collection_date is not None
@@ -302,27 +304,15 @@ def _sample_response(
     )
 
 
-def _section_payload(
-    results: list[ChemistryDisplayResultResponse],
-) -> ChemistryDisplaySectionResponse:
-    return ChemistryDisplaySectionResponse(
-        results=results,
-    )
-
-
 def _standards_summary(
     results: list[ChemistryDisplayResultResponse],
 ) -> ChemistryDisplayStandardsSummaryResponse:
-    standards = []
-    for result in results:
-        if result.standard:
-            standards.append(result.standard)
+    standards = [result.standard for result in results if result.standard]
     compared = [
         standard
         for standard in standards
         if standard.status not in {"no_limit", "not_compared"}
     ]
-    latest_analysis_date = _latest_analysis_date(results)
     return ChemistryDisplayStandardsSummaryResponse(
         above_mcl_count=sum(
             1 for standard in standards if standard.status == "above_mcl"
@@ -331,14 +321,16 @@ def _standards_summary(
             1 for standard in standards if standard.status == "above_smcl"
         ),
         compared_parameter_count=len(compared),
-        latest_analysis_date=latest_analysis_date,
+        latest_analysis_date=_latest_analysis_date(results),
     )
 
 
 def _standard_for_result(
-    result: ChemistryDisplayResultResponse,
+    parameter_name: str | None,
+    result_value: float | None,
+    result_unit: str | None,
 ) -> ChemistryDisplayStandardResponse:
-    name = (result.parameter_name or "").strip().lower()
+    name = (parameter_name or "").strip().lower()
     limit = EPA_LIMITS.get(name)
     if limit is None:
         return ChemistryDisplayStandardResponse(
@@ -346,7 +338,7 @@ def _standard_for_result(
             label="No EPA limit",
         )
 
-    value = _value_in_limit_unit(result.value, result.unit, limit.unit)
+    value = _value_in_limit_unit(result_value, result_unit, limit.unit)
     if value is None:
         return ChemistryDisplayStandardResponse(
             status="not_compared",
@@ -399,10 +391,7 @@ def _standard_for_result(
 def _latest_analysis_date(
     results: list[ChemistryDisplayResultResponse],
 ) -> date | datetime | None:
-    values = []
-    for result in results:
-        if result.analysis_date is not None:
-            values.append(result.analysis_date)
+    values = list(filter(None, (result.analysis_date for result in results)))
     if not values:
         return None
     return max(values, key=_analysis_date_sort_key)
@@ -453,13 +442,17 @@ def _limit_value(
     return value
 
 
-def _is_general_chemistry(result: ChemistryDisplayResultResponse) -> bool:
-    return (result.parameter_name or "").lower() in GENERAL_PARAMETERS
-
-
-def _is_environmental_tracer(result: ChemistryDisplayResultResponse) -> bool:
+def _result_section(
+    result: ChemistryDisplayResultResponse,
+) -> Literal["field", "general", "tracer", "additional"]:
+    if result.source == "field":
+        return "field"
+    if (result.parameter_name or "").lower() in GENERAL_PARAMETERS:
+        return "general"
     symbol = (result.symbol or result.analyte or "").strip().lower()
-    return symbol in TRACER_SYMBOLS
+    if symbol in TRACER_SYMBOLS:
+        return "tracer"
+    return "additional"
 
 
 def _parameter_key(
@@ -473,8 +466,8 @@ def _parameter_key(
 def _result_sort_key(
     result: ChemistryDisplayResultResponse,
 ) -> tuple[int, str, str]:
-    try:
-        index = GENERAL_PARAMETER_ORDER.index(result.parameter_name or "")
-    except ValueError:
-        index = len(GENERAL_PARAMETER_ORDER)
+    index = GENERAL_PARAMETER_INDEX.get(
+        result.parameter_name or "",
+        len(GENERAL_PARAMETER_ORDER),
+    )
     return (index, result.parameter_name or "", result.id)
