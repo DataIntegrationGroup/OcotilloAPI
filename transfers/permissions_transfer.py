@@ -4,7 +4,7 @@ from datetime import datetime
 from pandas import isna
 from sqlalchemy.orm import Session
 
-from db import Thing, PermissionHistory, Contact, ThingContactAssociation
+from db import Thing, FieldAccessConsent, Contact, ThingContactAssociation
 from transfers.util import read_csv, logger, replace_nans, chunk_by_size
 
 """
@@ -18,7 +18,7 @@ does not pertain to permissions.
 
 def _make_permission(
     wdf, well, contact_id, nma_field, permission_type
-) -> PermissionHistory | None:
+) -> FieldAccessConsent | None:
 
     values = wdf.loc[wdf["PointID"] == well.name, nma_field].values
     if len(values) == 0:
@@ -27,7 +27,7 @@ def _make_permission(
         return None
 
     permission_allowed = bool(values[0])
-    permission = PermissionHistory(
+    permission = FieldAccessConsent(
         contact_id=contact_id,
         permission_type=permission_type,
         permission_allowed=permission_allowed,
@@ -48,7 +48,7 @@ def transfer_permissions(session: Session) -> None:
     The transferred wells and contacts need to be transferred first
     - to access the auto-generated well IDs
     - to know who gave permission to which well since contact_id is required for
-        PermissionHistory
+        FieldAccessConsent
     """
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     wdf = replace_nans(wdf)

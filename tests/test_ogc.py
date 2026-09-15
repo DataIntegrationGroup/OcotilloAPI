@@ -38,6 +38,7 @@ from db import (
     StatusHistory,
 )
 from db.engine import session_ctx
+from services.field_projection import ogc_never_public
 from tests import override_authentication
 
 pytestmark = pytest.mark.skipif(
@@ -885,9 +886,19 @@ def test_ogc_non_well_group_a_layers_drop_well_only_columns(ogc_client, collecti
 
 
 def test_ogc_water_wells_schema_keeps_well_columns(ogc_client):
+    """The split moved these columns off the non-well layers, not off wells.
+
+    Minus whatever is never public: nma_pk_welldata is a well-only column and
+    also a legacy key ADR5 stops publishing anywhere, so the wells layer keeps
+    it in the view and withholds it from the schema. The disjointness check
+    above still tests the whole set, since a non-well layer may publish none of
+    these for either reason.
+    """
     response = ogc_client.get("/ogcapi/collections/water_wells/schema")
     assert response.status_code == 200
-    assert WELL_ONLY_COLUMNS.issubset(set(response.json()["properties"]))
+    published = WELL_ONLY_COLUMNS - ogc_never_public()
+    assert published, "never_public swallowed every well column"
+    assert published.issubset(set(response.json()["properties"]))
 
 
 def test_ogc_new_collection_items_endpoints(ogc_client):

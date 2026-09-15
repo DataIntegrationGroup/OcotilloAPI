@@ -180,14 +180,9 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
         comment="Per-reading correction annotation; NULL means the value is as measured",
     )
 
-    # How far through review this reading is, on USGS terms: provisional,
-    # in review, approved. Orthogonal to `release_status`, which says who may
-    # see it -- a reading can be public and provisional at once, which one
-    # column could not express because its lexicon lists those as siblings.
-    #
-    # Nullable because legacy rows predate it and nobody has established
-    # whether they are approved. NULL means not stated, which is honest.
-    data_maturity: Mapped[str] = lexicon_term(nullable=True)
+    # data_maturity (provisional / in review / approved) comes from
+    # ReleaseMixin, which is where the axis was generalized in ADR5. It started
+    # here; the semantics are unchanged.
     nma_waterlevelscontinuous_pressure_conddl_ms_cm: Mapped[float] = mapped_column(
         Float, nullable=True
     )

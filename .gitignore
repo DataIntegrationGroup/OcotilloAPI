@@ -56,3 +56,6 @@ app.yaml
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
+
+# Design canvas scratch (artboards, decks, generated PDFs)
+.design/
