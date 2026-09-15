@@ -18,7 +18,7 @@ means "all", before or after this migration.
 init_lexicon, not an enum type, so adding a screen later is not a migration.
 
 Revision ID: a396d7d9928d
-Revises: ed62fbdb7d7a
+Revises: c4e8f1a9d2b7
 Create Date: 2026-08-27 18:20:00.000000
 
 """
@@ -30,7 +30,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a396d7d9928d"
-down_revision: Union[str, Sequence[str], None] = "ed62fbdb7d7a"
+down_revision: Union[str, Sequence[str], None] = "c4e8f1a9d2b7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
