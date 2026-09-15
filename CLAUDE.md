@@ -152,6 +152,22 @@ Extraction is opportunistic, not a migration: move a rule into `domain/` when
 you are already editing it and it is shared, subtle, or awkward to test in
 place. Read **`ADR4.md`** before extending the layer.
 
+### CSV importer field staff
+
+The water level and well inventory importers read the same staff columns
+(`field_staff`, `field_staff_2`, `field_staff_3`, and `measuring_person` aliased
+`sampler`). The rules that need no database live in `domain/field_staff.py`; the
+persistence they share -- creating `FieldEventParticipant` rows and picking the
+one that goes on `sample.field_event_participant_id` -- lives in
+`services/field_event_participant_helper.py`.
+
+**A null `sample.field_event_participant_id` loses the collector outright.** No
+other column records who took a measurement, so an importer that skips the link
+drops the attribution silently. Well inventory did exactly that until
+2026-09-14. Read **`docs/sample-collector-link.md`** before changing either
+importer's staff handling, or before planning the backfill for the samples that
+gap left behind.
+
 ### Authentication & Authorization
 
 The system uses **Authentik** for OAuth2 authentication with role-based access control:
