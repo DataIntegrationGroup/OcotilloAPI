@@ -1,7 +1,7 @@
 """Gate public OGC columns on landowner consent
 
 Revision ID: c5d6e7f8a9b0
-Revises: 8f0be6a2b61c
+Revises: a396d7d9928d
 Create Date: 2026-09-03
 
 The public OGC collections decide what they publish from `release_status`, a
@@ -38,7 +38,7 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "c5d6e7f8a9b0"
+revision: str = "f3a7c1d5e9b2"
 down_revision: Union[str, Sequence[str], None] = "a396d7d9928d"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

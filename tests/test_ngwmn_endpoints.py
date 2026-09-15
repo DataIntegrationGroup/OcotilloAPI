@@ -200,7 +200,7 @@ def ngwmn_well():
         formation_id = formation.id
 
     # The NGWMN views read publication_consent as well as release_status
-    # (d6e7f8a9b0c1), so a public well with no consent harvests as nothing.
+    # (a8e2b6f4c0d7), so a public well with no consent harvests as nothing.
     # Recording it the way publishing does keeps the fixture honest rather
     # than special-casing the test. The destinations come first: an
     # environment that has not registered one publishes nothing to it, which

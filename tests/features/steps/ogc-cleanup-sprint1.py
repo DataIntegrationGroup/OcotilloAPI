@@ -192,7 +192,7 @@ def _seed_thing_with_location(session, thing_type, release_status, name):
     session.commit()
     session.refresh(thing)
 
-    # Since c5d6e7f8a9b0 the public collections read publication_consent as
+    # Since f3a7c1d5e9b2 the public collections read publication_consent as
     # well as release_status, so a thing seeded public with no consent rows
     # publishes as a row of nulls. Recording it the way the API's publish path
     # does keeps the fixture honest rather than exempting the suite from the
