@@ -1,0 +1,218 @@
+# Which columns each access_data_type covers (ADR5, Part III).
+#
+# A grant names a data type -- "read site metadata, globally". Until this file
+# existed, nothing said which columns that sentence reached, so the grant could
+# be evaluated but never applied. This is that mapping, for internal reads.
+#
+# Not to be confused with core/field-allowlists.yml, which is the other axis:
+# that file answers "what does this DESTINATION receive when we publish", keyed
+# by destination kind or slug, and is governed by the data owner. This file
+# answers "what does this DATA TYPE cover when someone reads", and is governed
+# by data services staff alongside the grant table itself. A field can appear
+# in both; they constrain different paths and neither consults the other.
+#
+# Two rules, enforced by services/field_projection.py at load:
+#
+#   1. Exhaustive. Every column of the entity must appear exactly once, in a
+#      data type or in `always`. A column added next year fails the load rather
+#      than defaulting into visibility or silence -- somebody classifies it.
+#   2. No overlap. A column belongs to one data type. Two types claiming the
+#      same field would make "revoke well construction" mean different things
+#      depending on which other grants a caller holds.
+#
+# `always` is not a data type and cannot be granted or revoked. It is the
+# record-keeping a row needs to be interpretable at all: its key, its release
+# state, and who touched it. Gating provenance would need its own lexicon term
+# -- deliberately not added here, because a term is a vocabulary change that
+# every existing grant and the admin console have to reason about.
+
+thing:
+  always:
+    - id
+    # Release state and maturity describe the record, not the well. A reader
+    # who cannot see them cannot tell a published measurement from a draft.
+    - release_status
+    - data_maturity
+    # The scheduled end of an embargo, in the same category for the same
+    # reason: it says when this record changes level, not anything about the
+    # well. Nothing on the read path consults it (db/base.py), so classifying
+    # it would gate a column no projection outcome depends on.
+    - release_at
+    - created_at
+    - created_by_name
+    - created_by_id
+    - updated_by_name
+    - updated_by_id
+    # Legacy AMPAPI keys. never_public on the publication side; internally they
+    # are how staff reconcile against the old system.
+    - nma_pk_welldata
+    - nma_pk_location
+
+  site metadata:
+    # "Where the thing is and what it is: name, location, type, status."
+    - name
+    - thing_type
+    - spring_type
+    - first_visit_date
+
+  well construction:
+    # "Casing, screen, borehole and completion detail."
+    - well_depth
+    - hole_depth
+    - well_casing_diameter
+    - well_casing_depth
+    - well_completion_date
+    - well_driller_name
+    - well_construction_method
+    - well_pump_type
+    - well_pump_depth
+    # Which formation the well was completed into is a completion fact, and it
+    # is the pair of columns a driller's report supplies alongside the casing.
+    - formation_completion_code
+    - nma_formation_zone
+
+  # Readings live in their own tables and reach callers through their own
+  # routes. Empty here means "classifies nothing on this entity", which is not
+  # the same as unclassified -- the loader accepts an empty list and rejects a
+  # missing column.
+  water level: []
+  water chemistry: []
+  pii: []
+  field operations: []
+
+location:
+  always:
+    - id
+    - release_status
+    - data_maturity
+    - release_at
+    - created_at
+    - created_by_name
+    - created_by_id
+    - updated_by_name
+    - updated_by_id
+    - nma_pk_location
+    # When the legacy record was made, as against when the site was visited.
+    - nma_date_created
+
+  site metadata:
+    - description
+    # `point` is a PostGIS geometry no caller consumes; latitude and longitude
+    # stand in for it, exactly as they do in core/field-allowlists.yml.
+    - latitude
+    - longitude
+    - elevation
+    - county
+    - state
+    - quad_name
+    - nma_site_date
+    - nma_data_reliability
+
+  well construction: []
+  water level: []
+  water chemistry: []
+  pii: []
+  field operations:
+    # Staff free text about the site: gate codes, access notes, landowner
+    # remarks. never_public externally, and internally it is the same material
+    # as the response-side notes below -- not site metadata.
+    - nma_location_notes
+    - nma_coordinate_notes
+
+# ============================================================================
+# Response fields that are not columns
+#
+# A response is not its table. WellResponse carries 50 fields; 18 are columns
+# of `thing` and the other 32 are derived from provenance rows, history tables
+# and child collections. A column-only classification would project the 18,
+# pass its tests, and hand over `contacts` and `permissions` untouched -- which
+# is enforcement that looks like it works.
+#
+# Three rules resolve a response field to a data type, in order:
+#
+#   1. It is a column: it takes that column's classification, above.
+#   2. It ends in a suffix below: it takes the classification of the field its
+#      name is built from, resolved recursively. `well_depth_unit` follows
+#      `well_depth`; `measuring_point_height_unit` follows
+#      `measuring_point_height`, which is itself resolved by rule 3. A unit or
+#      a provenance note cannot outlive the value it describes.
+#   3. It is named here.
+#
+# Anything a schema declares and none of the three resolve fails the load.
+
+responses:
+  # Schemas checked at load. Adding one here is how a response comes under the
+  # classification; until then it is not projected at all.
+  schemas:
+    - WellResponse
+
+  # Rule 2. Longest suffix wins, and the base must itself resolve.
+  suffix_follows:
+    - _unit
+    - _source
+
+  # Rule 3, for fields that come from another table entirely.
+  fields:
+    site metadata:
+      # "Where the thing is and what it is: name, location, type, status."
+      - site_name
+      - current_location
+      - well_status
+      # What the well is for is what it is.
+      - well_purposes
+      # Legacy identifiers in other systems, and which aquifer the well is
+      # completed in: both describe what this thing is.
+      - links
+      - aquifers
+
+    well construction:
+      # "Casing, screen, borehole and completion detail." Casing materials are
+      # named by the definition. The measuring point is a physical feature of
+      # the installation -- a marked datum on the casing -- and it is read from
+      # MeasuringPointHistory rather than stored on the thing.
+      - well_casing_materials
+      - measuring_point_height
+      - measuring_point_description
+      # Whether the well is open is a fact about the physical installation,
+      # not about the monitoring programme.
+      - open_status
+
+    water level:
+      # "Depth-to-water readings, manual and continuous." The readings
+      # themselves, and how often the well is scheduled to be read.
+      - historic_depth_to_water
+      - monitoring_frequencies
+
+    water chemistry: []
+
+    pii:
+      # Landowner, driller and staff identities. The response embeds whole
+      # contact records, so this is the field that carries phone numbers.
+      - contacts
+
+    field operations:
+      # Consent for physical site access (db/field_access_consent.py -- site
+      # visits, not authorization), and the free text staff write for staff.
+      # The permissions interview named gate codes and candid landowner
+      # remarks specifically; this is where they surface on a response.
+      - permissions
+      - general_notes
+      - site_notes
+      - water_notes
+      - construction_notes
+      - sampling_procedure_notes
+      - well_location_note
+      # Whether the well is monitored, and whether it can take a logger, are
+      # facts about the programme working the site rather than about the well.
+      - monitoring_status
+      - datalogger_suitability_status
+      # Which monitoring networks and projects the well belongs to.
+      - groups
+
+  # Fields no data type reaches, so nobody receives them once a response is
+  # projected. Empty today -- every field of every registered response is
+  # classified. It stays because the alternative, when the next unclassifiable
+  # field appears, is guessing: listing one here is not a classification but an
+  # open question, written where the loader can see it, so a response cannot
+  # ship half-classified and nothing leaks while the question is open.
+  withheld_pending_classification: []
