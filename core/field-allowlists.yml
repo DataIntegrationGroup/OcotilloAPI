@@ -231,17 +231,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -291,17 +280,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -391,17 +369,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -475,17 +442,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -638,17 +594,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -657,19 +602,15 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
+
+    ogc_aem_project_areas:
+      - id
+      - name
+      - description
+      - group_type
+      - release_status
 
     ogc_project_areas:
       - id
@@ -683,17 +624,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -702,17 +632,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 
@@ -721,17 +640,6 @@ ogc:
       - name
       - first_visit_date
       - last_observation_date
-      - well_depth
-      - hole_depth
-      - well_casing_diameter
-      - well_casing_depth
-      - well_completion_date
-      - well_driller_name
-      - well_construction_method
-      - well_pump_type
-      - well_pump_depth
-      - formation_completion_code
-      - nma_formation_zone
       - release_status
       - elevation
 

@@ -110,13 +110,35 @@ def test_no_never_public_column_survives_into_a_published_collection(table):
     [
         "ogc_well_water_column",
         "ogc_water_wells",
+    ],
+)
+def test_the_thing_layers_no_longer_publish_the_legacy_key(table):
+    """Eleven public collections carried nma_pk_welldata before this.
+
+    ogc_springs and ogc_meteorological_stations were two of the eleven and are
+    checked below instead: the view splits (a2b3c4d5e6f7, b3c4d5e6f7a9) dropped
+    the well columns from the non-well layers outright, so there is no longer a
+    column here for the projection to withhold.
+    """
+    assert "nma_pk_welldata" in live_columns(table)
+    assert "nma_pk_welldata" not in ogc_allowlist(table)
+
+
+@pytest.mark.parametrize(
+    "table",
+    [
         "ogc_springs",
         "ogc_meteorological_stations",
     ],
 )
-def test_the_thing_layers_no_longer_publish_the_legacy_key(table):
-    """Eleven public collections carried nma_pk_welldata before this."""
-    assert "nma_pk_welldata" in live_columns(table)
+def test_the_non_well_layers_no_longer_carry_the_legacy_key_at_all(table):
+    """Dropped from the view, not just withheld -- a stronger guarantee.
+
+    Keeping the assertion rather than deleting it: if a later view rebuild
+    reinstates the column, the projection must still be the thing that stops
+    it, and this fails until somebody decides which.
+    """
+    assert "nma_pk_welldata" not in live_columns(table)
     assert "nma_pk_welldata" not in ogc_allowlist(table)
 
 
