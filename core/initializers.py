@@ -237,6 +237,7 @@ def register_api_routes(app):
     from api.geothermal import router as geothermal_router
     from api.chemisty import router as chemistry_router
     from api.gis_artifacts import router as gis_artifacts_router
+    from api.regulatory_limit import router as regulatory_limit_router
 
     app.include_router(asset_router)
     app.include_router(api_key_router)
@@ -251,6 +252,7 @@ def register_api_routes(app):
     app.include_router(location_router)
     app.include_router(observation_router)
     app.include_router(publication_router)
+    app.include_router(regulatory_limit_router)
     app.include_router(sample_router)
     app.include_router(sensor_router)
     app.include_router(search_router)
