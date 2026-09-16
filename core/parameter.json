@@ -12,5 +12,159 @@
         "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "dimensionless"
+    },
+    {
+        "parameter_name": "Antimony",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-36-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Arsenic",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "7440-38-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Barium",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-39-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Beryllium",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-41-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Cadmium",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-43-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chromium",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-47-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Cyanide",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "57-12-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Fluoride",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "16984-48-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Mercury",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7439-97-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Nitrate (as N)",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "14797-55-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Nitrite (as N)",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "14797-65-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Selenium",
+        "matrix": "groundwater",
+        "parameter_type": "Minor Element",
+        "cas_number": "7782-49-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Thallium",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-28-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Uranium (total, by ICP-MS)",
+        "matrix": "groundwater",
+        "parameter_type": "Radionuclide",
+        "cas_number": "7440-61-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chloride",
+        "matrix": "groundwater",
+        "parameter_type": "Major Element",
+        "cas_number": "16887-00-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Copper",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-50-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Iron",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7439-89-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Manganese",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7439-96-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Silver",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-22-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sulfate",
+        "matrix": "groundwater",
+        "parameter_type": "Major Element",
+        "cas_number": "14808-79-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Total Dissolved Solids",
+        "matrix": "groundwater",
+        "parameter_type": "Physical property",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Zinc",
+        "matrix": "groundwater",
+        "parameter_type": "Metal",
+        "cas_number": "7440-66-6",
+        "default_unit": "mg/L"
     }
 ]

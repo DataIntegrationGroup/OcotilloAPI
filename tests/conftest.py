@@ -7,7 +7,7 @@ from alembic.config import Config
 from sqlalchemy import delete, select
 from sqlalchemy import inspect as sa_inspect
 
-from core.initializers import init_lexicon, init_parameter
+from core.initializers import init_lexicon, init_parameter, init_regulatory_limit
 from db import *
 from db.engine import engine, session_ctx
 from db.initialization import (
@@ -93,6 +93,7 @@ def _setup_test_db():
     _sync_search_vectors()
     init_lexicon()
     init_parameter()
+    init_regulatory_limit()
     _ensure_locations_for_things()
     _ensure_measuring_points_for_wells()
     yield
