@@ -19,7 +19,9 @@ Seed the EPA drinking-water limits into `regulatory_limit`.
 `core/regulatory_limit.json` holds the federal primary MCLs (40 CFR 141.62,
 141.66) and secondary SMCLs (40 CFR 143.3) for every analyte that is already a
 `parameter_name` lexicon term. `core.initializers.init_regulatory_limit` loads
-it on a fresh seed; this migration exists because deploys run no seed.
+it on a fresh seed; this migration exists because deploys run no seed. Each
+row's `citation` names the CFR paragraph it came from; the table has no column
+for it, so it is not loaded.
 
 A limit points at a `Parameter`, and deployed databases hold only the two field
 parameters, so the groundwater parameters the limits need are added from
