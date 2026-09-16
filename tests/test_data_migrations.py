@@ -34,9 +34,13 @@ backfill_category_descriptions = importlib.import_module(
 consolidate_groups = importlib.import_module(
     "data_migrations.migrations.20260810_0001_consolidate_geographic_area_groups"
 )
+convert_casing_diameter = importlib.import_module(
+    "data_migrations.migrations." "20260914_0001_convert_well_inventory_casing_diameter"
+)
 from db.lexicon import LexiconCategory
 from db.location import Location
 from db.notes import Notes
+from db.field import FieldActivity, FieldEvent
 from db.group import Group, GroupThingAssociation
 from db.thing import Thing
 from db.engine import session_ctx
@@ -1409,3 +1413,96 @@ def test_removal_name_lists_do_not_overlap():
     assert not (
         consolidate_groups.WEBMAP_ORIGIN_NAMES & consolidate_groups.STALE_BOUNDARY_NAMES
     )
+
+
+def _make_inventory_well(session, name, diameter, created_at, activity_type):
+    """A well plus the field event/activity chain the importer would have made.
+
+    created_at is set explicitly because the migration's CUTOFF is what keeps
+    correctly-imported wells out of scope, and a row inserted during the test
+    run would otherwise land on the wrong side of it.
+    """
+    thing = Thing(
+        name=name,
+        thing_type="water well",
+        well_casing_diameter=diameter,
+        release_status="public",
+    )
+    session.add(thing)
+    session.commit()
+    session.refresh(thing)
+
+    thing.created_at = created_at
+    event = FieldEvent(thing_id=thing.id, event_date=created_at)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+
+    activity = FieldActivity(field_event_id=event.id, activity_type=activity_type)
+    session.add(activity)
+    session.commit()
+    return thing
+
+
+def _cleanup_wells(session, things):
+    for thing in things:
+        session.execute(delete(Thing).where(Thing.id == thing.id))
+    session.commit()
+
+
+BEFORE_CUTOFF = convert_casing_diameter.CUTOFF - timedelta(days=1)
+AFTER_CUTOFF = convert_casing_diameter.CUTOFF + timedelta(days=1)
+
+
+def test_convert_casing_diameter_scales_importer_wells_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        imported = _make_inventory_well(
+            session, "Casing Imported", 0.5, BEFORE_CUTOFF, "well inventory"
+        )
+        # Same shape, different activity: entered through the API, already inches.
+        other = _make_inventory_well(
+            session, "Casing Other Activity", 6.0, BEFORE_CUTOFF, "groundwater level"
+        )
+
+        convert_casing_diameter.run(session)
+
+        session.refresh(imported)
+        session.refresh(other)
+        assert imported.well_casing_diameter == 6.0
+        assert other.well_casing_diameter == 6.0
+
+        _cleanup_wells(session, [imported, other])
+
+
+def test_convert_casing_diameter_leaves_wells_created_after_cutoff(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        after = _make_inventory_well(
+            session, "Casing After Cutoff", 6.0, AFTER_CUTOFF, "well inventory"
+        )
+
+        convert_casing_diameter.run(session)
+
+        session.refresh(after)
+        assert after.well_casing_diameter == 6.0
+
+        _cleanup_wells(session, [after])
+
+
+def test_convert_casing_diameter_dry_run_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        imported = _make_inventory_well(
+            session, "Casing Dry Run", 0.5, BEFORE_CUTOFF, "well inventory"
+        )
+
+        planned = convert_casing_diameter.dry_run(session)
+
+        assert imported.id in {p.thing_id for p in planned}
+        session.refresh(imported)
+        assert imported.well_casing_diameter == 0.5
+
+        _cleanup_wells(session, [imported])

@@ -16,9 +16,9 @@
 """
 Unit conversion.
 
-This is the single definition of the foot/meter relationship for application
-code. ``services/util.py`` re-exports these names, so existing imports continue
-to work; new code should import from here.
+This is the single definition of the foot/meter and foot/inch relationships
+for application code. ``services/util.py`` re-exports the foot/meter pair, so
+existing imports continue to work; new code should import from here.
 
 Alembic revisions deliberately keep their own copy of the constant. A migration
 must reproduce the arithmetic it ran with at the time it was written, so it
@@ -40,6 +40,21 @@ def convert_m_to_ft(meters: float | None, ndigits: int = 6) -> float | None:
     if meters is None:
         return None
     return round(meters * METERS_TO_FEET, ndigits)
+
+
+INCHES_PER_FOOT = 12.0
+
+
+def convert_ft_to_in(feet: float | None, ndigits: int = 6) -> float | None:
+    """Convert a length from feet to inches.
+
+    Casing diameter is the one ``Thing`` measurement stored in inches while its
+    neighbouring depth columns are feet, so sources that report it in feet
+    convert here rather than at each call site.
+    """
+    if feet is None:
+        return None
+    return round(feet * INCHES_PER_FOOT, ndigits)
 
 
 CENTIMETERS_PER_METER = 100.0
