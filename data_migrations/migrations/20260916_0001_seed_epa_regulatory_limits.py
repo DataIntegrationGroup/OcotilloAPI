@@ -84,7 +84,7 @@ def _add_missing_terms(session: Session, values: set[str]) -> int:
         raise ValueError(f"Terms not in core/lexicon.json: {sorted(unknown)}")
 
     category_ids = dict(
-        session.execute(select(LexiconCategory.name, LexiconCategory.id))
+        session.execute(select(LexiconCategory.name, LexiconCategory.id)).all()
     )
     for value in sorted(missing):
         term = LexiconTerm(term=value, definition=seeded[value]["definition"])
@@ -102,7 +102,9 @@ def _add_missing_terms(session: Session, values: set[str]) -> int:
 
 
 def _add_missing_parameters(session: Session, params: list[dict]) -> int:
-    existing = set(session.execute(select(Parameter.parameter_name, Parameter.matrix)))
+    existing = set(
+        session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+    )
     added = 0
     for param in params:
         if (param["parameter_name"], param["matrix"]) in existing:
