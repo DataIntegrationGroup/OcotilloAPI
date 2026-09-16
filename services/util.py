@@ -267,7 +267,7 @@ def retrieve_latest_polymorphic_history_table_record(
     DeclarativeBase | None
         The latest record from the specified polymorphic table with the defined type if it exists.
     """
-    if polymorphic_relationship == "permission_history":
+    if polymorphic_relationship == "field_access_consent":
         type_field = "permission_type"
     elif polymorphic_relationship == "status_history":
         type_field = "status_type"

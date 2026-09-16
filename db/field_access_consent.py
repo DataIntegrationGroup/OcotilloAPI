@@ -1,10 +1,17 @@
 """
-models/permission.py
+db/field_access_consent.py
 
-This model defines the `Permission` table, a polymorphic table that tracks
-all legal and administrative agreements related to site access and activity.
-Its purpose is to track who granted permission, what activities they authorized,
-which entity the permission applies to, and for what period of time.
+Landowner consent to physical site access, recorded per Thing or Location.
+
+This is a domain fact, not authorization. A row says a contact agreed to let
+the Bureau do something at their well -- sample it, install equipment -- for
+some period of time. Nothing here decides what an API caller may see or write;
+that is the grant model described in ADR5, which is a separate table with
+separate governance.
+
+The table was named `permission_history` until ADR5. The `permission_type`
+and `permission_allowed` column names are kept because `permission_type` is
+lexicon-backed and both are published in Thing responses as-is.
 """
 
 from datetime import date
@@ -21,10 +28,12 @@ if TYPE_CHECKING:
     from db.location import Location
 
 
-class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
+class FieldAccessConsent(Base, AutoBaseMixin, ReleaseMixin):
     """
-    Represents a specific grant of permission from a Contact for a
-    specific entity (e.g., a Thing or Location).
+    One consent record: a Contact agreed (or declined) to a type of field
+    activity at a specific entity (a Thing or a Location), over a date range.
+
+    Not an access-control grant. See ADR5.
     """
 
     # --- Foreign Keys ---
@@ -52,14 +61,14 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
     # They tell SQLAlchemy exactly how to find the specific parent record for a given child.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == Thing.id, "
-        "PermissionHistory.target_table == 'thing')",
+        primaryjoin="and_(foreign(FieldAccessConsent.target_id) == Thing.id, "
+        "FieldAccessConsent.target_table == 'thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == Location.id, "
-        "PermissionHistory.target_table == 'location')",
+        primaryjoin="and_(foreign(FieldAccessConsent.target_id) == Location.id, "
+        "FieldAccessConsent.target_table == 'location')",
         viewonly=True,
     )
 
@@ -73,22 +82,22 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
         return getattr(self, f"_{self.target_table}_target")
 
 
-class PermissionHistoryMixin:
+class FieldAccessConsentMixin:
     """
-    Mixin for models that can have permissions (e.g., Thing, Location).
+    Mixin for models a landowner can consent about (e.g., Thing, Location).
     It automatically creates a polymorphic One-to-Many relationship to the
-    Permission table.
+    field_access_consent table.
     """
 
     @declared_attr
-    def permission_history(cls):
+    def field_access_consent(cls):
         # One-to-Many polymorphic relationship
         return relationship(
-            "PermissionHistory",
+            "FieldAccessConsent",
             primaryjoin=(
                 and_(
-                    cls.id == foreign(PermissionHistory.target_id),
-                    PermissionHistory.target_table == cls.__tablename__,
+                    cls.id == foreign(FieldAccessConsent.target_id),
+                    FieldAccessConsent.target_table == cls.__tablename__,
                 )
             ),
             lazy="selectin",

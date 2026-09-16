@@ -34,7 +34,7 @@ from db import (
     TransducerObservation,
     Group,
     Asset,
-    PermissionHistory,
+    FieldAccessConsent,
     ThingGeologicFormationAssociation,
     NMA_Stratigraphy,
     NMA_FieldParameters,
@@ -171,7 +171,7 @@ class Metrics:
         self._handle_metrics(NMA_WeatherData, name="WeatherData", *args, **kw)
 
     def permissions_metrics(self, *args, **kw) -> None:
-        self._handle_metrics(PermissionHistory, *args, **kw)
+        self._handle_metrics(FieldAccessConsent, *args, **kw)
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)

@@ -14,7 +14,7 @@ def step_step_step(context):
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "field_access_consent", permission_type
     )
 
     water_well_data_permissions = [
@@ -49,7 +49,7 @@ def step_then_the_response_should_include_whether_sampling_permission_is_granted
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "field_access_consent", permission_type
     )
 
     water_well_data_permissions = [
@@ -84,7 +84,7 @@ def step_step_step_2(context):
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "field_access_consent", permission_type
     )
 
     water_well_data_permissions = [
