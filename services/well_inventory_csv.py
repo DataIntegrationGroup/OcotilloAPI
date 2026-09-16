@@ -48,6 +48,7 @@ from db import (
 from db.engine import session_ctx
 from domain.field_staff import field_staff_entries
 from domain.samples import water_level_sample_name
+from domain.units import convert_ft_to_in
 from domain.values import build_notes, enum_value
 from domain.water_levels import (
     GROUNDWATER_LEVEL_ACTIVITY_TYPE,
@@ -713,7 +714,9 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         first_visit_date=date_time.date(),
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
-        well_casing_diameter=model.casing_diameter_ft,
+        # The CSV reports casing diameter in feet, but the column stores
+        # inches, unlike the depth columns around it.
+        well_casing_diameter=convert_ft_to_in(model.casing_diameter_ft),
         measuring_point_height=universal_mp_height,
         measuring_point_description=model.measuring_point_description,
         well_completion_date=model.date_drilled,
