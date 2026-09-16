@@ -103,7 +103,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "lakes_ponds_reservoirs",
-        "title": "Lakes, Ponds, and Reservoirs",
+        "title": "Lakes and Reservoirs",
         "thing_type": "lake, pond or reservoir",
         "description": (
             "Standing bodies of surface water monitored as sites -- natural "
@@ -206,7 +206,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "rock_sample_locations",
-        "title": "Rock Sample Locations",
+        "title": "Rock Sample Sites",
         "thing_type": "rock sample location",
         "description": (
             "Places where rock samples were collected or outcrop geology was "
@@ -225,7 +225,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "soil_gas_sample_locations",
-        "title": "Soil Gas Sample Locations",
+        "title": "Soil Gas Sample Sites",
         "thing_type": "soil gas sample location",
         "description": (
             "Places where gas held in the pore space of soil was sampled. Each "

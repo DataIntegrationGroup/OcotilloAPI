@@ -152,6 +152,22 @@ Extraction is opportunistic, not a migration: move a rule into `domain/` when
 you are already editing it and it is shared, subtle, or awkward to test in
 place. Read **`ADR4.md`** before extending the layer.
 
+### CSV importer field staff
+
+The water level and well inventory importers read the same staff columns
+(`field_staff`, `field_staff_2`, `field_staff_3`, and `measuring_person` aliased
+`sampler`). The rules that need no database live in `domain/field_staff.py`; the
+persistence they share -- creating `FieldEventParticipant` rows and picking the
+one that goes on `sample.field_event_participant_id` -- lives in
+`services/field_event_participant_helper.py`.
+
+**A null `sample.field_event_participant_id` loses the collector outright.** No
+other column records who took a measurement, so an importer that skips the link
+drops the attribution silently. Well inventory did exactly that until
+2026-09-14. Read **`docs/sample-collector-link.md`** before changing either
+importer's staff handling, or before planning the backfill for the samples that
+gap left behind.
+
 ### Authentication & Authorization
 
 The system uses **Authentik** for OAuth2 authentication with role-based access control:
@@ -194,7 +210,7 @@ that genuinely have none.
 
 **`/ogcapi-internal` is gated outside `Depends()`.** It is a raw Starlette
 Mount, so `core/internal_ogc_auth.py` gates it at the ASGI layer instead. It
-accepts a bearer Authentik JWT carrying `OGCInternal`, **or** a static API key
+accepts a bearer Authentik JWT carrying `OGC.Internal`, **or** a static API key
 presented as a bearer token, as the Basic password, or as `?token=`. Only the
 key digests are stored, as `label:sha256hex` entries in `INTERNAL_OGC_API_KEYS`
 — sourced in deployed environments from the Secret Manager secret
@@ -203,6 +219,28 @@ Never a GitHub secret. The static keys exist because
 ArcGIS Pro cannot send a bearer token at all and neither desktop client can
 refresh an Authentik token. Read **`docs/internal-ogc-desktop-gis.md`** before
 changing the credential paths.
+
+**User-issued API keys** live in the `api_key` table and are the preferred
+source. `/api_key` mints, lists, renames, and revokes them; revocation takes
+effect on the next request, and every key expires (365 days, default and
+ceiling). Only the SHA-256 digest is stored. The routes are gated on
+`internal_ogc_dependency` — the `OGC.Internal` group — **not** on a general
+role: a key is a pre-authorized stand-in for that group, so minting one is
+exactly as privileged as holding it, and a lower gate would let a Viewer issue
+themselves internal-mount access. Keys authorize `/ogcapi-internal` and nothing
+else. Read **`docs/api-key-management.md`** before widening that scope.
+
+**`/ogcapi-internal` carries landowner PII.** The `water_well_field_operations`
+collection publishes contact name, organization, role, phone and email for well
+owners and operators, plus staff-written access notes. Every credential the
+mount accepts reaches it, the static keys included. It is internal-only with
+**no public twin** — `ogc_water_well_field_operations` does not exist and must
+never be created. The layer also honours `end_date` when reading history
+tables, unlike `ogc_actively_monitored_wells`, so "may we sample here" cannot
+outlive the permission that granted it. Read
+**`docs/water-well-field-operations-layer.md`** before changing it, and
+**`docs/water-well-field-operations-columns.md`** for where each column comes
+from.
 
 ### OGC field descriptions
 
@@ -267,6 +305,11 @@ raise PydanticStyleException(
 - **409 errors**: Database constraint violations (manual checks in endpoints)
 
 ## Model Change Workflow
+
+For a dataset the system does not yet hold -- deciding where it belongs in the
+Location/Thing/FieldEvent/Sample/Observation model, and what to build in what
+order -- read **`docs/data-modeling-new-datasets.md`** first. The workflow below
+covers changes to models that already exist.
 
 When modifying data models:
 

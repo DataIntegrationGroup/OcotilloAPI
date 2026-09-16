@@ -16,7 +16,8 @@
 """Read-only mappings over the legacy water-chemistry views.
 
 `ogc_water_chemistry` and `ogc_internal_water_chemistry` are materialized views
-built in d9e0f1a2b3c4 by unioning the four legacy NMA chemistry tables
+built in d9e0f1a2b3c4 (and rekeyed on collection date in 3f9c1b7d2a64) by
+unioning the four legacy NMA chemistry tables
 (NMA_MajorChemistry, NMA_MinorTraceChemistry, NMA_Radionuclides,
 NMA_FieldParameters) into one analyte-per-row shape. They were added for the OGC
 EDR mount; these mappings let the REST API serve the same rows, which is where
@@ -55,8 +56,13 @@ class _WaterChemistryResultColumns:
     value: Mapped[float | None] = mapped_column("value", Float)
     unit: Mapped[str | None] = mapped_column("unit", String)
     # Named `datetime` in the view; exposed under the name the observation
-    # endpoints already use so clients do not need a second field name.
+    # endpoints already use so clients do not need a second field name. It is
+    # the sample's collection date (3f9c1b7d2a64), falling back to the
+    # analysis date only where no collection date was recorded.
     observation_datetime: Mapped[datetime] = mapped_column("datetime", DateTime)
+    # When the lab ran this result. NULL for field parameters, which were read
+    # at the well and have no analysis of their own.
+    analysis_date: Mapped[datetime | None] = mapped_column("analysis_date", DateTime)
     release_status: Mapped[str | None] = mapped_column("release_status", String)
 
 

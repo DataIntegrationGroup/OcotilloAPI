@@ -28,6 +28,16 @@
 # automated_ingestion/sql/ingestion_role.sql has been run: setting CLOUD_SQL_*
 # against a role that does not exist yet makes database_connectivity fail in a
 # way that looks like the serverless-to-Cloud-SQL problem it is meant to test.
+#
+# `database` sets CLOUD_SQL_DATABASE once per scope: the full deployment takes
+# it from this shell, branch deployments take CLOUD_SQL_BRANCH_DATABASE, which
+# defaults to ocotillo-staging. Run it once with the full value still on staging
+# before ever moving that to production, so the branch entry exists first.
+#
+# An earlier run set this variable with no scope at all. That entry is not
+# removed by setting the scoped pair -- delete it in the Dagster+ UI afterwards
+# and confirm the container reads the scoped value, because an unscoped value
+# left in place is exactly the failure this split is meant to prevent.
 set -euo pipefail
 
 DG="uv run --with dagster-dg-cli dg"
@@ -99,11 +109,29 @@ database)
       exit 65
       ;;
   esac
+  # The database is the one variable here that must differ per scope, the same
+  # way INGESTION_GCS_BUCKET does. Every PR touching automated_ingestion/, db/
+  # or domain/ gets a branch deployment, and a branch deployment runs the same
+  # jobs against whatever database this names. As a single unscoped --global
+  # value, pointing the full deployment at production points every open PR at
+  # production too -- with write grants, on a schedule someone may later enable.
+  #
+  # So the two are set separately and read from different places.
+  # CLOUD_SQL_DATABASE is the full deployment's, taken from this shell so the
+  # name is not committed. The branch value defaults to ocotillo-staging and is
+  # deliberately not derived from the full one: it must stay put when that moves.
+  BRANCH_DB="${CLOUD_SQL_BRANCH_DATABASE:-ocotillo-staging}"
+
   echo "Cloud SQL connection:"
   set_var DB_DRIVER cloudsql
   set_var CLOUD_SQL_IP_TYPE public
   set_var CLOUD_SQL_INSTANCE_NAME --from-local-env
-  set_var CLOUD_SQL_DATABASE --from-local-env
+
+  echo "Databases (different value per scope):"
+  echo "    full   -> ${CLOUD_SQL_DATABASE}"
+  echo "    branch -> ${BRANCH_DB}"
+  set_var CLOUD_SQL_DATABASE --from-local-env --scope full
+  set_var CLOUD_SQL_DATABASE "$BRANCH_DB" --scope branch
 
   # CLOUD_SQL_USER means different things in the two auth modes, and db/engine.py
   # passes it straight to the connector either way. Under IAM auth it must be the

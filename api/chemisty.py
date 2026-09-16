@@ -64,6 +64,11 @@ def get_water_chemistry_results(
     come from the public view, so an unreleased thing or a sample flagged
     `PublicRelease = false` is not served here regardless of who is asking.
 
+    `observation_datetime` is when the sample was collected, so every result
+    from one sample shares it; `analysis_date` is when the lab ran that result.
+    The time window and the default sort are on the collection date: a sample
+    belongs to the year the water was drawn, not the year the lab got to it.
+
     `start_time` is inclusive and `end_time` exclusive, so a calendar year is
     `start_time=YYYY-01-01&end_time=YYYY+1-01-01` with no risk of picking up a
     result recorded at midnight on New Year's Day of the following year.

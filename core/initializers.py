@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 from fastapi_pagination import add_pagination
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
 
@@ -105,13 +105,22 @@ def init_lexicon(path: str = None) -> None:
         category_rows = [
             {"name": category["name"], "description": category["description"]}
             for category in categories
-            if category["name"] not in existing_categories
         ]
         if category_rows:
+            # Insert every category, not just the missing ones, so that a
+            # category seeded before it had a description gets backfilled.
+            # coalesce keeps a description already in the database, so an
+            # edit made through /lexicon survives re-running the seed.
+            stmt = insert(LexiconCategory).values(category_rows)
             session.execute(
-                insert(LexiconCategory)
-                .values(category_rows)
-                .on_conflict_do_nothing(index_elements=["name"])
+                stmt.on_conflict_do_update(
+                    index_elements=["name"],
+                    set_={
+                        "description": func.coalesce(
+                            LexiconCategory.description, stmt.excluded.description
+                        )
+                    },
+                )
             )
             session.commit()
             existing_categories = dict(
@@ -219,6 +228,7 @@ def register_api_routes(app):
     from api.publication import router as publication_router
     from api.author import router as author_router
     from api.asset import router as asset_router
+    from api.api_key import router as api_key_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
@@ -227,8 +237,10 @@ def register_api_routes(app):
     from api.geothermal import router as geothermal_router
     from api.chemisty import router as chemistry_router
     from api.gis_artifacts import router as gis_artifacts_router
+    from api.regulatory_limit import router as regulatory_limit_router
 
     app.include_router(asset_router)
+    app.include_router(api_key_router)
     app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
@@ -240,6 +252,7 @@ def register_api_routes(app):
     app.include_router(location_router)
     app.include_router(observation_router)
     app.include_router(publication_router)
+    app.include_router(regulatory_limit_router)
     app.include_router(sample_router)
     app.include_router(sensor_router)
     app.include_router(search_router)

@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List, TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Integer, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr
 from sqlalchemy_utils import TSVectorType
@@ -167,6 +167,8 @@ class Phone(Base, AutoBaseMixin, ReleaseMixin):
     )
     search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("phone_number"))
 
+    __table_args__ = (Index("ix_phone_contact_id", "contact_id"),)
+
 
 class Email(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
@@ -180,6 +182,8 @@ class Email(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("email"))
+
+    __table_args__ = (Index("ix_email_contact_id", "contact_id"),)
 
 
 class Address(Base, AutoBaseMixin, ReleaseMixin):

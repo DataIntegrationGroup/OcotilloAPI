@@ -275,7 +275,7 @@ class TokenInvalid(Exception):
 # Required Authentik group for the authenticated internal OGC mount
 # (/ogcapi-internal). Not Depends()-shaped like the roles above -- see the
 # cross-reference note in core/dependencies.py for why it still lives here.
-INTERNAL_OGC_GROUP = "OGCInternal"
+INTERNAL_OGC_GROUP = "OGC.Internal"
 
 
 def decode_token_payload(token: str) -> dict:

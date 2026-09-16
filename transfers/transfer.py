@@ -45,7 +45,7 @@ from transfers.thing_transfer import (
 
 # Load .env file FIRST, before any database imports. Do not override
 # environment variables already set by the runtime (e.g., Cloud Run jobs).
-load_dotenv(override=False)
+load_dotenv()
 
 # In managed runtime environments, DB_DRIVER is occasionally omitted while
 # CLOUD_SQL_* vars are present. Default to cloudsql in that case to avoid

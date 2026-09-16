@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0...v1.4.0-rc) (2026-08-28)
+
+
+### Features
+
+* **well-inventory:** allow wells outside New Mexico (BDMS-1109) ([15ed781](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/15ed781ef79d0ab9444339499015aa7f4dc82d8b))
+
 ## [1.3.0-rc.2](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0-rc.1...v1.3.0-rc.2) (2026-08-25)
 
 

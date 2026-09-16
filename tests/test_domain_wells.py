@@ -19,7 +19,7 @@ from enum import Enum
 
 import pytest
 
-from core.constants import SRID_UTM_ZONE_12N, SRID_UTM_ZONE_13N
+from core.constants import SRID_NAD83_UTM_BASE
 from domain.wells import (
     AUTOGEN_DEFAULT_PREFIX,
     ConflictingMeasuringPointHeight,
@@ -32,6 +32,7 @@ from domain.wells import (
     release_status,
     resolve_measuring_point_height,
     srid_for_utm_zone,
+    utm_zone_number,
     well_purposes,
 )
 
@@ -71,14 +72,28 @@ def test_autogen_prefix_leaves_real_ids_alone(well_id):
 
 
 # --------------------------------------------------------------------------
-# srid_for_utm_zone
+# srid_for_utm_zone / utm_zone_number
 # --------------------------------------------------------------------------
-def test_srid_for_utm_zone_maps_supported_zones():
-    assert srid_for_utm_zone("13N") == SRID_UTM_ZONE_13N
-    assert srid_for_utm_zone("12N") == SRID_UTM_ZONE_12N
+@pytest.mark.parametrize("zone_number", range(10, 20))
+def test_srid_for_utm_zone_maps_conus_zones(zone_number):
+    assert srid_for_utm_zone(f"{zone_number}N") == SRID_NAD83_UTM_BASE + zone_number
 
 
-@pytest.mark.parametrize("zone", ["11N", "13n", "", None])
+@pytest.mark.parametrize(
+    "zone, expected",
+    [
+        ("13N", 13),
+        ("13n", 13),  # case-insensitive
+        (" 13N ", 13),  # tolerant of surrounding whitespace
+        ("10N", 10),
+        ("19N", 19),
+    ],
+)
+def test_utm_zone_number_normalizes_supported_zones(zone, expected):
+    assert utm_zone_number(zone) == expected
+
+
+@pytest.mark.parametrize("zone", ["9N", "20N", "13S", "", None, "13"])
 def test_srid_for_utm_zone_rejects_unsupported_zones(zone):
     with pytest.raises(UnsupportedUtmZone, match=f"Unsupported UTM zone: {zone}"):
         srid_for_utm_zone(zone)

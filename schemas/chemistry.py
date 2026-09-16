@@ -34,7 +34,13 @@ class WaterChemistryResultResponse(BaseModel):
     parameter_name: str
     value: float | None = None
     unit: str | None = None
+    # When the water was collected. Every result from one sample shares it,
+    # which is what lets a client count samples or group results by visit.
     observation_datetime: datetime
+    # When the lab ran this result -- often days or weeks after collection, and
+    # different for different analytes in the same sample. None for field
+    # parameters.
+    analysis_date: datetime | None = None
     # Which legacy table the result came from. A field measurement was read at
     # the wellhead and a lab one was not, which is the distinction an
     # owner-facing report has to draw -- and the legacy tables are the only
@@ -45,9 +51,9 @@ class WaterChemistryResultResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("observation_datetime")
+    @field_validator("observation_datetime", "analysis_date")
     @classmethod
-    def assume_utc(cls, value: datetime) -> datetime:
+    def assume_utc(cls, value: datetime | None) -> datetime | None:
         """Stamp naive legacy timestamps as UTC.
 
         The legacy tables store collection and analysis dates without a zone --
@@ -57,12 +63,16 @@ class WaterChemistryResultResponse(BaseModel):
         any server west of Greenwich, and a report for that year would then come
         back empty.
         """
+        if value is None:
+            return None
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
 
-    @field_serializer("observation_datetime")
-    def serialize_observation_datetime(self, value: datetime) -> str:
+    @field_serializer("observation_datetime", "analysis_date")
+    def serialize_datetime(self, value: datetime | None) -> str | None:
+        if value is None:
+            return None
         return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
