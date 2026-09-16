@@ -29,6 +29,7 @@ from schemas.group import UpdateGroup, CreateGroup, GroupResponse
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.group_helper import (
     add_thing_to_group,
+    assert_group_name_type_available,
     get_well_counts_by_group_id,
     group_to_response,
     paginated_groups_getter,
@@ -48,6 +49,7 @@ def create_group(
     """
     Create a new group in the database.
     """
+    assert_group_name_type_available(session, group_data.name, group_data.group_type)
     return model_adder(session, Group, group_data, user=user)
 
 
@@ -105,6 +107,15 @@ def update_group(
     """
     Update a group by ID in the database.
     """
+    fields = group_data.model_dump(exclude_unset=True)
+    if "name" in fields or "group_type" in fields:
+        group = simple_get_by_id(session, Group, group_id)
+        assert_group_name_type_available(
+            session,
+            fields.get("name", group.name),
+            fields.get("group_type", group.group_type),
+            exclude_id=group_id,
+        )
     return model_patcher(session, Group, group_id, group_data, user=user)
 
 
