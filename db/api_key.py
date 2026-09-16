@@ -37,8 +37,10 @@ from domain.api_key import SCOPE_OGC_INTERNAL
 class ApiKey(Base, AutoBaseMixin):
     """A credential a user issued for themselves from the settings page.
 
-    Deliberately not `db.permission.Permission`, which is a landowner's consent
-    to site access and shares nothing with this but the word.
+    Deliberately not `db.field_access_consent.FieldAccessConsent`, which is a
+    landowner's consent to site access and shares nothing with this but the
+    word. (`db.permission.Permission`, which this comment named before, was dead
+    code and was deleted in c1a96391.)
 
     No ReleaseMixin: a credential is not draft-or-published content, and giving
     it a release_status would put it in front of the release filters that read
