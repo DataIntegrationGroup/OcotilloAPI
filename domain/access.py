@@ -31,8 +31,9 @@ Three invariants this module exists to keep:
 
 * **Default deny.** No grant means no. An empty sequence answers False, and
   every helper returns False rather than raising when it cannot say yes.
-* **No wildcards.** A grant names its data type. There is no term meaning
-  "all", so a data type added next year is never covered by an existing row.
+* **No wildcards.** A grant names exactly one subject: a data type, or a UI
+  surface. There is no term meaning "all" in either vocabulary, so a data type
+  or a screen added next year is never covered by an existing row.
 * **Expiry is checked at use.** Nothing sweeps expired rows; every check
   compares against the date it is asked about.
 """
@@ -90,6 +91,14 @@ class MissingDataType(AccessRuleError):
     pass
 
 
+class AmbiguousGrantSubject(AccessRuleError):
+    """A grant named both a data type and a UI surface, or neither."""
+
+
+class ScopedSurfaceGrant(AccessRuleError):
+    """A UI-surface grant was scoped to a group or a thing."""
+
+
 class ScopeIdMismatch(AccessRuleError):
     pass
 
@@ -107,10 +116,13 @@ class Grant:
     capability: str
     scope_type: str
     scope_id: int | None
-    data_type: str
+    data_type: str | None
     starts_at: date
     ends_at: date | None = None
     revoked_at: datetime | None = None
+    # A grant reaches data or a screen, never both. Defaulted so every existing
+    # construction site keeps meaning a data grant.
+    ui_surface: str | None = None
 
 
 @dataclass(frozen=True)
@@ -136,10 +148,13 @@ class AccessRequest:
     """
 
     capability: str
-    data_type: str
+    data_type: str | None = None
     principals: tuple[tuple[str, str], ...] = ()
     thing_id: int | None = None
     group_ids: tuple[int, ...] = field(default_factory=tuple)
+    # Asked instead of `data_type` when the question is "may this caller see
+    # this screen". A request names one or the other, like a grant does.
+    ui_surface: str | None = None
 
 
 def validate_grant(
@@ -150,6 +165,7 @@ def validate_grant(
     data_type: str | None,
     starts_at: date,
     ends_at: date | None,
+    ui_surface: str | None = None,
 ) -> None:
     """Reject a grant that could not be evaluated honestly.
 
@@ -173,12 +189,29 @@ def validate_grant(
         raise ScopeIdMismatch("A global grant names no scope_id.")
     if scope_type != SCOPE_GLOBAL and scope_id is None:
         raise ScopeIdMismatch(f"A {scope_type}-scoped grant needs a scope_id.")
-    if not data_type:
+    if data_type and ui_surface:
+        # A row naming both would be two grants wearing one revocation, and
+        # revoking the data half would silently take the screen away too.
+        raise AmbiguousGrantSubject(
+            "A grant names a data type or a UI surface, not both. Write two "
+            "grants so each can be revoked on its own."
+        )
+    if not data_type and not ui_surface:
         # The no-wildcard rule. There is deliberately no term meaning "all":
         # a blanket grant is what published data nobody had agreed to publish.
         raise MissingDataType(
-            "A grant names its data type. There is no wildcard, so a new data "
-            "type is never covered by an existing grant."
+            "A grant names its data type, or the UI surface it opens. There is "
+            "no wildcard, so a new data type or screen is never covered by an "
+            "existing grant."
+        )
+    if ui_surface and scope_type != SCOPE_GLOBAL:
+        # Navigation is app-wide: the UI asks "may this caller see this
+        # screen", never "for this well". A scoped surface grant could not
+        # match any request the UI makes, so it is refused at the door rather
+        # than stored as something that silently never applies.
+        raise ScopedSurfaceGrant(
+            f"A UI-surface grant is always global; '{scope_type}' would never "
+            "match, because the UI never asks about a screen for one thing."
         )
     require_forward_range(starts_at, ends_at)
 
@@ -236,13 +269,27 @@ def grant_covers(grant: Grant, request: AccessRequest, on_date: date) -> bool:
         return False
     if grant.capability != request.capability:
         return False
-    if grant.data_type != request.data_type:
+    if not _subject_matches(grant, request):
         return False
     if not is_active(grant.starts_at, grant.ends_at, grant.revoked_at, on_date):
         return False
     return scope_covers(
         grant.scope_type, grant.scope_id, request.thing_id, request.group_ids
     )
+
+
+def _subject_matches(grant: Grant, request: AccessRequest) -> bool:
+    """Whether the grant is about the thing being asked about.
+
+    A request names a data type or a UI surface, and so does a grant. Matching
+    on `None == None` would make a data grant answer a screen question, so an
+    unasked axis never matches.
+    """
+    if request.ui_surface is not None:
+        return grant.ui_surface == request.ui_surface
+    if request.data_type is not None:
+        return grant.data_type == request.data_type
+    return False
 
 
 def any_grant_allows(grants, request: AccessRequest, on_date: date) -> bool:
