@@ -145,8 +145,10 @@ def test_well_inventory_db_contents_no_waterlevels():
             )
             assert thing.well_depth == float(file_content["total_well_depth_ft"])
             assert thing.hole_depth is None
-            assert thing.well_casing_diameter == float(
-                file_content["casing_diameter_ft"]
+            # The CSV column is feet; the column stores inches.
+            assert (
+                thing.well_casing_diameter
+                == float(file_content["casing_diameter_ft"]) * 12
             )
             assert thing.well_casing_depth is None
             assert (
@@ -451,6 +453,206 @@ def test_well_inventory_db_contents_no_waterlevels():
                     assert participant.participant.name == file_content["field_staff"]
                 else:
                     assert participant.participant.name == file_content["field_staff_2"]
+
+
+def _water_level_row(**overrides):
+    """A row that produces a groundwater level sample, for participant-link tests."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "level_status": "Water level not affected",
+        }
+    )
+    row.update(overrides)
+    return row
+
+
+def _write_well_inventory_csv(tmp_path, row, name="well-inventory.csv"):
+    file_path = tmp_path / name
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+    return file_path
+
+
+def test_sample_links_to_named_measuring_person(tmp_path):
+    """measuring_person picks the collector even when they are not the lead."""
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="B Chen",
+        measuring_person="B Chen",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        assert sample.field_event_participant is not None
+        assert sample.field_event_participant.participant.name == "B Chen"
+        assert sample.field_event_participant.participant_role == "Participant"
+
+
+def test_sample_links_to_lead_when_measuring_person_blank(tmp_path):
+    """
+    Blank measuring_person falls back to field_staff.
+
+    Real inventory files leave the column empty, so requiring it would leave
+    almost every imported sample with no collector.
+    """
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="B Chen",
+        field_staff_3="C Diaz",
+        measuring_person="",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        participants = session.query(FieldEventParticipant).all()
+
+        assert len(participants) == 3
+        assert sample.field_event_participant is not None
+        assert sample.field_event_participant.participant.name == "A Lopez"
+        assert sample.field_event_participant.participant_role == "Lead"
+
+
+def test_sample_links_to_sole_participant_when_measuring_person_absent(tmp_path):
+    """A row with one staff name and no measuring_person column still links."""
+    row = _water_level_row(field_staff="A Lopez")
+    assert "measuring_person" not in row and "sampler" not in row
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        assert sample.field_event_participant is not None
+        assert sample.field_event_participant.participant.name == "A Lopez"
+
+
+def test_sampler_alias_links_the_sample(tmp_path):
+    """The sampler header is an accepted alias for measuring_person."""
+    row = _water_level_row(field_staff="A Lopez", field_staff_2="B Chen")
+    row["sampler"] = "B Chen"
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        assert sample.field_event_participant.participant.name == "B Chen"
+
+
+def test_untrimmed_measuring_person_still_matches(tmp_path):
+    """This importer does not strip CSV values, so matching must tolerate padding."""
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="B Chen",
+        measuring_person="  B Chen  ",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        assert sample.field_event_participant.participant.name == "B Chen"
+
+
+def test_whitespace_only_measuring_person_falls_back_to_lead(tmp_path):
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="B Chen",
+        measuring_person="   ",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        assert sample.field_event_participant.participant.name == "A Lopez"
+
+
+def test_row_fails_when_measuring_person_is_not_field_staff(tmp_path):
+    """A measuring_person nobody on the crew matches is a data-entry error."""
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="B Chen",
+        measuring_person="D Ortiz",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 1, result.stdout
+
+    errors = result.payload["validation_errors"]
+    assert len(errors) == 1
+    assert (
+        errors[0]["error"] == "measuring_person 'D Ortiz' could not be matched to a "
+        "field event participant"
+    )
+
+    with session_ctx() as session:
+        # The whole row rolls back, so the operator fixes the name and reruns
+        # rather than being left with a well carrying an unattributed sample.
+        assert session.query(Sample).count() == 0
+        assert session.query(Thing).count() == 0
+
+
+def test_row_fails_when_measuring_person_is_ambiguous(tmp_path):
+    """Repeating one name across staff columns must not be resolved by guessing."""
+    row = _water_level_row(
+        field_staff="A Lopez",
+        field_staff_2="A Lopez",
+        measuring_person="A Lopez",
+    )
+
+    result = well_inventory_csv(_write_well_inventory_csv(tmp_path, row))
+    assert result.exit_code == 1, result.stdout
+
+    errors = result.payload["validation_errors"]
+    assert len(errors) == 1
+    assert errors[0]["error"] == (
+        "measuring_person 'A Lopez' matched multiple field event participants; "
+        "field_staff values must identify exactly one measuring person"
+    )
+
+    with session_ctx() as session:
+        assert session.query(Sample).count() == 0
+        assert session.query(Thing).count() == 0
+
+
+def test_rerunning_import_keeps_the_original_sample_participant(tmp_path):
+    """Re-importing must not orphan the link or duplicate participants."""
+    row = _water_level_row(field_staff="A Lopez", field_staff_2="B Chen")
+    file_path = _write_well_inventory_csv(tmp_path, row)
+
+    first = well_inventory_csv(file_path)
+    assert first.exit_code == 0, first.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        first_participant_id = sample.field_event_participant_id
+        first_participant_ids = [p.id for p in session.query(FieldEventParticipant)]
+
+    second = well_inventory_csv(file_path)
+    assert second.exit_code == 0, second.stderr
+
+    with session_ctx() as session:
+        sample = session.query(Sample).one()
+        participants = session.query(FieldEventParticipant).all()
+
+        assert sample.field_event_participant_id == first_participant_id
+        assert [p.id for p in participants] == first_participant_ids
 
 
 def test_well_inventory_db_contents_with_waterlevels(tmp_path):

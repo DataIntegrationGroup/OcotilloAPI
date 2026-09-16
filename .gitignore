@@ -56,3 +56,6 @@ app.yaml
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
+
+# Data migration change reports (run artifacts, not source)
+reports/
