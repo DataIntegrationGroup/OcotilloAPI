@@ -4,6 +4,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, engine_from_config, pool, text
 
 from services.env import get_bool_env
@@ -42,6 +43,8 @@ model_tables = set(target_metadata.tables.keys())
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+load_dotenv(override=False)
 
 
 def build_database_url():

@@ -50,13 +50,13 @@ class DataProvenance(AutoBaseMixin, ReleaseMixin, Base):
         comment="The specific column in the parent table that this metadata applies to (e.g., 'well_depth_ft', 'coordinates')."
         "If `NULL`, the record applies to the entire parent object.",
     )
-    # Values from the following NMAquifer tables are included as `origin_source` terms in the lexicon:
+    # Values from the following NMAquifer tables are included as `source_reference` terms in the lexicon:
     # 'LU_DataSource', 'LU_Depth_CompletionSource'.
-    origin_type: Mapped[str] = lexicon_term(
+    source_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="Indicates the type of origin the data (e.g'Driller's Log', 'Well Report'.",
     )
-    origin_source: Mapped[str] = mapped_column(
+    source_reference: Mapped[str] = mapped_column(
         nullable=True,
         comment="The specific source of the data (e.g., 'J. Brown Thesis, \"I like APIs\", Pomona College, 1994').",
     )

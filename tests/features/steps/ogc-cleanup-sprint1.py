@@ -187,7 +187,14 @@ def _seed_thing_with_location(session, thing_type, release_status, name):
     assoc.effective_start = "2023-01-01T00:00:00Z"
     session.add(assoc)
     session.commit()
-    session.refresh(thing)
+    # Reload only the id (callers use thing.id); skip the eager
+    # ``data_provenance`` relationship. When these scenarios have downgraded
+    # to PRE_A1_REVISION, that table still uses the pre-BDMS-631 ``origin_type``
+    # column, so a full refresh() would run a selectin SELECT naming
+    # ``source_type`` -- which no longer exists there -- and fail. The id is
+    # already populated by the flush above, so skipping the relationship load
+    # changes nothing for callers.
+    session.refresh(thing, attribute_names=["id"])
     return thing
 
 
