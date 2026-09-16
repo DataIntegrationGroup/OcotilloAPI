@@ -46,6 +46,7 @@ model_tables = set(target_metadata.tables.keys())
 
 load_dotenv(override=False)
 
+
 def build_database_url():
     """
     Build a SQLAlchemy URL based on driver/env vars.
