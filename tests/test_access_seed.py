@@ -28,17 +28,21 @@ from sqlalchemy import delete, select
 from core.dependencies import admin_function, viewer_function
 from db.authorization_audit import AuthorizationAudit
 from db.engine import session_ctx
+from core.enums import UISurface
 from db.permission_grant import PermissionGrant
 from main import app
 from services.access_seed import (
     ROLE_BASELINE,
     SEED_ACTOR,
+    SURFACE_BASELINE,
     planned_entries,
     seed_role_grants,
 )
+from domain.access import PRINCIPAL_ROLE
+from services.visibility import may_see_surface
 from tests import client, override_authentication
 
-VIEWER_PAYLOAD = {"sub": "test-viewer", "groups": ["Viewer"]}
+VIEWER_PAYLOAD = {"sub": "test-viewer", "groups": ["AMP.Viewer"]}
 
 
 @pytest.fixture(autouse=True)
@@ -107,7 +111,7 @@ def test_a_revoked_baseline_grant_is_not_resurrected():
             session.execute(
                 select(PermissionGrant).where(
                     PermissionGrant.granted_by == SEED_ACTOR,
-                    PermissionGrant.principal_id == "Viewer",
+                    PermissionGrant.principal_id == "AMP.Viewer",
                     PermissionGrant.data_type == "water chemistry",
                 )
             )
@@ -150,9 +154,9 @@ def test_seeding_is_audited():
 
 def test_a_viewer_gets_read_and_nothing_else():
     """The tiers nest within a family; the baseline has to say so."""
-    assert ROLE_BASELINE["Viewer"] == ("read",)
-    assert set(ROLE_BASELINE["Admin"]) > set(ROLE_BASELINE["Editor"])
-    assert set(ROLE_BASELINE["Editor"]) > set(ROLE_BASELINE["Viewer"])
+    assert ROLE_BASELINE["AMP.Viewer"] == ("read",)
+    assert set(ROLE_BASELINE["AMP.Admin"]) > set(ROLE_BASELINE["AMP.Editor"])
+    assert set(ROLE_BASELINE["AMP.Editor"]) > set(ROLE_BASELINE["AMP.Viewer"])
 
 
 def test_the_dark_workbench_group_is_not_seeded():
@@ -180,7 +184,7 @@ def test_decision_says_yes_to_a_role_holder_after_seeding():
         "/access/decision", params={"capability": "read", "data_type": "water level"}
     ).json()
     assert allowed["allowed"] is True
-    assert "role:Viewer" in allowed["principals"]
+    assert "role:AMP.Viewer" in allowed["principals"]
 
 
 def test_a_viewer_still_cannot_correct_after_seeding():
@@ -215,3 +219,83 @@ def test_seeded_grants_start_today_not_retroactively():
         rows = seeded_rows(session)
 
     assert all(row.starts_at == date.today() for row in rows)
+
+
+# ------ the screen half ----------
+
+
+def test_a_seeded_surface_grant_is_global_view_over_no_data_type():
+    """The only shape a surface grant has; anything else could never match."""
+    with session_ctx() as session:
+        seed_role_grants(session)
+        rows = [row for row in seeded_rows(session) if row.ui_surface]
+
+    assert rows
+    assert all(row.capability == "view" for row in rows)
+    assert all(row.data_type is None for row in rows)
+    assert all(row.scope_type == "global" and row.scope_id is None for row in rows)
+
+
+def test_every_seeded_surface_is_a_real_term():
+    """A typo here would be a foreign key error mid-seed, in production."""
+    known = {member.value for member in UISurface}
+    seeded = {surface for surfaces in SURFACE_BASELINE.values() for surface in surfaces}
+    assert seeded <= known
+
+
+def test_the_dark_workbench_screen_is_not_seeded():
+    """Same reason AMP.Staging holds no data grants: it ships dark."""
+    seeded = {surface for surfaces in SURFACE_BASELINE.values() for surface in surfaces}
+    assert "ocotillo.hydrograph-correction" not in seeded
+
+
+def test_only_admin_gets_the_access_console():
+    holders = {
+        role
+        for role, surfaces in SURFACE_BASELINE.items()
+        if "ocotillo.access-grants" in surfaces
+    }
+    assert holders == {"AMP.Admin"}
+
+
+def test_the_lexicon_screen_follows_the_lexicon_family():
+    """Vocabulary is not data: the lexicon group gets the screen and no
+    data grants, and the top of the data ladder does not inherit it."""
+    assert SURFACE_BASELINE["Lexicon.Editor"] == ("ocotillo.lexicon",)
+    assert "ocotillo.lexicon" not in SURFACE_BASELINE["AMP.Admin"]
+    assert "Lexicon.Editor" not in ROLE_BASELINE
+
+
+def test_a_seeded_surface_grant_opens_the_screen():
+    with session_ctx() as session:
+        seed_role_grants(session)
+        allowed = may_see_surface(
+            session,
+            principals=((PRINCIPAL_ROLE, "AMP.Viewer"),),
+            ui_surface="ocotillo.map",
+        )
+        denied = may_see_surface(
+            session,
+            principals=((PRINCIPAL_ROLE, "AMP.Viewer"),),
+            ui_surface="ocotillo.access-grants",
+        )
+
+    assert allowed is True
+    assert denied is False
+
+
+def test_only_the_admin_tier_may_delete():
+    """Destruction is the one action whose mistakes cannot be read back out of
+    the data, and today's delete routes for these data types are admin-gated."""
+    holders = {
+        role for role, capabilities in ROLE_BASELINE.items() if "delete" in capabilities
+    }
+
+    assert holders == {"AMP.Admin"}
+
+
+def test_delete_is_not_correct():
+    """A row that should not exist is a different question from a value that
+    was wrong, so an editor revising records cannot remove them."""
+    assert "correct" in ROLE_BASELINE["AMP.Editor"]
+    assert "delete" not in ROLE_BASELINE["AMP.Editor"]

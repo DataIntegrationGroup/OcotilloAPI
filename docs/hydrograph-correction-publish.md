@@ -10,7 +10,7 @@ proposal it was built from is
 ## Authorization
 
 Both write routes are gated on **`AMP.Staging`**, a standalone Authentik group.
-It is not a fourth rung on the AMP ladder: `AMPAdmin` does not satisfy it, and
+It is not a fourth rung on the AMP ladder: `AMP.Admin` does not satisfy it, and
 it satisfies nothing else. Nobody holds it until it is granted, so the routes
 ship dark and are reachable only by whoever is validating the workbench against
 real logger files.
