@@ -30,7 +30,7 @@ from db.base import (
 )
 from db.data_provenance import DataProvenanceMixin
 from db.measuring_point_history import MeasuringPointHistory
-from db.permission_history import PermissionHistoryMixin
+from db.field_access_consent import FieldAccessConsentMixin
 from db.status_history import StatusHistoryMixin
 from services.util import retrieve_latest_polymorphic_history_table_record
 
@@ -63,7 +63,7 @@ class Thing(
     AutoBaseMixin,
     ReleaseMixin,
     StatusHistoryMixin,
-    PermissionHistoryMixin,
+    FieldAccessConsentMixin,
     DataProvenanceMixin,
     NotesMixin,
 ):
@@ -598,8 +598,8 @@ class Thing(
         associated permissions, an empty list is returned instead of None to
         allow the API to serialize correctly (see schemas/thing.py).
         """
-        if self.permission_history:
-            return self.permission_history
+        if self.field_access_consent:
+            return self.field_access_consent
         else:
             return []
 
