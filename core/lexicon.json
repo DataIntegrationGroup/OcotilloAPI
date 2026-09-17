@@ -2230,6 +2230,13 @@
     },
     {
       "categories": [
+        "groundwater_level_reason"
+      ],
+      "term": "Site was unsafe to measure (no level recorded)",
+      "definition": "Site conditions made measurement hazardous, so no water level was recorded."
+    },
+    {
+      "categories": [
         "status_type"
       ],
       "term": "Well Status",
