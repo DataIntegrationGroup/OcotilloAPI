@@ -91,5 +91,6 @@ PrincipalType: type[Enum] = build_enum_from_lexicon_category("principal_type")
 Capability: type[Enum] = build_enum_from_lexicon_category("capability")
 GrantScopeType: type[Enum] = build_enum_from_lexicon_category("grant_scope_type")
 AccessDataType: type[Enum] = build_enum_from_lexicon_category("access_data_type")
+UISurface: type[Enum] = build_enum_from_lexicon_category("ui_surface")
 DestinationKind: type[Enum] = build_enum_from_lexicon_category("destination_kind")
 # ============= EOF =============================================

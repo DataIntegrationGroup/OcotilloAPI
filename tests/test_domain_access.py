@@ -24,10 +24,12 @@ from domain.access import (
     CAPABILITIES,
     PRINCIPAL_TYPES,
     SCOPE_TYPES,
+    AmbiguousGrantSubject,
     BackwardsDateRange,
     Consent,
     Grant,
     MissingDataType,
+    ScopedSurfaceGrant,
     ScopeIdMismatch,
     UnknownCapability,
     UnknownPrincipalType,
@@ -270,3 +272,140 @@ def test_withdrawn_consent_stops_being_offered_immediately():
 
 def test_nothing_published_without_a_consent_row():
     assert any_consent_publishes([], 7, 2, "water level", TODAY) is False
+
+
+# ------ UI-surface grants ----------
+#
+# A grant reaches data, or it opens a screen. These pin the XOR and the
+# global-only rule, and that a data grant never answers a screen question.
+
+
+def a_surface_grant(**overrides):
+    fields = {
+        "principal_type": "user",
+        "principal_id": "authentik-sub-1",
+        "capability": "read",
+        "scope_type": "global",
+        "scope_id": None,
+        "data_type": None,
+        "ui_surface": "ocotillo.lexicon",
+        "starts_at": date(2026, 1, 1),
+        "ends_at": None,
+        "revoked_at": None,
+    }
+    fields.update(overrides)
+    return Grant(**fields)
+
+
+def a_surface_request(**overrides):
+    fields = {
+        "capability": "read",
+        "data_type": None,
+        "ui_surface": "ocotillo.lexicon",
+        "principals": (STUDENT,),
+        "thing_id": None,
+        "group_ids": (),
+    }
+    fields.update(overrides)
+    return AccessRequest(**fields)
+
+
+def test_a_surface_grant_opens_that_screen():
+    assert any_grant_allows([a_surface_grant()], a_surface_request(), TODAY) is True
+
+
+def test_a_surface_grant_does_not_open_another_screen():
+    assert (
+        grant_covers(
+            a_surface_grant(),
+            a_surface_request(ui_surface="ocotillo.location"),
+            TODAY,
+        )
+        is False
+    )
+
+
+def test_a_data_grant_does_not_answer_a_screen_question():
+    """Both carry None on the axis not being asked about; None must not match."""
+    assert grant_covers(a_grant(), a_surface_request(), TODAY) is False
+
+
+def test_a_surface_grant_does_not_answer_a_data_question():
+    assert grant_covers(a_surface_grant(), a_request(), TODAY) is False
+
+
+def test_a_request_naming_neither_subject_is_a_no():
+    """A question this layer cannot answer is not a yes."""
+    assert (
+        any_grant_allows(
+            [a_grant(), a_surface_grant()],
+            a_surface_request(ui_surface=None, data_type=None),
+            TODAY,
+        )
+        is False
+    )
+
+
+def test_a_surface_grant_expires_like_any_other():
+    grant = a_surface_grant(ends_at=date(2026, 8, 23))
+    assert grant_covers(grant, a_surface_request(), TODAY) is False
+
+
+def test_a_surface_grant_is_dead_once_revoked():
+    grant = a_surface_grant(revoked_at=datetime(2026, 8, 1, tzinfo=timezone.utc))
+    assert grant_covers(grant, a_surface_request(), TODAY) is False
+
+
+# ------ validation of the two subjects ----------
+
+
+def test_a_grant_naming_both_subjects_is_rejected():
+    """Two grants in one row would share a revocation."""
+    with pytest.raises(AmbiguousGrantSubject):
+        validate_grant(
+            "user",
+            "read",
+            "global",
+            None,
+            "water level",
+            TODAY,
+            None,
+            ui_surface="ocotillo.lexicon",
+        )
+
+
+def test_a_grant_naming_neither_subject_is_rejected():
+    with pytest.raises(MissingDataType):
+        validate_grant("user", "read", "global", None, None, TODAY, None)
+
+
+def test_a_surface_grant_is_accepted_without_a_data_type():
+    validate_grant(
+        "user",
+        "read",
+        "global",
+        None,
+        None,
+        TODAY,
+        None,
+        ui_surface="ocotillo.lexicon",
+    )
+
+
+@pytest.mark.parametrize("scope_type,scope_id", [("thing", 7), ("group", 3)])
+def test_a_scoped_surface_grant_is_rejected(scope_type, scope_id):
+    """It could never match: the UI never asks about a screen for one thing."""
+    with pytest.raises(ScopedSurfaceGrant):
+        validate_grant(
+            "user",
+            "read",
+            scope_type,
+            scope_id,
+            None,
+            TODAY,
+            None,
+            ui_surface="ocotillo.lexicon",
+        )
+
+
+# ============= EOF =============================================
