@@ -59,22 +59,14 @@ class _WaterChemistryResultColumns:
     # endpoints already use so clients do not need a second field name. It is
     # the sample's collection date (3f9c1b7d2a64), falling back to the
     # analysis date only where no collection date was recorded.
-    observation_datetime: Mapped[datetime] = mapped_column(
-        "datetime", DateTime
-    )
+    observation_datetime: Mapped[datetime] = mapped_column("datetime", DateTime)
     # When the lab ran this result. NULL for field parameters, which were
     # read at the well and have no analysis of their own.
-    analysis_date: Mapped[datetime | None] = mapped_column(
-        "analysis_date", DateTime
-    )
-    release_status: Mapped[str | None] = mapped_column(
-        "release_status", String
-    )
+    analysis_date: Mapped[datetime | None] = mapped_column("analysis_date", DateTime)
+    release_status: Mapped[str | None] = mapped_column("release_status", String)
 
 
-class WaterChemistryResultsView(
-    _WaterChemistryResultColumns, ChemistryViewBase
-):
+class WaterChemistryResultsView(_WaterChemistryResultColumns, ChemistryViewBase):
     """Public chemistry analyses: released things, released samples."""
 
     __tablename__ = "ogc_water_chemistry"
