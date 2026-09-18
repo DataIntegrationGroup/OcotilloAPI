@@ -75,4 +75,3 @@ def get_water_chemistry_results(
         return enrich_water_chemistry_results(session, rows)
 
     return paginate(query=query, conn=session, transformer=transformer)
-
