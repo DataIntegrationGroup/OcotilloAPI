@@ -57,5 +57,8 @@ app.yaml
 .claude/settings.local.json
 .claude/worktrees/
 
+# Design canvas scratch (artboards, decks, generated PDFs)
+.design/
+
 # Data migration change reports (run artifacts, not source)
 reports/
