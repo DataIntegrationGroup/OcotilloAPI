@@ -48,19 +48,20 @@ def _add_sample(session, thing_id, collected_on, point_id):
     ).scalar()
 
 
-def _add_major(session, sample_id, symbol, value, analysed_on):
+def _add_major(session, sample_id, symbol, value, analysed_on, unit="mg/L"):
     session.execute(
         text(
             'INSERT INTO "NMA_MajorChemistry" '
             '(chemistry_sample_info_id, "Symbol", "SampleValue", "Units", '
             '"AnalysisDate", "Uncertainty", "AnalysisMethod", "Notes", '
             '"AnalysesAgency") VALUES (:sid, :symbol, :val, '
-            "'mg/L', :analysed, 0.1, 'ICP-MS', 'major note', 'NMBGMR')"
+            ":unit, :analysed, 0.1, 'ICP-MS', 'major note', 'NMBGMR')"
         ),
         {
             "sid": sample_id,
             "symbol": symbol,
             "val": value,
+            "unit": unit,
             "analysed": analysed_on,
         },
     )
@@ -135,6 +136,7 @@ def two_samples(water_well_thing):
         _add_field(session, april, "pH", 7.4)
         _add_major(session, april, "Cl", 12.0, "2019-04-16")
         _add_major(session, april, "Ca", 40.0, "2019-04-22")
+        _add_major(session, april, "Fe", 1.0, "2019-04-23", unit=None)
         _add_minor(session, april, "RES-APR", "As", 0.012, "2019-05-24")
         _add_radio(session, april, "RES-APR", "GA", 3.2, "2019-05-25")
 
@@ -190,7 +192,7 @@ def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
 
     april_sample_id = two_samples["april"]
     april = [item for item in items if item["sample_id"] == april_sample_id]
-    assert len(april) == 5
+    assert len(april) == 6
     observation_dates = {item["observation_datetime"] for item in april}
     assert observation_dates == {"2019-04-09T00:00:00Z"}
 
@@ -204,7 +206,11 @@ def test_analysis_date_is_reported_separately(two_samples):
     assert by_kind["radionuclide"]["analysis_date"] == "2019-05-25"
     major_results = [item for item in items if item["result_kind"] == "major"]
     major_analysis_dates = {item["analysis_date"] for item in major_results}
-    assert major_analysis_dates == {"2019-04-16", "2019-04-22"}
+    assert major_analysis_dates == {
+        "2019-04-16",
+        "2019-04-22",
+        "2019-04-23",
+    }
 
 
 def test_results_include_display_fields_without_renaming_fields(two_samples):
@@ -231,6 +237,10 @@ def test_results_include_display_fields_without_renaming_fields(two_samples):
     assert major["notes"] == "major note"
     assert major["analyses_agency"] == "NMBGMR"
     assert major["standard"]["status"] == "below_smcl"
+
+    iron = next(item for item in items if item["parameter_name"] == "Iron")
+    assert iron["unit"] is None
+    assert iron["standard"]["status"] == "not_compared"
 
     radionuclide = by_kind["radionuclide"]
     assert radionuclide["source"] == "radionuclide"
