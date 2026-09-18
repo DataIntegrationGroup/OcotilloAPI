@@ -209,7 +209,7 @@ trip; an array does not.
 | `release_status` | `thing.release_status` |
 | `alternate_ids` | `thing_id_link`, joined as `organization:alternate_id` pairs |
 | `latitude`, `longitude` | `ST_Y`/`ST_X` of the same point, decimal degrees on WGS 84 -- a plain number survives a CSV export, which drops the geometry, and a crew can read it into a handheld GPS |
-| `elevation` | `location.elevation` |
+| `elevation` | `location.elevation`, converted from metres to feet and rounded to two decimals, as of `f2a3b4c5d6e7`. Every other measurement on this layer is already in feet. The column keeps the name `elevation` -- pygeoapi publishes the unit per field (`x-ogc-unit`/`x-ogc-unitLang`), so the name does not need to carry it -- which means this layer's `elevation` entry in `core/ogc-field-descriptions.yml` has to override the shared `_defaults` entry, which is metres, or the schema would describe the wrong unit |
 | `point` | `location.point`, most recent association (the shared `LATEST_LOCATION_CTE`) |
 
 `nma_pk_welldata`, `county`, `state`, `quad_name`, `nma_formation_zone`, and

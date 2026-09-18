@@ -2141,6 +2141,18 @@ water_well_field_operations:
       Published as a plain number for the same reason as the latitude.
     x-ogc-unit: https://qudt.org/vocab/unit/DEG
     x-ogc-unitLang: QUDT
+  elevation:
+    title: Ground-surface elevation
+    description: >-
+      Surveyed elevation of the ground surface at the well, in feet above the
+      NAVD 88 vertical datum, rounded to two decimals. Recorded in metres and
+      converted here so it reads in the same unit as the well depth, screen
+      depths and measuring-point height a crew compares it against. This
+      overrides the _defaults entry for this one column: elsewhere in the
+      catalogue a column named elevation is metres, unit M -- here it is
+      feet, unit FT.
+    x-ogc-unit: https://qudt.org/vocab/unit/FT
+    x-ogc-unitLang: QUDT
   alternate_ids:
     title: Alternate identifiers
     description: >-
