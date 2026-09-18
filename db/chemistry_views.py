@@ -61,18 +61,18 @@ class _WaterChemistryResultColumns:
     # analysis date only where no collection date was recorded.
     observation_datetime: Mapped[datetime] = mapped_column(
         "datetime", DateTime
-    )  # noqa: E501
+    )
     # When the lab ran this result. NULL for field parameters, which were
     # read at the well and have no analysis of their own.
     analysis_date: Mapped[datetime | None] = mapped_column(
         "analysis_date", DateTime
-    )  # noqa: E501
+    )
     release_status: Mapped[str | None] = mapped_column(
         "release_status", String
-    )  # noqa: E501
+    )
 
 
-class WaterChemistryResultsView(  # noqa: E501
+class WaterChemistryResultsView(
     _WaterChemistryResultColumns, ChemistryViewBase
 ):
     """Public chemistry analyses: released things, released samples."""
