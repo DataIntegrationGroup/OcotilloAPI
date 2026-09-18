@@ -167,32 +167,31 @@ def test_elevation_is_published_in_feet(water_well_thing):
     # place staff met that metric value: every other measurement here is feet,
     # and the UI already converts before showing it. A crew comparing a
     # wellhead elevation against a screen depth should not have to know the
-    # two columns disagreed about units.
+    # two columns disagreed about units. The column keeps the name
+    # `elevation` -- pygeoapi documents the unit per field, so the name
+    # doesn't have to -- only the value and its unit metadata change.
     with session_ctx() as session:
-        row = _row(session, water_well_thing.id, "elevation_ft")
+        row = _row(session, water_well_thing.id, "elevation")
 
     # The location fixture stands at 2464.9 m.
-    assert row.elevation_ft == round(2464.9 * METERS_TO_FEET, 2)
-    assert row.elevation_ft == 8086.94
+    assert row.elevation == round(2464.9 * METERS_TO_FEET, 2)
+    assert row.elevation == 8086.94
 
 
-def test_elevation_is_not_published_unsuffixed(water_well_thing):
-    # An unsuffixed elevation means metres on every other layer in the
-    # catalogue. Leaving one here that meant feet is the disagreement the
-    # rename exists to prevent, so the old name must be gone, not aliased.
-    with session_ctx() as session:
-        columns = set(
-            session.scalars(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_name = :view"
-                ),
-                {"view": VIEW},
-            ).all()
-        )
+def test_elevation_unit_overrides_the_shared_default(ogc_client):
+    # _defaults.elevation documents metres, unit M, for every other layer
+    # that has a plain elevation column. This layer's value is feet, so its
+    # own entry in core/ogc-field-descriptions.yml has to override that
+    # default rather than inherit it -- table_entries() only replaces a
+    # _defaults key when the per-table YAML repeats the same column name.
+    response = ogc_client.get(
+        "/ogcapi-internal/collections/water_well_field_operations/schema"
+    )
+    assert response.status_code == 200
 
-    assert "elevation_ft" in columns
-    assert "elevation" not in columns
+    elevation = response.json()["properties"]["elevation"]
+    assert elevation["x-ogc-unit"] == "https://qudt.org/vocab/unit/FT"
+    assert "feet" in elevation["description"].lower()
 
 
 # ------------------------------------------------------------- construction

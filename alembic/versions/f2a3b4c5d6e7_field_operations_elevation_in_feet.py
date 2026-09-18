@@ -16,7 +16,12 @@
 """publish field operations elevation in feet
 
 Rebuilds ogc_internal_water_well_field_operations so ground-surface elevation
-reads in feet, published as elevation_ft rather than elevation.
+reads in feet. The column keeps its name, elevation -- the schema already
+carries the unit for each field via x-ogc-unit/x-ogc-unitLang, so a suffix on
+the name would say the same thing twice. That means this layer now needs its
+own per-table override of the elevation entry in
+core/ogc-field-descriptions.yml: the shared _defaults entry says metres and
+unit M, which would be wrong here without it.
 
 location.elevation is stored in metres above NAVD 88 and the layer passed it
 through unchanged. Every other measurement a crew reads off this layer is in
@@ -25,12 +30,6 @@ Ocotillo UI already converts elevation to feet before showing it
 (schemas/location.py), so the layer was the one place staff met the metric
 value, and a crew comparing a wellhead elevation against a screen depth had to
 know the two columns disagreed about units.
-
-The column is renamed, not just converted. An unsuffixed elevation means metres
-everywhere else in the catalogue, so a column meaning feet here and metres in
-ogc_water_wells would be the quiet disagreement this catalogue avoids by
-convention: converted values carry the unit in the name, as
-water_elevation_wells.elevation_m and heat_flow.total_depth_m already do.
 
 Rounded to two decimals, which is finer than any elevation in this record is
 surveyed to and stops the conversion from inventing precision. ROUND takes
@@ -67,11 +66,12 @@ FEATURE_VIEW = "ogc_internal_water_well_field_operations"
 # and so cannot track a moving import.
 METERS_TO_FEET = 3.28084
 
-# The one column this revision changes. Downgrade restores the metric
-# passthrough under its old unsuffixed name.
+# The one column this revision changes. The name stays elevation both ways;
+# only the value and its per-table description entry change. Downgrade
+# restores the metric passthrough.
 ELEVATION_FEET = (
     f"ROUND((l.elevation * {METERS_TO_FEET})::numeric, 2)::double precision "
-    "AS elevation_ft"
+    "AS elevation"
 )
 ELEVATION_METRES = "l.elevation"
 
