@@ -27,10 +27,17 @@ from schemas.chemistry import (
     ChemistryDisplaySectionResponse,
     ChemistryDisplayStandardResponse,
     ChemistryDisplayStandardsSummaryResponse,
+    WaterChemistryResultResponse,
 )
-from services.legacy_chemistry import canonical_parameter_name
+from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 SourceKind = Literal["major", "minor", "radionuclide", "field"]
+SOURCE_PREFIXES: dict[SourceKind, str] = {
+    "major": "maj",
+    "minor": "min",
+    "radionuclide": "rad",
+    "field": "fld",
+}
 
 GENERAL_PARAMETER_ORDER = [
     "Arsenic",
@@ -80,6 +87,18 @@ class Limit:
     secondary_smcl: float | tuple[float, float] | None = None
     unit: str = "mg/L"
     basis: str = "EPA drinking-water standards"
+
+
+@dataclass(frozen=True)
+class ResultMetadata:
+    source: SourceKind
+    source_id: int
+    analyte: str | None = None
+    symbol: str | None = None
+    uncertainty: float | None = None
+    analysis_method: str | None = None
+    notes: str | None = None
+    analyses_agency: str | None = None
 
 
 EPA_PRIMARY_INORGANIC = "EPA primary inorganic chemicals table"
@@ -167,6 +186,170 @@ def build_chemistry_display_payload(
         additional_analyses=ChemistryDisplaySectionResponse(
             results=sections["additional"]
         ),
+    )
+
+
+def enrich_water_chemistry_results(
+    session: Session,
+    rows,
+) -> list[WaterChemistryResultResponse]:
+    """Add display metadata to one paginated page of chemistry view rows."""
+    rows = list(rows)
+    metadata_by_result_id = _metadata_by_result_id(session, rows)
+    metadata_for = metadata_by_result_id.get
+    responses = []
+    for row in rows:
+        metadata = metadata_for(row.id)
+        responses.append(_water_chemistry_result_response(row, metadata))
+    return responses
+
+
+def _metadata_by_result_id(
+    session: Session,
+    rows: list,
+) -> dict[str, ResultMetadata]:
+    ids_by_source: dict[SourceKind, list[int]] = {
+        "major": [],
+        "minor": [],
+        "radionuclide": [],
+        "field": [],
+    }
+    for row in rows:
+        source_id = _source_id(row.id)
+        source = result_kind(row.id)
+        if source_id is None or source not in ids_by_source:
+            continue
+        ids_by_source[source].append(source_id)
+
+    metadata: dict[str, ResultMetadata] = {}
+    metadata.update(
+        _lab_metadata_by_result_id(
+            session, NMA_MajorChemistry, "major", ids_by_source["major"]
+        )
+    )
+    metadata.update(
+        _lab_metadata_by_result_id(
+            session, NMA_MinorTraceChemistry, "minor", ids_by_source["minor"]
+        )
+    )
+    metadata.update(
+        _lab_metadata_by_result_id(
+            session,
+            NMA_Radionuclides,
+            "radionuclide",
+            ids_by_source["radionuclide"],
+        )
+    )
+    field_ids = ids_by_source["field"]
+    metadata.update(_field_metadata_by_result_id(session, field_ids))
+    return metadata
+
+
+def _source_id(result_id: str | None) -> int | None:
+    if not result_id:
+        return None
+    _, _, raw_source_id = result_id.partition("-")
+    try:
+        return int(raw_source_id)
+    except ValueError:
+        return None
+
+
+def _lab_metadata_by_result_id(
+    session: Session,
+    model,
+    source: SourceKind,
+    source_ids: list[int],
+) -> dict[str, ResultMetadata]:
+    if not source_ids:
+        return {}
+
+    query = select(
+        model.id.label("source_id"),
+        model.analyte,
+        model.symbol,
+        model.uncertainty,
+        model.analysis_method,
+        model.notes,
+        model.analyses_agency,
+    ).where(model.id.in_(source_ids))
+    return {
+        _result_id(source, row["source_id"]): ResultMetadata(
+            source=source,
+            source_id=row["source_id"],
+            analyte=row["analyte"],
+            symbol=row["symbol"],
+            uncertainty=row["uncertainty"],
+            analysis_method=row["analysis_method"],
+            notes=row["notes"],
+            analyses_agency=row["analyses_agency"],
+        )
+        for row in session.execute(query).mappings()
+    }
+
+
+def _field_metadata_by_result_id(
+    session: Session,
+    source_ids: list[int],
+) -> dict[str, ResultMetadata]:
+    if not source_ids:
+        return {}
+
+    query = select(
+        NMA_FieldParameters.id.label("source_id"),
+        NMA_FieldParameters.field_parameter.label("field_parameter"),
+        NMA_FieldParameters.notes,
+        NMA_FieldParameters.analyses_agency,
+    ).where(NMA_FieldParameters.id.in_(source_ids))
+    return {
+        _result_id("field", row["source_id"]): ResultMetadata(
+            source="field",
+            source_id=row["source_id"],
+            analyte=row["field_parameter"],
+            symbol=row["field_parameter"],
+            notes=row["notes"],
+            analyses_agency=row["analyses_agency"],
+        )
+        for row in session.execute(query).mappings()
+    }
+
+
+def _result_id(source: SourceKind, source_id: int) -> str:
+    return f"{SOURCE_PREFIXES[source]}-{source_id}"
+
+
+def _water_chemistry_result_response(
+    row,
+    metadata: ResultMetadata | None,
+) -> WaterChemistryResultResponse:
+    source = metadata.source if metadata else result_kind(row.id)
+    if source not in SOURCE_PREFIXES:
+        source = None
+    raw_parameter_name = (
+        metadata.symbol or metadata.analyte if metadata else row.parameter_name
+    )
+    parameter_name = canonical_parameter_name(raw_parameter_name)
+    symbol = metadata.symbol if metadata else None
+    standard = standard_for_result(parameter_name, row.value, row.unit)
+
+    return WaterChemistryResultResponse.model_validate(row).model_copy(
+        update={
+            "source": source,
+            "parameter_name": parameter_name,
+            "parameter_key": (
+                parameter_key(source, parameter_name, symbol)
+                if source is not None
+                else None
+            ),
+            "analyte": metadata.analyte if metadata else None,
+            "symbol": symbol,
+            "uncertainty": metadata.uncertainty if metadata else None,
+            "analysis_method": metadata.analysis_method if metadata else None,
+            "notes": metadata.notes if metadata else None,
+            "analyses_agency": metadata.analyses_agency if metadata else None,
+            "standard": standard,
+            "result_kind": result_kind(row.id),
+        }
     )
 
 
@@ -274,7 +457,7 @@ def _result_response(row: RowMapping) -> ChemistryDisplayResultResponse:
         id=f"{source}-{row['source_id']}",
         sample_info_id=row["sample_info_id"],
         source=source,
-        parameter_key=_parameter_key(source, parameter_name, symbol),
+        parameter_key=parameter_key(source, parameter_name, symbol),
         parameter_name=parameter_name,
         analyte=analyte,
         symbol=symbol,
@@ -285,7 +468,7 @@ def _result_response(row: RowMapping) -> ChemistryDisplayResultResponse:
         analysis_date=row["analysis_date"],
         notes=row["notes"],
         analyses_agency=row["analyses_agency"],
-        standard=_standard_for_result(parameter_name, value, unit),
+        standard=standard_for_result(parameter_name, value, unit),
     )
 
 
@@ -335,7 +518,7 @@ def _standards_summary(
     )
 
 
-def _standard_for_result(
+def standard_for_result(
     parameter_name: str | None,
     result_value: float | None,
     result_unit: str | None,
@@ -464,7 +647,7 @@ def _result_section(
     return "additional"
 
 
-def _parameter_key(
+def parameter_key(
     source: SourceKind, parameter_name: str | None, symbol: str | None
 ) -> str:
     raw = parameter_name or symbol or "unknown"

@@ -26,12 +26,10 @@ from schemas.chemistry import (
     ChemistryDisplayResponse,
     WaterChemistryResultResponse,
 )
-from services.chemistry_display import (
-    _parameter_key,
-    _standard_for_result,
+from services.chemistry import (
     build_chemistry_display_payload,
+    enrich_water_chemistry_results,
 )
-from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 router = APIRouter(
     prefix="/chemistry",
@@ -47,8 +45,6 @@ _RESULT_SORT_COLUMNS = {
     "value": WaterChemistryResultsView.value,
     "id": WaterChemistryResultsView.id,
 }
-
-_RESULT_SOURCES = {"major", "minor", "radionuclide", "field"}
 
 
 @router.get(
@@ -110,36 +106,7 @@ def get_water_chemistry_results(
     )
 
     def transformer(rows):
-        # Analytes come out of the legacy tables as symbols; the response
-        # speaks the lexicon's names so a consumer can match a result to a
-        # drinking water standard without knowing the legacy vocabulary.
-        def response_for(row):
-            source = row.source or result_kind(row.id)
-            if source not in _RESULT_SOURCES:
-                source = None
-            raw_parameter_name = row.symbol or row.analyte
-            if raw_parameter_name is None:
-                raw_parameter_name = row.parameter_name
-            parameter_name = canonical_parameter_name(raw_parameter_name)
-            return WaterChemistryResultResponse.model_validate(row).model_copy(
-                update={
-                    "source": source,
-                    "parameter_name": parameter_name,
-                    "parameter_key": (
-                        _parameter_key(source, parameter_name, row.symbol)
-                        if source
-                        else None
-                    ),
-                    "standard": _standard_for_result(
-                        parameter_name,
-                        row.value,
-                        row.unit,
-                    ),
-                    "result_kind": result_kind(row.id),
-                }
-            )
-
-        return [response_for(row) for row in rows]
+        return enrich_water_chemistry_results(session, rows)
 
     return paginate(query=query, conn=session, transformer=transformer)
 
@@ -160,8 +127,8 @@ def get_chemistry_display(
     Retrieve UI-ready chemistry data for the well details chemistry display.
 
     The payload is grouped by released NMA chemistry sample events and includes
-    major chemistry, minor/trace chemistry, and field parameter rows. The
-    newest released sample is selected by default.
+    major chemistry, minor/trace chemistry, radionuclides, and field parameter
+    rows. The newest released sample is selected by default.
     """
     payload = build_chemistry_display_payload(
         session,

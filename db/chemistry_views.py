@@ -48,7 +48,6 @@ class _WaterChemistryResultColumns:
     """
 
     id: Mapped[str] = mapped_column("id", String, primary_key=True)
-    source: Mapped[str | None] = mapped_column("source", String)
     thing_id: Mapped[int] = mapped_column("thing_id", Integer)
     station_name: Mapped[str | None] = mapped_column("station_name", String)
     thing_type: Mapped[str | None] = mapped_column("thing_type", String)
@@ -56,16 +55,6 @@ class _WaterChemistryResultColumns:
     parameter_name: Mapped[str] = mapped_column("parameter_name", String)
     value: Mapped[float | None] = mapped_column("value", Float)
     unit: Mapped[str | None] = mapped_column("unit", String)
-    analyte: Mapped[str | None] = mapped_column("analyte", String)
-    symbol: Mapped[str | None] = mapped_column("symbol", String)
-    uncertainty: Mapped[float | None] = mapped_column("uncertainty", Float)
-    analysis_method: Mapped[str | None] = mapped_column(
-        "analysis_method", String
-    )  # noqa: E501
-    notes: Mapped[str | None] = mapped_column("notes", String)
-    analyses_agency: Mapped[str | None] = mapped_column(
-        "analyses_agency", String
-    )  # noqa: E501
     # Named `datetime` in the view; exposed under the name the observation
     # endpoints already use so clients do not need a second field name. It is
     # the sample's collection date (3f9c1b7d2a64), falling back to the
