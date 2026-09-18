@@ -29,6 +29,7 @@ from db.lexicon import (
     LexiconTermCategoryAssociation,
 )
 from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
 
 
 def init_parameter(path: str = None) -> None:
@@ -69,6 +70,76 @@ def init_parameter(path: str = None) -> None:
                 session.rollback()
 
 
+def load_regulatory_limits(path: str = None) -> list[dict]:
+    if path is None:
+        path = Path(__file__).parent / "regulatory_limit.json"
+
+    with open(path) as f:
+        import json
+
+        return json.load(f)
+
+
+def add_regulatory_limits(session, limits: list[dict]) -> int:
+    """
+    Add the limits not already stored and return how many were added. Does not
+    commit.
+
+    A limit is identified by its parameter, source and type, so re-running
+    leaves existing rows alone -- including one whose value was since edited.
+    Each limit names its parameter by name and matrix; the parameter must
+    already exist.
+    """
+    parameter_ids = {
+        (name, matrix): pid
+        for pid, name, matrix in session.execute(
+            select(Parameter.id, Parameter.parameter_name, Parameter.matrix)
+        ).all()
+    }
+    existing = set(
+        session.execute(
+            select(
+                RegulatoryLimit.parameter_id,
+                RegulatoryLimit.limit_source,
+                RegulatoryLimit.limit_type,
+            )
+        ).all()
+    )
+
+    added = 0
+    for limit in limits:
+        key = (limit["parameter_name"], limit["matrix"])
+        if key not in parameter_ids:
+            raise ValueError(f"No parameter {key} for regulatory limit {limit}")
+        parameter_id = parameter_ids[key]
+        if (parameter_id, limit["limit_source"], limit["limit_type"]) in existing:
+            continue
+        session.add(
+            RegulatoryLimit(
+                parameter_id=parameter_id,
+                limit_source=limit["limit_source"],
+                limit_type=limit["limit_type"],
+                limit_value=limit["limit_value"],
+                limit_unit=limit["limit_unit"],
+                release_status="public",
+            )
+        )
+        added += 1
+    session.flush()
+    return added
+
+
+def init_regulatory_limit(path: str = None) -> None:
+    """
+    Populate the regulatory_limit table. Run after init_parameter, which
+    creates the parameters the limits point at.
+    """
+    limits = load_regulatory_limits(path)
+    with session_ctx() as session:
+        add_regulatory_limits(session, limits)
+        session.commit()
+
+
 def erase_and_rebuild_db():
     with session_ctx() as session:
         session.execute(text("DROP SCHEMA public CASCADE"))
@@ -80,6 +151,7 @@ def erase_and_rebuild_db():
 
     init_lexicon()
     init_parameter()
+    init_regulatory_limit()
 
 
 def init_lexicon(path: str = None) -> None:

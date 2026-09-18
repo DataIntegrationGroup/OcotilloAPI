@@ -37,9 +37,14 @@ consolidate_groups = importlib.import_module(
 convert_casing_diameter = importlib.import_module(
     "data_migrations.migrations." "20260914_0001_convert_well_inventory_casing_diameter"
 )
+seed_epa_limits = importlib.import_module(
+    "data_migrations.migrations.20260916_0001_seed_epa_regulatory_limits"
+)
 from db.lexicon import LexiconCategory
 from db.location import Location
 from db.notes import Notes
+from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
 from db.field import FieldActivity, FieldEvent
 from db.group import Group, GroupThingAssociation
 from db.thing import Thing
@@ -301,6 +306,78 @@ def _description(session, name):
     return session.execute(
         select(LexiconCategory.description).where(LexiconCategory.name == name)
     ).scalar_one()
+
+
+def _epa_limits(session):
+    return {
+        (name, matrix, limit_type): float(value)
+        for name, matrix, limit_type, value in session.execute(
+            select(
+                Parameter.parameter_name,
+                Parameter.matrix,
+                RegulatoryLimit.limit_type,
+                RegulatoryLimit.limit_value,
+            )
+            .join(Parameter)
+            .where(RegulatoryLimit.limit_source == "EPA")
+        )
+    }
+
+
+def test_seed_epa_regulatory_limits_matches_seed_file():
+    """conftest seeds the limits; the migration and the seed agree."""
+    expected = {
+        (row["parameter_name"], row["matrix"], row["limit_type"]): row["limit_value"]
+        for row in seed_epa_limits.load_regulatory_limits()
+    }
+    with session_ctx() as session:
+        seed_epa_limits.run(session)
+        session.commit()
+        assert _epa_limits(session) == expected
+
+
+def test_seed_epa_regulatory_limits_restores_missing_and_keeps_edits():
+    key = ("Arsenic", "groundwater", "MCL")
+    with session_ctx() as session:
+        arsenic_id = session.scalar(
+            select(Parameter.id).where(
+                Parameter.parameter_name == "Arsenic",
+                Parameter.matrix == "groundwater",
+            )
+        )
+        fluoride_mcl = (
+            select(RegulatoryLimit)
+            .join(Parameter)
+            .where(
+                Parameter.parameter_name == "Fluoride",
+                RegulatoryLimit.limit_source == "EPA",
+                RegulatoryLimit.limit_type == "MCL",
+            )
+        )
+        session.scalar(fluoride_mcl).limit_value = 99
+        session.execute(
+            delete(RegulatoryLimit).where(
+                RegulatoryLimit.parameter_id == arsenic_id,
+                RegulatoryLimit.limit_source == "EPA",
+                RegulatoryLimit.limit_type == "MCL",
+            )
+        )
+        session.commit()
+
+        try:
+            seed_epa_limits.run(session)
+            session.commit()
+            limits = _epa_limits(session)
+            assert limits[key] == 0.01
+            assert limits[("Fluoride", "groundwater", "MCL")] == 99
+
+            before = len(limits)
+            seed_epa_limits.run(session)
+            session.commit()
+            assert len(_epa_limits(session)) == before
+        finally:
+            session.scalar(fluoride_mcl).limit_value = 4.0
+            session.commit()
 
 
 # ==============================================================================
