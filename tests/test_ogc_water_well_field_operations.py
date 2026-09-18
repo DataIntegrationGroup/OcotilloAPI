@@ -53,6 +53,7 @@ from db import (
     WellScreen,
 )
 from db.engine import session_ctx
+from domain.units import METERS_TO_FEET
 from tests import override_authentication
 
 pytestmark = pytest.mark.skipif(
@@ -159,6 +160,39 @@ def test_latitude_and_longitude_match_the_geometry(water_well_thing):
     assert row.longitude == row.geom_x
     assert -180 <= row.longitude <= 180
     assert -90 <= row.latitude <= 90
+
+
+def test_elevation_is_published_in_feet(water_well_thing):
+    # location.elevation is metres above NAVD 88, and this layer is the one
+    # place staff met that metric value: every other measurement here is feet,
+    # and the UI already converts before showing it. A crew comparing a
+    # wellhead elevation against a screen depth should not have to know the
+    # two columns disagreed about units.
+    with session_ctx() as session:
+        row = _row(session, water_well_thing.id, "elevation_ft")
+
+    # The location fixture stands at 2464.9 m.
+    assert row.elevation_ft == round(2464.9 * METERS_TO_FEET, 2)
+    assert row.elevation_ft == 8086.94
+
+
+def test_elevation_is_not_published_unsuffixed(water_well_thing):
+    # An unsuffixed elevation means metres on every other layer in the
+    # catalogue. Leaving one here that meant feet is the disagreement the
+    # rename exists to prevent, so the old name must be gone, not aliased.
+    with session_ctx() as session:
+        columns = set(
+            session.scalars(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = :view"
+                ),
+                {"view": VIEW},
+            ).all()
+        )
+
+    assert "elevation_ft" in columns
+    assert "elevation" not in columns
 
 
 # ------------------------------------------------------------- construction

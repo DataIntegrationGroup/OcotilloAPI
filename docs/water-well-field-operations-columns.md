@@ -25,7 +25,7 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | `alternate_ids` | `thing_id_link.alternate_organization` + `.alternate_id`, comma-joined |
 | `latitude` | `ST_Y(location.point)` — decimal degrees, WGS 84 |
 | `longitude` | `ST_X(location.point)` — decimal degrees, WGS 84 |
-| `elevation` | `location.elevation`, most recent association |
+| `elevation_ft` | `location.elevation`, most recent association, converted from metres to feet at 3.28084 ft/m and rounded to two decimals |
 | `well_depth` | `thing.well_depth` |
 | `hole_depth` | `thing.hole_depth` |
 | `well_casing_diameter` | `thing.well_casing_diameter` |
