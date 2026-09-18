@@ -36,13 +36,6 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides = {}
 
 
-def _refresh_views(session):
-    internal_view = "REFRESH MATERIALIZED VIEW ogc_internal_water_chemistry"
-    session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_chemistry"))
-    session.execute(text(internal_view))
-    session.commit()
-
-
 def _add_sample(session, thing_id, collected_on, point_id):
     return session.execute(
         text(
@@ -148,7 +141,6 @@ def two_samples(water_well_thing):
         december = _add_sample(session, thing_id, "2018-12-20", "RES-DEC")
         _add_major(session, december, "SO4", 80.0, "2019-01-07")
         session.commit()
-        _refresh_views(session)
 
         yield {
             "april": april,
@@ -178,7 +170,6 @@ def two_samples(water_well_thing):
             {"status": original_status, "tid": water_well_thing.id},
         )
         session.commit()
-        _refresh_views(session)
 
 
 def _results(thing_id, year):

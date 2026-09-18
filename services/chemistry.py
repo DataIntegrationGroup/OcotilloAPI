@@ -7,7 +7,16 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-from sqlalchemy import literal, select, union_all
+from sqlalchemy import (
+    String,
+    asc,
+    cast,
+    desc,
+    func,
+    literal,
+    select,
+    union_all,
+)
 from sqlalchemy.engine import Row, RowMapping
 from sqlalchemy.orm import Session
 
@@ -126,6 +135,41 @@ EPA_LIMITS = {
 }
 
 
+def build_water_chemistry_results_query(
+    *,
+    thing_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+):
+    results = _water_chemistry_results_selectable()
+    query = select(results)
+
+    if thing_id is not None:
+        query = query.where(results.c.thing_id == thing_id)
+
+    if start_time is not None:
+        query = query.where(results.c.observation_datetime >= start_time)
+
+    if end_time is not None:
+        query = query.where(results.c.observation_datetime < end_time)
+
+    sort_columns = {
+        "observation_datetime": results.c.observation_datetime,
+        "parameter_name": results.c.parameter_name,
+        "value": results.c.value,
+        "id": results.c.id,
+    }
+    sort_column = sort_columns.get(sort or "observation_datetime")
+    direction = asc if (order or "desc").lower() == "asc" else desc
+
+    # id is the tiebreaker so paging is stable: without it two analytes
+    # sharing a timestamp can swap pages between requests and be served twice
+    # or never.
+    return query.order_by(direction(sort_column), results.c.id)
+
+
 def build_chemistry_display_payload(
     session: Session,
     *,
@@ -193,15 +237,130 @@ def enrich_water_chemistry_results(
     session: Session,
     rows,
 ) -> list[WaterChemistryResultResponse]:
-    """Add display metadata to one paginated page of chemistry view rows."""
+    """Add display metadata to one paginated page of chemistry result rows."""
     rows = list(rows)
-    metadata_by_result_id = _metadata_by_result_id(session, rows)
+    metadata_by_result_id = {}
+    rows_missing_metadata = []
+    for row in rows:
+        result_id = _row_value(row, "id")
+        metadata = _metadata_from_row(row)
+        if metadata is None:
+            rows_missing_metadata.append(row)
+        else:
+            metadata_by_result_id[result_id] = metadata
+    missing_metadata = _metadata_by_result_id(session, rows_missing_metadata)
+    metadata_by_result_id.update(missing_metadata)
     metadata_for = metadata_by_result_id.get
     responses = []
     for row in rows:
-        metadata = metadata_for(row.id)
+        result_id = _row_value(row, "id")
+        metadata = _metadata_from_row(row) or metadata_for(result_id)
         responses.append(_water_chemistry_result_response(row, metadata))
     return responses
+
+
+def _water_chemistry_results_selectable():
+    return union_all(
+        _lab_water_chemistry_results_query(NMA_MajorChemistry, "major"),
+        _lab_water_chemistry_results_query(NMA_MinorTraceChemistry, "minor"),
+        _lab_water_chemistry_results_query(NMA_Radionuclides, "radionuclide"),
+        _field_water_chemistry_results_query(),
+    ).subquery("water_chemistry_results")
+
+
+def _lab_water_chemistry_results_query(model, source: SourceKind):
+    observed_at = func.coalesce(
+        NMA_Chemistry_SampleInfo.collection_date,
+        model.analysis_date,
+    )
+    parameter_name = func.nullif(
+        func.trim(func.coalesce(model.analyte, model.symbol)),
+        "",
+    )
+    return (
+        select(
+            _result_id_expression(source, model.id).label("id"),
+            literal(source).label("source"),
+            model.id.label("source_id"),
+            NMA_Chemistry_SampleInfo.thing_id.label("thing_id"),
+            Thing.name.label("station_name"),
+            Thing.thing_type.label("thing_type"),
+            NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            parameter_name.label("parameter_name"),
+            model.sample_value.label("value"),
+            model.units.label("unit"),
+            observed_at.label("observation_datetime"),
+            model.analysis_date.label("analysis_date"),
+            Thing.release_status.label("release_status"),
+            model.analyte.label("analyte"),
+            model.symbol.label("symbol"),
+            model.uncertainty.label("uncertainty"),
+            model.analysis_method.label("analysis_method"),
+            model.notes.label("notes"),
+            model.analyses_agency.label("analyses_agency"),
+        )
+        .join(
+            NMA_Chemistry_SampleInfo,
+            NMA_Chemistry_SampleInfo.id == model.chemistry_sample_info_id,
+        )
+        .join(Thing, Thing.id == NMA_Chemistry_SampleInfo.thing_id)
+        .where(
+            model.sample_value.isnot(None),
+            parameter_name.isnot(None),
+            observed_at.isnot(None),
+            Thing.release_status == "public",
+            NMA_Chemistry_SampleInfo.public_release.isnot(False),
+        )
+    )
+
+
+def _field_water_chemistry_results_query():
+    observed_at = NMA_Chemistry_SampleInfo.collection_date
+    parameter_name = func.nullif(
+        func.trim(NMA_FieldParameters.field_parameter),
+        "",
+    )
+    field_sample_id = NMA_FieldParameters.chemistry_sample_info_id
+    sample_join = NMA_Chemistry_SampleInfo.id == field_sample_id
+    return (
+        select(
+            _result_id_expression("field", NMA_FieldParameters.id).label("id"),
+            literal("field").label("source"),
+            NMA_FieldParameters.id.label("source_id"),
+            NMA_Chemistry_SampleInfo.thing_id.label("thing_id"),
+            Thing.name.label("station_name"),
+            Thing.thing_type.label("thing_type"),
+            NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            parameter_name.label("parameter_name"),
+            NMA_FieldParameters.sample_value.label("value"),
+            NMA_FieldParameters.units.label("unit"),
+            observed_at.label("observation_datetime"),
+            literal(None).label("analysis_date"),
+            Thing.release_status.label("release_status"),
+            NMA_FieldParameters.field_parameter.label("analyte"),
+            NMA_FieldParameters.field_parameter.label("symbol"),
+            literal(None).label("uncertainty"),
+            literal(None).label("analysis_method"),
+            NMA_FieldParameters.notes.label("notes"),
+            NMA_FieldParameters.analyses_agency.label("analyses_agency"),
+        )
+        .join(
+            NMA_Chemistry_SampleInfo,
+            sample_join,
+        )
+        .join(Thing, Thing.id == NMA_Chemistry_SampleInfo.thing_id)
+        .where(
+            NMA_FieldParameters.sample_value.isnot(None),
+            parameter_name.isnot(None),
+            observed_at.isnot(None),
+            Thing.release_status == "public",
+            NMA_Chemistry_SampleInfo.public_release.isnot(False),
+        )
+    )
+
+
+def _result_id_expression(source: SourceKind, source_id):
+    return literal(f"{SOURCE_PREFIXES[source]}-") + cast(source_id, String)
 
 
 def _metadata_by_result_id(
@@ -215,8 +374,9 @@ def _metadata_by_result_id(
         "field": [],
     }
     for row in rows:
-        source_id = _source_id(row.id)
-        source = result_kind(row.id)
+        result_id = _row_value(row, "id")
+        source_id = _source_id(result_id)
+        source = result_kind(result_id)
         if source_id is None or source not in ids_by_source:
             continue
         ids_by_source[source].append(source_id)
@@ -322,17 +482,36 @@ def _water_chemistry_result_response(
     row,
     metadata: ResultMetadata | None,
 ) -> WaterChemistryResultResponse:
-    source = metadata.source if metadata else result_kind(row.id)
+    result_id = _row_value(row, "id")
+    source = metadata.source if metadata else result_kind(result_id)
     if source not in SOURCE_PREFIXES:
         source = None
-    raw_parameter_name = (
-        metadata.symbol or metadata.analyte if metadata else row.parameter_name
-    )
+    if metadata:
+        raw_parameter_name = metadata.symbol or metadata.analyte
+    else:
+        raw_parameter_name = _row_value(row, "parameter_name")
     parameter_name = canonical_parameter_name(raw_parameter_name)
     symbol = metadata.symbol if metadata else None
-    standard = standard_for_result(parameter_name, row.value, row.unit)
+    standard = standard_for_result(
+        parameter_name,
+        _row_value(row, "value"),
+        _row_value(row, "unit"),
+    )
 
-    return WaterChemistryResultResponse.model_validate(row).model_copy(
+    response_data = {
+        "id": result_id,
+        "thing_id": _row_value(row, "thing_id"),
+        "station_name": _row_value(row, "station_name"),
+        "sample_id": _row_value(row, "sample_id"),
+        "parameter_name": _row_value(row, "parameter_name"),
+        "value": _row_value(row, "value"),
+        "unit": _row_value(row, "unit"),
+        "observation_datetime": _row_value(row, "observation_datetime"),
+        "analysis_date": _row_value(row, "analysis_date"),
+    }
+
+    response = WaterChemistryResultResponse.model_validate(response_data)
+    return response.model_copy(
         update={
             "source": source,
             "parameter_name": parameter_name,
@@ -348,9 +527,38 @@ def _water_chemistry_result_response(
             "notes": metadata.notes if metadata else None,
             "analyses_agency": metadata.analyses_agency if metadata else None,
             "standard": standard,
-            "result_kind": result_kind(row.id),
+            "result_kind": result_kind(result_id),
         }
     )
+
+
+def _metadata_from_row(row) -> ResultMetadata | None:
+    source = _row_value(row, "source", None)
+    source_id = _row_value(row, "source_id", None)
+    if source not in SOURCE_PREFIXES or source_id is None:
+        return None
+
+    return ResultMetadata(
+        source=source,
+        source_id=source_id,
+        analyte=_row_value(row, "analyte", None),
+        symbol=_row_value(row, "symbol", None),
+        uncertainty=_row_value(row, "uncertainty", None),
+        analysis_method=_row_value(row, "analysis_method", None),
+        notes=_row_value(row, "notes", None),
+        analyses_agency=_row_value(row, "analyses_agency", None),
+    )
+
+
+def _row_value(row, name: str, default=None):
+    if isinstance(row, RowMapping):
+        return row.get(name, default)
+
+    mapping = getattr(row, "_mapping", None)
+    if mapping is not None and name in mapping:
+        return mapping[name]
+
+    return getattr(row, name, default)
 
 
 def _get_samples(
