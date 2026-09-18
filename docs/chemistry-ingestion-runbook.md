@@ -16,6 +16,11 @@ run consistently while the fuller solution is pursued.
   `NMA_Chemistry_SampleInfo` (`db/nma_legacy.py`).
 - Legacy source: AMPAPI `chemfile.py` (`MajorChemistry` /
   `MinorandTraceChemistry` in SQL Server).
+- Field half: the crew's data-entry spreadsheet (sample info + field
+  parameters) has its own ingest -- see
+  **`docs/chemistry-field-sheet-ingest.md`**. It writes the same
+  `NMA_Chemistry_SampleInfo` rows this ingest does, matched on well PointID and
+  collection date, so a visit and its lab batch stay one sample.
 
 ---
 

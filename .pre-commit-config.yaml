@@ -1,12 +1,20 @@
 fail_fast: true
 repos:
+  # `stable` is the branch psf/black@stable resolves to, and that is what the
+  # `format` job in .github/workflows/format_code.yml runs before auto-committing
+  # the result to the PR branch. Tracking the same ref keeps the hook from
+  # reformatting a file that CI then reformats straight back.
+  #
+  # Caveat: pre-commit resolves a mutable ref once, at install, and caches it --
+  # it does not follow the branch afterwards. Run `pre-commit autoupdate` (or
+  # `pre-commit clean`) when CI and the hook start disagreeing again.
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: stable
     hooks:
       - id: black
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         args: [
