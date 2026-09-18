@@ -29,11 +29,8 @@ from db.nma_legacy import (
 )
 from db.thing import Thing
 from schemas.chemistry import (
-    ChemistryDisplayGeneralResponse,
-    ChemistryDisplayResponse,
     ChemistryDisplayResultResponse,
     ChemistryDisplaySampleResponse,
-    ChemistryDisplaySectionResponse,
     ChemistryDisplayStandardResponse,
     ChemistryDisplayStandardsSummaryResponse,
     WaterChemistryResultResponse,
@@ -168,69 +165,6 @@ def build_water_chemistry_results_query(
     # sharing a timestamp can swap pages between requests and be served twice
     # or never.
     return query.order_by(direction(sort_column), results.c.id)
-
-
-def build_chemistry_display_payload(
-    session: Session,
-    *,
-    thing_id: int,
-    start_time: datetime | None = None,
-    end_time: datetime | None = None,
-) -> ChemistryDisplayResponse | None:
-    public_thing_id = session.scalar(
-        select(Thing.id).where(
-            Thing.id == thing_id,
-            Thing.release_status == "public",
-        )
-    )
-    if public_thing_id is None:
-        return None
-
-    samples = _get_samples(
-        session,
-        thing_id=thing_id,
-        start_time=start_time,
-        end_time=end_time,
-    )
-    if not samples:
-        return None
-
-    selected_sample_id = samples[0].id
-    sample_ids = [sample.id for sample in samples]
-    sample_responses = [_sample_response(sample) for sample in samples]
-
-    sections: dict[str, list[ChemistryDisplayResultResponse]] = {
-        "field": [],
-        "general": [],
-        "tracer": [],
-        "additional": [],
-    }
-
-    for result in _get_results(session, sample_ids):
-        sections[_result_section(result)].append(result)
-
-    current_general_results = [
-        result
-        for result in sections["general"]
-        if result.sample_info_id == selected_sample_id
-    ]
-
-    field_results = sections["field"]
-    field_parameters = ChemistryDisplaySectionResponse(results=field_results)
-    return ChemistryDisplayResponse(
-        samples=sample_responses,
-        field_parameters=field_parameters,
-        general_chemistry=ChemistryDisplayGeneralResponse(
-            results=sections["general"],
-            standards_summary=_standards_summary(current_general_results),
-        ),
-        environmental_tracers=ChemistryDisplaySectionResponse(
-            results=sections["tracer"]
-        ),
-        additional_analyses=ChemistryDisplaySectionResponse(
-            results=sections["additional"]
-        ),
-    )
 
 
 def enrich_water_chemistry_results(
@@ -840,19 +774,6 @@ def _limit_value(
     if isinstance(value, tuple):
         return f"{value[0]}-{value[1]}"
     return value
-
-
-def _result_section(
-    result: ChemistryDisplayResultResponse,
-) -> Literal["field", "general", "tracer", "additional"]:
-    if result.source == "field":
-        return "field"
-    if (result.parameter_name or "").lower() in GENERAL_PARAMETERS:
-        return "general"
-    symbol = (result.symbol or result.analyte or "").strip().lower()
-    if symbol in TRACER_SYMBOLS:
-        return "tracer"
-    return "additional"
 
 
 def parameter_key(

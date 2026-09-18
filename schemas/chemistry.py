@@ -199,14 +199,4 @@ class ChemistryDisplayGeneralResponse(ChemistryDisplaySectionResponse):
     standards_summary: ChemistryDisplayStandardsSummaryResponse
 
 
-class ChemistryDisplayResponse(BaseModel):
-    """Chemistry payload for the well details display."""
-
-    samples: list[ChemistryDisplaySampleResponse]
-    field_parameters: ChemistryDisplaySectionResponse
-    general_chemistry: ChemistryDisplayGeneralResponse
-    environmental_tracers: ChemistryDisplaySectionResponse
-    additional_analyses: ChemistryDisplaySectionResponse
-
-
 # ============= EOF =============================================

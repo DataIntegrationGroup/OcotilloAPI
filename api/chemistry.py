@@ -15,17 +15,15 @@
 # ===============================================================================
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from api.pagination import CustomPage
 from core.dependencies import amp_viewer_dependency, session_dependency
 from schemas.chemistry import (
-    ChemistryDisplayResponse,
     WaterChemistryResultResponse,
 )
 from services.chemistry import (
-    build_chemistry_display_payload,
     build_water_chemistry_results_query,
     enrich_water_chemistry_results,
 )
@@ -78,35 +76,3 @@ def get_water_chemistry_results(
 
     return paginate(query=query, conn=session, transformer=transformer)
 
-
-@router.get(
-    "/display",
-    summary="Get chemistry display data for a well",
-    tags=["chemistry"],
-)
-def get_chemistry_display(
-    session: session_dependency,
-    user: amp_viewer_dependency,
-    thing_id: int,
-    start_time: datetime | None = None,
-    end_time: datetime | None = None,
-) -> ChemistryDisplayResponse:
-    """
-    Retrieve UI-ready chemistry data for the well details chemistry display.
-
-    The payload is grouped by released NMA chemistry sample events and includes
-    major chemistry, minor/trace chemistry, radionuclides, and field parameter
-    rows. The newest released sample is selected by default.
-    """
-    payload = build_chemistry_display_payload(
-        session,
-        thing_id=thing_id,
-        start_time=start_time,
-        end_time=end_time,
-    )
-    if payload is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No released chemistry display data found for this thing.",
-        )
-    return payload
