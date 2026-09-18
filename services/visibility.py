@@ -54,6 +54,7 @@ from services.field_projection import (
 )
 from domain.access import (
     AccessRequest,
+    CAPABILITY_READ,
     Consent,
     Grant,
     PRINCIPAL_ROLE,
@@ -124,6 +125,7 @@ def load_grants(session, principals: tuple[tuple[str, str], ...]) -> list[Grant]
             scope_type=row.scope_type,
             scope_id=row.scope_id,
             data_type=row.data_type,
+            ui_surface=row.ui_surface,
             starts_at=row.starts_at,
             ends_at=row.ends_at,
             revoked_at=row.revoked_at,
@@ -136,13 +138,16 @@ def may(
     session,
     principals: tuple[tuple[str, str], ...],
     capability: str,
-    data_type: str,
+    data_type: str = None,
     thing_id: int = None,
     on_date: date = None,
+    ui_surface: str = None,
 ) -> bool:
-    """May these principals do this, to this data type, at this thing?
+    """May these principals do this, to this data type or screen, at this thing?
 
-    Default deny. No principals, no grants, or nothing matching is a no.
+    Default deny. No principals, no grants, or nothing matching is a no --
+    including a call that names neither a data type nor a UI surface, which is
+    a question this layer cannot answer and so is not a yes.
     """
     request = AccessRequest(
         capability=capability,
@@ -150,9 +155,33 @@ def may(
         principals=tuple(principals),
         thing_id=thing_id,
         group_ids=group_ids_for_thing(session, thing_id),
+        ui_surface=ui_surface,
     )
     return any_grant_allows(
         load_grants(session, request.principals), request, on_date or date.today()
+    )
+
+
+def may_see_surface(
+    session,
+    principals: tuple[tuple[str, str], ...],
+    ui_surface: str,
+    on_date: date = None,
+) -> bool:
+    """May these principals see this screen?
+
+    A thin reading of ``may``: surface grants are always global and always
+    ``read``, so the caller does not restate either. Widen-only by
+    construction -- this answers whether a *grant* opens the screen, and the
+    UI falls back to its role policy when the answer is no, so a missing grant
+    can never take away what a role already allows.
+    """
+    return may(
+        session,
+        principals,
+        capability=CAPABILITY_READ,
+        ui_surface=ui_surface,
+        on_date=on_date,
     )
 
 

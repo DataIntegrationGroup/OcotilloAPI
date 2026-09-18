@@ -68,6 +68,11 @@ from services.access_admin import (
     revoke_consent,
     revoke_grant,
 )
+from domain.access import (
+    AmbiguousGrantSubject,
+    MissingDataType,
+    ScopedSurfaceGrant,
+)
 from services.exceptions_helper import PydanticStyleException
 from services.visibility import (
     destination_by_slug,
@@ -120,7 +125,8 @@ def create_permission_grant(
 ) -> PermissionGrantResponse:
     """Grant a principal one capability over one data type within one scope.
 
-    The grant names its data type; there is no wildcard, so a data type added
+    The grant names its data type, or the UI surface it opens -- exactly one.
+    There is no wildcard in either vocabulary, so a data type or screen added
     later is never covered by this row.
     """
     try:
@@ -132,10 +138,21 @@ def create_permission_grant(
             capability=payload.capability.value,
             scope_type=payload.scope_type.value,
             scope_id=payload.scope_id,
-            data_type=payload.data_type.value,
+            data_type=payload.data_type.value if payload.data_type else None,
+            ui_surface=payload.ui_surface.value if payload.ui_surface else None,
             starts_at=payload.starts_at,
             ends_at=payload.ends_at,
             reason=payload.reason,
+        )
+    except ScopedSurfaceGrant as exception:
+        raise _invalid("scope_type", str(exception), payload.scope_type.value)
+    except (AmbiguousGrantSubject, MissingDataType) as exception:
+        # `.value`, not the enum: the detail is serialized to JSON, and a bare
+        # Enum member is not serializable.
+        raise _invalid(
+            "data_type",
+            str(exception),
+            payload.data_type.value if payload.data_type else None,
         )
     except ValueError as exception:
         raise _invalid("scope_id", str(exception), payload.scope_id)
@@ -175,6 +192,7 @@ def get_permission_grants(
     ),
     capability: str = Query(default=None),
     data_type: str = Query(default=None),
+    ui_surface: str = Query(default=None),
     scope_type: str = Query(default=None),
     include_revoked: bool = Query(default=False),
 ) -> list[PermissionGrantResponse]:
@@ -190,6 +208,8 @@ def get_permission_grants(
         statement = statement.where(PermissionGrant.capability == capability)
     if data_type is not None:
         statement = statement.where(PermissionGrant.data_type == data_type)
+    if ui_surface is not None:
+        statement = statement.where(PermissionGrant.ui_surface == ui_surface)
     if scope_type is not None:
         statement = statement.where(PermissionGrant.scope_type == scope_type)
     if not include_revoked:
@@ -206,16 +226,27 @@ def get_access_decision(
     session: session_dependency,
     user: viewer_dependency,
     capability: str = Query(),
-    data_type: str = Query(),
+    data_type: str = Query(default=None),
+    ui_surface: str = Query(default=None),
     thing_id: int = Query(default=None),
     on_date: date = Query(default=None),
 ) -> AccessDecision:
     """May the caller do this? Answered by the one visibility layer.
 
-    Default deny: an unrecognized capability or a caller the token says
-    nothing about gets False rather than an error, because a question this
-    layer cannot answer is not a yes.
+    Ask about a data type or about a UI surface, not both: they are separate
+    questions, and a call naming both would have two answers.
+
+    Default deny: an unrecognized capability, a caller the token says nothing
+    about, or a call naming neither subject gets False rather than an error,
+    because a question this layer cannot answer is not a yes.
     """
+    if data_type and ui_surface:
+        raise _invalid(
+            "ui_surface",
+            "Ask about a data type or a UI surface, not both.",
+            ui_surface,
+        )
+
     principals = principals_from_payload(user)
     return AccessDecision(
         allowed=may(
@@ -223,11 +254,13 @@ def get_access_decision(
             principals,
             capability=capability,
             data_type=data_type,
+            ui_surface=ui_surface,
             thing_id=thing_id,
             on_date=on_date,
         ),
         capability=capability,
         data_type=data_type,
+        ui_surface=ui_surface,
         thing_id=thing_id,
         principals=[f"{kind}:{identifier}" for kind, identifier in principals],
     )
