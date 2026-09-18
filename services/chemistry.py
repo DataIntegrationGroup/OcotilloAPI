@@ -27,6 +27,8 @@ from db.nma_legacy import (
     NMA_MinorTraceChemistry,
     NMA_Radionuclides,
 )
+from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
 from db.thing import Thing
 from schemas.chemistry import (
     ChemistryDisplayResultResponse,
@@ -88,14 +90,6 @@ TRACER_SYMBOLS = {
 
 
 @dataclass(frozen=True)
-class Limit:
-    primary_mcl: float | None = None
-    secondary_smcl: float | tuple[float, float] | None = None
-    unit: str = "mg/L"
-    basis: str = "EPA drinking-water standards"
-
-
-@dataclass(frozen=True)
 class ResultMetadata:
     source: SourceKind
     source_id: int
@@ -107,29 +101,8 @@ class ResultMetadata:
     analyses_agency: str | None = None
 
 
-EPA_PRIMARY_INORGANIC = "EPA primary inorganic chemicals table"
-EPA_SECONDARY = "EPA secondary standards table"
-EPA_LIMITS = {
-    "arsenic": Limit(primary_mcl=0.010, basis=EPA_PRIMARY_INORGANIC),
-    "fluoride": Limit(
-        primary_mcl=4.0,
-        secondary_smcl=2.0,
-        basis="EPA primary and secondary standards",
-    ),
-    "iron": Limit(secondary_smcl=0.3, basis=EPA_SECONDARY),
-    "manganese": Limit(secondary_smcl=0.05, basis=EPA_SECONDARY),
-    "total dissolved solids": Limit(secondary_smcl=500.0, basis=EPA_SECONDARY),
-    "nitrate (as n)": Limit(primary_mcl=10.0, basis=EPA_PRIMARY_INORGANIC),
-    "sulfate": Limit(secondary_smcl=250.0, basis=EPA_SECONDARY),
-    "chloride": Limit(secondary_smcl=250.0, basis=EPA_SECONDARY),
-    "ph": Limit(secondary_smcl=(6.5, 8.5), unit="pH", basis=EPA_SECONDARY),
-    "uranium (total, by icp-ms)": Limit(
-        primary_mcl=0.030, basis="EPA primary radionuclides table"
-    ),
-    "uranium, total, unfiltered": Limit(
-        primary_mcl=0.030, basis="EPA primary radionuclides table"
-    ),
-}
+EPA_LIMIT_BASIS = "EPA drinking-water standards"
+EPA_LIMIT_TYPES = ("MCL", "SMCL")
 
 
 def build_water_chemistry_results_query(
@@ -185,12 +158,59 @@ def enrich_water_chemistry_results(
     missing_metadata = _metadata_by_result_id(session, rows_missing_metadata)
     metadata_by_result_id.update(missing_metadata)
     metadata_for = metadata_by_result_id.get
-    responses = []
+
+    prepared_rows = []
+    parameter_names = set()
     for row in rows:
         result_id = _row_value(row, "id")
         metadata = _metadata_from_row(row) or metadata_for(result_id)
-        responses.append(_water_chemistry_result_response(row, metadata))
+        parameter_name = _canonical_parameter_name_for_row(row, metadata)
+        if parameter_name:
+            parameter_names.add(parameter_name)
+        prepared_rows.append((row, metadata, parameter_name))
+
+    limits_by_parameter = _epa_limits_by_names(session, parameter_names)
+
+    responses = []
+    for row, metadata, parameter_name in prepared_rows:
+        limits = limits_by_parameter.get(parameter_name or "", {})
+        response = _water_chemistry_result_response(
+            row, metadata, parameter_name, limits
+        )
+        responses.append(response)
     return responses
+
+
+def _epa_limits_by_names(
+    session: Session,
+    parameter_names: set[str],
+) -> dict[str, dict[str, RowMapping]]:
+    if not parameter_names:
+        return {}
+
+    query = (
+        select(
+            Parameter.parameter_name,
+            RegulatoryLimit.limit_type,
+            RegulatoryLimit.limit_value,
+            RegulatoryLimit.limit_unit,
+        )
+        .join(Parameter, Parameter.id == RegulatoryLimit.parameter_id)
+        .where(
+            RegulatoryLimit.limit_source == "EPA",
+            RegulatoryLimit.limit_type.in_(EPA_LIMIT_TYPES),
+            RegulatoryLimit.release_status == "public",
+            Parameter.matrix == "groundwater",
+            Parameter.parameter_name.in_(parameter_names),
+        )
+    )
+
+    limits_by_parameter: dict[str, dict[str, RowMapping]] = {}
+    for row in session.execute(query).mappings():
+        limits_by_parameter.setdefault(row["parameter_name"], {})[
+            row["limit_type"]
+        ] = row
+    return limits_by_parameter
 
 
 def _water_chemistry_results_selectable():
@@ -415,21 +435,18 @@ def _result_id(source: SourceKind, source_id: int) -> str:
 def _water_chemistry_result_response(
     row,
     metadata: ResultMetadata | None,
+    parameter_name: str | None,
+    limits: dict[str, RowMapping],
 ) -> WaterChemistryResultResponse:
     result_id = _row_value(row, "id")
     source = metadata.source if metadata else result_kind(result_id)
     if source not in SOURCE_PREFIXES:
         source = None
-    if metadata:
-        raw_parameter_name = metadata.symbol or metadata.analyte
-    else:
-        raw_parameter_name = _row_value(row, "parameter_name")
-    parameter_name = canonical_parameter_name(raw_parameter_name)
     symbol = metadata.symbol if metadata else None
     standard = standard_for_result(
-        parameter_name,
         _row_value(row, "value"),
         _row_value(row, "unit"),
+        limits,
     )
 
     response_data = {
@@ -464,6 +481,17 @@ def _water_chemistry_result_response(
             "result_kind": result_kind(result_id),
         }
     )
+
+
+def _canonical_parameter_name_for_row(
+    row,
+    metadata: ResultMetadata | None,
+) -> str | None:
+    if metadata:
+        raw_parameter_name = metadata.symbol or metadata.analyte
+    else:
+        raw_parameter_name = _row_value(row, "parameter_name")
+    return canonical_parameter_name(raw_parameter_name)
 
 
 def _metadata_from_row(row) -> ResultMetadata | None:
@@ -610,7 +638,7 @@ def _result_response(row: RowMapping) -> ChemistryDisplayResultResponse:
         analysis_date=row["analysis_date"],
         notes=row["notes"],
         analyses_agency=row["analyses_agency"],
-        standard=standard_for_result(parameter_name, value, unit),
+        standard=standard_for_result(value, unit, {}),
     )
 
 
@@ -661,49 +689,44 @@ def _standards_summary(
 
 
 def standard_for_result(
-    parameter_name: str | None,
     result_value: float | None,
     result_unit: str | None,
+    limits: dict[str, RowMapping],
 ) -> ChemistryDisplayStandardResponse:
-    name = (parameter_name or "").strip().lower()
-    limit = EPA_LIMITS.get(name)
-    if limit is None:
+    primary_mcl = limits.get("MCL")
+    secondary_smcl = limits.get("SMCL")
+    if primary_mcl is None and secondary_smcl is None:
         return ChemistryDisplayStandardResponse(
             status="no_limit",
             label="No EPA limit",
         )
 
-    value = _value_in_limit_unit(result_value, result_unit, limit.unit)
+    limit_unit = _limit_unit(primary_mcl or secondary_smcl)
+    value = _value_in_limit_unit(result_value, result_unit, limit_unit)
     if value is None:
         return ChemistryDisplayStandardResponse(
             status="not_compared",
             label="Not compared",
-            primary_mcl=limit.primary_mcl,
-            secondary_smcl=_limit_value(limit.secondary_smcl),
-            unit=limit.unit,
-            basis=limit.basis,
+            primary_mcl=_limit_value(primary_mcl),
+            secondary_smcl=_limit_value(secondary_smcl),
+            unit=limit_unit,
+            basis=EPA_LIMIT_BASIS,
         )
 
-    if limit.primary_mcl is not None:
-        if value > limit.primary_mcl:
+    primary_value = _limit_value(primary_mcl)
+    secondary_value = _limit_value(secondary_smcl)
+    if primary_value is not None:
+        if value > primary_value:
             status = "above_mcl"
             label = "Above MCL"
-        elif _above_secondary_limit(value, limit.secondary_smcl):
+        elif _above_secondary_limit(value, secondary_value):
             status = "above_smcl"
             label = "Above SMCL"
         else:
             status = "below_mcl"
             label = "Below MCL"
-    elif isinstance(limit.secondary_smcl, tuple):
-        low, high = limit.secondary_smcl
-        if low <= value <= high:
-            status = "within_smcl"
-            label = "Within SMCL"
-        else:
-            status = "above_smcl"
-            label = "Outside SMCL"
-    elif limit.secondary_smcl is not None:
-        if value > limit.secondary_smcl:
+    elif secondary_value is not None:
+        if value > secondary_value:
             status = "above_smcl"
             label = "Above SMCL"
         else:
@@ -716,10 +739,10 @@ def standard_for_result(
     return ChemistryDisplayStandardResponse(
         status=status,
         label=label,
-        primary_mcl=limit.primary_mcl,
-        secondary_smcl=_limit_value(limit.secondary_smcl),
-        unit=limit.unit,
-        basis=limit.basis,
+        primary_mcl=primary_value,
+        secondary_smcl=secondary_value,
+        unit=limit_unit,
+        basis=EPA_LIMIT_BASIS,
     )
 
 
@@ -741,20 +764,17 @@ def _analysis_date_sort_key(value: date | datetime) -> date:
 
 def _above_secondary_limit(
     value: float,
-    secondary_smcl: float | tuple[float, float] | None,
+    secondary_smcl: float | None,
 ) -> bool:
-    if isinstance(secondary_smcl, tuple):
-        low, high = secondary_smcl
-        return not low <= value <= high
     if secondary_smcl is not None:
         return value > secondary_smcl
     return False
 
 
 def _value_in_limit_unit(
-    value: float | None, unit: str | None, limit_unit: str
+    value: float | None, unit: str | None, limit_unit: str | None
 ) -> float | None:
-    if value is None:
+    if value is None or limit_unit is None:
         return None
 
     normalized_unit = (unit or "").strip().lower().replace("µ", "u")
@@ -768,12 +788,16 @@ def _value_in_limit_unit(
     return None
 
 
-def _limit_value(
-    value: float | tuple[float, float] | None,
-) -> float | str | None:
-    if isinstance(value, tuple):
-        return f"{value[0]}-{value[1]}"
-    return value
+def _limit_value(limit: RowMapping | None) -> float | None:
+    if limit is None:
+        return None
+    return float(limit["limit_value"])
+
+
+def _limit_unit(limit: RowMapping | None) -> str | None:
+    if limit is None:
+        return None
+    return limit["limit_unit"]
 
 
 def parameter_key(

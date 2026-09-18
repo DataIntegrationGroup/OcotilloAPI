@@ -21,10 +21,12 @@ report for AR-0102 counted eight samples in 2019 where there was one.
 """
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from core.dependencies import amp_viewer_function
 from db.engine import session_ctx
+from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
 from main import app
 from tests import client, override_authentication
 
@@ -251,6 +253,39 @@ def test_results_include_display_fields_without_renaming_fields(two_samples):
     assert field["source"] == "field"
     assert field["analysis_method"] is None
     assert field["uncertainty"] is None
+
+
+def test_results_standards_follow_seeded_regulatory_limit(two_samples):
+    limit_query = (
+        select(RegulatoryLimit)
+        .join(Parameter)
+        .where(
+            Parameter.parameter_name == "Chloride",
+            Parameter.matrix == "groundwater",
+            RegulatoryLimit.limit_source == "EPA",
+            RegulatoryLimit.limit_type == "SMCL",
+        )
+    )
+
+    with session_ctx() as session:
+        chloride_limit = session.scalar(limit_query)
+        original_value = chloride_limit.limit_value
+        chloride_limit.limit_value = 10
+        session.commit()
+
+    try:
+        items = _results(two_samples["thing_id"], 2019)
+        chloride_results = [
+            item for item in items if item["parameter_name"] == "Chloride"
+        ]
+        chloride = chloride_results[0]
+        assert chloride["standard"]["status"] == "above_smcl"
+        assert chloride["standard"]["secondary_smcl"] == 10.0
+    finally:
+        with session_ctx() as session:
+            chloride_limit = session.scalar(limit_query)
+            chloride_limit.limit_value = original_value
+            session.commit()
 
 
 def test_year_window_follows_collection_not_analysis(two_samples):
