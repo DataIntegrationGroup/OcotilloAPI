@@ -1,5 +1,69 @@
 # Changelog
 
+## [1.4.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0-rc...v1.4.0-rc.1) (2026-09-18)
+
+
+### Features
+
+* (BDMS-630: consolidate load_dotenv() to one per entry point) ([ae33a3e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ae33a3efd477893f46875e4cc057b42cecb15e98))
+* **api_key:** user-issued API keys for /ogcapi-internal ([79f5163](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/79f5163c51a0c6e22ab74ff5f16e24766f485ae8))
+* **api:** serve the regulatory limits table ([b209ffe](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/b209ffed80cf0dfaa28dc9ee5de55d7568d0a461))
+* **api:** serve the regulatory limits table ([229e04d](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/229e04da9b7affc272c886eb16ac15cbf2c917be))
+* **cli:** match webmap project areas by OBJECTID ([65b1747](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/65b17476c9388d10368724d99e725c4b302ef9d2))
+* **data-migrations:** add dry-run support to the runner and CLI ([8f2e782](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8f2e78280318841ea9afede93fbb2a90141798c4))
+* **domain:** add a feet to inches conversion ([ca3cde5](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ca3cde5a405aa9efc9d9d328287aa7ff0ba9f205))
+* **groups:** add group-table parity migration from a staging snapshot ([a35b141](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a35b141bd7c58f722bd18480a5884cae553a749f))
+* **groups:** collapse duplicate project rows ([ae4d988](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ae4d9887c5d2374193ca201aa01e491e975f4f15))
+* **groups:** consolidate duplicate Geographic Area groups ([0e3e084](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0e3e084b17ca1b5ae56ca641e082686adbc0de70))
+* **groups:** consolidate duplicate Geographic Area groups (BDMS-1143) ([49f3dfb](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/49f3dfbe5644dbeb87e0fa5cc4cd097f87850e00))
+* **groups:** drop what the webmap no longer backs ([23aea8b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/23aea8bf4d4d92295e49992b517d52c243c3e1e5))
+* **lexicon:** add entry for Northwest New Mexico Utility Authority ([3e75312](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/3e7531289bd7e1bf83280eab0e98a08298bbcc25))
+* **lexicon:** add entry for Northwest New Mexico Utility Authority ([58110b6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/58110b6959969412fd1f70876ea47f3b3624c401))
+* **lexicon:** add entry for the EPA ([fb3f7c0](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fb3f7c0c1532af99cde990e3c4b61272e8e04b42))
+* **lexicon:** add new "Hilton Ranch" organization term ([0ccb615](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0ccb615125c179c040691bf653b7cc7c5608ced3))
+* **lexicon:** add new "Hilton Ranch" organization term ([cce2a36](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cce2a36071b5e0d7790b1a0bc7b26f8d753927e0))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([ebe9cf3](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ebe9cf30e93cc3c3e31bd098e4d4585b131f63cd))
+* **lexicon:** add new "La Puerta HOA" and "Las Brisas HOA" organization terms ([bea6168](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bea61682470f6ac477ebb6ae7bc04af4416ead51))
+* **lexicon:** add unsafe measurement entry to groundwater level reasons ([bfe9c97](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bfe9c970e89b0ec1ca5034c3431766ccc3b790e4))
+* **lexicon:** add unsafe measurement entry to groundwater level reasons ([92f5e34](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/92f5e348eee124922aaa81d771019a7af681cdb4))
+* **ogc:** add the water well field operations internal layer ([6fd64fa](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/6fd64fa159042134754c7991e7d7cf4b5ef8c85a))
+* **ogc:** add the water well field operations internal layer ([9fb2410](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/9fb2410af513b220e5e5a82c84c7a9219b541f1e))
+* **ogc:** apply Level 1 title naming pass across layers ([#906](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/906)) ([30bac8a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/30bac8ad5f58b85f1c2a18ae26a5d0be4a7247c9))
+* **ogc:** consolidate field-operations columns ([809c899](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/809c899e042e140144596ca54d59983a01e52a78))
+* **ogc:** drop well-only columns from the springs view(BDMS-986) ([#918](https://github.com/DataIntegrationGroup/OcotilloAPI/issues/918)) ([8a20849](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8a208494e9bf5323c6a5cd52bbd1163774614461))
+* **ogc:** publish field operations elevation field in feet (BDMS-1256) ([db50f2c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/db50f2c3827c1f56092151d5669b02fba05b18ee))
+* **ogc:** publish field operations elevation in feet ([a0cea0a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a0cea0a43ff3b17607d1b2b13eba74609b4a1af6))
+* **project-areas:** add a separate AEM project-areas layer ([90014d9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/90014d9278e4ddd1f3ce9fa5d6a9f4ce4d0eb1ef))
+* **project-areas:** scope OGC layer to ArcGIS layer 18 + separate AEM layer ([d9b83bc](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d9b83bcabbdacdeee750dfc7096858cb65c84d5d))
+* **project-areas:** scope OGC layer to the ArcGIS layer-18 study areas ([cae9811](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cae98112b5f632110182768297e93b39f276b9a4))
+
+
+### Bug Fixes
+
+* **alembic:** compact two heads into one, default to staging head (BDMS-631) ([40d4055](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/40d40559b2ed0c0a3f45a0cba02b93a391b9b9b1))
+* **alembic:** linearize api_key migration onto staging head ([5211d9e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/5211d9e9694f94a9a8435ae9892f9d326e4db2dc))
+* **alembic:** restore load_dotenv import in env.py for merge resolution ([366383b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/366383b1f1bf7ab9b44f5555b86ca22a2e8236b8))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([7d0d071](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7d0d071a883eeaa5d99fce0888f9eddda5444e92))
+* **auth:** use dotted Authentik group names for OGC and Lexicon ([1677f90](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/1677f900c1fbafabd236d25b67ae867910231bce))
+* **chemistry:** key results on when the water was collected ([ff34ed5](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ff34ed5a2b27e6aed49f30e04948a196d8167e88))
+* **chemistry:** key results on when the water was collected ([f7a3cf7](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f7a3cf79d86ba6693547e426a0a6bfbfd1efe46b))
+* **group:** return 409 for duplicate name and group_type ([83f713a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/83f713ac227c2da754cc71d3e541659a61bfe424))
+* **group:** return 409 for duplicate name and group_type ([d38402a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d38402af804fb8e5941711fe1e0e33b270c3e5da))
+* **groups:** scope parity deletes to reviewed layer-18 orphans ([94b899d](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/94b899d22c556e4e7c11bf1885a3dca4d8309c6f))
+* **ogc:** allow internal relations with no public twin ([19cd51e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/19cd51e87cfffdc1dcfc108ecd618e3c7718d2b7))
+* **ogc:** keep elevation field name as elevation ([33f512e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/33f512efad6277295af9b6bcf21c66005325bad4))
+* **well-inventory:** backfill casing diameters to inches ([46ddfd6](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/46ddfd67480d4264534fb2d7448323fed0492400))
+* **well-inventory:** convert casing diameter to inches ([97eb10f](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/97eb10fc9b51fb477874b79d942fdd3f0df3f016))
+* **well-inventory:** record who collected each sample ([561496b](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/561496beda98d0da3960eee38396d3d1a5943d57))
+* **well-inventory:** well-inventory-casing-diameter-ft-to-in-bdms-1192 ([438c3cf](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/438c3cf3b7866e503395a6b556fb312e38431f15))
+* **well-inventory:** well-inventory-sample-collector-link-bdms-1254 ([35aa76f](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/35aa76f4d2cf6f38b1c0aacc8cc39376fa3ff0a8))
+
+
+### Performance
+
+* **ogc:** index the per-row lookups in the field operations layer ([880aea2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/880aea29ca4b71a5f50aed2d0f47f06d85352061))
+* **ogc:** index the per-row lookups in the water well field operations layer ([d02a06c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d02a06cb4133a84388798e83ce4a4319eebc8623))
+
 ## [1.4.0-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0...v1.4.0-rc) (2026-08-28)
 
 
