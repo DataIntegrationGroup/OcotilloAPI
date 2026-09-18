@@ -34,9 +34,18 @@ backfill_category_descriptions = importlib.import_module(
 consolidate_groups = importlib.import_module(
     "data_migrations.migrations.20260810_0001_consolidate_geographic_area_groups"
 )
+convert_casing_diameter = importlib.import_module(
+    "data_migrations.migrations." "20260914_0001_convert_well_inventory_casing_diameter"
+)
+seed_epa_limits = importlib.import_module(
+    "data_migrations.migrations.20260916_0001_seed_epa_regulatory_limits"
+)
 from db.lexicon import LexiconCategory
 from db.location import Location
 from db.notes import Notes
+from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
+from db.field import FieldActivity, FieldEvent
 from db.group import Group, GroupThingAssociation
 from db.thing import Thing
 from db.engine import session_ctx
@@ -297,6 +306,78 @@ def _description(session, name):
     return session.execute(
         select(LexiconCategory.description).where(LexiconCategory.name == name)
     ).scalar_one()
+
+
+def _epa_limits(session):
+    return {
+        (name, matrix, limit_type): float(value)
+        for name, matrix, limit_type, value in session.execute(
+            select(
+                Parameter.parameter_name,
+                Parameter.matrix,
+                RegulatoryLimit.limit_type,
+                RegulatoryLimit.limit_value,
+            )
+            .join(Parameter)
+            .where(RegulatoryLimit.limit_source == "EPA")
+        )
+    }
+
+
+def test_seed_epa_regulatory_limits_matches_seed_file():
+    """conftest seeds the limits; the migration and the seed agree."""
+    expected = {
+        (row["parameter_name"], row["matrix"], row["limit_type"]): row["limit_value"]
+        for row in seed_epa_limits.load_regulatory_limits()
+    }
+    with session_ctx() as session:
+        seed_epa_limits.run(session)
+        session.commit()
+        assert _epa_limits(session) == expected
+
+
+def test_seed_epa_regulatory_limits_restores_missing_and_keeps_edits():
+    key = ("Arsenic", "groundwater", "MCL")
+    with session_ctx() as session:
+        arsenic_id = session.scalar(
+            select(Parameter.id).where(
+                Parameter.parameter_name == "Arsenic",
+                Parameter.matrix == "groundwater",
+            )
+        )
+        fluoride_mcl = (
+            select(RegulatoryLimit)
+            .join(Parameter)
+            .where(
+                Parameter.parameter_name == "Fluoride",
+                RegulatoryLimit.limit_source == "EPA",
+                RegulatoryLimit.limit_type == "MCL",
+            )
+        )
+        session.scalar(fluoride_mcl).limit_value = 99
+        session.execute(
+            delete(RegulatoryLimit).where(
+                RegulatoryLimit.parameter_id == arsenic_id,
+                RegulatoryLimit.limit_source == "EPA",
+                RegulatoryLimit.limit_type == "MCL",
+            )
+        )
+        session.commit()
+
+        try:
+            seed_epa_limits.run(session)
+            session.commit()
+            limits = _epa_limits(session)
+            assert limits[key] == 0.01
+            assert limits[("Fluoride", "groundwater", "MCL")] == 99
+
+            before = len(limits)
+            seed_epa_limits.run(session)
+            session.commit()
+            assert len(_epa_limits(session)) == before
+        finally:
+            session.scalar(fluoride_mcl).limit_value = 4.0
+            session.commit()
 
 
 # ==============================================================================
@@ -1409,3 +1490,96 @@ def test_removal_name_lists_do_not_overlap():
     assert not (
         consolidate_groups.WEBMAP_ORIGIN_NAMES & consolidate_groups.STALE_BOUNDARY_NAMES
     )
+
+
+def _make_inventory_well(session, name, diameter, created_at, activity_type):
+    """A well plus the field event/activity chain the importer would have made.
+
+    created_at is set explicitly because the migration's CUTOFF is what keeps
+    correctly-imported wells out of scope, and a row inserted during the test
+    run would otherwise land on the wrong side of it.
+    """
+    thing = Thing(
+        name=name,
+        thing_type="water well",
+        well_casing_diameter=diameter,
+        release_status="public",
+    )
+    session.add(thing)
+    session.commit()
+    session.refresh(thing)
+
+    thing.created_at = created_at
+    event = FieldEvent(thing_id=thing.id, event_date=created_at)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+
+    activity = FieldActivity(field_event_id=event.id, activity_type=activity_type)
+    session.add(activity)
+    session.commit()
+    return thing
+
+
+def _cleanup_wells(session, things):
+    for thing in things:
+        session.execute(delete(Thing).where(Thing.id == thing.id))
+    session.commit()
+
+
+BEFORE_CUTOFF = convert_casing_diameter.CUTOFF - timedelta(days=1)
+AFTER_CUTOFF = convert_casing_diameter.CUTOFF + timedelta(days=1)
+
+
+def test_convert_casing_diameter_scales_importer_wells_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        imported = _make_inventory_well(
+            session, "Casing Imported", 0.5, BEFORE_CUTOFF, "well inventory"
+        )
+        # Same shape, different activity: entered through the API, already inches.
+        other = _make_inventory_well(
+            session, "Casing Other Activity", 6.0, BEFORE_CUTOFF, "groundwater level"
+        )
+
+        convert_casing_diameter.run(session)
+
+        session.refresh(imported)
+        session.refresh(other)
+        assert imported.well_casing_diameter == 6.0
+        assert other.well_casing_diameter == 6.0
+
+        _cleanup_wells(session, [imported, other])
+
+
+def test_convert_casing_diameter_leaves_wells_created_after_cutoff(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        after = _make_inventory_well(
+            session, "Casing After Cutoff", 6.0, AFTER_CUTOFF, "well inventory"
+        )
+
+        convert_casing_diameter.run(session)
+
+        session.refresh(after)
+        assert after.well_casing_diameter == 6.0
+
+        _cleanup_wells(session, [after])
+
+
+def test_convert_casing_diameter_dry_run_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(convert_casing_diameter, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        imported = _make_inventory_well(
+            session, "Casing Dry Run", 0.5, BEFORE_CUTOFF, "well inventory"
+        )
+
+        planned = convert_casing_diameter.dry_run(session)
+
+        assert imported.id in {p.thing_id for p in planned}
+        session.refresh(imported)
+        assert imported.well_casing_diameter == 0.5
+
+        _cleanup_wells(session, [imported])
