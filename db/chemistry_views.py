@@ -15,14 +15,14 @@
 # ===============================================================================
 """Read-only mappings over the legacy water-chemistry views.
 
-`ogc_water_chemistry` and `ogc_internal_water_chemistry` are materialized views
-built in d9e0f1a2b3c4 (and rekeyed on collection date in 3f9c1b7d2a64) by
-unioning the four legacy NMA chemistry tables
+`ogc_water_chemistry` and `ogc_internal_water_chemistry` are materialized
+views built in d9e0f1a2b3c4 (and rekeyed on collection date in
+3f9c1b7d2a64) by unioning the four legacy NMA chemistry tables
 (NMA_MajorChemistry, NMA_MinorTraceChemistry, NMA_Radionuclides,
-NMA_FieldParameters) into one analyte-per-row shape. They were added for the OGC
-EDR mount; these mappings let the REST API serve the same rows, which is where
-the chemistry data actually lives -- the refactored `observation` table holds no
-water chemistry.
+NMA_FieldParameters) into one analyte-per-row shape. They were added for the
+OGC EDR mount; these mappings let the REST API serve the same rows, which is
+where the chemistry data actually lives -- the refactored `observation` table
+holds no water chemistry.
 
 Views only. Like db/ngwmn_views.py these use their own declarative base so
 Alembic never tries to autogenerate a table for them, and the underlying
@@ -42,12 +42,13 @@ class ChemistryViewBase(DeclarativeBase):
 class _WaterChemistryResultColumns:
     """Columns shared by the public and internal chemistry views.
 
-    `id` is a text key (``maj-1``, ``min-2``, ``rad-3``, ``fld-4``) rather than
-    an integer: a row's identity is which legacy table it came from plus that
-    table's own id, and the four id sequences overlap.
+    `id` is a text key (``maj-1``, ``min-2``, ``rad-3``, ``fld-4``)
+    rather than an integer: a row's identity is which legacy table it came
+    from plus that table's own id, and the four id sequences overlap.
     """
 
     id: Mapped[str] = mapped_column("id", String, primary_key=True)
+    source: Mapped[str | None] = mapped_column("source", String)
     thing_id: Mapped[int] = mapped_column("thing_id", Integer)
     station_name: Mapped[str | None] = mapped_column("station_name", String)
     thing_type: Mapped[str | None] = mapped_column("thing_type", String)
@@ -55,18 +56,36 @@ class _WaterChemistryResultColumns:
     parameter_name: Mapped[str] = mapped_column("parameter_name", String)
     value: Mapped[float | None] = mapped_column("value", Float)
     unit: Mapped[str | None] = mapped_column("unit", String)
+    analyte: Mapped[str | None] = mapped_column("analyte", String)
+    symbol: Mapped[str | None] = mapped_column("symbol", String)
+    uncertainty: Mapped[float | None] = mapped_column("uncertainty", Float)
+    analysis_method: Mapped[str | None] = mapped_column(
+        "analysis_method", String
+    )  # noqa: E501
+    notes: Mapped[str | None] = mapped_column("notes", String)
+    analyses_agency: Mapped[str | None] = mapped_column(
+        "analyses_agency", String
+    )  # noqa: E501
     # Named `datetime` in the view; exposed under the name the observation
     # endpoints already use so clients do not need a second field name. It is
     # the sample's collection date (3f9c1b7d2a64), falling back to the
     # analysis date only where no collection date was recorded.
-    observation_datetime: Mapped[datetime] = mapped_column("datetime", DateTime)
-    # When the lab ran this result. NULL for field parameters, which were read
-    # at the well and have no analysis of their own.
-    analysis_date: Mapped[datetime | None] = mapped_column("analysis_date", DateTime)
-    release_status: Mapped[str | None] = mapped_column("release_status", String)
+    observation_datetime: Mapped[datetime] = mapped_column(
+        "datetime", DateTime
+    )  # noqa: E501
+    # When the lab ran this result. NULL for field parameters, which were
+    # read at the well and have no analysis of their own.
+    analysis_date: Mapped[datetime | None] = mapped_column(
+        "analysis_date", DateTime
+    )  # noqa: E501
+    release_status: Mapped[str | None] = mapped_column(
+        "release_status", String
+    )  # noqa: E501
 
 
-class WaterChemistryResultsView(_WaterChemistryResultColumns, ChemistryViewBase):
+class WaterChemistryResultsView(  # noqa: E501
+    _WaterChemistryResultColumns, ChemistryViewBase
+):
     """Public chemistry analyses: released things, released samples."""
 
     __tablename__ = "ogc_water_chemistry"

@@ -60,7 +60,9 @@ def _add_major(session, sample_id, symbol, value, analysed_on):
         text(
             'INSERT INTO "NMA_MajorChemistry" '
             '(chemistry_sample_info_id, "Symbol", "SampleValue", "Units", '
-            "\"AnalysisDate\") VALUES (:sid, :symbol, :val, 'mg/L', :analysed)"
+            '"AnalysisDate", "Uncertainty", "AnalysisMethod", "Notes", '
+            '"AnalysesAgency") VALUES (:sid, :symbol, :val, '
+            "'mg/L', :analysed, 0.1, 'ICP-MS', 'major note', 'NMBGMR')"
         ),
         {
             "sid": sample_id,
@@ -78,6 +80,26 @@ def _add_minor(session, sample_id, point_id, symbol, value, analysed_on):
             '(chemistry_sample_info_id, "nma_SamplePointID", symbol, '
             "sample_value, units, analysis_date) "
             "VALUES (:sid, :point, :symbol, :val, 'mg/L', :analysed)"
+        ),
+        {
+            "sid": sample_id,
+            "point": point_id,
+            "symbol": symbol,
+            "val": value,
+            "analysed": analysed_on,
+        },
+    )
+
+
+def _add_radio(session, sample_id, point_id, symbol, value, analysed_on):
+    session.execute(
+        text(
+            'INSERT INTO "NMA_Radionuclides" '
+            '(chemistry_sample_info_id, "nma_SamplePointID", "Symbol", '
+            '"SampleValue", "Units", "AnalysisDate", "Uncertainty", '
+            '"AnalysisMethod", "Notes", "AnalysesAgency") VALUES '
+            "(:sid, :point, :symbol, :val, 'pCi/L', :analysed, "
+            "0.01, 'EPA 900.0', 'rad note', 'NMBGMR')"
         ),
         {
             "sid": sample_id,
@@ -121,6 +143,7 @@ def two_samples(water_well_thing):
         _add_major(session, april, "Cl", 12.0, "2019-04-16")
         _add_major(session, april, "Ca", 40.0, "2019-04-22")
         _add_minor(session, april, "RES-APR", "As", 0.012, "2019-05-24")
+        _add_radio(session, april, "RES-APR", "GA", 3.2, "2019-05-25")
 
         december = _add_sample(session, thing_id, "2018-12-20", "RES-DEC")
         _add_major(session, december, "SO4", 80.0, "2019-01-07")
@@ -136,6 +159,7 @@ def two_samples(water_well_thing):
         for table in (
             "NMA_MajorChemistry",
             "NMA_MinorTraceChemistry",
+            "NMA_Radionuclides",
             "NMA_FieldParameters",
         ):
             session.execute(
@@ -175,7 +199,7 @@ def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
 
     april_sample_id = two_samples["april"]
     april = [item for item in items if item["sample_id"] == april_sample_id]
-    assert len(april) == 4
+    assert len(april) == 5
     observation_dates = {item["observation_datetime"] for item in april}
     assert observation_dates == {"2019-04-09T00:00:00Z"}
 
@@ -186,9 +210,46 @@ def test_analysis_date_is_reported_separately(two_samples):
 
     assert by_kind["field"]["analysis_date"] is None
     assert by_kind["minor"]["analysis_date"] == "2019-05-24"
+    assert by_kind["radionuclide"]["analysis_date"] == "2019-05-25"
     major_results = [item for item in items if item["result_kind"] == "major"]
     major_analysis_dates = {item["analysis_date"] for item in major_results}
     assert major_analysis_dates == {"2019-04-16", "2019-04-22"}
+
+
+def test_results_include_display_fields_without_renaming_fields(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+    by_kind = {item["result_kind"]: item for item in items}
+
+    minor = by_kind["minor"]
+    assert minor["source"] == "minor"
+    assert minor["parameter_name"] == "Arsenic"
+    assert minor["parameter_key"] == "minor_arsenic"
+    assert minor["analyte"] is None
+    assert minor["symbol"] == "As"
+    assert minor["standard"]["status"] == "above_mcl"
+
+    def is_chloride(item):
+        return item["parameter_name"] == "Chloride"
+
+    chloride_results = [item for item in items if is_chloride(item)]
+    major = chloride_results[0]
+    assert major["source"] == "major"
+    assert major["parameter_key"] == "major_chloride"
+    assert major["uncertainty"] == 0.1
+    assert major["analysis_method"] == "ICP-MS"
+    assert major["notes"] == "major note"
+    assert major["analyses_agency"] == "NMBGMR"
+    assert major["standard"]["status"] == "below_smcl"
+
+    radionuclide = by_kind["radionuclide"]
+    assert radionuclide["source"] == "radionuclide"
+    assert radionuclide["parameter_key"] == "radionuclide_ga"
+    assert radionuclide["standard"]["status"] == "no_limit"
+
+    field = by_kind["field"]
+    assert field["source"] == "field"
+    assert field["analysis_method"] is None
+    assert field["uncertainty"] is None
 
 
 def test_year_window_follows_collection_not_analysis(two_samples):

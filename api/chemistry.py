@@ -26,7 +26,11 @@ from schemas.chemistry import (
     ChemistryDisplayResponse,
     WaterChemistryResultResponse,
 )
-from services.chemistry_display import build_chemistry_display_payload
+from services.chemistry_display import (
+    _parameter_key,
+    _standard_for_result,
+    build_chemistry_display_payload,
+)
 from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 router = APIRouter(
@@ -43,6 +47,8 @@ _RESULT_SORT_COLUMNS = {
     "value": WaterChemistryResultsView.value,
     "id": WaterChemistryResultsView.id,
 }
+
+_RESULT_SOURCES = {"major", "minor", "radionuclide", "field"}
 
 
 @router.get(
@@ -108,10 +114,27 @@ def get_water_chemistry_results(
         # speaks the lexicon's names so a consumer can match a result to a
         # drinking water standard without knowing the legacy vocabulary.
         def response_for(row):
-            parameter_name = canonical_parameter_name(row.parameter_name)
+            source = row.source or result_kind(row.id)
+            if source not in _RESULT_SOURCES:
+                source = None
+            raw_parameter_name = row.symbol or row.analyte
+            if raw_parameter_name is None:
+                raw_parameter_name = row.parameter_name
+            parameter_name = canonical_parameter_name(raw_parameter_name)
             return WaterChemistryResultResponse.model_validate(row).model_copy(
                 update={
+                    "source": source,
                     "parameter_name": parameter_name,
+                    "parameter_key": (
+                        _parameter_key(source, parameter_name, row.symbol)
+                        if source
+                        else None
+                    ),
+                    "standard": _standard_for_result(
+                        parameter_name,
+                        row.value,
+                        row.unit,
+                    ),
                     "result_kind": result_kind(row.id),
                 }
             )

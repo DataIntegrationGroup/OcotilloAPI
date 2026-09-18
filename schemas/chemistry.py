@@ -34,6 +34,15 @@ class WaterChemistryResultResponse(BaseModel):
     parameter_name: str
     value: float | None = None
     unit: str | None = None
+    source: Literal["major", "minor", "radionuclide", "field"] | None = None
+    parameter_key: str | None = None
+    analyte: str | None = None
+    symbol: str | None = None
+    uncertainty: float | None = None
+    analysis_method: str | None = None
+    notes: str | None = None
+    analyses_agency: str | None = None
+    standard: "ChemistryDisplayStandardResponse | None" = None
     # When the water was collected. Every result from one sample shares it,
     # which is what lets a client count samples or group results by visit.
     observation_datetime: datetime
