@@ -181,15 +181,18 @@ The hierarchy is enforced in code, via `authenticated(any_of=[...])` group lists
 `Admin` satisfies an editor- or viewer-gated route without needing all three
 Authentik groups granted.
 
-**AMP-Specific Roles**: `AMPAdmin`, `AMPEditor`, `AMPViewer` for legacy AMPAPI integration
+**AMP-Specific Roles**: `AMP.Admin`, `AMP.Editor`, `AMP.Viewer` for legacy
+AMPAPI integration, dotted to match OcotilloUI. They replaced `AMPAdmin`,
+`AMPEditor`, `AMPViewer`.
 
 **Role families are orthogonal**: general `Admin` confers nothing in the AMP or
 Lexicon families. Only tiers *within* a family nest.
 
-**`AMP.Staging`** is a standalone group, not a fourth AMP tier — `AMPAdmin`
-does not satisfy it. It gates the hydrograph corrector's publish and range-delete
-routes while the workbench is being validated against real logger files, so they
-ship dark. Read **`docs/hydrograph-correction-publish.md`** before changing
+**Transducer observation writes are `AMP.Admin`.** The hydrograph corrector's
+publish and range-delete routes, and the per-reading edit and delete, all sit
+on `amp_admin_dependency`; the reads stay on the viewer tier. They were gated on
+a standalone `AMP.Staging` group while the workbench was validated, and that
+group is gone. Read **`docs/hydrograph-correction-publish.md`** before changing
 them.
 
 **Authorization is opt-in per endpoint** — a `user: <role>_dependency` parameter

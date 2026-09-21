@@ -20,7 +20,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 
 from core.enums import DataMaturity, ReleaseStatus, ReviewStatus
 from domain.hydrograph import MAX_MEASUREMENTS, first_out_of_order_index
-from schemas import BaseResponseModel, BaseCreateModel
+from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 
 
 class TransducerObservationBlockResponse(BaseResponseModel):
@@ -169,14 +169,58 @@ class OverlappingBlock(BaseModel):
 
 class DeletedTransducerObservationsResponse(BaseModel):
     """
-    What a range delete removed. ``updated_block_ids`` are blocks that kept
-    some readings and had their span narrowed to the survivors.
+    What a range or single-reading delete removed. ``updated_block_ids`` are
+    blocks that kept some readings and had their span narrowed to the survivors.
     """
 
     deleted_observation_count: int
     deleted_block_ids: list[int]
     updated_block_ids: list[int]
     thing_id: int
+
+
+# ============= Single reading ===================================
+
+
+class TransducerObservationDetailResponse(BaseModel):
+    """
+    One reading, the block covering it, and the well it is on.
+
+    ``block`` is None for a reading no block covers -- one a hand-deleted block
+    left behind. The list pairs every row with a block and so never shows
+    those; addressed by id, hiding it would misreport a row that still exists.
+    """
+
+    observation: TransducerObservationResponse
+    block: TransducerObservationBlockResponse | None
+    thing_id: int
+
+
+class UpdateTransducerObservation(BaseUpdateModel):
+    """
+    What may change on a stored reading.
+
+    ``observation_datetime``, ``deployment_id``, and ``parameter_id`` are
+    deliberately absent, and ``extra="forbid"`` makes sending one a 422 rather
+    than a silent no-op. Only time ties a reading to its block, so moving one
+    would orphan it or slide it under another block. Delete and republish.
+    """
+
+    value: float | None = None
+    note: str | None = None
+    data_maturity: DataMaturity | None = None
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    @field_validator("value", "release_status")
+    @classmethod
+    def not_explicitly_null(cls, v, info):
+        # Omitted leaves the column alone; an explicit null would reach a NOT
+        # NULL column and fail as a 500. `note` and `data_maturity` are nullable
+        # and may be cleared.
+        if v is None:
+            raise ValueError(f"{info.field_name} cannot be null")
+        return v
 
 
 # ============= EOF =============================================
