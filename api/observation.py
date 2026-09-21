@@ -44,6 +44,8 @@ from schemas.transducer import (
     DeletedTransducerObservationsResponse,
     PublishedTransducerBlockResponse,
     PublishTransducerBlock,
+    ReviewedTransducerBlockResponse,
+    ReviewTransducerBlock,
     TransducerObservationDetailResponse,
     TransducerObservationWithBlockResponse,
     UpdateTransducerObservation,
@@ -62,6 +64,7 @@ from services.transducer_helper import (
     delete_transducer_observations,
     get_transducer_observation,
     publish_transducer_block,
+    review_transducer_block,
     update_transducer_observation,
 )
 from services.water_level_csv import bulk_upload_water_levels
@@ -174,6 +177,34 @@ async def bulk_upload_groundwater_levels(
 
 
 # PATCH ========================================================================
+
+
+@router.patch(
+    "/transducer-groundwater-level/block/{block_id}",
+    status_code=HTTP_200_OK,
+    summary="Approve a published transducer block, or return it to provisional",
+)
+def review_transducer_groundwater_level_block(
+    block_id: int,
+    payload: ReviewTransducerBlock,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> ReviewedTransducerBlockResponse:
+    """
+    Set a block's `review_status`, and move every reading it covers with it:
+    `approved` makes their `data_maturity` approved, `not reviewed` returns
+    them to provisional.
+
+    One transaction for the block and all of its readings, so a series is never
+    left half approved.
+    """
+    return review_transducer_block(
+        session,
+        block_id,
+        parameter_id=_groundwater_level_parameter_id(session),
+        payload=payload,
+        user=user,
+    )
 
 
 @router.patch(

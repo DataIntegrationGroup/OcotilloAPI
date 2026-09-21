@@ -117,6 +117,25 @@ running against.
 next scheduled refresh. Nothing here refreshes it — a full refresh on every
 delete would cost far more than the correctness it buys between nightly runs.
 
+## `PATCH /observation/transducer-groundwater-level/block/{block_id}`
+
+Moves a published block through review. The body is `{"review_status": ...}`
+and nothing else — the span is derived from the readings and is not editable.
+
+Every reading the block covers moves with it, in the same transaction:
+`approved` sets their `data_maturity` to approved, `not reviewed` returns them
+to provisional. It is the mapping publish uses, so a block approved here reads
+exactly like one published as approved. "Covers" means what the list means: the
+well's deployments, this parameter, inside the block's closed span.
+
+This is how a corrected series leaves provisional. There is no separate
+"corrected" state in the lexicon; `data_maturity` is `provisional`,
+`in review`, `approved`, and only the first and last are reachable from a
+block's review status.
+
+Takes the series lock, so a concurrent range delete or replacing publish cannot
+change which readings the span covers between the read and the update.
+
 ## Single readings — `/observation/transducer-groundwater-level/{observation_id}`
 
 `GET`, `PATCH`, and `DELETE` address one reading by id. All three are scoped to
