@@ -32,10 +32,14 @@ backfill_category_descriptions = importlib.import_module(
     "data_migrations.migrations." "20260901_0001_backfill_lexicon_category_descriptions"
 )
 consolidate_groups = importlib.import_module(
-    "data_migrations.migrations.20260810_0001_consolidate_geographic_area_groups"
+    "data_migrations.migrations._superseded."
+    "20260810_0001_consolidate_geographic_area_groups"
 )
 convert_casing_diameter = importlib.import_module(
     "data_migrations.migrations." "20260914_0001_convert_well_inventory_casing_diameter"
+)
+parity_groups = importlib.import_module(
+    "data_migrations.migrations." "20260905_0003_group_table_parity_with_staging"
 )
 seed_epa_limits = importlib.import_module(
     "data_migrations.migrations.20260916_0001_seed_epa_regulatory_limits"
@@ -1583,3 +1587,438 @@ def test_convert_casing_diameter_dry_run_writes_nothing(tmp_path, monkeypatch):
         assert imported.well_casing_diameter == 0.5
 
         _cleanup_wells(session, [imported])
+
+
+# ==============================================================================
+# Group table parity with staging (20260905_0003)
+# ==============================================================================
+#
+# This migration is what every environment other than staging uses to reach
+# staging's group table, so it is exercised here against small hand-built
+# snapshots rather than the shipped 80-group one. The shipped file gets its own
+# consistency checks at the end, which need no database.
+
+PARITY_AREA = (
+    "MULTIPOLYGON(((-108.4 35.6, -107.8 35.6, -107.8 36.2, -108.4 36.2, -108.4 35.6)))"
+)
+PARITY_OTHER_AREA = (
+    "MULTIPOLYGON(((-103.4 31.6, -102.8 31.6, -102.8 32.2, -103.4 32.2, -103.4 31.6)))"
+)
+
+
+def _snapshot_row(
+    name,
+    group_type="Monitoring Plan",
+    description=None,
+    release_status="draft",
+    wkt=None,
+    parent_name=None,
+):
+    return {
+        "name": name,
+        "group_type": group_type,
+        "description": description,
+        "release_status": release_status,
+        "wkt": wkt,
+        "parent_name": parent_name,
+    }
+
+
+@contextmanager
+def _snapshot(rows):
+    """Run the parity migration against `rows` instead of the shipped file."""
+    saved = parity_groups._load_snapshot
+    parity_groups._load_snapshot = lambda: rows
+    try:
+        yield
+    finally:
+        parity_groups._load_snapshot = saved
+
+
+def _group_by_name(session, name):
+    return session.scalars(select(Group).where(Group.name == name)).first()
+
+
+def test_parity_creates_a_group_the_target_does_not_have():
+    with session_ctx() as session:
+        rows = [
+            _snapshot_row(
+                "Parity New Area",
+                group_type="Geographic Area",
+                description="from the snapshot",
+                release_status="public",
+                wkt=PARITY_AREA,
+            )
+        ]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        created = _group_by_name(session, "Parity New Area")
+        assert created is not None
+        assert created.group_type == "Geographic Area"
+        assert created.description == "from the snapshot"
+        assert created.release_status == "public"
+        assert created.project_area is not None
+
+        _delete_groups(session, created)
+
+
+def test_parity_updates_in_place_and_keeps_the_target_id():
+    """Keyed by name: ids are environment-specific and must survive."""
+    with session_ctx() as session:
+        group = Group(
+            name="Parity Drifted Area",
+            group_type="Monitoring Plan",
+            description="stale",
+            release_status="draft",
+        )
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+        original_id = group.id
+
+        rows = [
+            _snapshot_row(
+                "Parity Drifted Area",
+                group_type="Geographic Area",
+                description="current",
+                release_status="public",
+                wkt=PARITY_AREA,
+            )
+        ]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        session.refresh(group)
+        assert group.id == original_id
+        assert group.group_type == "Geographic Area"
+        assert group.description == "current"
+        assert group.release_status == "public"
+        assert group.project_area is not None
+
+        _delete_groups(session, group)
+
+
+def test_parity_reparents_by_name_and_unparents_when_the_snapshot_does():
+    with session_ctx() as session:
+        rows = [
+            _snapshot_row("Parity Container"),
+            _snapshot_row("Parity Child", parent_name="Parity Container"),
+            _snapshot_row("Parity Loose"),
+        ]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        container = _group_by_name(session, "Parity Container")
+        child = _group_by_name(session, "Parity Child")
+        loose = _group_by_name(session, "Parity Loose")
+        assert child.parent_group_id == container.id
+        assert loose.parent_group_id is None
+
+        # The snapshot is also authoritative about parents it does not set:
+        # a target-side parent that staging does not have is cleared.
+        loose.parent_group_id = container.id
+        session.commit()
+        with _snapshot(rows):
+            parity_groups.run(session)
+        session.refresh(loose)
+        assert loose.parent_group_id is None
+
+        _delete_groups(session, child, loose, container)
+
+
+def test_parity_deletes_a_reviewed_orphan_duplicate_absent_from_the_snapshot():
+    orphan_name = sorted(parity_groups.ORPHAN_DUPLICATE_NAMES)[0]
+    with session_ctx() as session:
+        orphan = Group(
+            name=orphan_name,
+            group_type="Geographic Area",
+            project_area=PARITY_OTHER_AREA,
+            release_status="draft",
+        )
+        session.add(orphan)
+        session.commit()
+        session.refresh(orphan)
+        orphan_id = orphan.id
+
+        rows = [_snapshot_row("Parity Keeper", wkt=PARITY_AREA)]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        assert session.get(Group, orphan_id) is None
+        _delete_groups(session, _group_by_name(session, "Parity Keeper"))
+
+
+def test_parity_deletes_a_snapshot_absent_group_that_duplicates_a_boundary():
+    """The geometry path: same polygon under a different name."""
+    with session_ctx() as session:
+        duplicate = Group(
+            name="Parity Boundary Duplicate",
+            group_type="Geographic Area",
+            project_area=PARITY_AREA,
+            release_status="draft",
+        )
+        session.add(duplicate)
+        session.commit()
+        session.refresh(duplicate)
+        duplicate_id = duplicate.id
+
+        rows = [_snapshot_row("Parity Boundary Owner", wkt=PARITY_AREA)]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        assert session.get(Group, duplicate_id) is None
+        _delete_groups(session, _group_by_name(session, "Parity Boundary Owner"))
+
+
+def test_parity_preserves_a_snapshot_absent_group_with_its_own_boundary():
+    """Under-reaching is the safe direction: extras are kept, not pruned."""
+    with session_ctx() as session:
+        extra = Group(
+            name="Parity Local Only Area",
+            group_type="Geographic Area",
+            project_area=PARITY_OTHER_AREA,
+            release_status="public",
+        )
+        session.add(extra)
+        session.commit()
+        session.refresh(extra)
+
+        rows = [_snapshot_row("Parity Unrelated", wkt=PARITY_AREA)]
+        with _snapshot(rows):
+            plan = parity_groups.dry_run(session)
+            assert "Parity Local Only Area" in plan.preserve
+            assert "Parity Local Only Area" not in plan.delete_safe
+            parity_groups.run(session)
+
+        session.refresh(extra)
+        assert extra.project_area is not None
+        assert extra.release_status == "public"
+
+        _delete_groups(session, extra, _group_by_name(session, "Parity Unrelated"))
+
+
+def test_parity_keeps_a_snapshot_absent_group_that_carries_wells():
+    """group_thing_association cascades, so a deletion here would drop wells."""
+    orphan_name = sorted(parity_groups.ORPHAN_DUPLICATE_NAMES)[1]
+    with session_ctx() as session:
+        group = Group(
+            name=orphan_name,
+            group_type="Geographic Area",
+            project_area=PARITY_OTHER_AREA,
+            release_status="draft",
+        )
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+        thing = _make_thing(session, "Parity Membership Well")
+        _link(session, group, thing)
+
+        rows = [_snapshot_row("Parity Elsewhere", wkt=PARITY_AREA)]
+        with _snapshot(rows):
+            plan = parity_groups.dry_run(session)
+            assert orphan_name in plan.delete_blocked
+            parity_groups.run(session)
+
+        assert session.get(Group, group.id) is not None
+        assert (
+            session.scalars(
+                select(GroupThingAssociation.thing_id).where(
+                    GroupThingAssociation.group_id == group.id
+                )
+            ).first()
+            == thing.id
+        )
+
+        _delete_groups(session, group, _group_by_name(session, "Parity Elsewhere"))
+        session.delete(session.get(Thing, thing.id))
+        session.commit()
+
+
+def test_parity_keeps_a_snapshot_absent_group_that_has_children():
+    """parent_group_id cascades too."""
+    orphan_name = sorted(parity_groups.ORPHAN_DUPLICATE_NAMES)[2]
+    with session_ctx() as session:
+        parent = Group(
+            name=orphan_name,
+            group_type="Geographic Area",
+            project_area=PARITY_OTHER_AREA,
+            release_status="draft",
+        )
+        session.add(parent)
+        session.commit()
+        session.refresh(parent)
+        child = Group(
+            name="Parity Surviving Child",
+            group_type="Monitoring Plan",
+            parent_group_id=parent.id,
+        )
+        session.add(child)
+        session.commit()
+        session.refresh(child)
+
+        rows = [_snapshot_row("Parity Somewhere Else", wkt=PARITY_AREA)]
+        with _snapshot(rows):
+            plan = parity_groups.dry_run(session)
+            assert orphan_name in plan.delete_blocked
+            parity_groups.run(session)
+
+        assert session.get(Group, parent.id) is not None
+        session.refresh(child)
+        assert child.parent_group_id == parent.id
+
+        _delete_groups(
+            session, child, parent, _group_by_name(session, "Parity Somewhere Else")
+        )
+
+
+def test_parity_does_not_copy_or_remove_well_memberships():
+    """Memberships are environment-specific; parity reconciles groups only."""
+    with session_ctx() as session:
+        group = Group(
+            name="Parity Membership Holder",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+        thing = _make_thing(session, "Parity Kept Well")
+        _link(session, group, thing)
+
+        rows = [
+            _snapshot_row(
+                "Parity Membership Holder",
+                group_type="Geographic Area",
+                release_status="public",
+            )
+        ]
+        with _snapshot(rows):
+            parity_groups.run(session)
+
+        session.refresh(group)
+        assert group.release_status == "public"
+        linked = session.scalars(
+            select(GroupThingAssociation.thing_id).where(
+                GroupThingAssociation.group_id == group.id
+            )
+        ).all()
+        assert list(linked) == [thing.id]
+
+        _delete_groups(session, group)
+        session.delete(session.get(Thing, thing.id))
+        session.commit()
+
+
+def test_parity_dry_run_writes_nothing():
+    with session_ctx() as session:
+        existing = Group(
+            name="Parity Preview Target",
+            group_type="Monitoring Plan",
+            description="untouched",
+            release_status="draft",
+        )
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+
+        rows = [
+            _snapshot_row(
+                "Parity Preview Target",
+                group_type="Geographic Area",
+                description="would change",
+                release_status="public",
+            ),
+            _snapshot_row("Parity Preview New"),
+        ]
+        with _snapshot(rows):
+            plan = parity_groups.dry_run(session)
+
+        assert "Parity Preview New" in plan.create
+        assert "Parity Preview Target" in plan.update
+
+        session.refresh(existing)
+        assert existing.group_type == "Monitoring Plan"
+        assert existing.description == "untouched"
+        assert existing.release_status == "draft"
+        assert _group_by_name(session, "Parity Preview New") is None
+
+        _delete_groups(session, existing)
+
+
+def test_parity_is_idempotent():
+    with session_ctx() as session:
+        rows = [
+            _snapshot_row("Parity Idempotent Container"),
+            _snapshot_row(
+                "Parity Idempotent Child",
+                group_type="Geographic Area",
+                release_status="public",
+                wkt=PARITY_AREA,
+                parent_name="Parity Idempotent Container",
+            ),
+        ]
+        with _snapshot(rows):
+            parity_groups.run(session)
+            plan = parity_groups.dry_run(session)
+
+        assert plan.create == []
+        assert plan.update == []
+        assert plan.reparent == []
+        assert sorted(plan.unchanged) == [
+            "Parity Idempotent Child",
+            "Parity Idempotent Container",
+        ]
+
+        _delete_groups(
+            session,
+            _group_by_name(session, "Parity Idempotent Child"),
+            _group_by_name(session, "Parity Idempotent Container"),
+        )
+
+
+# --- the shipped snapshot itself; no database needed -------------------------
+
+
+def test_shipped_snapshot_names_are_unique():
+    rows = parity_groups._load_snapshot()
+    names = [row["name"] for row in rows]
+    assert len(names) == len(set(names))
+
+
+def test_shipped_snapshot_parents_are_all_in_the_snapshot():
+    """run() resolves parents out of the snapshot; a dangling one is a KeyError."""
+    rows = parity_groups._load_snapshot()
+    names = {row["name"] for row in rows}
+    dangling = {
+        row["parent_name"]
+        for row in rows
+        if row["parent_name"] is not None and row["parent_name"] not in names
+    }
+    assert dangling == set()
+
+
+def test_shipped_snapshot_has_no_parent_cycles():
+    rows = parity_groups._load_snapshot()
+    parents = {row["name"]: row["parent_name"] for row in rows}
+    for name in parents:
+        seen = set()
+        current = name
+        while current is not None:
+            assert current not in seen, f"parent cycle through {current}"
+            seen.add(current)
+            current = parents.get(current)
+
+
+def test_shipped_snapshot_rows_carry_every_field_the_migration_writes():
+    rows = parity_groups._load_snapshot()
+    required = {"name", "group_type", "description", "release_status", "wkt"}
+    for row in rows:
+        assert required <= set(row), row.get("name")
+
+
+def test_orphan_duplicate_names_are_absent_from_the_snapshot():
+    """A name in both lists would be created and then deleted in one run."""
+    rows = parity_groups._load_snapshot()
+    names = {row["name"] for row in rows}
+    assert not (parity_groups.ORPHAN_DUPLICATE_NAMES & names)

@@ -1,5 +1,13 @@
 # Group consolidation and study-area import: runbook
 
+> **Superseded for new environments.** This sequence ran on staging and is kept
+> as the record of what it did. The migration now lives in
+> `data_migrations/migrations/_superseded/` and is no longer in the registry, so
+> it cannot be dispatched. Any other database reaches the same end state from
+> `20260905_0003_group_table_parity_with_staging`, which carries a snapshot of
+> the result. The importer described below (`oco import-project-area-boundaries`)
+> is **not** superseded — it is still the maintenance path for webmap boundaries.
+
 Operational steps to reconcile the `group` table against the Aquifer Mapping Study
 Areas webmap, and to verify it worked.
 
@@ -237,11 +245,13 @@ POSTGRES_HOST=127.0.0.1 uv run oco data-migrations run 20260810_0001_consolidate
 
 ### Do not use `run-all`
 
-`oco data-migrations run-all` will produce a broken state if the publication behaviour
-is ever taken back out of this migration. Registry order is filename-alphabetical, so
+Moot now that the migration is unregistered — `run-all` cannot reach it. It
+mattered while it was registered: `oco data-migrations run-all` would produce a
+broken state if the publication behaviour were ever taken back out of this
+migration, because registry order is filename-alphabetical, so
 `20260714_0001_publish_project_areas` sorts *before* `20260810_0001_consolidate_...`,
 and `run_all` skips non-repeatable migrations that are already applied. It would run the
-consolidation and never republish. Run this migration by id.
+consolidation and never republish.
 
 ---
 

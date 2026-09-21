@@ -10,9 +10,10 @@ reasons, both load-bearing:
   boundary with a different area's polygon, and would try to insert two rows
   with the same ``(name, group_type)``, which ``uq_group_name_type`` forbids.
 * A boundary's owner is not always named after the feature. Consolidation
-  (``20260810_0001_consolidate_geographic_area_groups``) folds a Geographic
-  Area into the project row it duplicated, so the polygon for
-  ``Southern Taos Valley`` now lives on the plan called ``S.Taos Valley``.
+  (``_superseded/20260810_0001_consolidate_geographic_area_groups``, since
+  replaced by the parity snapshot) folded a Geographic Area into the project row
+  it duplicated, so the polygon for ``Southern Taos Valley`` now lives on the
+  plan called ``S.Taos Valley``.
   ``PROJECT_AREA_MAPPINGS`` records the owner, which is why re-importing no
   longer recreates the rows that migration deletes.
 
