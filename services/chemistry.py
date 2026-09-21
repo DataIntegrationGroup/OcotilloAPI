@@ -302,7 +302,6 @@ def _field_water_chemistry_results_query():
             parameter_name.isnot(None),
             observed_at.isnot(None),
             Thing.release_status == "public",
-
             # NULL means the flag was never recorded, not that the record is
             # withheld. amp_viewer users are permitted to view unset records; only
             # explicit False is dropped.
@@ -623,5 +622,3 @@ def parameter_key(
     raw = parameter_name or symbol or "unknown"
     slug = re.sub(r"[^a-z0-9]+", "_", raw.lower()).strip("_")
     return f"{source}_{slug}"
-
-
