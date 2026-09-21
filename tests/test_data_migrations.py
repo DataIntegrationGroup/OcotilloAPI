@@ -1867,8 +1867,12 @@ def test_parity_keeps_a_snapshot_absent_group_that_has_children():
         session.refresh(child)
         assert child.parent_group_id == parent.id
 
+        # Child first, in its own commit: parent_group_id cascades, so deleting
+        # both in one flush lets the database remove the child out from under
+        # the ORM's own DELETE for it.
+        _delete_groups(session, child)
         _delete_groups(
-            session, child, parent, _group_by_name(session, "Parity Somewhere Else")
+            session, parent, _group_by_name(session, "Parity Somewhere Else")
         )
 
 
