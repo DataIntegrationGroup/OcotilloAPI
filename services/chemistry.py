@@ -1,4 +1,4 @@
-"""Build the well-details chemistry display payload from legacy NMA tables."""
+"""Build water chemistry result payloads from legacy NMA tables."""
 
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ from db.parameter import Parameter
 from db.regulatory_limit import RegulatoryLimit
 from db.thing import Thing
 from schemas.chemistry import (
-    ChemistryDisplayStandardResponse,
     WaterChemistryResultResponse,
+    WaterChemistryResultStandardResponse,
 )
 from services.legacy_chemistry import canonical_parameter_name, result_kind
 
@@ -141,7 +141,7 @@ def enrich_water_chemistry_results(
     session: Session,
     rows,
 ) -> list[WaterChemistryResultResponse]:
-    """Add display metadata to one paginated page of chemistry result rows."""
+    """Add result metadata to one paginated page of chemistry result rows."""
     rows = list(rows)
     metadata_by_result_id = {}
     rows_missing_metadata = []
@@ -303,8 +303,8 @@ def _field_water_chemistry_results_query():
             observed_at.isnot(None),
             Thing.release_status == "public",
             # NULL means the flag was never recorded, not that the record is
-            # withheld. amp_viewer users are permitted to view unset records; only
-            # explicit False is dropped.
+            # withheld. amp_viewer users are permitted to view unset records;
+            # only explicit False is dropped.
             NMA_Chemistry_SampleInfo.public_release.isnot(False),
         )
     )
@@ -524,11 +524,11 @@ def standard_for_result(
     result_value: float | None,
     result_unit: str | None,
     limits: dict[str, RowMapping],
-) -> ChemistryDisplayStandardResponse:
+) -> WaterChemistryResultStandardResponse:
     primary_mcl = limits.get("MCL")
     secondary_smcl = limits.get("SMCL")
     if primary_mcl is None and secondary_smcl is None:
-        return ChemistryDisplayStandardResponse(
+        return WaterChemistryResultStandardResponse(
             status="no_limit",
             label="No EPA limit",
         )
@@ -536,7 +536,7 @@ def standard_for_result(
     limit_unit = _limit_unit(primary_mcl or secondary_smcl)
     value = _value_in_limit_unit(result_value, result_unit, limit_unit)
     if value is None:
-        return ChemistryDisplayStandardResponse(
+        return WaterChemistryResultStandardResponse(
             status="not_compared",
             label="Not compared",
             primary_mcl=_limit_value(primary_mcl),
@@ -568,7 +568,7 @@ def standard_for_result(
         status = "no_limit"
         label = "No EPA limit"
 
-    return ChemistryDisplayStandardResponse(
+    return WaterChemistryResultStandardResponse(
         status=status,
         label=label,
         primary_mcl=primary_value,

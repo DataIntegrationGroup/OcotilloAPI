@@ -215,7 +215,7 @@ def test_analysis_date_is_reported_separately(two_samples):
     }
 
 
-def test_results_include_display_fields_without_renaming_fields(two_samples):
+def test_results_include_enriched_fields_without_renaming_fields(two_samples):
     items = _results(two_samples["thing_id"], 2019)
     by_kind = {item["result_kind"]: item for item in items}
 
