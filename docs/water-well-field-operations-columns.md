@@ -5,6 +5,9 @@ order, and where its value comes from. Columns marked *(stats)* are read from
 the `ogc_internal_water_well_field_operations_stats` materialized view and are as
 fresh as its last refresh; everything else is joined live on each request.
 
+Every `alternate_id_*` column skips links whose `alternate_id` is blank, so a
+blank reads as NULL rather than as an empty segment.
+
 "Current record" means the history row satisfying
 `start_date <= CURRENT_DATE AND (end_date IS NULL OR end_date >= CURRENT_DATE)`,
 latest `start_date` first. "Most recent association" means the
@@ -12,8 +15,9 @@ latest `start_date` first. "Most recent association" means the
 `effective_start` first.
 
 Generated from the view definition in
-`alembic/versions/e1f2a3b4c5d6_add_water_well_field_operations_layer.py`. Field
-prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
+`alembic/versions/a3b4c5d6e7f8_field_operations_split_alternate_ids.py`, the
+latest revision to rebuild the view. Field prose lives in
+`core/ogc-field-descriptions.yml`; the design rationale lives in
 `docs/water-well-field-operations-layer.md`.
 
 | Column | Source |
@@ -22,7 +26,16 @@ prose lives in `core/ogc-field-descriptions.yml`; the design rationale lives in
 | `name` | `thing.name` |
 | `station_type` | Literal `'water well'` — the view's row filter. Named `station_type` rather than `thing_type` to match the naming already established on the public thing-type views |
 | `release_status` | `thing.release_status` |
-| `alternate_ids` | `thing_id_link.alternate_organization` + `.alternate_id`, comma-joined |
+| `alternate_id_nmbgmr` | `thing_id_link.alternate_id` where `alternate_organization = 'NMBGMR'`, comma-joined |
+| `alternate_id_nmose_pod` | same, `alternate_organization = 'NMOSE'` and `relation = 'OSEPOD'`. Split out because organization alone does not say which kind of NMOSE identifier this is |
+| `alternate_id_nmose_well_tag` | same, `alternate_organization = 'NMOSE'` and `relation = 'OSEWellTagID'` |
+| `alternate_id_nmose` | same, `alternate_organization = 'NMOSE'` and any other relation. Legacy links recorded without saying which kind they are |
+| `alternate_id_plss` | same, `alternate_organization = 'PLSS'` |
+| `alternate_id_usgs` | same, `alternate_organization = 'USGS'` |
+| `alternate_id_nmed` | same, `alternate_organization = 'NMED'` |
+| `alternate_id_twdb` | same, `alternate_organization = 'TWDB'` |
+| `alternate_id_unknown` | same, `alternate_organization = 'Unknown'` |
+| `alternate_id_other` | `alternate_organization` + `.alternate_id` as `organization: id` pairs, comma-joined, for every organization with no column above. Normally empty |
 | `latitude` | `ST_Y(location.point)` — decimal degrees, WGS 84 |
 | `longitude` | `ST_X(location.point)` — decimal degrees, WGS 84 |
 | `elevation` | `location.elevation`, most recent association, converted from metres to feet at 3.28084 ft/m and rounded to two decimals. Name unchanged from the metric column: unit is per-field metadata (`x-ogc-unit`), not a naming convention |
