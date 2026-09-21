@@ -1,4 +1,4 @@
-# Hydrograph correction — publish and range delete
+# Hydrograph correction — publish, range delete, and single readings
 
 The hydrograph corrector in OcotilloUI (`/ocotillo/hydrograph-correction`)
 ingests a raw logger file, converts water head to depth below ground surface
@@ -9,18 +9,20 @@ proposal it was built from is
 
 ## Authorization
 
-Both write routes are gated on **`AMP.Staging`**, a standalone Authentik group.
-It is not a fourth rung on the AMP ladder: `AMPAdmin` does not satisfy it, and
-it satisfies nothing else. Nobody holds it until it is granted, so the routes
-ship dark and are reachable only by whoever is validating the workbench against
-real logger files.
+Every write route — publish, range delete, and the per-reading edit and delete —
+is gated on **`AMP.Admin`** (`amp_admin_dependency`). Both reads, the list and
+the single reading, stay on `amp_viewer_dependency`: publishing does not change
+who may look.
 
-When the workbench is trusted, these routes move to `amp_admin_dependency` and
-the group goes away. Leaving it as a tier would make that a schema change
-instead of a one-line edit.
+The publish and range-delete routes shipped dark behind a standalone
+`AMP.Staging` group while the workbench was validated against real logger
+files. That group is gone. It was never a tier, so retiring it was a one-line
+change per route rather than a change to the AMP ladder.
 
-The read route stays on `amp_viewer_dependency` — it was already public to
-viewers and publishing does not change who may look.
+The whole AMP family went dotted at the same time — `AMP.Admin`, `AMP.Editor`,
+`AMP.Viewer` replaced `AMPAdmin`, `AMPEditor`, `AMPViewer` — matching the names
+OcotilloUI already uses. Production Authentik must carry the dotted groups with
+the old groups' members before this deploys, or every AMP user loses access.
 
 ## `POST /observation/transducer-groundwater-level/block`
 
@@ -114,6 +116,57 @@ running against.
 **This leaves the `transducer_daily_data` materialized view stale** until its
 next scheduled refresh. Nothing here refreshes it — a full refresh on every
 delete would cost far more than the correctness it buys between nightly runs.
+
+## Single readings — `/observation/transducer-groundwater-level/{observation_id}`
+
+`GET`, `PATCH`, and `DELETE` address one reading by id. All three are scoped to
+the groundwater level parameter the same way the list is: a reading under any
+other parameter is a 404, so an id cannot reach data the list would never show.
+
+### `GET`
+
+Returns the reading, the block covering it, and the well. The block is chosen
+exactly as the list chooses it — inclusive on both bounds, latest-starting
+block first.
+
+`block` is **null** for a reading no block covers. The list never shows those,
+since it pairs every row with a block; they are what a block deleted by hand
+leaves behind. Addressed by id, reporting one as missing would hide a row that
+still exists and still holds its deployment/parameter/instant — the same row
+publish's collision check will later refuse to write over.
+
+### `PATCH`
+
+Edits `value`, `note`, `data_maturity`, and `release_status`. Nothing else.
+
+- **The timestamp, deployment, and parameter are not editable.** Only time ties
+  a reading to its block — there is no foreign key between the tables — so
+  moving a reading would drop it out of its block, where the list cannot see
+  it, or slide it under a different block. The schema forbids extra fields, so
+  sending one is a 422 rather than a silent no-op. Moving a reading is a delete
+  and a republish.
+- **A changed `value` needs a `note`.** A NULL note means "as measured", which a
+  hand-edited value is not. The check is on the note the row would end up with,
+  so a reading a correction already annotated takes a new value without a new
+  note.
+- **`value` and `release_status` cannot be sent as null.** Omitting a field
+  leaves it alone; an explicit null on a required column would fail as a 500.
+
+It takes the series lock too. An edit moves no span, but without the lock it
+could land on a row a concurrent delete is removing, and that surfaces as a
+stale-row 500 instead of a 404.
+
+### `DELETE`
+
+Deletes the one row and reconciles the block that covered it with the same
+function the range delete uses: a block left with no readings is deleted, one
+left with some is narrowed to the survivors. The response is the range delete's.
+
+This is not the same as a range delete over the reading's instant. A range is
+scoped to the well, so it would also take a second sensor's reading at that
+instant; this takes only the row named.
+
+It leaves `transducer_daily_data` stale, as the range delete does.
 
 ## Two things fixed in passing
 

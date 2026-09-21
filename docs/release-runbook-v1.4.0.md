@@ -18,12 +18,14 @@ that the pipeline does not do for you.
 ## Read this first: three things that can break the release
 
 **1. The Authentik group names changed.** `LexiconAdmin` → `Lexicon.Admin`,
-`LexiconEditor` → `Lexicon.Editor`, `OGCInternal` → `OGC.Internal` (PR #922).
-Production Authentik still issues the old names. The moment `v1.4.0` deploys,
-every lexicon editor and every internal-OGC consumer loses access until the
-groups exist with their members carried over. This is the one prerequisite that
-must be done *before* the production deploy, not after. `AMP.Staging` and the
-`AMP*` tiers are unchanged.
+`LexiconEditor` → `Lexicon.Editor`, `OGCInternal` → `OGC.Internal` (PR #922),
+and the whole AMP family: `AMPAdmin` → `AMP.Admin`, `AMPEditor` → `AMP.Editor`,
+`AMPViewer` → `AMP.Viewer`. The moment `v1.4.0` deploys, every lexicon editor,
+every internal-OGC consumer, and **every AMP user at every tier** loses access
+until the groups exist with their members carried over. This is the one
+prerequisite that must be done *before* the production deploy, not after. The
+standalone `AMP.Staging` group is gone — the hydrograph corrector's writes now
+sit on `AMP.Admin`.
 
 **2. Data migrations do not run in CD.** `CD_production.yml` runs
 `alembic upgrade head` and nothing else. The seven new data migrations sit
@@ -60,14 +62,18 @@ Authentik groups ──▶ DB backup ──▶ API RC ──▶ API promotion �
 
 ### 1.1 Authentik groups
 
-In production Authentik, create `Lexicon.Admin`, `Lexicon.Editor`, and
-`OGC.Internal`, and copy the membership of `LexiconAdmin`, `LexiconEditor`, and
-`OGCInternal` into them. Keep the old groups in place through the release — they
-are inert to `v1.4.0` and are the rollback path if you have to redeploy `v1.3.0`.
-Retire them only after the release has settled.
+In production Authentik, create `Lexicon.Admin`, `Lexicon.Editor`,
+`OGC.Internal`, `AMP.Admin`, `AMP.Editor`, and `AMP.Viewer`, and copy the
+membership of `LexiconAdmin`, `LexiconEditor`, `OGCInternal`, `AMPAdmin`,
+`AMPEditor`, and `AMPViewer` into them. OcotilloUI already gates on the three
+dotted AMP names, so those groups may exist already — check each one's
+membership matches its undotted predecessor rather than assuming. Keep the old groups in place through the
+release — they are inert to `v1.4.0` and are the rollback path if you have to
+redeploy `v1.3.0`. Retire them only after the release has settled.
 
 Verify a token actually carries the new claim before promoting: sign in as a
-lexicon editor and confirm the dotted group name appears in the token's groups.
+lexicon editor and as an AMP user at each tier, and confirm the dotted group
+names appear in the tokens' groups.
 
 ### 1.2 Database backup
 
@@ -149,8 +155,9 @@ e7f8a9b0c1d2  index WWFO per-row lookups
 - Check `/docs` reports the new version
 - `gcloud app versions list --service=ocotillo-api` shows the new version at
   100% traffic
-- Lexicon editing works for a `Lexicon.Editor` member (this is the check that
-  step 1.1 actually landed)
+- Lexicon editing works for a `Lexicon.Editor` member, and an `AMP.Admin`
+  member can reach an AMP admin route (these are the checks that step 1.1
+  actually landed)
 
 Merge the automatic back-merge PR `production → staging` promptly. It syncs
 `.release-please-manifest.staging.json` so the next RC computes from `1.4.0`.
@@ -319,8 +326,9 @@ get carried to `staging` by hand.
 
 - [ ] Back-merge PR `production → staging` merged (API)
 - [ ] `staging` unfrozen
-- [ ] Old Authentik groups (`LexiconAdmin`, `LexiconEditor`, `OGCInternal`)
-      retired once the release has settled
+- [ ] Old Authentik groups (`LexiconAdmin`, `LexiconEditor`, `OGCInternal`,
+      `AMPAdmin`, `AMPEditor`, `AMPViewer`, `AMP.Staging`) retired once the
+      release has settled
 - [ ] `dry_run` input added to `data_migrations.yml` (see 4.4)
 - [ ] Parity dry run reviewed against production before 4.2 is run
 - [ ] Release notes circulated — API keys, the field operations layer and its

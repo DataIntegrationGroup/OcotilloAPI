@@ -14,10 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 """
-The hydrograph corrector's publish and range-delete endpoints.
+The hydrograph corrector's publish and range-delete endpoints, and the
+per-reading read, edit, and delete routes on the same path.
 
-Both are gated on `AMP.Staging`, which nobody holds in Authentik yet -- these
-tests override that dependency, so they cover the behaviour, not the grant.
+Writes are gated on `AMP.Admin`, reads on the AMP viewer tier. These tests
+override both dependencies, so they cover the behaviour, not the grant.
 """
 
 import threading
@@ -26,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select, text
 
-from core.dependencies import amp_staging_function, amp_viewer_function
+from core.dependencies import amp_admin_function, amp_viewer_function
 from db import Deployment, Sensor, Thing, TransducerObservation
 from db.engine import engine, session_ctx
 from db.transducer import TransducerObservationBlock
@@ -45,7 +46,7 @@ def _groundwater_level_parameter_id() -> int:
 
 @pytest.fixture(scope="module", autouse=True)
 def override_authentication_dependency_fixture():
-    app.dependency_overrides[amp_staging_function] = override_authentication(
+    app.dependency_overrides[amp_admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[amp_viewer_function] = override_authentication()
@@ -673,3 +674,259 @@ def test_publish_waits_for_a_concurrent_writer_on_the_same_series(published_well
         blocker.close()
 
     assert result["response"].status_code == 201, result["response"].text
+
+
+# --------------------------------------------------------------------------
+# single reading: read, edit, delete
+# --------------------------------------------------------------------------
+def _reading_url(observation_id) -> str:
+    return f"{READ_URL}/{observation_id}"
+
+
+def _reading_ids(thing_id) -> list[int]:
+    """Stored reading ids for the well, oldest first."""
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
+    return [item["observation"]["id"] for item in items]
+
+
+def test_a_reading_comes_back_with_its_block_and_well(published_well):
+    thing_id, deployment_id = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+    first = _reading_ids(thing_id)[0]
+
+    response = client.get(_reading_url(first))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["observation"]["id"] == first
+    assert body["observation"]["deployment_id"] == deployment_id
+    assert body["observation"]["observation_datetime"] == "2025-01-15T00:00:00Z"
+    assert body["block"]["id"] == block_id
+    assert body["thing_id"] == thing_id
+
+
+def test_an_unknown_reading_is_a_404():
+    response = client.get(_reading_url(987654321))
+
+    assert response.status_code == 404
+    assert response.json()["detail"][0]["loc"] == ["path", "observation_id"]
+
+
+def test_a_reading_no_block_covers_is_reported_not_hidden(published_well):
+    """The list skips an orphaned reading; addressed by id, it still exists."""
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+    first = _reading_ids(thing_id)[0]
+
+    # A block deleted by hand leaves its readings behind.
+    with session_ctx() as session:
+        session.delete(session.get(TransducerObservationBlock, block_id))
+        session.commit()
+
+    response = client.get(_reading_url(first))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["block"] is None
+
+
+def test_editing_a_value_with_a_note_updates_the_reading(published_well):
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(
+        _reading_url(first),
+        json={"value": 40.0, "note": "hand-corrected against tape"},
+    )
+
+    assert response.status_code == 200, response.text
+    observation = response.json()["observation"]
+    assert observation["value"] == 40.0
+    assert observation["note"] == "hand-corrected against tape"
+
+    with session_ctx() as session:
+        stored = session.get(TransducerObservation, first)
+        assert stored.value == 40.0
+        assert stored.updated_by_name == "foobar"
+
+
+def test_editing_a_value_without_a_note_is_rejected(published_well):
+    """No note reads as "as measured"; a hand-edited value is not that."""
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(_reading_url(first), json={"value": 40.0})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "note"]
+    with session_ctx() as session:
+        assert session.get(TransducerObservation, first).value == 42.5
+
+
+def test_a_reading_that_already_has_a_note_takes_a_new_value(published_well):
+    thing_id, _ = published_well
+    payload = _payload(thing_id)
+    payload["measurements"][0]["note"] = "spike removed"
+    client.post(PUBLISH_URL, json=payload)
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(_reading_url(first), json={"value": 41.0})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["observation"]["note"] == "spike removed"
+
+
+def test_maturity_and_release_status_can_be_edited(published_well):
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(
+        _reading_url(first),
+        json={"data_maturity": "approved", "release_status": "public"},
+    )
+
+    assert response.status_code == 200, response.text
+    observation = response.json()["observation"]
+    assert observation["data_maturity"] == "approved"
+    assert observation["release_status"] == "public"
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("observation_datetime", "2025-01-15T01:00:00Z"),
+        ("deployment_id", 1),
+        ("parameter_id", 1),
+    ],
+)
+def test_fields_that_tie_a_reading_to_its_block_cannot_be_edited(
+    published_well, field, value
+):
+    """Moving a reading in time would orphan it or slide it under another block."""
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(_reading_url(first), json={field: value})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("field", ["value", "release_status"])
+def test_an_explicit_null_on_a_required_field_is_a_422(published_well, field):
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    response = client.patch(_reading_url(first), json={field: None})
+
+    assert response.status_code == 422
+
+
+def test_editing_an_unknown_reading_is_a_404():
+    response = client.patch(
+        _reading_url(987654321), json={"value": 1.0, "note": "anything"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_deleting_an_interior_reading_leaves_the_block_span_alone(published_well):
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    _, middle, _ = _reading_ids(thing_id)
+
+    response = client.delete(_reading_url(middle))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["deleted_observation_count"] == 1
+    assert body["deleted_block_ids"] == []
+    assert body["updated_block_ids"] == []
+    assert body["thing_id"] == thing_id
+    assert len(_reading_ids(thing_id)) == 2
+
+
+def test_deleting_an_end_reading_narrows_the_block(published_well):
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+    _, _, last = _reading_ids(thing_id)
+
+    response = client.delete(_reading_url(last))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["updated_block_ids"] == [block_id]
+    with session_ctx() as session:
+        block = session.get(TransducerObservationBlock, block_id)
+        assert block.end_datetime == T0 + timedelta(hours=6)
+
+
+def test_deleting_a_blocks_only_reading_deletes_the_block(published_well):
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(0,))).json()[
+        "block"
+    ]["id"]
+    (only,) = _reading_ids(thing_id)
+
+    response = client.delete(_reading_url(only))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["deleted_block_ids"] == [block_id]
+    with session_ctx() as session:
+        assert session.get(TransducerObservationBlock, block_id) is None
+
+
+def test_deleting_a_reading_spares_another_sensor_at_the_same_instant(
+    published_well, sensor
+):
+    """
+    The case a range delete over one instant gets wrong: it takes every
+    deployment's reading on the well at that time.
+    """
+    thing_id, _ = published_well
+    client.post(PUBLISH_URL, json=_payload(thing_id))
+    first = _reading_ids(thing_id)[0]
+
+    with session_ctx() as session:
+        second = Deployment(
+            sensor_id=sensor.id,
+            thing_id=thing_id,
+            installation_date="2019-01-01",
+            removal_date=None,
+        )
+        session.add(second)
+        session.flush()
+        neighbour = TransducerObservation(
+            parameter_id=_groundwater_level_parameter_id(),
+            deployment_id=second.id,
+            observation_datetime=T0,
+            value=99.0,
+            release_status="draft",
+        )
+        session.add(neighbour)
+        session.commit()
+        second_id, neighbour_id = second.id, neighbour.id
+
+    try:
+        response = client.delete(_reading_url(first))
+
+        assert response.status_code == 200, response.text
+        assert response.json()["deleted_observation_count"] == 1
+        with session_ctx() as session:
+            assert session.get(TransducerObservation, first) is None
+            assert session.get(TransducerObservation, neighbour_id) is not None
+    finally:
+        with session_ctx() as session:
+            # Cascades to the neighbouring reading.
+            session.delete(session.get(Deployment, second_id))
+            session.commit()
+
+
+def test_deleting_an_unknown_reading_is_a_404():
+    response = client.delete(_reading_url(987654321))
+
+    assert response.status_code == 404
