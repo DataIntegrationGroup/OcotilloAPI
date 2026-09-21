@@ -30,7 +30,7 @@ from importlib.util import find_spec
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import delete, text
 
 from core.dependencies import (
     admin_function,
@@ -50,6 +50,7 @@ from db import (
     StatusHistory,
     Thing,
     ThingAquiferAssociation,
+    ThingIdLink,
     WellScreen,
 )
 from db.engine import session_ctx
@@ -789,6 +790,194 @@ def test_note_types_do_not_bleed_into_each_other(water_well_thing):
         session.delete(water_note)
         session.delete(maintenance_note)
         session.commit()
+
+
+# ------------------------------------------------- alternate identifiers
+
+
+def _add_links(session, thing_id, links):
+    """links: (organisation, relation, alternate_id) tuples. Returns the ids."""
+    rows = [
+        ThingIdLink(
+            thing_id=thing_id,
+            relation=relation,
+            alternate_id=alternate_id,
+            alternate_organization=organisation,
+            release_status="private",
+        )
+        for organisation, relation, alternate_id in links
+    ]
+    session.add_all(rows)
+    session.commit()
+    return [row.id for row in rows]
+
+
+def _drop_links(session, link_ids):
+    session.execute(delete(ThingIdLink).where(ThingIdLink.id.in_(link_ids)))
+    session.commit()
+
+
+def test_organizations_do_not_bleed_into_each_other(water_well_thing):
+    with session_ctx() as session:
+        link_ids = _add_links(
+            session,
+            water_well_thing.id,
+            [
+                ("NMBGMR", "same_as", "SO-0125"),
+                ("NMOSE", "OSEPOD", "RG-45678"),
+                ("USGS", "same_as", "314713107404301"),
+            ],
+        )
+
+        row = _row(
+            session,
+            water_well_thing.id,
+            "alternate_id_nmbgmr, alternate_id_nmose_pod, alternate_id_nmose_well_tag, alternate_id_nmose, alternate_id_plss, alternate_id_usgs, alternate_id_nmed, alternate_id_twdb, alternate_id_unknown, alternate_id_other",
+        )
+
+        assert row.alternate_id_nmbgmr == "SO-0125"
+        assert row.alternate_id_nmose_pod == "RG-45678"
+        assert row.alternate_id_usgs == "314713107404301"
+        # Every organisation the well has no link for stays null rather than
+        # picking up one of the three above.
+        assert row.alternate_id_nmose_well_tag is None
+        assert row.alternate_id_nmose is None
+        assert row.alternate_id_plss is None
+        assert row.alternate_id_nmed is None
+        assert row.alternate_id_twdb is None
+        assert row.alternate_id_unknown is None
+        assert row.alternate_id_other is None
+
+        _drop_links(session, link_ids)
+
+
+def test_nmose_identifier_kinds_do_not_share_a_column(water_well_thing):
+    """A point of diversion number and a well tag id are not interchangeable.
+
+    Both carry alternate_organization NMOSE, so organisation alone cannot tell
+    them apart and only the relation can. Merging them would hand a crew a
+    column where half the values silently fail to match an OSE extract.
+    """
+    with session_ctx() as session:
+        link_ids = _add_links(
+            session,
+            water_well_thing.id,
+            [
+                ("NMOSE", "OSEPOD", "RG-45678"),
+                ("NMOSE", "OSEWellTagID", "WT-9001"),
+                ("NMOSE", "same_as", "legacy-nmose-ref"),
+            ],
+        )
+
+        row = _row(
+            session,
+            water_well_thing.id,
+            "alternate_id_nmbgmr, alternate_id_nmose_pod, alternate_id_nmose_well_tag, alternate_id_nmose, alternate_id_plss, alternate_id_usgs, alternate_id_nmed, alternate_id_twdb, alternate_id_unknown, alternate_id_other",
+        )
+
+        assert row.alternate_id_nmose_pod == "RG-45678"
+        assert row.alternate_id_nmose_well_tag == "WT-9001"
+        assert row.alternate_id_nmose == "legacy-nmose-ref"
+
+        _drop_links(session, link_ids)
+
+
+def test_two_ids_from_one_organization_are_comma_joined(water_well_thing):
+    with session_ctx() as session:
+        link_ids = _add_links(
+            session,
+            water_well_thing.id,
+            [
+                ("PLSS", "same_as", "10.27.10.144"),
+                ("PLSS", "same_as", "10.27.10.145"),
+            ],
+        )
+
+        row = _row(session, water_well_thing.id, "alternate_id_plss")
+
+        # Over a thousand wells really do carry two PLSS descriptions, so a
+        # per-organisation column still cannot assume a single value.
+        assert isinstance(row.alternate_id_plss, str)
+        assert row.alternate_id_plss == "10.27.10.144, 10.27.10.145"
+
+        _drop_links(session, link_ids)
+
+
+def test_a_blank_alternate_id_is_null_not_an_empty_string(water_well_thing):
+    """Roughly 150 NMOSE links carry an empty alternate_id.
+
+    Aggregating them would produce a cell that looks populated but holds
+    nothing, or a leading comma next to a real value.
+    """
+    with session_ctx() as session:
+        link_ids = _add_links(
+            session,
+            water_well_thing.id,
+            [("NMOSE", "same_as", "   ")],
+        )
+
+        row = _row(session, water_well_thing.id, "alternate_id_nmose")
+
+        assert row.alternate_id_nmose is None
+
+        _drop_links(session, link_ids)
+
+
+def test_an_organization_without_a_column_lands_in_other(water_well_thing):
+    """The catch-all is what keeps the split lossless.
+
+    alternate_organization is a lexicon term with several hundred values and
+    the API accepts any of them, so the fixed column list cannot be complete.
+    """
+    with session_ctx() as session:
+        link_ids = _add_links(
+            session,
+            water_well_thing.id,
+            [
+                ("EPA", "same_as", "EPA-771"),
+                ("NMBGMR", "same_as", "SO-0125"),
+            ],
+        )
+
+        row = _row(
+            session, water_well_thing.id, "alternate_id_other, alternate_id_nmbgmr"
+        )
+
+        # Named with its organisation, because the column cannot say which one
+        # it came from the way the per-organisation columns can.
+        assert row.alternate_id_other == "EPA: EPA-771"
+        assert row.alternate_id_nmbgmr == "SO-0125"
+
+        _drop_links(session, link_ids)
+
+
+def test_the_combined_alternate_ids_column_is_gone():
+    """The split replaces the packed column rather than sitting beside it."""
+    with session_ctx() as session:
+        published = {
+            row.column_name
+            for row in session.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = :view"
+                ),
+                {"view": VIEW},
+            )
+        }
+
+    assert "alternate_ids" not in published
+    assert {
+        "alternate_id_nmbgmr",
+        "alternate_id_nmose_pod",
+        "alternate_id_nmose_well_tag",
+        "alternate_id_nmose",
+        "alternate_id_plss",
+        "alternate_id_usgs",
+        "alternate_id_nmed",
+        "alternate_id_twdb",
+        "alternate_id_unknown",
+        "alternate_id_other",
+    } <= published
 
 
 def test_contacts_and_access_notes_are_published(water_well_thing, contact, phone):
