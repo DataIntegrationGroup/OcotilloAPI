@@ -59,7 +59,6 @@ amp_editor_function = authenticated(any_of=["AMP.Admin", "AMP.Editor"])
 amp_viewer_function = authenticated(any_of=["AMP.Admin", "AMP.Editor", "AMP.Viewer"])
 
 
-
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
 lexicon_admin_function = authenticated(any_of=["Lexicon.Admin"])
