@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import (
@@ -17,7 +17,7 @@ from sqlalchemy import (
     select,
     union_all,
 )
-from sqlalchemy.engine import Row, RowMapping
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session
 
 from db.nma_legacy import (
@@ -31,10 +31,7 @@ from db.parameter import Parameter
 from db.regulatory_limit import RegulatoryLimit
 from db.thing import Thing
 from schemas.chemistry import (
-    ChemistryDisplayResultResponse,
-    ChemistryDisplaySampleResponse,
     ChemistryDisplayStandardResponse,
-    ChemistryDisplayStandardsSummaryResponse,
     WaterChemistryResultResponse,
 )
 from services.legacy_chemistry import canonical_parameter_name, result_kind
@@ -223,10 +220,7 @@ def _water_chemistry_results_selectable():
 
 
 def _lab_water_chemistry_results_query(model, source: SourceKind):
-    observed_at = func.coalesce(
-        NMA_Chemistry_SampleInfo.collection_date,
-        model.analysis_date,
-    )
+    observed_at = NMA_Chemistry_SampleInfo.collection_date
     parameter_name = func.nullif(
         func.trim(func.coalesce(model.analyte, model.symbol)),
         "",
@@ -308,6 +302,10 @@ def _field_water_chemistry_results_query():
             parameter_name.isnot(None),
             observed_at.isnot(None),
             Thing.release_status == "public",
+
+            # NULL means the flag was never recorded, not that the record is
+            # withheld. amp_viewer users are permitted to view unset records; only
+            # explicit False is dropped.
             NMA_Chemistry_SampleInfo.public_release.isnot(False),
         )
     )
@@ -523,171 +521,6 @@ def _row_value(row, name: str, default=None):
     return getattr(row, name, default)
 
 
-def _get_samples(
-    session: Session,
-    *,
-    thing_id: int,
-    start_time: datetime | None,
-    end_time: datetime | None,
-) -> list[Row]:
-    query = select(
-        NMA_Chemistry_SampleInfo.id,
-        NMA_Chemistry_SampleInfo.thing_id,
-        NMA_Chemistry_SampleInfo.nma_sample_point_id,
-        NMA_Chemistry_SampleInfo.nma_wclab_id,
-        NMA_Chemistry_SampleInfo.collection_date,
-        NMA_Chemistry_SampleInfo.collection_method,
-        NMA_Chemistry_SampleInfo.collected_by,
-        NMA_Chemistry_SampleInfo.analyses_agency,
-        NMA_Chemistry_SampleInfo.sample_type,
-        NMA_Chemistry_SampleInfo.water_type,
-        NMA_Chemistry_SampleInfo.data_source,
-        NMA_Chemistry_SampleInfo.data_quality,
-        NMA_Chemistry_SampleInfo.sample_notes,
-    ).where(
-        NMA_Chemistry_SampleInfo.thing_id == thing_id,
-        # NULL means the flag was never recorded, not that the record is
-        # withheld. amp_viewer users are permitted to view unset records; only
-        # explicit False is dropped.
-        NMA_Chemistry_SampleInfo.public_release.isnot(False),
-    )
-    if start_time is not None:
-        collection_date = NMA_Chemistry_SampleInfo.collection_date
-        query = query.where(collection_date >= start_time)
-    if end_time is not None:
-        collection_date = NMA_Chemistry_SampleInfo.collection_date
-        query = query.where(collection_date < end_time)
-
-    query = query.order_by(
-        NMA_Chemistry_SampleInfo.collection_date.desc().nullslast(),
-        NMA_Chemistry_SampleInfo.id.desc(),
-    )
-    return list(session.execute(query))
-
-
-def _get_results(
-    session: Session, sample_ids: list[int]
-) -> list[ChemistryDisplayResultResponse]:
-    query = union_all(
-        *(
-            _lab_results_query(NMA_MajorChemistry, "major", sample_ids),
-            _lab_results_query(NMA_MinorTraceChemistry, "minor", sample_ids),
-            _lab_results_query(NMA_Radionuclides, "radionuclide", sample_ids),
-            _field_results_query(sample_ids),
-        )
-    )
-    return sorted(
-        (_result_response(row) for row in session.execute(query).mappings()),
-        key=_result_sort_key,
-    )
-
-
-def _lab_results_query(model, source: SourceKind, sample_ids: list[int]):
-    return select(
-        literal(source).label("source"),
-        model.id.label("source_id"),
-        model.chemistry_sample_info_id.label("sample_info_id"),
-        model.analyte.label("analyte"),
-        model.symbol.label("symbol"),
-        model.sample_value.label("value"),
-        model.units.label("unit"),
-        model.uncertainty.label("uncertainty"),
-        model.analysis_method.label("analysis_method"),
-        model.analysis_date.label("analysis_date"),
-        model.notes.label("notes"),
-        model.analyses_agency.label("analyses_agency"),
-    ).where(model.chemistry_sample_info_id.in_(sample_ids))
-
-
-def _field_results_query(sample_ids: list[int]):
-    return select(
-        literal("field").label("source"),
-        NMA_FieldParameters.id.label("source_id"),
-        NMA_FieldParameters.chemistry_sample_info_id.label("sample_info_id"),
-        NMA_FieldParameters.field_parameter.label("analyte"),
-        NMA_FieldParameters.field_parameter.label("symbol"),
-        NMA_FieldParameters.sample_value.label("value"),
-        NMA_FieldParameters.units.label("unit"),
-        literal(None).label("uncertainty"),
-        literal(None).label("analysis_method"),
-        literal(None).label("analysis_date"),
-        NMA_FieldParameters.notes.label("notes"),
-        NMA_FieldParameters.analyses_agency.label("analyses_agency"),
-    ).where(NMA_FieldParameters.chemistry_sample_info_id.in_(sample_ids))
-
-
-def _result_response(row: RowMapping) -> ChemistryDisplayResultResponse:
-    source = row["source"]
-    symbol = row["symbol"]
-    analyte = row["analyte"]
-    value = row["value"]
-    unit = row["unit"]
-    parameter_name = canonical_parameter_name(symbol or analyte)
-    return ChemistryDisplayResultResponse(
-        id=f"{source}-{row['source_id']}",
-        sample_info_id=row["sample_info_id"],
-        source=source,
-        parameter_key=parameter_key(source, parameter_name, symbol),
-        parameter_name=parameter_name,
-        analyte=analyte,
-        symbol=symbol,
-        value=value,
-        unit=unit,
-        uncertainty=row["uncertainty"],
-        analysis_method=row["analysis_method"],
-        analysis_date=row["analysis_date"],
-        notes=row["notes"],
-        analyses_agency=row["analyses_agency"],
-        standard=standard_for_result(value, unit, {}),
-    )
-
-
-def _sample_response(sample: Row) -> ChemistryDisplaySampleResponse:
-    date_label = (
-        sample.collection_date.strftime("%b %d, %Y")
-        if sample.collection_date is not None
-        else "undated"
-    )
-    label = f"{sample.nma_sample_point_id} - {date_label}"
-    return ChemistryDisplaySampleResponse(
-        id=sample.id,
-        thing_id=sample.thing_id,
-        label=label,
-        nma_sample_point_id=sample.nma_sample_point_id,
-        nma_wclab_id=sample.nma_wclab_id,
-        collection_date=sample.collection_date,
-        collection_method=sample.collection_method,
-        collected_by=sample.collected_by,
-        analyses_agency=sample.analyses_agency,
-        sample_type=sample.sample_type,
-        water_type=sample.water_type,
-        data_source=sample.data_source,
-        data_quality=sample.data_quality,
-        sample_notes=sample.sample_notes,
-    )
-
-
-def _standards_summary(
-    results: list[ChemistryDisplayResultResponse],
-) -> ChemistryDisplayStandardsSummaryResponse:
-    standards = [result.standard for result in results if result.standard]
-    compared = [
-        standard
-        for standard in standards
-        if standard.status not in {"no_limit", "not_compared"}
-    ]
-    return ChemistryDisplayStandardsSummaryResponse(
-        above_mcl_count=sum(
-            1 for standard in standards if standard.status == "above_mcl"
-        ),
-        above_smcl_count=sum(
-            1 for standard in standards if standard.status == "above_smcl"
-        ),
-        compared_parameter_count=len(compared),
-        latest_analysis_date=_latest_analysis_date(results),
-    )
-
-
 def standard_for_result(
     result_value: float | None,
     result_unit: str | None,
@@ -746,22 +579,6 @@ def standard_for_result(
     )
 
 
-def _latest_analysis_date(
-    results: list[ChemistryDisplayResultResponse],
-) -> date | None:
-    values = list(filter(None, (result.analysis_date for result in results)))
-    if not values:
-        return None
-    latest = max(values, key=_analysis_date_sort_key)
-    return latest.date() if isinstance(latest, datetime) else latest
-
-
-def _analysis_date_sort_key(value: date | datetime) -> date:
-    if isinstance(value, datetime):
-        return value.date()
-    return value
-
-
 def _above_secondary_limit(
     value: float,
     secondary_smcl: float | None,
@@ -808,11 +625,3 @@ def parameter_key(
     return f"{source}_{slug}"
 
 
-def _result_sort_key(
-    result: ChemistryDisplayResultResponse,
-) -> tuple[int, str, str]:
-    index = GENERAL_PARAMETER_INDEX.get(
-        result.parameter_name or "",
-        len(GENERAL_PARAMETER_ORDER),
-    )
-    return (index, result.parameter_name or "", result.id)
