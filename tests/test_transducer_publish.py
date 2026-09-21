@@ -685,9 +685,9 @@ def _reading_url(observation_id) -> str:
 
 def _reading_ids(thing_id) -> list[int]:
     """Stored reading ids for the well, oldest first."""
-    items = client.get(
-        READ_URL, params={"thing_id": thing_id, "order": "asc"}
-    ).json()["items"]
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
     return [item["observation"]["id"] for item in items]
 
 
@@ -867,9 +867,9 @@ def test_deleting_an_end_reading_narrows_the_block(published_well):
 
 def test_deleting_a_blocks_only_reading_deletes_the_block(published_well):
     thing_id, _ = published_well
-    block_id = client.post(
-        PUBLISH_URL, json=_payload(thing_id, hours=(0,))
-    ).json()["block"]["id"]
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(0,))).json()[
+        "block"
+    ]["id"]
     (only,) = _reading_ids(thing_id)
 
     response = client.delete(_reading_url(only))
