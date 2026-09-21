@@ -24,10 +24,11 @@ areas sat unpublished.
 These views now serve only the groups that belong to the layer, identified
 structurally as the children of the container group named
 ``Aquifer Mapping Study Areas``. The membership is set by the data migration
-``20260905_0001_parent_project_areas_under_layer18``, which creates that parent
-and re-points every layer-18 owner group's ``parent_group_id`` at it. The parent
-is matched by name rather than id so the same view definition is correct in
-every environment.
+``20260905_0003_group_table_parity_with_staging``, whose snapshot carries that
+parent and every layer-18 owner group's ``parent_name``. On staging it was set by
+``_superseded/20260905_0001_parent_project_areas_under_layer18`` instead; the two
+produce the same structure. The parent is matched by name rather than id so the
+same view definition is correct in every environment.
 
 Ordering note: applied by CD before that data migration runs (data migrations
 have no CD path), these views return zero rows until the parent group exists and

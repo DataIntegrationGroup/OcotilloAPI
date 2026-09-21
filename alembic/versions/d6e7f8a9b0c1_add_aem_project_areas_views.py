@@ -19,7 +19,9 @@ The airborne electromagnetic (AEM) study areas in the "Aquifer Mapping Study
 Areas" layer get their own OGC layer, separate from the general project areas.
 Like ``ogc_project_areas``, membership is structural: the children of the
 container group named ``AEM Project Areas``, which the data migration
-``20260905_0002_parent_aem_project_areas`` creates and populates.
+``20260905_0003_group_table_parity_with_staging`` creates and populates from its
+snapshot (on staging, ``_superseded/20260905_0002_parent_aem_project_areas`` did
+it).
 
 Creates ``ogc_aem_project_areas`` (public) and ``ogc_internal_aem_project_areas``
 (internal). Registered as the ``aem_project_areas`` collection in
