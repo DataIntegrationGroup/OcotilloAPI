@@ -940,9 +940,9 @@ def _review_url(block_id) -> str:
 
 
 def _maturities(thing_id) -> list[str]:
-    items = client.get(
-        READ_URL, params={"thing_id": thing_id, "order": "asc"}
-    ).json()["items"]
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
     return [item["observation"]["data_maturity"] for item in items]
 
 
