@@ -930,3 +930,97 @@ def test_deleting_an_unknown_reading_is_a_404():
     response = client.delete(_reading_url(987654321))
 
     assert response.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# block review
+# --------------------------------------------------------------------------
+def _review_url(block_id) -> str:
+    return f"{PUBLISH_URL}/{block_id}"
+
+
+def _maturities(thing_id) -> list[str]:
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
+    return [item["observation"]["data_maturity"] for item in items]
+
+
+def test_approving_a_block_approves_every_reading_it_covers(published_well):
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+    assert _maturities(thing_id) == ["provisional"] * 3
+
+    response = client.patch(_review_url(block_id), json={"review_status": "approved"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["block"]["review_status"] == "approved"
+    assert body["data_maturity"] == "approved"
+    assert body["updated_observation_count"] == 3
+    assert _maturities(thing_id) == ["approved"] * 3
+
+    with session_ctx() as session:
+        block = session.get(TransducerObservationBlock, block_id)
+        assert block.updated_by_name == "foobar"
+
+
+def test_returning_a_block_to_not_reviewed_makes_it_provisional_again(
+    published_well,
+):
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+    client.patch(_review_url(block_id), json={"review_status": "approved"})
+
+    response = client.patch(
+        _review_url(block_id), json={"review_status": "not reviewed"}
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["data_maturity"] == "provisional"
+    assert _maturities(thing_id) == ["provisional"] * 3
+
+
+def test_approving_one_block_leaves_the_next_block_alone(published_well):
+    thing_id, _ = published_well
+    first = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(0, 6))).json()
+    client.post(PUBLISH_URL, json=_payload(thing_id, hours=(12, 18)))
+
+    client.patch(_review_url(first["block"]["id"]), json={"review_status": "approved"})
+
+    assert _maturities(thing_id) == [
+        "approved",
+        "approved",
+        "provisional",
+        "provisional",
+    ]
+
+
+def test_an_unknown_review_status_is_rejected(published_well):
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+
+    response = client.patch(_review_url(block_id), json={"review_status": "corrected"})
+
+    assert response.status_code == 422
+    assert _maturities(thing_id) == ["provisional"] * 3
+
+
+def test_review_accepts_nothing_but_the_status(published_well):
+    """The span is derived from the readings; it is not editable here."""
+    thing_id, _ = published_well
+    block_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+
+    response = client.patch(
+        _review_url(block_id),
+        json={"review_status": "approved", "start_datetime": T0.isoformat()},
+    )
+
+    assert response.status_code == 422
+
+
+def test_reviewing_an_unknown_block_is_a_404():
+    response = client.patch(_review_url(987654321), json={"review_status": "approved"})
+
+    assert response.status_code == 404
+    assert response.json()["detail"][0]["loc"] == ["path", "block_id"]

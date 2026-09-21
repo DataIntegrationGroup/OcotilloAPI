@@ -46,6 +46,8 @@ from schemas.transducer import (
     DeletedTransducerObservationsResponse,
     OverlappingBlock,
     PublishedTransducerBlockResponse,
+    ReviewedTransducerBlockResponse,
+    ReviewTransducerBlock,
     TransducerObservationBlockResponse,
     TransducerObservationDetailResponse,
     TransducerObservationResponse,
@@ -698,6 +700,102 @@ def delete_transducer_observation(
         deleted_block_ids=deleted_block_ids,
         updated_block_ids=updated_block_ids,
         thing_id=thing_id,
+    )
+
+
+# ============= Block review =====================================
+
+
+def _block_not_found(block_id: int):
+    return PydanticStyleException(
+        status_code=HTTP_404_NOT_FOUND,
+        detail=[
+            {
+                "loc": ["path", "block_id"],
+                "msg": f"Transducer observation block {block_id} not found",
+                "type": "value_error",
+                "input": block_id,
+            }
+        ],
+    )
+
+
+def _load_block(
+    session: Session, block_id: int, parameter_id: int
+) -> TransducerObservationBlock:
+    block = session.scalars(
+        select(TransducerObservationBlock)
+        .where(
+            TransducerObservationBlock.id == block_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+        )
+        .execution_options(populate_existing=True)
+    ).first()
+    if block is None:
+        raise _block_not_found(block_id)
+    return block
+
+
+def review_transducer_block(
+    session: Session,
+    block_id: int,
+    parameter_id: int,
+    payload: ReviewTransducerBlock,
+    user=None,
+) -> ReviewedTransducerBlockResponse:
+    """
+    Set a block's ``review_status`` and move every reading it covers to the
+    matching ``data_maturity``, in one transaction.
+
+    The same mapping publish uses, so a block approved here reads exactly like
+    one published as approved: ``approved`` -> approved, anything else ->
+    provisional. The readings are the ones the list pairs with this block --
+    the well's deployments, this parameter, inside the block's closed span.
+
+    Takes the series lock: a range delete narrowing this block, or a publish
+    replacing it, would otherwise change which readings the span covers between
+    reading it and updating them.
+    """
+    block = _load_block(session, block_id, parameter_id)
+    thing_id = block.thing_id
+
+    _lock_series(session, thing_id, parameter_id)
+    block = _load_block(session, block_id, parameter_id)
+
+    review_status = _enum_value(payload.review_status)
+    data_maturity = _MATURITY_FOR_REVIEW_STATUS.get(review_status, _DEFAULT_MATURITY)
+    updated_by_id, updated_by_name = _created_by(user)
+
+    block.review_status = review_status
+    if updated_by_id is not None or updated_by_name is not None:
+        block.updated_by_id = updated_by_id
+        block.updated_by_name = updated_by_name
+
+    updated_observation_count = 0
+    deployment_ids = _deployment_ids_for_thing(session, thing_id)
+    if deployment_ids:
+        values = {"data_maturity": data_maturity}
+        if updated_by_id is not None or updated_by_name is not None:
+            values.update(updated_by_id=updated_by_id, updated_by_name=updated_by_name)
+        result = session.execute(
+            update(TransducerObservation)
+            .where(
+                TransducerObservation.deployment_id.in_(deployment_ids),
+                TransducerObservation.parameter_id == parameter_id,
+                TransducerObservation.observation_datetime >= block.start_datetime,
+                TransducerObservation.observation_datetime <= block.end_datetime,
+            )
+            .values(**values)
+        )
+        updated_observation_count = result.rowcount or 0
+
+    session.commit()
+    session.refresh(block)
+
+    return ReviewedTransducerBlockResponse(
+        block=TransducerObservationBlockResponse.model_validate(block),
+        data_maturity=data_maturity,
+        updated_observation_count=updated_observation_count,
     )
 
 
