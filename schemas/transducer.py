@@ -223,4 +223,37 @@ class UpdateTransducerObservation(BaseUpdateModel):
         return v
 
 
+# ============= Block review =====================================
+
+
+class ReviewTransducerBlock(BaseModel):
+    """
+    Move a published block through review. Its readings' ``data_maturity``
+    follows: ``approved`` makes them approved, ``not reviewed`` puts them back
+    to provisional. Nothing else about the block changes here.
+    """
+
+    review_status: ReviewStatus
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("review_status", mode="before")
+    @classmethod
+    def coerce_review_status(cls, v):
+        if isinstance(v, str):
+            try:
+                return ReviewStatus(v)
+            except ValueError:
+                raise ValueError(f"Invalid review_status: {v}")
+        return v
+
+
+class ReviewedTransducerBlockResponse(BaseModel):
+    """The block after review, and how many readings moved with it."""
+
+    block: TransducerObservationBlockResponse
+    data_maturity: str
+    updated_observation_count: int
+
+
 # ============= EOF =============================================
