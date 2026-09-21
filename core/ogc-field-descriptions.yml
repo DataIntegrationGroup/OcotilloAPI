@@ -2153,12 +2153,78 @@ water_well_field_operations:
       feet, unit FT.
     x-ogc-unit: https://qudt.org/vocab/unit/FT
     x-ogc-unitLang: QUDT
-  alternate_ids:
-    title: Alternate identifiers
+  alternate_id_nmbgmr:
+    title: NMBGMR identifier
     description: >-
-      Identifiers other organisations use for this well, each written as
-      organisation followed by the identifier and separated by commas. Empty
+      Identifier the New Mexico Bureau of Geology and Mineral Resources uses
+      for this well, usually its point id but often an owner or site name.
+      Comma separated on the rare well that carries more than one, which is
+      one well in this record. Do not split this column on the comma: a few
+      hundred of these names contain one themselves, as in "Aguilar, Owens",
+      so a split produces fragments rather than identifiers. Empty where no
+      cross-reference has been recorded.
+  alternate_id_nmose_pod:
+    title: NMOSE point of diversion number
+    description: >-
+      Point of diversion number the New Mexico Office of the State Engineer
+      uses for this well, the identifier on its water right record. Held apart
+      from the well tag id below because the two are different identifiers and
+      only one of them will match a given OSE extract. Comma separated where a
+      well carries more than one. Empty where no cross-reference has been
+      recorded.
+  alternate_id_nmose_well_tag:
+    title: NMOSE well tag id
+    description: >-
+      Well tag id the New Mexico Office of the State Engineer uses for this
+      well, the number on the physical tag at the wellhead. Recorded for very
+      few wells. Empty where no cross-reference has been recorded.
+  alternate_id_nmose:
+    title: NMOSE identifier (unclassified)
+    description: >-
+      Identifier attributed to the New Mexico Office of the State Engineer
+      that was recorded without saying which kind it is, so it is neither a
+      point of diversion number nor a well tag id as far as this record knows.
+      Legacy data. Empty where no cross-reference has been recorded.
+  alternate_id_plss:
+    title: PLSS location
+    description: >-
+      Public Land Survey System description of where the well sits, written as
+      a dotted township, range and section sequence. A survey grid reference
+      rather than an identifier an agency issued, and it is not unique to a
+      well. Comma separated where more than one has been recorded.
+  alternate_id_usgs:
+    title: USGS site number
+    description: >-
+      Site number the United States Geological Survey uses for this well, the
+      key its National Water Information System records are filed under. Empty
       where no cross-reference has been recorded.
+  alternate_id_nmed:
+    title: NMED identifier
+    description: >-
+      Identifier the New Mexico Environment Department uses for this well.
+      Empty where no cross-reference has been recorded.
+  alternate_id_twdb:
+    title: TWDB identifier
+    description: >-
+      Identifier the Texas Water Development Board uses for this well, carried
+      by the few wells near the state line that both agencies track. Empty
+      where no cross-reference has been recorded.
+  alternate_id_unknown:
+    title: Unattributed identifier
+    description: >-
+      Identifier carried over from legacy records with no note of which
+      organisation issued it. Treat it as a lead rather than a
+      cross-reference: nobody can source it, and where it disagrees with an
+      identifier in one of the columns above the attributed one is the better
+      answer.
+  alternate_id_other:
+    title: Other alternate identifiers
+    description: >-
+      Identifiers from organisations that have no column of their own on this
+      layer, written as organisation followed by the identifier and separated
+      by commas. Normally empty. A value here means an organisation has
+      started issuing identifiers that this layer does not yet break out, and
+      is worth reporting.
   well_purpose:
     title: Well purposes
     description: >-

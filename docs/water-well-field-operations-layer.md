@@ -207,10 +207,44 @@ trip; an array does not.
 | `name` | `thing.name` |
 | `station_type` | `'water well'::text`. Named `station_type` rather than `thing_type` to match the naming already established on the public thing-type views (consolidation, see the note at the top of this document) |
 | `release_status` | `thing.release_status` |
-| `alternate_ids` | `thing_id_link`, joined as `organization:alternate_id` pairs |
+| `alternate_id_nmbgmr`, `alternate_id_nmose_pod`, `alternate_id_nmose_well_tag`, `alternate_id_nmose`, `alternate_id_plss`, `alternate_id_usgs`, `alternate_id_nmed`, `alternate_id_twdb`, `alternate_id_unknown` | `thing_id_link.alternate_id`, one column per issuing organization, comma-joined where a well carries more than one from the same one. Replaced the single `alternate_ids` column as of `a3b4c5d6e7f8` -- see the note below |
+| `alternate_id_other` | `thing_id_link`, still as `organization: alternate_id` pairs, for organizations with no column of their own |
 | `latitude`, `longitude` | `ST_Y`/`ST_X` of the same point, decimal degrees on WGS 84 -- a plain number survives a CSV export, which drops the geometry, and a crew can read it into a handheld GPS |
 | `elevation` | `location.elevation`, converted from metres to feet and rounded to two decimals, as of `f2a3b4c5d6e7`. Every other measurement on this layer is already in feet. The column keeps the name `elevation` -- pygeoapi publishes the unit per field (`x-ogc-unit`/`x-ogc-unitLang`), so the name does not need to carry it -- which means this layer's `elevation` entry in `core/ogc-field-descriptions.yml` has to override the shared `_defaults` entry, which is metres, or the schema would describe the wrong unit |
 | `point` | `location.point`, most recent association (the shared `LATEST_LOCATION_CTE`) |
+
+**Alternate identifiers split per organization**, the same way the notes below
+split per `note_type`, and for the same reason: the packed column could not be
+used as a join key. An alternate identifier exists so a crew can match this
+layer against the issuing agency's own extract, and `NMBGMR: SO-0125, NMOSE:
+RG-45678` matches nothing without string surgery.
+
+NMOSE needs three columns rather than one because organization alone does not
+identify the identifier. `relation` is what separates an `OSEPOD` point of
+diversion number from an `OSEWellTagID`, and the two are not interchangeable
+against an OSE extract. The remaining organizations use one relation each.
+
+`alternate_id_other` is the catch-all, and the reason the split stays lossless.
+The seven named organizations are every value `thing_id_link` holds today, and
+the column is not restricted to them, so a fixed list of columns cannot stay
+complete. Without the catch-all an identifier from a new organization would
+vanish from the layer, which the packed column it replaced could not do. It is
+empty in normal operation, and a value in it means the list needs revisiting.
+
+Blank identifiers are dropped rather than aggregated: roughly 150 NMOSE
+`same_as` links carry an empty `alternate_id`, and letting them through would
+produce a cell that looks populated but holds nothing.
+
+The comma separator is not safe to split `alternate_id_nmbgmr` on. NMBGMR
+identifiers are frequently owner or site names rather than codes, and 245 of
+them contain a comma already, as in `Aguilar, Owens`. Against that, exactly one
+well in this record carries two NMBGMR identifiers, so the separator earns
+almost nothing on that column while making a few hundred values look like two.
+Kept comma-joined anyway, for consistency with every other multi-valued column
+on the layer, and because the column it replaced had the same ambiguity: this
+is a limitation carried forward, not one the split introduced. A separator that
+does not collide (` | `, which the note columns already use) is the fix if this
+ever bites.
 
 `nma_pk_welldata`, `county`, `state`, `quad_name`, `nma_formation_zone`, and
 `elevation_method` (and its `data_provenance` lookup) were dropped in the
@@ -655,6 +689,13 @@ Still open:
    largest table in the schema. If the nightly refresh proves too slow, the
    fallback is to source the three continuous columns from
    `transducer_daily_data` instead.
+5. **The alternate-identifier columns are a snapshot, not the vocabulary.**
+   The seven named organizations, across nine columns, are the ones water
+   wells actually carried when the split shipped, out of several hundred the
+   `organization` lexicon allows.
+   `alternate_id_other` catches the rest, so nothing is lost, but a non-empty
+   `alternate_id_other` is the signal that an organization has become common
+   enough to deserve its own column. Nothing watches for that automatically.
 
 ## 12. Out of scope
 
