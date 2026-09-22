@@ -2,6 +2,7 @@ name: pr-title-lint
 
 # Enforces Conventional Commits on PR titles so squash-merged commits drive
 # release-please correctly. See Data Services Versioning Standard §7.
+# Also requires a BDMS Jira key in the title (BDMS-1278).
 
 on:
   pull_request:
@@ -36,3 +37,38 @@ jobs:
           subjectPatternError: |
             PR title subject must start with a lowercase letter.
             Example: `feat: add /wells/{id}/assets endpoint`
+
+  # Requires a Jira key so every squash-merged commit traces back to a ticket.
+  # The key goes at the end: the subject must start lowercase (above), so a
+  # leading `BDMS-123` would fail the Conventional Commits check.
+  jira-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a BDMS ticket key
+        env:
+          # Passed through env, never interpolated into the script, so a
+          # crafted title cannot inject shell.
+          TITLE: ${{ github.event.pull_request.title }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # Automated PRs have no ticket: Dependabot bumps, release-please
+          # release PRs, and forward-merge PRs (which may be opened with a
+          # PAT, so they are matched by title rather than author).
+          if [[ "$AUTHOR" == "dependabot[bot]" || "$AUTHOR" == "github-actions[bot]" ]]; then
+            echo "Skipping: PR opened by $AUTHOR."
+            exit 0
+          fi
+          release_re='^chore(\([^)]*\))?: release v?[0-9]'
+          merge_re='^chore: merge .+ into (staging|production)$'
+          if [[ "$TITLE" =~ $release_re || "$TITLE" =~ $merge_re ]]; then
+            echo "Skipping: automated release or forward-merge PR."
+            exit 0
+          fi
+
+          if [[ "$TITLE" =~ BDMS-[0-9]+ ]]; then
+            echo "Found Jira key ${BASH_REMATCH[0]}."
+            exit 0
+          fi
+
+          echo "::error title=Missing Jira key::PR title must reference a Jira ticket as BDMS-<number> (uppercase, hyphenated). Example: feat(ogc): publish elevation in feet (BDMS-1256)"
+          exit 1
