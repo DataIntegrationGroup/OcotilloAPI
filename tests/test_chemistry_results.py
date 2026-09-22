@@ -199,6 +199,14 @@ def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
     assert observation_dates == {"2019-04-09T00:00:00Z"}
 
 
+def test_every_result_in_a_sample_carries_its_sample_point_id(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+
+    april_sample_id = two_samples["april"]
+    april = [item for item in items if item["sample_id"] == april_sample_id]
+    assert {item["sample_point_id"] for item in april} == {"RES-APR"}
+
+
 def test_analysis_date_is_reported_separately(two_samples):
     items = _results(two_samples["thing_id"], 2019)
     by_kind = {item["result_kind"]: item for item in items}

@@ -31,6 +31,7 @@ class WaterChemistryResultResponse(BaseModel):
     thing_id: int
     station_name: str | None = None
     sample_id: int | None = None
+    sample_point_id: str | None = None
     parameter_name: str
     value: float | None = None
     unit: str | None = None

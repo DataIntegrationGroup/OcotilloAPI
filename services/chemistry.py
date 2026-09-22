@@ -221,6 +221,9 @@ def _water_chemistry_results_selectable():
 
 def _lab_water_chemistry_results_query(model, source: SourceKind):
     observed_at = NMA_Chemistry_SampleInfo.collection_date
+    sample_point_id = NMA_Chemistry_SampleInfo.nma_sample_point_id.label(
+        "sample_point_id"
+    )
     parameter_name = func.nullif(
         func.trim(func.coalesce(model.analyte, model.symbol)),
         "",
@@ -234,6 +237,7 @@ def _lab_water_chemistry_results_query(model, source: SourceKind):
             Thing.name.label("station_name"),
             Thing.thing_type.label("thing_type"),
             NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            sample_point_id,
             parameter_name.label("parameter_name"),
             model.sample_value.label("value"),
             model.units.label("unit"),
@@ -264,6 +268,9 @@ def _lab_water_chemistry_results_query(model, source: SourceKind):
 
 def _field_water_chemistry_results_query():
     observed_at = NMA_Chemistry_SampleInfo.collection_date
+    sample_point_id = NMA_Chemistry_SampleInfo.nma_sample_point_id.label(
+        "sample_point_id"
+    )
     parameter_name = func.nullif(
         func.trim(NMA_FieldParameters.field_parameter),
         "",
@@ -279,6 +286,7 @@ def _field_water_chemistry_results_query():
             Thing.name.label("station_name"),
             Thing.thing_type.label("thing_type"),
             NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            sample_point_id,
             parameter_name.label("parameter_name"),
             NMA_FieldParameters.sample_value.label("value"),
             NMA_FieldParameters.units.label("unit"),
@@ -451,6 +459,7 @@ def _water_chemistry_result_response(
         "thing_id": _row_value(row, "thing_id"),
         "station_name": _row_value(row, "station_name"),
         "sample_id": _row_value(row, "sample_id"),
+        "sample_point_id": _row_value(row, "sample_point_id"),
         "parameter_name": _row_value(row, "parameter_name"),
         "value": _row_value(row, "value"),
         "unit": _row_value(row, "unit"),
