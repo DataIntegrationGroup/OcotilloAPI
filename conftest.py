@@ -89,7 +89,10 @@ def _offline_google_auth(monkeypatch):
         )
         with handle as fh:
             json.dump(
-                {"type": "service_account", "project_id": "waterdatainitiative-offline"},
+                {
+                    "type": "service_account",
+                    "project_id": "waterdatainitiative-offline",
+                },
                 fh,
             )
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", handle.name)
