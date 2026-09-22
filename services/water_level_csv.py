@@ -53,6 +53,7 @@ from schemas.water_level_csv import (
 )
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+from services.ingest_result import IngestResult
 from services.field_event_participant_helper import (
     ensure_field_event_participants,
     resolve_measuring_participant,
@@ -64,12 +65,8 @@ HEADER_ALIASES: dict[str, str] = dict(WATER_LEVEL_HEADER_ALIASES)
 IGNORED_FIELDS: set[str] = set(WATER_LEVEL_IGNORED_FIELDS)
 
 
-@dataclass
-class BulkUploadResult:
-    exit_code: int
-    stdout: str
-    stderr: str
-    payload: dict[str, Any]
+# One shape for every ingest's return value; see services/ingest_result.py.
+BulkUploadResult = IngestResult
 
 
 @dataclass

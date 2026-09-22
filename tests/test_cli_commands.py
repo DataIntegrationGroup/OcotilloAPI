@@ -15,7 +15,10 @@
 # ===============================================================================
 from __future__ import annotations
 
+import ast
 import gzip
+import subprocess
+import sys
 import textwrap
 import uuid
 from pathlib import Path
@@ -871,6 +874,53 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
                     session.flush()
 
             session.commit()
+
+
+def test_cli_module_scope_imports_never_reach_db_engine():
+    """`oco` must not import anything that reaches db/engine.py at module scope.
+
+    `db/engine.py` builds its connection settings when it is imported, and
+    `cli/cli.py` calls `load_dotenv()` below its imports. A module-level
+    `from services.x import ...` whose chain reaches the engine therefore
+    configures the database from an environment that has not been loaded yet,
+    and every command dies with `connect() missing 1 required positional
+    argument: 'user'`. Service imports belong inside the command that needs
+    them.
+    """
+    module_level: list[str] = []
+    for node in ast.parse(Path("cli/cli.py").read_text()).body:
+        if isinstance(node, ast.ImportFrom) and node.module:
+            module_level.append(node.module)
+            # `from services import ingest_raw_zone` imports a submodule, not a
+            # symbol -- the package name alone would hide what it drags in.
+            module_level.extend(f"{node.module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Import):
+            module_level.extend(alias.name for alias in node.names)
+
+    # Import exactly those, in a clean interpreter, and see what came with them.
+    # A `from x import y` where y is a symbol rather than a module is skipped,
+    # not failed: only the ones that resolve to modules can drag anything in.
+    script = "\n".join(
+        ["import importlib, sys"]
+        + [
+            f"try:\n    importlib.import_module({name!r})\n"
+            f"except ModuleNotFoundError:\n    pass"
+            for name in module_level
+        ]
+        + ["print('YES' if 'db.engine' in sys.modules else 'NO')"]
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=Path.cwd(),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "NO", (
+        "a module-level import in cli/cli.py pulls in db.engine, which reads "
+        "its settings before load_dotenv() runs. Move it inside the command."
+    )
 
 
 # ============= EOF =============================================

@@ -15,15 +15,19 @@
 # ===============================================================================
 import os
 import re
-from collections import Counter, defaultdict
 from enum import Enum
 from pathlib import Path
-from textwrap import shorten, wrap
 
 import pandas as pd
 import typer
 from dotenv import load_dotenv
 
+from cli import ingest_report as report
+
+# Anything reaching db/engine.py must be imported lazily, inside the command
+# that needs it: the engine reads its connection settings at import time, and
+# load_dotenv() below has not run yet. (This module is safe -- it imports no
+# engine.)
 from services.materialized_views import MATERIALIZED_VIEWS
 
 # CLI should load `.env` defaults without clobbering an explicitly prepared environment.
@@ -578,155 +582,39 @@ def well_inventory_csv(
     detail = payload.get("detail")
     colors = _palette(theme)
 
-    if result.exit_code == 0:
-        typer.secho("[WELL INVENTORY IMPORT] SUCCESS", fg=colors["ok"], bold=True)
-    else:
-        typer.secho(
-            "[WELL INVENTORY IMPORT] COMPLETED WITH ISSUES",
-            fg=colors["issue"],
-            bold=True,
-        )
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.banner(
+        (
+            "[WELL INVENTORY IMPORT] SUCCESS"
+            if result.exit_code == 0
+            else "[WELL INVENTORY IMPORT] COMPLETED WITH ISSUES"
+        ),
+        colors,
+        ok=result.exit_code == 0,
+    )
 
     if summary:
-        processed = summary.get("total_rows_processed", 0)
-        imported = summary.get("total_rows_imported", 0)
-        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
-        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
-        label_width = 16
-        value_width = 8
-        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
-        typer.secho(
-            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
-            fg=colors["accent"],
-        )
-        typer.secho(
-            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
-            fg=colors["ok"],
-        )
-        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
-        typer.secho(
-            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
-            fg=issue_color,
-        )
-        typer.echo()
+        report.summary_section(report.import_summary_rows(summary, colors), colors)
 
     if validation_errors:
+        # The importer reports a row number with every error, so anything
+        # without one is still filed under a row -- an unlabeled one.
+        entries = report.parse_validation_entries(validation_errors, default_row="?")
         typer.secho("VALIDATION", fg=colors["accent"], bold=True)
         typer.secho(
             f"Validation errors: {len(validation_errors)}",
             fg=colors["issue"],
             bold=True,
         )
-        common_errors = Counter()
-        for err in validation_errors:
-            field = err.get("field", "unknown")
-            message = err.get("error") or err.get("msg") or "validation error"
-            common_errors[(field, message)] += 1
+        typer.secho("Most common validation errors:", fg=colors["accent"], bold=True)
+        report.common_errors_table(entries, colors)
+        shown = report.grouped_row_errors(entries, colors, show_input=True)
+        report.truncation_note(len(validation_errors), shown, colors)
 
-        if common_errors:
-            typer.secho(
-                "Most common validation errors:", fg=colors["accent"], bold=True
-            )
-            field_width = 28
-            count_width = 5
-            error_width = 100
-            typer.secho(
-                f"  {'#':>2} | {'field':<{field_width}} | {'count':>{count_width}} | error",
-                fg=colors["muted"],
-                bold=True,
-            )
-            typer.secho(
-                "  " + "-" * (2 + 3 + field_width + 3 + count_width + 3 + error_width),
-                fg=colors["muted"],
-            )
-            for idx, ((field, message), count) in enumerate(
-                common_errors.most_common(5), start=1
-            ):
-                error_one_line = shorten(
-                    str(message).replace("\n", " "),
-                    width=error_width,
-                    placeholder="...",
-                )
-                field_text = shorten(str(field), width=field_width, placeholder="...")
-                field_part = typer.style(
-                    f"{field_text:<{field_width}}", fg=colors["field"], bold=True
-                )
-                count_part = f"{int(count):>{count_width}}"
-                idx_part = typer.style(f"{idx:>2}", fg=colors["issue"])
-                error_part = typer.style(error_one_line, fg=colors["issue"])
-                typer.echo(f"  {idx_part} | {field_part} | {count_part} | {error_part}")
-            typer.echo()
-
-        grouped_errors = defaultdict(list)
-        for err in validation_errors:
-            row = err.get("row", "?")
-            grouped_errors[row].append(err)
-
-        def _row_sort_key(row_value):
-            try:
-                return (0, int(row_value))
-            except (TypeError, ValueError):
-                return (1, str(row_value))
-
-        max_errors_to_show = 10
-        shown = 0
-        first_group = True
-        for row in sorted(grouped_errors.keys(), key=_row_sort_key):
-            if shown >= max_errors_to_show:
-                break
-
-            row_errors = grouped_errors[row]
-            if not first_group:
-                typer.secho("  " + "-" * 56, fg=colors["muted"])
-            first_group = False
-            typer.secho(
-                f"  Row {row} ({len(row_errors)} issue{'s' if len(row_errors) != 1 else ''})",
-                fg=colors["accent"],
-                bold=True,
-            )
-
-            for idx, err in enumerate(row_errors, start=1):
-                if shown >= max_errors_to_show:
-                    break
-                field = err.get("field", "unknown")
-                message = err.get("error") or err.get("msg") or "validation error"
-                input_value = err.get("value")
-                prefix_raw = f"    {idx}. "
-                field_raw = f"{field}:"
-                msg_chunks = wrap(
-                    str(message),
-                    width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
-                ) or [""]
-                prefix = typer.style(prefix_raw, fg=colors["issue"])
-                field_part = typer.style(field_raw, fg=colors["field"], bold=True)
-                first_msg_part = typer.style(msg_chunks[0], fg=colors["issue"])
-                typer.echo(f"{prefix}{field_part} {first_msg_part}")
-                msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
-                for chunk in msg_chunks[1:]:
-                    typer.secho(f"{msg_indent}{chunk}", fg=colors["issue"])
-                if input_value is not None:
-                    input_prefix = "       input: "
-                    input_chunks = wrap(
-                        str(input_value), width=max(20, 200 - len(input_prefix))
-                    ) or [""]
-                    typer.echo(f"{input_prefix}{input_chunks[0]}")
-                    input_indent = " " * len(input_prefix)
-                    for chunk in input_chunks[1:]:
-                        typer.echo(f"{input_indent}{chunk}")
-                shown += 1
-            typer.echo()
-
-        if len(validation_errors) > shown:
-            typer.secho(
-                f"... and {len(validation_errors) - shown} more validation errors",
-                fg=colors["issue"],
-            )
     if detail:
         typer.secho("ERRORS", fg=colors["accent"], bold=True)
         typer.secho(f"Error: {detail}", fg=colors["issue"], bold=True)
 
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.rule(colors)
 
     raise typer.Exit(result.exit_code)
 
@@ -788,109 +676,28 @@ def water_levels_bulk_upload(
     validation_errors = payload.get("validation_errors", [])
     rows_with_issues = summary.get("validation_errors_or_warnings", 0)
 
-    if result.exit_code == 0 and not rows_with_issues:
-        typer.secho("[WATER LEVEL IMPORT] SUCCESS", fg=colors["ok"], bold=True)
-    elif result.exit_code == 0:
-        typer.secho(
-            "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
-            fg=colors["issue"],
-            bold=True,
-        )
-    else:
-        typer.secho(
-            "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
-            fg=colors["issue"],
-            bold=True,
-        )
-    typer.secho("=" * 72, fg=colors["accent"])
+    # Rows can load while others fail, so a zero exit with issues is still
+    # "completed with issues" rather than a clean success.
+    report.banner(
+        (
+            "[WATER LEVEL IMPORT] SUCCESS"
+            if result.exit_code == 0 and not rows_with_issues
+            else "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES"
+        ),
+        colors,
+        ok=result.exit_code == 0 and not rows_with_issues,
+    )
 
-    parsed_validation: list[tuple[str | None, str, str]] = []
-    for entry in validation_errors:
-        if isinstance(entry, dict):
-            row_value = entry.get("row")
-            row = str(row_value) if row_value is not None else None
-            field = str(entry.get("field") or "error").strip()
-            message = str(
-                entry.get("error") or entry.get("msg") or "validation error"
-            ).strip()
-            parsed_validation.append((row, field, message))
-            continue
-
-        text = str(entry).strip()
-        m = re.match(r"^Row\s+(\d+):\s*(.+)$", text)
-        if not m:
-            parsed_validation.append((None, "error", text))
-            continue
-
-        row = m.group(1)
-        detail = m.group(2).strip()
-        if " - " in detail:
-            field, message = detail.split(" - ", 1)
-        elif req := re.match(r"^Missing required field '([^']+)'$", detail):
-            field = req.group(1).strip()
-            message = "Missing required field"
-        else:
-            field, message = "error", detail
-        parsed_validation.append((row, field.strip(), message.strip()))
+    # This importer reports most errors as preformatted strings; anything with
+    # no row number is listed on its own below rather than grouped.
+    entries = report.parse_validation_entries(validation_errors, default_field="error")
 
     if summary:
-        processed = summary.get("total_rows_processed", 0)
-        imported = summary.get("total_rows_imported", 0)
-        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
-        label_width = 16
-        value_width = 8
-        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
-        typer.secho(
-            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
-            fg=colors["accent"],
-        )
-        typer.secho(
-            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
-            fg=colors["ok"],
-        )
-        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
-        typer.secho(
-            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
-            fg=issue_color,
-        )
-        typer.echo()
+        report.summary_section(report.import_summary_rows(summary, colors), colors)
 
-    if parsed_validation:
-        summary_counts: Counter[tuple[str, str]] = Counter(
-            (field, message) for _row, field, message in parsed_validation
-        )
-
-        if summary_counts:
-            typer.secho("VALIDATION SUMMARY", fg=colors["accent"], bold=True)
-            field_width = 28
-            count_width = 5
-            error_width = 100
-            typer.secho(
-                f"  {'#':>2} | {'field':<{field_width}} | {'count':>{count_width}} | error",
-                fg=colors["muted"],
-                bold=True,
-            )
-            typer.secho(
-                "  " + "-" * (2 + 3 + field_width + 3 + count_width + 3 + error_width),
-                fg=colors["muted"],
-            )
-            for idx, ((field, message), count) in enumerate(
-                summary_counts.most_common(5), start=1
-            ):
-                field_text = shorten(str(field), width=field_width, placeholder="...")
-                error_one_line = shorten(
-                    str(message).replace("\\n", " "),
-                    width=error_width,
-                    placeholder="...",
-                )
-                idx_part = typer.style(f"{idx:>2}", fg=colors["issue"])
-                field_part = typer.style(
-                    f"{field_text:<{field_width}}", fg=colors["field"], bold=True
-                )
-                count_part = f"{int(count):>{count_width}}"
-                error_part = typer.style(error_one_line, fg=colors["issue"])
-                typer.echo(f"  {idx_part} | {field_part} | {count_part} | {error_part}")
-            typer.echo()
+    if entries:
+        typer.secho("VALIDATION SUMMARY", fg=colors["accent"], bold=True)
+        report.common_errors_table(entries, colors)
 
     if validation_errors:
         typer.secho("VALIDATION", fg=colors["accent"], bold=True)
@@ -899,65 +706,20 @@ def water_levels_bulk_upload(
             fg=colors["issue"],
             bold=True,
         )
+        shown = report.grouped_row_errors(entries, colors)
 
-        row_grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        generic_errors: list[str] = []
-        for row, field, message in parsed_validation:
-            if row is None:
-                if field and field != "error":
-                    generic_errors.append(f"{field}: {message}")
-                else:
-                    generic_errors.append(message)
-                continue
-            row_grouped[row].append((field, message))
-
-        max_errors_to_show = 10
-        shown = 0
-        first_group = True
-        for row in sorted(
-            row_grouped.keys(), key=lambda r: int(r) if str(r).isdigit() else 10**9
-        ):
-            if shown >= max_errors_to_show:
-                break
-            if not first_group:
-                typer.secho("  " + "-" * 56, fg=colors["muted"])
-            first_group = False
-            errors = row_grouped[row]
-            typer.secho(
-                f"  Row {row} ({len(errors)} issue{'s' if len(errors) != 1 else ''})",
-                fg=colors["accent"],
-                bold=True,
-            )
-            for idx, (field, message) in enumerate(errors, start=1):
-                if shown >= max_errors_to_show:
-                    break
-                prefix_raw = f"    {idx}. "
-                field_raw = f"{field}:"
-                msg_chunks = wrap(
-                    str(message),
-                    width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
-                ) or [""]
-                prefix = typer.style(prefix_raw, fg=colors["issue"])
-                field_part = typer.style(field_raw, fg=colors["field"], bold=True)
-                first_msg_part = typer.style(msg_chunks[0], fg=colors["issue"])
-                typer.echo(f"{prefix}{field_part} {first_msg_part}")
-                msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
-                for chunk in msg_chunks[1:]:
-                    typer.secho(f"{msg_indent}{chunk}", fg=colors["issue"])
-                shown += 1
-            typer.echo()
-
-        for entry in generic_errors[: max(0, max_errors_to_show - shown)]:
+        rowless = [
+            f"{e.field}: {e.message}" if e.field and e.field != "error" else e.message
+            for e in entries
+            if e.row is None
+        ]
+        for entry in rowless[: max(0, report.MAX_ROW_ERRORS_SHOWN - shown)]:
             typer.secho(f"  - {entry}", fg=colors["issue"])
             shown += 1
 
-        if len(validation_errors) > shown:
-            typer.secho(
-                f"... and {len(validation_errors) - shown} more validation errors",
-                fg=colors["issue"],
-            )
+        report.truncation_note(len(validation_errors), shown, colors)
 
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.rule(colors)
     raise typer.Exit(result.exit_code)
 
 
@@ -990,86 +752,71 @@ def water_chemistry_bulk_upload(
 
     payload = result.payload if isinstance(result.payload, dict) else {}
     summary = payload.get("summary", {})
-    validation_errors = payload.get("validation_errors", [])
-    warnings = payload.get("warnings", [])
-    created_samples = payload.get("created_samples", [])
-    skipped_duplicates = payload.get("skipped_duplicates", [])
 
-    if result.exit_code == 0:
-        typer.secho("[WATER CHEMISTRY IMPORT] SUCCESS", fg=colors["ok"], bold=True)
-    else:
-        typer.secho(
-            "[WATER CHEMISTRY IMPORT] COMPLETED WITH ISSUES",
-            fg=colors["issue"],
-            bold=True,
-        )
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.banner(
+        (
+            "[WATER CHEMISTRY IMPORT] SUCCESS"
+            if result.exit_code == 0
+            else "[WATER CHEMISTRY IMPORT] COMPLETED WITH ISSUES"
+        ),
+        colors,
+        ok=result.exit_code == 0,
+    )
 
     if summary:
-        processed = summary.get("total_rows_processed", 0)
-        imported = summary.get("total_rows_imported", 0)
-        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
-        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
-        label_width = 16
-        value_width = 8
-        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
-        typer.secho(
-            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
-            fg=colors["accent"],
-        )
-        typer.secho(
-            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
-            fg=colors["ok"],
-        )
-        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
-        typer.secho(
-            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
-            fg=issue_color,
-        )
-        typer.echo()
+        report.summary_section(report.import_summary_rows(summary, colors), colors)
 
-    if created_samples:
-        typer.secho("CREATED SAMPLES", fg=colors["ok"], bold=True)
-        for sample in created_samples:
-            typer.secho(
-                f"  - {sample['sample_point_id']} "
-                f"(WCLab_ID {sample.get('wclab_id')}): {sample.get('rows', 0)} row(s)",
-                fg=colors["ok"],
-            )
-        typer.echo()
+    # These lists are what the engineer acts on, so they print in full.
+    report.bullet_section(
+        "CREATED SAMPLES",
+        payload.get("created_samples", []),
+        colors,
+        color_key="ok",
+        limit=None,
+        formatter=lambda sample: (
+            f"{sample['sample_point_id']} (WCLab_ID {sample.get('wclab_id')}): "
+            f"{sample.get('rows', 0)} row(s)"
+        ),
+    )
+    report.bullet_section(
+        "SKIPPED (already ingested)",
+        payload.get("skipped_duplicates", []),
+        colors,
+        color_key="field",
+        title_color_key="muted",
+        limit=None,
+        formatter=lambda dupe: f"{dupe['pointid']} (WCLab_ID {dupe.get('wclab_id')})",
+    )
+    report.bullet_section(
+        "WARNINGS (loaded, but check these)",
+        payload.get("warnings", []),
+        colors,
+        color_key="field",
+        limit=None,
+    )
 
-    if skipped_duplicates:
-        typer.secho("SKIPPED (already ingested)", fg=colors["muted"], bold=True)
-        for dupe in skipped_duplicates:
-            typer.secho(
-                f"  - {dupe['pointid']} (WCLab_ID {dupe.get('wclab_id')})",
-                fg=colors["field"],
-            )
-        typer.echo()
+    report.validation_errors_section(payload.get("validation_errors", []), colors)
 
-    if warnings:
-        typer.secho("WARNINGS (loaded, but check these)", fg=colors["field"], bold=True)
-        for entry in warnings:
-            typer.secho(f"  - {entry}", fg=colors["field"])
-        typer.echo()
-
-    if validation_errors:
-        typer.secho("VALIDATION", fg=colors["accent"], bold=True)
-        typer.secho(
-            f"Validation errors: {len(validation_errors)}",
-            fg=colors["issue"],
-            bold=True,
-        )
-        for entry in validation_errors[:25]:
-            typer.secho(f"  - {entry}", fg=colors["issue"])
-        if len(validation_errors) > 25:
-            typer.secho(
-                f"... and {len(validation_errors) - 25} more validation errors",
-                fg=colors["issue"],
-            )
-
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.rule(colors)
     raise typer.Exit(result.exit_code)
+
+
+def _describe_failed_file(record: dict) -> str:
+    """Why a Drive workbook failed, however the ingest reported it.
+
+    A hard failure carries an ``error``; a data-quality abort carries only the
+    validation errors, and the first of those is the useful headline.
+    """
+    detail = record.get("error")
+    if not detail:
+        errors = record.get("payload", {}).get("validation_errors") or []
+        if errors:
+            detail = errors[0]
+            if len(errors) > 1:
+                detail += f" (+{len(errors) - 1} more)"
+        else:
+            detail = "ingestion aborted"
+    return f"{record['name']}: {detail}"
 
 
 @water_chemistry.command("sync-drive")
@@ -1104,62 +851,62 @@ def water_chemistry_sync_drive(
         raise typer.Exit(1) from exc
 
     summary = result.to_payload()["summary"]
-    header = (
-        "[CHEMISTRY DRIVE SYNC] DRY RUN" if result.dry_run else "[CHEMISTRY DRIVE SYNC]"
+    report.banner(
+        (
+            "[CHEMISTRY DRIVE SYNC] DRY RUN"
+            if result.dry_run
+            else "[CHEMISTRY DRIVE SYNC]"
+        ),
+        colors,
+        ok=result.exit_code == 0,
     )
-    header_color = colors["ok"] if result.exit_code == 0 else colors["issue"]
-    typer.secho(header, fg=header_color, bold=True)
-    typer.secho("=" * 72, fg=colors["accent"])
     typer.secho(f"Folder: {result.folder_id}", fg=colors["accent"])
     typer.echo()
 
-    typer.secho("SUMMARY", fg=colors["accent"], bold=True)
-    for label, value, color in (
-        ("files_seen", summary["files_seen"], colors["accent"]),
-        ("new_files", summary["new_files"], colors["accent"]),
-        ("ingested", summary["ingested"], colors["ok"]),
-        ("skipped", summary["skipped"], colors["muted"]),
-        (
-            "failed",
-            summary["failed"],
-            colors["issue"] if summary["failed"] else colors["ok"],
+    report.summary_section(
+        [
+            ("files_seen", summary["files_seen"], "accent"),
+            ("new_files", summary["new_files"], "accent"),
+            ("ingested", summary["ingested"], "ok"),
+            ("skipped", summary["skipped"], "muted"),
+            ("failed", summary["failed"], "issue" if summary["failed"] else "ok"),
+        ],
+        colors,
+        label_width=12,
+        value_width=6,
+        divider=False,
+    )
+
+    if result.dry_run:
+        report.bullet_section(
+            "NEW FILES (not ingested)",
+            result.new_files,
+            colors,
+            color_key="field",
+            title_color_key="accent",
+            limit=None,
+        )
+
+    report.bullet_section(
+        "INGESTED",
+        result.ingested,
+        colors,
+        color_key="ok",
+        limit=None,
+        formatter=lambda record: (
+            f"{record['name']}: {record.get('rows_imported', 0)} row(s)"
         ),
-    ):
-        typer.secho(f"  {label:<12} | {value:>6}", fg=color)
-    typer.echo()
+    )
+    report.bullet_section(
+        "FAILED",
+        result.failed,
+        colors,
+        color_key="issue",
+        limit=None,
+        formatter=_describe_failed_file,
+    )
 
-    if result.dry_run and result.new_files:
-        typer.secho("NEW FILES (not ingested)", fg=colors["accent"], bold=True)
-        for name in result.new_files:
-            typer.secho(f"  - {name}", fg=colors["field"])
-        typer.echo()
-
-    if result.ingested:
-        typer.secho("INGESTED", fg=colors["ok"], bold=True)
-        for record in result.ingested:
-            typer.secho(
-                f"  - {record['name']}: {record.get('rows_imported', 0)} row(s)",
-                fg=colors["ok"],
-            )
-        typer.echo()
-
-    if result.failed:
-        typer.secho("FAILED", fg=colors["issue"], bold=True)
-        for record in result.failed:
-            detail = record.get("error")
-            if not detail:
-                payload = record.get("payload", {})
-                errors = payload.get("validation_errors") or []
-                if errors:
-                    detail = errors[0]
-                    if len(errors) > 1:
-                        detail += f" (+{len(errors) - 1} more)"
-                else:
-                    detail = "ingestion aborted"
-            typer.secho(f"  - {record['name']}: {detail}", fg=colors["issue"])
-        typer.echo()
-
-    typer.secho("=" * 72, fg=colors["accent"])
+    report.rule(colors)
     raise typer.Exit(result.exit_code)
 
 
@@ -1233,6 +980,264 @@ def water_chemistry_manifest_status(
         typer.echo()
 
     typer.secho("=" * 72, fg=colors["accent"])
+
+
+def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> None:
+    """Print the outcome of a chemistry field-sheet import."""
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+
+    if summary.get("dry_run"):
+        headline = "[CHEMISTRY FIELD SHEET] DRY RUN (nothing written)"
+    elif result.exit_code == 0:
+        headline = "[CHEMISTRY FIELD SHEET] SUCCESS"
+    else:
+        headline = "[CHEMISTRY FIELD SHEET] ABORTED -- nothing written"
+    report.banner(headline, colors, ok=result.exit_code == 0)
+    typer.secho(f"Source: {source}", fg=colors["accent"])
+    raw = payload.get("raw") or {}
+    if raw.get("load_id"):
+        verb = "Replayed" if raw.get("replayed") else "Archived"
+        typer.secho(
+            f"{verb}: {raw['dataset']}/{raw['load_id']} at {raw['url']}",
+            fg=colors["accent"],
+        )
+    typer.echo()
+
+    if summary:
+        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
+        report.summary_section(
+            [
+                ("rows read", summary.get("total_rows_processed", 0), "accent"),
+                ("readings loaded", summary.get("total_rows_imported", 0), "ok"),
+                ("samples created", summary.get("samples_created", 0), "ok"),
+                ("samples matched", summary.get("samples_matched", 0), "accent"),
+                ("readings skipped", summary.get("parameters_skipped", 0), "muted"),
+                (
+                    "rows_with_issues",
+                    rows_with_issues,
+                    "issue" if rows_with_issues else "ok",
+                ),
+            ],
+            colors,
+            label_width=17,
+            value_width=6,
+            divider=False,
+        )
+
+    def _describe_sample(sample: dict) -> str:
+        return (
+            f"{sample['sample_point_id']} "
+            f"({sample['pointid']} @ {sample['collection_date']})"
+        )
+
+    report.bullet_section(
+        "SAMPLES CREATED",
+        payload.get("samples_created", []),
+        colors,
+        color_key="ok",
+        limit=None,
+        formatter=_describe_sample,
+    )
+    report.bullet_section(
+        "SAMPLES MATCHED (already recorded for that well and date)",
+        payload.get("samples_matched", []),
+        colors,
+        color_key="field",
+        title_color_key="accent",
+        limit=None,
+        formatter=_describe_sample,
+    )
+    report.bullet_section(
+        "SKIPPED (already recorded)",
+        payload.get("skipped_parameters", []),
+        colors,
+        color_key="field",
+        title_color_key="muted",
+        formatter=lambda entry: (
+            f"{entry['sample_point_id']}: {entry['field_parameter']}"
+        ),
+    )
+    report.bullet_section(
+        "WARNINGS (loaded, but check these)",
+        payload.get("warnings", []),
+        colors,
+        color_key="field",
+    )
+
+    report.validation_errors_section(payload.get("validation_errors", []), colors)
+
+    report.rule(colors)
+
+
+@water_chemistry.command("sync-sheet")
+def water_chemistry_sync_sheet(
+    sheet: str = typer.Option(
+        None,
+        "--sheet-id",
+        "--url",
+        help=(
+            "Google spreadsheet id or URL holding the ChemistrySampleInfo and "
+            "FieldParameters tabs. Defaults to $CHEMISTRY_FIELD_SHEET_ID."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help=(
+            "Read, validate and report without writing anything -- no database "
+            "rows and no raw-zone snapshot."
+        ),
+    ),
+    replay: str = typer.Option(
+        None,
+        "--replay",
+        help=(
+            "Load an archived snapshot again instead of reading the sheet. "
+            "Pass a load id, or 'latest'."
+        ),
+    ),
+    no_raw: bool = typer.Option(
+        False,
+        "--no-raw",
+        help="Skip the raw-zone archive and map straight from the sheet.",
+    ),
+    raw_url: str = typer.Option(
+        None,
+        "--raw-url",
+        help=(
+            "Raw zone to archive into (gs://bucket/prefix or file:///path). "
+            "Defaults to $INGESTION_GCS_BUCKET, then $OCO_RAW_ZONE_DIR."
+        ),
+    ),
+    list_snapshots: bool = typer.Option(
+        False,
+        "--list-snapshots",
+        help="List the archived snapshots and exit.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    ingest the AMP chemistry field spreadsheet from Google Drive: the
+    ChemistrySampleInfo and FieldParameters tabs, into NMA_Chemistry_SampleInfo
+    and NMA_FieldParameters. Lab result tabs in the same workbook are left to
+    the LIMS ingest.
+
+    Samples are matched to what is already recorded on well PointID plus
+    collection date, so a field visit and its lab batch share one sample and
+    re-running loads nothing twice. Any data-quality problem aborts the whole
+    import.
+    """
+    from services.chemistry_drive import ChemistryDriveConfigError
+    from services.chemistry_field_params import (
+        FIELD_SHEET_DATASET,
+        replay_field_sheet,
+        sync_field_sheet,
+    )
+    from services.chemistry_field_sheet import FieldSheetError
+    from services.ingest_raw_zone import RawZoneError, list_snapshots as _snapshots
+
+    colors = _palette(theme)
+
+    if list_snapshots:
+        try:
+            snapshots = _snapshots(FIELD_SHEET_DATASET, raw_url=raw_url)
+        except RawZoneError as exc:
+            typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+            raise typer.Exit(1) from exc
+        report.banner("[CHEMISTRY FIELD SHEET] SNAPSHOTS", colors)
+        report.bullet_section(
+            "ARCHIVED SNAPSHOTS (newest last)",
+            snapshots,
+            colors,
+            color_key="field",
+            title_color_key="accent",
+            limit=None,
+        )
+        if not snapshots:
+            typer.secho("  none archived yet", fg=colors["muted"])
+        report.rule(colors)
+        raise typer.Exit(0)
+
+    try:
+        if replay:
+            result = replay_field_sheet(
+                None if replay == "latest" else replay,
+                dry_run=dry_run,
+                raw_url=raw_url,
+            )
+            source = f"raw zone snapshot {replay}"
+        else:
+            result = sync_field_sheet(
+                sheet, dry_run=dry_run, archive=not no_raw, raw_url=raw_url
+            )
+            source = sheet or os.environ.get("CHEMISTRY_FIELD_SHEET_ID", "")
+    except (ChemistryDriveConfigError, FieldSheetError, RawZoneError) as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    _render_field_sheet_result(result, colors, source)
+    raise typer.Exit(result.exit_code)
+
+
+@water_chemistry.command("field-upload")
+def water_chemistry_field_upload(
+    file_paths: list[str] = typer.Option(
+        ...,
+        "--file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help=(
+            "Downloaded copy of the field spreadsheet (.xlsx with both tabs, or "
+            ".csv). Repeat --file to pass one CSV per tab."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Read, validate and report without writing anything.",
+    ),
+    no_raw: bool = typer.Option(
+        False,
+        "--no-raw",
+        help="Skip the raw-zone archive and map straight from the file.",
+    ),
+    raw_url: str = typer.Option(
+        None,
+        "--raw-url",
+        help=(
+            "Raw zone to archive into (gs://bucket/prefix or file:///path). "
+            "Defaults to $INGESTION_GCS_BUCKET, then $OCO_RAW_ZONE_DIR."
+        ),
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    ingest a downloaded copy of the AMP chemistry field spreadsheet. Same rules
+    as `sync-sheet`, for an engineer who has the file but not Drive access to
+    the sheet.
+    """
+    from services.chemistry_field_params import upload_field_export
+    from services.chemistry_field_sheet import FieldSheetError
+    from services.ingest_raw_zone import RawZoneError
+
+    colors = _palette(theme)
+    try:
+        result = upload_field_export(
+            file_paths, dry_run=dry_run, archive=not no_raw, raw_url=raw_url
+        )
+    except (FieldSheetError, RawZoneError) as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    _render_field_sheet_result(result, colors, ", ".join(file_paths))
+    raise typer.Exit(result.exit_code)
 
 
 @data_migrations.command("list")
