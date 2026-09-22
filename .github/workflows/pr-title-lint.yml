@@ -58,7 +58,7 @@ jobs:
             echo "Skipping: PR opened by $AUTHOR."
             exit 0
           fi
-          release_re='^chore(\([^)]*\))?: release v?[0-9]'
+          release_re='^chore(\([^)]*\))?: release v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           merge_re='^chore: merge .+ into (staging|production)$'
           if [[ "$TITLE" =~ $release_re || "$TITLE" =~ $merge_re ]]; then
             echo "Skipping: automated release or forward-merge PR."
