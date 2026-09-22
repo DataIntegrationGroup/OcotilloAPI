@@ -185,6 +185,27 @@ was created by this run, by an earlier run, or by the LIMS ingest. A parameter
 already recorded for that sample is skipped, so **re-running the same sheet
 loads nothing twice**.
 
+### Ingest order matters
+
+The matching above is **one-directional**: the field sheet finds a sample the
+LIMS ingest made, but the LIMS ingest does not find one the field sheet made.
+LIMS decides "already loaded" on `WCLab_ID` alone
+(`_sample_exists_for_wclab` in `services/chemistry_lims.py`), and a
+sheet-created sample has no `WCLab_ID`. So:
+
+| Order | Result |
+|---|---|
+| LIMS, then field sheet | One sample. The sheet matches on PointID + date and fills blanks. |
+| Field sheet, then LIMS | **Two samples** for one visit, even when the dates agree. LIMS allocates the next letter (`RA-116B`) beside the sheet's `RA-116A`; field parameters sit on one, lab results on the other. |
+
+In practice crews have field data well before lab results come back, so
+field-first is the common case, and holding field data until the lab reports
+is not a workable rule. The fix belongs in the LIMS ingest — before allocating
+a new letter, match an existing sample for the well on the same calendar day
+that has **no** `WCLab_ID`, and stamp the lab id onto it — and is tracked as a
+follow-up rather than done here. Until then, a field-first well that later
+receives lab results needs its two sample points reconciled by hand.
+
 ---
 
 ## 4. Failure semantics
@@ -220,9 +241,12 @@ disagreements) or **skips** (parameters already recorded) succeeds.
   — but it means the sheet needs cleaning before the first successful run.
 - **Same-day matching is a heuristic.** Two genuine visits to one well on one
   day are reported as ambiguous rather than loaded.
+- **LIMS does not match sheet-created samples.** Running the field sheet before
+  the LIMS workbook splits one visit across two sample points (section 3,
+  "Ingest order matters"). Needs bidirectional matching in the LIMS ingest.
 - **No lab id on the field side.** If a well is sampled on a day the lab batch
   records differently, the two will not match and a second sample point is
-  created.
+  created, whichever ingest runs first.
 - **`Q` is invented vocabulary.** See section 2.
 - **Lab result tabs are ignored.** `GenChemResults` and `IsotopeResults` are not
   read by this command, and the LIMS ingest reads a LIMS export, not this

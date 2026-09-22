@@ -20,7 +20,10 @@ run consistently while the fuller solution is pursued.
   parameters) has its own ingest -- see
   **`docs/chemistry-field-sheet-ingest.md`**. It writes the same
   `NMA_Chemistry_SampleInfo` rows this ingest does, matched on well PointID and
-  collection date, so a visit and its lab batch stay one sample.
+  collection date. That match runs only from the sheet's side: this ingest
+  dedupes on `WCLab_ID` alone, so a workbook loaded **after** the field sheet
+  creates a second sample point for the same visit. See "Ingest order matters"
+  in that doc.
 
 ---
 
