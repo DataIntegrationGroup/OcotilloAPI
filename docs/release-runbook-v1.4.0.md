@@ -112,15 +112,37 @@ This is the versioned checkpoint of what you are promoting. Test against
 
 ### Smoke the RC on staging
 
-- `GET /health` returns OK
+`scripts/smoke_test.py` runs the whole list. Read-only unless `--write`:
+
+```bash
+uv run python -m scripts.smoke_test \
+  --base-url https://ocotillo-api-staging.newmexicowaterdata.org \
+  --token "$AUTHENTIK_ACCESS_TOKEN" --api-key "$INTERNAL_OGC_KEY" --write
+```
+
+It exits non-zero on any failure. Checks whose credentials were not supplied
+are skipped rather than failed, so read the summary line — `--strict` turns a
+skip into a failure when the run is unattended. What it covers:
+
+- `GET /health` returns OK, reports `db: ok`, and prints the deployed version
 - `GET /docs` loads
 - `GET /ogcapi/collections` lists the renamed collections
+- `water_well_field_operations` is **absent** from the public mount, and its
+  items path there does not answer 200 — it has no public twin and carries
+  landowner PII
 - `GET /ogcapi-internal/collections` with an Authentik token carrying
-  `OGC.Internal` — and again with a static API key as a bearer token
-- `POST /api_key` mints a key; `GET /api_key` lists it; revoke it and confirm
-  the next request with it fails
+  `OGC.Internal`, and again with an API key over all three transports the
+  desktop clients use: bearer, HTTP Basic, and `?token=`
+- `/ogcapi-internal` refuses an anonymous request with a `WWW-Authenticate`
+  challenge, and refuses a junk credential
+- `POST /api_key` mints a key; `GET /api_key` lists it; the key reaches
+  `/ogcapi-internal`; revoking it makes the next request fail (`--write` only,
+  since it writes rows to the target database)
 - `GET /ogcapi-internal/collections/water_well_field_operations/items?limit=1`
   returns rows and is refused without a credential
+
+Run the same command against production after step 3, with
+`--expect-version v1.4.0` to prove the new build is the one answering.
 
 ---
 
