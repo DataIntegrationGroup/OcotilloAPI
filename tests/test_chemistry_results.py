@@ -38,15 +38,21 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides = {}
 
 
-def _add_sample(session, thing_id, collected_on, point_id):
+def _add_sample(session, thing_id, collected_on, point_id, sample_type=None):
     return session.execute(
         text(
             'INSERT INTO "NMA_Chemistry_SampleInfo" '
             '(thing_id, "CollectionDate", "PublicRelease", '
-            '"nma_SamplePointID") '
-            "VALUES (:tid, :collected, true, :point) RETURNING id"
+            '"nma_SamplePointID", "SampleType") '
+            "VALUES (:tid, :collected, true, :point, :sample_type) "
+            "RETURNING id"
         ),
-        {"tid": thing_id, "collected": collected_on, "point": point_id},
+        {
+            "tid": thing_id,
+            "collected": collected_on,
+            "point": point_id,
+            "sample_type": sample_type,
+        },
     ).scalar()
 
 
@@ -197,6 +203,52 @@ def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
     assert len(april) == 6
     observation_dates = {item["observation_datetime"] for item in april}
     assert observation_dates == {"2019-04-09T00:00:00Z"}
+
+
+def test_fd_samples_can_be_excluded(water_well_thing):
+    with session_ctx() as session:
+        original_status = session.execute(
+            text("SELECT release_status FROM thing WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        ).scalar()
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        sample_id = _add_sample(
+            session, water_well_thing.id, "2019-04-09", "RES-FD", "FD"
+        )
+        _add_major(session, sample_id, "Cl", 12.0, "2019-04-16")
+        session.commit()
+
+        response = client.get(
+            "/chemistry/results",
+            params={
+                "thing_id": water_well_thing.id,
+                "exclude_field_duplicate_samples": True,
+            },
+        )
+
+        session.execute(
+            text(
+                'DELETE FROM "NMA_MajorChemistry" '
+                "WHERE chemistry_sample_info_id = :sid"
+            ),
+            {"sid": sample_id},
+        )
+        session.execute(
+            text('DELETE FROM "NMA_Chemistry_SampleInfo" WHERE id = :sid'),
+            {"sid": sample_id},
+        )
+        session.execute(
+            text("UPDATE thing SET release_status = :status WHERE id = :tid"),
+            {"status": original_status, "tid": water_well_thing.id},
+        )
+        session.commit()
+
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert all(item["sample_id"] != sample_id for item in items)
 
 
 def test_every_result_in_a_sample_carries_its_sample_point_id(two_samples):

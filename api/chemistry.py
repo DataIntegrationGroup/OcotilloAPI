@@ -46,6 +46,7 @@ def get_water_chemistry_results(
     end_time: datetime | None = None,
     sort: str | None = None,
     order: str | None = None,
+    exclude_field_duplicate_samples: bool = False,
 ) -> CustomPage[WaterChemistryResultResponse]:
     """
     Retrieve water chemistry results, one row per analyte.
@@ -62,6 +63,9 @@ def get_water_chemistry_results(
     `sort` accepts `observation_datetime`, `parameter_name`, `value`, or `id`;
     `order` accepts `asc` or `desc`. The default is newest first, so a client
     that wants a well's most recent analysis can ask for size 1.
+
+    Set `exclude_field_duplicate_samples=true` to omit field duplicate samples
+    (`FD`).
     """
     query = build_water_chemistry_results_query(
         thing_id=thing_id,
@@ -69,6 +73,7 @@ def get_water_chemistry_results(
         end_time=end_time,
         sort=sort,
         order=order,
+        exclude_field_duplicate_samples=exclude_field_duplicate_samples,
     )
 
     def transformer(rows):
