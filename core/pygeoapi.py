@@ -424,7 +424,7 @@ def _thing_collections_block(
             "keywords": collection["keywords"],
             "extents": {
                 "spatial": {
-                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "bbox": [-109.14, 30.83, -103.00, 37.89],
                     "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 }
             },
@@ -495,7 +495,7 @@ def _edr_collections_block(
             "keywords": collection["keywords"],
             "extents": {
                 "spatial": {
-                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "bbox": [-109.14, 30.83, -103.00, 37.89],
                     "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
                 "temporal": {"begin": None, "end": None},
