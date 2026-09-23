@@ -133,10 +133,10 @@ def step_resolve_well(context):
 
 @given("a polygon that covers wells with chemistry data")
 def step_polygon(context):
-    # A generous bbox-as-polygon around the New Mexico extent used by the mount.
+    # The mount's advertised extent, as a polygon.
     context.edr_polygon = (
-        "POLYGON((-109.05 31.33,-103.00 31.33,-103.00 37.00,"
-        "-109.05 37.00,-109.05 31.33))"
+        "POLYGON((-109.14 30.83,-103.00 30.83,-103.00 37.89,"
+        "-109.14 37.89,-109.14 30.83))"
     )
 
 
