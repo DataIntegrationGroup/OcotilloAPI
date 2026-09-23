@@ -83,8 +83,83 @@ def test_add_group():
     assert data["name"] == payload["name"]
     assert data["description"] == payload["description"]
     assert data["project_area"] == payload["project_area"]
+    assert data["group_type"] is None
 
     cleanup_post_test(Group, data["id"])
+
+
+def test_add_group_with_group_type():
+    payload = {
+        "release_status": "private",
+        "name": "Typed Test Group",
+        "group_type": "Monitoring Plan",
+    }
+    response = client.post("/group", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["group_type"] == "Monitoring Plan"
+
+    with session_ctx() as session:
+        stored = session.get(Group, data["id"])
+        assert stored.group_type == "Monitoring Plan"
+
+    response = client.get(f"/group/{data['id']}")
+    assert response.status_code == 200
+    assert response.json()["group_type"] == "Monitoring Plan"
+
+    cleanup_post_test(Group, data["id"])
+
+
+def test_add_group_invalid_group_type_422():
+    payload = {"name": "Bad Type Group", "group_type": "Not A Group Type"}
+    response = client.post("/group", json=payload)
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "group_type"]
+
+
+def test_add_group_same_name_different_group_type():
+    first = client.post(
+        "/group", json={"name": "Shared Name Group", "group_type": "Monitoring Plan"}
+    )
+    assert first.status_code == 201
+    second = client.post(
+        "/group", json={"name": "Shared Name Group", "group_type": "Geographic Area"}
+    )
+    assert second.status_code == 201
+    assert second.json()["group_type"] == "Geographic Area"
+
+    cleanup_post_test(Group, first.json()["id"])
+    cleanup_post_test(Group, second.json()["id"])
+
+
+def test_add_group_duplicate_name_and_group_type_409():
+    payload = {"name": "Duplicate Typed Group", "group_type": "Monitoring Plan"}
+    first = client.post("/group", json=payload)
+    assert first.status_code == 201
+    second = client.post("/group", json=payload)
+    assert second.status_code == 409
+
+    cleanup_post_test(Group, first.json()["id"])
+
+
+def test_patch_group_group_type(group):
+    payload = {"group_type": "Geographic Area"}
+    response = client.patch(f"/group/{group.id}", json=payload)
+    assert response.status_code == 200
+    assert response.json()["group_type"] == "Geographic Area"
+
+    cleanup_patch_test(Group, payload, group)
+
+
+def test_patch_group_duplicate_name_and_group_type_409(group):
+    other = client.post("/group", json={"name": group.name, "group_type": "Historical"})
+    assert other.status_code == 201
+
+    response = client.patch(f"/group/{group.id}", json={"group_type": "Historical"})
+    assert response.status_code == 409
+    assert response.json()["detail"][0]["loc"] == ["body", "name"]
+
+    cleanup_post_test(Group, other.json()["id"])
 
 
 # GET tests ======================================================

@@ -41,7 +41,7 @@ import io
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from itertools import groupby
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -57,6 +57,8 @@ from db import (
     Thing,
 )
 from db.engine import session_ctx
+from services.ingest_result import IngestResult
+from domain.values import to_datetime, to_float
 
 # --- analyte mapping (ported verbatim from AMPAPI chemfile.py) -----------------
 
@@ -171,11 +173,8 @@ class ChemistryMappingError(Exception):
     """A LIMS row could not be normalized into an analyte measurement."""
 
 
-@dataclass
-class ChemistryUploadResult:
-    exit_code: int
-    stderr: str
-    payload: dict[str, Any]
+# One shape for every ingest's return value; see services/ingest_result.py.
+ChemistryUploadResult = IngestResult
 
 
 # --- workbook parsing ----------------------------------------------------------
@@ -239,28 +238,10 @@ def _get(record: dict, key: str) -> Any:
     return value
 
 
-def _to_float(value: Any) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _to_datetime(value: Any) -> datetime | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, date):
-        return datetime(value.year, value.month, value.day)
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%m/%d/%Y", "%m/%d/%Y %H:%M:%S"):
-        try:
-            return datetime.strptime(str(value), fmt)
-        except ValueError:
-            continue
-    return None
+# Strict: a LIMS value carrying its own "<" is a non-detect whose qualifier is
+# recorded separately, so it must not be read as a plain number here.
+_to_float = to_float
+_to_datetime = to_datetime
 
 
 def prep_record(record: dict) -> dict:
@@ -387,12 +368,18 @@ def split_pointid(pointid: str) -> tuple[str, str | None]:
     return match.group("base"), match.group("suffix")
 
 
-def _resolve_thing_id(session: Session, pointid: str) -> int | None:
+def resolve_thing_id(session: Session, pointid: str) -> int | None:
+    """The Thing id for a well PointID, or None when the well is unknown."""
     things = session.scalars(select(Thing).where(Thing.name == pointid)).all()
     if not things:
         return None
     # Thing.name is not guaranteed unique; take the lowest id deterministically.
     return min(t.id for t in things)
+
+
+# The field-sheet ingest resolves wells the same way; kept as a module-private
+# alias so the existing call sites read unchanged.
+_resolve_thing_id = resolve_thing_id
 
 
 def _suffix_to_int(suffix: str) -> int:

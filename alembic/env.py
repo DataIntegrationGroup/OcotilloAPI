@@ -44,7 +44,7 @@ model_tables = set(target_metadata.tables.keys())
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-load_dotenv()
+load_dotenv(override=False)
 
 
 def build_database_url():

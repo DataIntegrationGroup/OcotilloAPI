@@ -5,6 +5,16 @@ collections. It is gated by `core/internal_ogc_auth.py`, an ASGI middleware that
 runs in front of the raw Starlette Mount — FastAPI's `Depends()` machinery never
 sees these requests, so none of the `*_dependency` role parameters apply here.
 
+> **An internal credential dispenses personal information.** The
+> `water_well_field_operations` collection publishes landowner and operator
+> contact details — name, organisation, role, phone number, email address —
+> alongside staff-written access notes that routinely contain gate codes and
+> names. Every credential accepted by this mount reaches it: an Authentik JWT
+> carrying `OGC.Internal`, and the static keys in `INTERNAL_OGC_API_KEYS`, which
+> are shared secrets revocable only by redeploy. Any credential path added
+> later inherits the same reach. Issue keys with that in mind, and read
+> `docs/water-well-field-operations-layer.md` before widening who holds one.
+
 ## Why there are static API keys at all
 
 The mount originally accepted only `Authorization: Bearer <Authentik JWT>`.
@@ -30,7 +40,7 @@ per user solves both problems.
 | `Authorization: Basic <base64(user:secret)>` | API key (or JWT) as the password | ArcGIS Pro, QGIS Basic |
 | `?token=<secret>` | API key (or JWT) | ArcGIS Pro custom request parameters |
 
-A JWT must additionally carry the `OGCInternal` group (`INTERNAL_OGC_GROUP` in
+A JWT must additionally carry the `OGC.Internal` group (`INTERNAL_OGC_GROUP` in
 `core/permissions.py`); a valid JWT without it gets 403. An API key is a
 pre-authorized stand-in for that group and carries no per-user claims.
 
@@ -39,7 +49,24 @@ pygeoapi, so it never lands in the `self`/`next` links pygeoapi echoes into
 response bodies. It is still recorded in App Engine's request log — prefer Basic
 where the client supports it.
 
-## Where the keys live
+## Two kinds of key
+
+Since `feat/api-key-management` there are two sources of API key, and the
+middleware checks them in this order:
+
+| | Issued by | Revoked by | Expires |
+| --- | --- | --- | --- |
+| `INTERNAL_OGC_API_KEYS` | An operator, by hand, into Secret Manager | A redeploy | Never |
+| `api_key` table | The holder, from the settings page | The next request | 365 days |
+
+Prefer the table for anything new. The environment variable stays supported
+because existing keys are saved in ArcGIS Pro and QGIS connection dialogs and
+breaking them buys nothing, but it is the slower path in every sense that
+matters. See `docs/api-key-management.md`.
+
+The rest of this section describes the environment-variable keys.
+
+## Where the operator-issued keys live
 
 Only the **SHA-256 digests** are stored, never the keys themselves. The digest
 list lives in a Google Secret Manager secret named `internal-ogc-api-keys`, one
@@ -65,19 +92,22 @@ Consequences worth knowing:
   The parser skips any entry whose digest is not 64 hex characters, so that
   value is inert and means "bearer-JWT access only".
 
-- **Revoking a key requires a redeploy.** Adding a secret version does not
-  affect a running instance. If revocation ever needs to be immediate, that is
-  the point to switch to a runtime fetch with a TTL cache (same shape as the
-  JWKS cache in `core/permissions.py`) or to a keys table in Postgres.
+- **Revoking one of these keys requires a redeploy.** Adding a secret version
+  does not affect a running instance. When revocation has to be immediate, issue
+  the key from the settings page instead — the `api_key` table exists for
+  exactly this, and a row revoked there stops working on the next request.
 
 - The deploy service account needs `roles/secretmanager.secretAccessor` on
   `internal-ogc-api-keys` in each project, alongside the four it already has.
 
-## Issuing a key
+## Issuing an operator key
 
 ```bash
 python -c "import secrets,hashlib;k=secrets.token_urlsafe(32);print('key:   ',k);print('digest:',hashlib.sha256(k.encode()).hexdigest())"
 ```
+
+Only for a credential that has to outlive 365 days or belong to no particular
+person; otherwise have the holder issue their own from the settings page.
 
 Give the **key** to the user over a secure channel and keep only the digest.
 Append `<label>:<digest>` to the secret's value — comma- or whitespace-separated
@@ -118,7 +148,7 @@ issues, including paging.
 
 Staff who prefer real Authentik identity can instead configure QGIS's **OAuth2**
 authentication method against the Authentik provider; the mount accepts those
-tokens unchanged, provided the account is in `OGCInternal`.
+tokens unchanged, provided the account is in `OGC.Internal`.
 
 ## Advertised URLs
 
@@ -134,6 +164,7 @@ different host than the public `/ogcapi` mount.
 | Symptom | Cause |
 | --- | --- |
 | 401 with `WWW-Authenticate: Basic` | No credential reached the server. In QGIS, confirm the auth config is selected on the *connection*, not just created. |
-| 403 | Valid Authentik token, but the account is not in the `OGCInternal` group. |
+| 403 | Valid Authentik token, but the account is not in the `OGC.Internal` group. |
+| 401 on a key that used to work | Revoked, or past its 365-day expiry. Check the settings page; issue a new one. |
 | 424 | `AUTHENTIK_DISABLE_AUTHENTICATION=1` with `MODE` other than `development`. Misconfigured deploy. |
 | First page loads, paging fails against `localhost` | `PYGEOAPI_SERVER_URL` unset or wrong for the environment. |

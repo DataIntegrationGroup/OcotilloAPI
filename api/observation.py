@@ -28,7 +28,6 @@ from core.dependencies import (
     session_dependency,
     amp_admin_dependency,
     amp_editor_dependency,
-    amp_staging_dependency,
     amp_viewer_dependency,
 )
 from db import Observation, Parameter
@@ -45,7 +44,11 @@ from schemas.transducer import (
     DeletedTransducerObservationsResponse,
     PublishedTransducerBlockResponse,
     PublishTransducerBlock,
+    ReviewedTransducerBlockResponse,
+    ReviewTransducerBlock,
+    TransducerObservationDetailResponse,
     TransducerObservationWithBlockResponse,
+    UpdateTransducerObservation,
 )
 from schemas.water_level_csv import WaterLevelBulkUploadResponse
 from services.crud_helper import model_deleter, model_adder
@@ -57,8 +60,12 @@ from services.observation_helper import (
 )
 from services.query_helper import simple_get_by_id
 from services.transducer_helper import (
+    delete_transducer_observation,
     delete_transducer_observations,
+    get_transducer_observation,
     publish_transducer_block,
+    review_transducer_block,
+    update_transducer_observation,
 )
 from services.water_level_csv import bulk_upload_water_levels
 
@@ -122,7 +129,7 @@ def add_water_chemistry_observation(
 def publish_transducer_groundwater_level_block(
     payload: PublishTransducerBlock,
     session: session_dependency,
-    user: amp_staging_dependency,
+    user: amp_admin_dependency,
     replace_overlapping: bool = False,
 ) -> PublishedTransducerBlockResponse:
     """
@@ -170,6 +177,66 @@ async def bulk_upload_groundwater_levels(
 
 
 # PATCH ========================================================================
+
+
+@router.patch(
+    "/transducer-groundwater-level/block/{block_id}",
+    status_code=HTTP_200_OK,
+    summary="Approve a published transducer block, or return it to provisional",
+)
+def review_transducer_groundwater_level_block(
+    block_id: int,
+    payload: ReviewTransducerBlock,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> ReviewedTransducerBlockResponse:
+    """
+    Set a block's `review_status`, and move every reading it covers with it:
+    `approved` makes their `data_maturity` approved, `not reviewed` returns
+    them to provisional.
+
+    One transaction for the block and all of its readings, so a series is never
+    left half approved.
+    """
+    return review_transducer_block(
+        session,
+        block_id,
+        parameter_id=_groundwater_level_parameter_id(session),
+        payload=payload,
+        user=user,
+    )
+
+
+@router.patch(
+    "/transducer-groundwater-level/{observation_id}",
+    status_code=HTTP_200_OK,
+    summary="Edit one transducer groundwater level reading",
+)
+def update_transducer_groundwater_level_observation(
+    observation_id: int,
+    payload: UpdateTransducerObservation,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> TransducerObservationDetailResponse:
+    """
+    Edit a reading's `value`, `note`, `data_maturity`, or `release_status`.
+
+    The timestamp, deployment, and parameter cannot be changed -- sending one is
+    a 422. Only time ties a reading to its block, so moving one would orphan it
+    or slide it under a different block; move a reading by deleting it and
+    republishing. A changed `value` must come with a `note`: a reading with no
+    note reads as the value the sensor recorded.
+
+    Leaves the `transducer_daily_data` materialized view stale until its next
+    refresh.
+    """
+    return update_transducer_observation(
+        session,
+        observation_id,
+        parameter_id=_groundwater_level_parameter_id(session),
+        payload=payload,
+        user=user,
+    )
 
 
 @router.patch("/groundwater-level/{observation_id}", status_code=HTTP_200_OK)
@@ -236,6 +303,29 @@ def get_transducer_groundwater_level_observations(
         end_time=end_time,
         sort=sort,
         order=order,
+    )
+
+
+@router.get(
+    "/transducer-groundwater-level/{observation_id}",
+    summary="Get one transducer groundwater level reading",
+)
+def get_transducer_groundwater_level_observation(
+    observation_id: int,
+    session: session_dependency,
+    user: amp_viewer_dependency,
+) -> TransducerObservationDetailResponse:
+    """
+    One reading, the block covering it, and the well it is on.
+
+    `block` is null for a reading no block covers -- one a hand-deleted block
+    left behind. The list above skips those; addressed by id, it is reported
+    rather than hidden, since it still occupies its deployment/instant.
+    """
+    return get_transducer_observation(
+        session,
+        observation_id,
+        parameter_id=_groundwater_level_parameter_id(session),
     )
 
 
@@ -379,7 +469,7 @@ def get_observation_by_id(
 )
 def delete_transducer_groundwater_level_observations(
     session: session_dependency,
-    user: amp_staging_dependency,
+    user: amp_admin_dependency,
     thing_id: int,
     start_time: datetime,
     end_time: datetime,
@@ -403,6 +493,34 @@ def delete_transducer_groundwater_level_observations(
         parameter_id=_groundwater_level_parameter_id(session),
         start_time=start_time,
         end_time=end_time,
+    )
+
+
+@router.delete(
+    "/transducer-groundwater-level/{observation_id}",
+    status_code=HTTP_200_OK,
+    summary="Delete one transducer groundwater level reading",
+)
+def delete_transducer_groundwater_level_observation(
+    observation_id: int,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> DeletedTransducerObservationsResponse:
+    """
+    Delete one reading and reconcile the block that covered it: deleted if it
+    is left with none, narrowed to the survivors otherwise. Same response as
+    the range delete.
+
+    Only this row. A range delete over the same instant would also remove a
+    second sensor's reading on the same well.
+
+    Irreversible, and it leaves the `transducer_daily_data` materialized view
+    stale until its next refresh.
+    """
+    return delete_transducer_observation(
+        session,
+        observation_id,
+        parameter_id=_groundwater_level_parameter_id(session),
     )
 
 

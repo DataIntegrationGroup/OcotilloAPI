@@ -27,6 +27,8 @@ import hashlib
 import secrets
 
 import pytest
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import select
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -38,8 +40,13 @@ from core.internal_ogc_auth import (
     InternalOGCAuthMiddleware,
     api_key_label,
 )
+from db.api_key import ApiKey
+from db.engine import session_ctx
+from domain import api_key as key_rules
 
 MOUNT = "/ogcapi-internal"
+
+DB_KEY_OWNER = "owner-sub-internal-ogc-test"
 
 
 def _digest(secret: str) -> str:
@@ -207,3 +214,145 @@ def test_malformed_key_entries_do_not_disable_the_valid_ones(monkeypatch):
 
     assert api_key_label(good) == "good"
     assert api_key_label("short") is None
+
+
+# Database-backed keys ---------------------------------------------------------
+# The user-issued counterpart to the operator-issued digests above. Same
+# standing on this mount; the difference is that revoking one takes effect on
+# the next request instead of on the next deploy.
+
+
+@pytest.fixture
+def db_key(monkeypatch):
+    """A live key in the api_key table, with no operator-issued keys configured.
+
+    Clearing API_KEYS_ENV is the point: it proves the table alone can
+    authenticate, rather than the environment variable quietly carrying the
+    test.
+    """
+    monkeypatch.delenv(API_KEYS_ENV, raising=False)
+
+    def _issue(**overrides):
+        token = key_rules.generate_token()
+        now = datetime.now(timezone.utc)
+        with session_ctx() as session:
+            session.add(
+                ApiKey(
+                    token_digest=key_rules.digest_token(token),
+                    token_preview=key_rules.preview_token(token),
+                    name="desktop gis",
+                    owner_sub=DB_KEY_OWNER,
+                    scope=key_rules.SCOPE_OGC_INTERNAL,
+                    expires_at=overrides.pop("expires_at", key_rules.expiry_for(now)),
+                    **overrides,
+                )
+            )
+            session.commit()
+        return token
+
+    yield _issue
+
+    with session_ctx() as session:
+        for row in session.scalars(
+            select(ApiKey).where(ApiKey.owner_sub == DB_KEY_OWNER)
+        ).all():
+            session.delete(row)
+        session.commit()
+
+
+def test_bearer_database_key_is_accepted(gate, db_key):
+    token = db_key()
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+
+
+def test_basic_auth_with_a_database_key_is_accepted(gate, db_key):
+    credentials = base64.b64encode(f"apikey:{db_key()}".encode()).decode()
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Basic {credentials}"}
+    )
+
+    assert response.status_code == 200
+
+
+def test_query_parameter_database_key_is_accepted_and_stripped(gate, db_key):
+    response = gate.get(f"{MOUNT}/collections", params={"token": db_key()})
+
+    assert response.status_code == 200
+    # Same stripping as an operator-issued key: pygeoapi echoes the query
+    # string into the links it emits, so a secret left there would be
+    # published in every response body.
+    assert response.json()["query"] == ""
+
+
+def test_a_revoked_database_key_is_rejected(gate, db_key):
+    token = db_key(revoked_at=datetime.now(timezone.utc))
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+
+
+def test_an_expired_database_key_is_rejected(gate, db_key):
+    token = db_key(expires_at=datetime.now(timezone.utc) - timedelta(seconds=1))
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+
+
+def test_an_unissued_key_shaped_secret_is_rejected(gate, db_key):
+    db_key()  # a real key exists; this is a different one
+
+    response = gate.get(
+        f"{MOUNT}/collections",
+        headers={"Authorization": f"Bearer {key_rules.generate_token()}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_a_database_failure_falls_back_instead_of_erroring(gate, db_key, monkeypatch):
+    """A broken database must not take the mount down for bearer-JWT holders.
+
+    The lookup is best-effort: on failure the request continues to the JWT
+    path, which rejects it as an invalid token (401) rather than 500ing.
+    """
+    token = db_key()
+
+    def _explode():
+        raise RuntimeError("pool exhausted")
+
+    monkeypatch.setattr("db.engine.session_ctx", _explode)
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+
+
+def test_operator_issued_keys_still_work_with_an_empty_table(gate, api_key):
+    """The environment-variable path is untouched by the table's existence."""
+    with session_ctx() as session:
+        assert (
+            session.scalars(
+                select(ApiKey).where(ApiKey.owner_sub == DB_KEY_OWNER)
+            ).first()
+            is None
+        )
+
+    response = gate.get(
+        f"{MOUNT}/collections", headers={"Authorization": f"Bearer {api_key}"}
+    )
+
+    assert response.status_code == 200

@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 from fastapi_pagination import add_pagination
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
 
@@ -29,6 +29,7 @@ from db.lexicon import (
     LexiconTermCategoryAssociation,
 )
 from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
 
 
 def init_parameter(path: str = None) -> None:
@@ -45,11 +46,13 @@ def init_parameter(path: str = None) -> None:
         default_parameter = json.load(f)
 
     with session_ctx() as session:
-        # A parameter is identified by name and matrix, so skip the ones already
-        # stored instead of letting every re-run trip the unique constraint.
-        existing = set(
-            session.execute(select(Parameter.parameter_name, Parameter.matrix)).all()
+        # A parameter is identified by name and matrix, so skip the ones
+        # already stored instead of tripping the unique constraint.
+        parameter_identity_query = select(
+            Parameter.parameter_name,
+            Parameter.matrix,
         )
+        existing = set(session.execute(parameter_identity_query).all())
 
         for param in default_parameter:
             if (param["parameter_name"], param["matrix"]) in existing:
@@ -65,8 +68,79 @@ def init_parameter(path: str = None) -> None:
                 session.add(parameter_obj)
                 session.commit()
             except DatabaseError as e:
-                print(f"Failed to add parameter {param['parameter_name']}: error: {e}")
+                name = param["parameter_name"]
+                print(f"Failed to add parameter {name}: error: {e}")
                 session.rollback()
+
+
+def load_regulatory_limits(path: str = None) -> list[dict]:
+    if path is None:
+        path = Path(__file__).parent / "regulatory_limit.json"
+
+    with open(path) as f:
+        import json
+
+        return json.load(f)
+
+
+def add_regulatory_limits(session, limits: list[dict]) -> int:
+    """
+    Add the limits not already stored and return how many were added. Does not
+    commit.
+
+    A limit is identified by its parameter, source and type, so re-running
+    leaves existing rows alone -- including one whose value was since edited.
+    Each limit names its parameter by name and matrix; the parameter must
+    already exist.
+    """
+    parameter_ids = {
+        (name, matrix): pid
+        for pid, name, matrix in session.execute(
+            select(Parameter.id, Parameter.parameter_name, Parameter.matrix)
+        ).all()
+    }
+    existing = set(
+        session.execute(
+            select(
+                RegulatoryLimit.parameter_id,
+                RegulatoryLimit.limit_source,
+                RegulatoryLimit.limit_type,
+            )
+        ).all()
+    )
+
+    added = 0
+    for limit in limits:
+        key = (limit["parameter_name"], limit["matrix"])
+        if key not in parameter_ids:
+            raise ValueError(f"No parameter {key} for regulatory limit {limit}")
+        parameter_id = parameter_ids[key]
+        if (parameter_id, limit["limit_source"], limit["limit_type"]) in existing:
+            continue
+        session.add(
+            RegulatoryLimit(
+                parameter_id=parameter_id,
+                limit_source=limit["limit_source"],
+                limit_type=limit["limit_type"],
+                limit_value=limit["limit_value"],
+                limit_unit=limit["limit_unit"],
+                release_status="public",
+            )
+        )
+        added += 1
+    session.flush()
+    return added
+
+
+def init_regulatory_limit(path: str = None) -> None:
+    """
+    Populate the regulatory_limit table. Run after init_parameter, which
+    creates the parameters the limits point at.
+    """
+    limits = load_regulatory_limits(path)
+    with session_ctx() as session:
+        add_regulatory_limits(session, limits)
+        session.commit()
 
 
 def erase_and_rebuild_db():
@@ -80,6 +154,7 @@ def erase_and_rebuild_db():
 
     init_lexicon()
     init_parameter()
+    init_regulatory_limit()
 
 
 def init_lexicon(path: str = None) -> None:
@@ -105,13 +180,23 @@ def init_lexicon(path: str = None) -> None:
         category_rows = [
             {"name": category["name"], "description": category["description"]}
             for category in categories
-            if category["name"] not in existing_categories
         ]
         if category_rows:
+            # Insert every category, not just the missing ones, so that a
+            # category seeded before it had a description gets backfilled.
+            # coalesce keeps a description already in the database, so an
+            # edit made through /lexicon survives re-running the seed.
+            stmt = insert(LexiconCategory).values(category_rows)
             session.execute(
-                insert(LexiconCategory)
-                .values(category_rows)
-                .on_conflict_do_nothing(index_elements=["name"])
+                stmt.on_conflict_do_update(
+                    index_elements=["name"],
+                    set_={
+                        "description": func.coalesce(
+                            LexiconCategory.description,
+                            stmt.excluded.description,
+                        )
+                    },
+                )
             )
             session.commit()
             existing_categories = dict(
@@ -151,9 +236,7 @@ def init_lexicon(path: str = None) -> None:
             )
 
         term_ids = [existing_terms.get(term_name) for term_name in term_names]
-        category_ids = [
-            existing_categories.get(category_name) for category_name in category_names
-        ]
+        category_ids = list(map(existing_categories.get, category_names))
         existing_links = set()
         if term_ids and category_ids:
             existing_links = set(
@@ -163,7 +246,7 @@ def init_lexicon(path: str = None) -> None:
                         LexiconTermCategoryAssociation.category_id,
                     ).where(
                         LexiconTermCategoryAssociation.term_id.in_(
-                            [term_id for term_id in term_ids if term_id is not None]
+                            list(filter(None, term_ids))
                         ),
                         LexiconTermCategoryAssociation.category_id.in_(
                             [
@@ -219,16 +302,19 @@ def register_api_routes(app):
     from api.publication import router as publication_router
     from api.author import router as author_router
     from api.asset import router as asset_router
+    from api.api_key import router as api_key_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
     from api.feedback import router as feedback_router
     from api.disclaimer import router as disclaimer_router
     from api.geothermal import router as geothermal_router
-    from api.chemisty import router as chemistry_router
+    from api.chemistry import router as chemistry_router
     from api.gis_artifacts import router as gis_artifacts_router
+    from api.regulatory_limit import router as regulatory_limit_router
 
     app.include_router(asset_router)
+    app.include_router(api_key_router)
     app.include_router(chemistry_router)
     app.include_router(author_router)
     app.include_router(contact_router)
@@ -240,6 +326,7 @@ def register_api_routes(app):
     app.include_router(location_router)
     app.include_router(observation_router)
     app.include_router(publication_router)
+    app.include_router(regulatory_limit_router)
     app.include_router(sample_router)
     app.include_router(sensor_router)
     app.include_router(search_router)

@@ -51,7 +51,7 @@ metadata:
 resources:
   latest_tds_wells:
     type: collection
-    title: Latest TDS (Water Wells)
+    title: Latest Total Dissolved Solids (Water Wells)
     description: >-
       Total dissolved solids (TDS) measures how much mineral matter is
       dissolved in the water -- in plain terms, how salty it is. This layer
@@ -67,7 +67,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -105,7 +105,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -140,7 +140,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -178,7 +178,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -196,7 +196,7 @@ resources:
 
   well_water_column:
     type: collection
-    title: Well Water Column (Water Wells)
+    title: Water Column (Water Wells)
     description: >-
       One row per water well, reporting how much standing water the well
       holds: the well's depth minus its depth to water, in feet, worked out
@@ -220,7 +220,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -257,7 +257,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -292,7 +292,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -327,7 +327,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -345,7 +345,7 @@ resources:
 
   project_areas:
     type: collection
-    title: Project Areas
+    title: AMP Project Areas
     description: >-
       The study-area boundaries of Bureau projects, as polygons. Any project
       group that has a mapped boundary is published here with its name and
@@ -354,7 +354,7 @@ resources:
     keywords: [project-areas, study-areas, boundaries, polygons, projects, groups]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -370,11 +370,41 @@ resources:
         table: ogc_project_areas
         geom_field: project_area
 
+  aem_project_areas:
+    type: collection
+    title: AEM Project Areas
+    description: >-
+      Airborne electromagnetic (AEM) study-area boundaries, as polygons. These
+      are the AEM survey footprints from the Aquifer Mapping Study Areas layer,
+      grouped separately from the general project areas. Use them to see where
+      AEM data was collected, or to clip other layers to a survey's footprint.
+    keywords: [
+      aem, airborne-electromagnetic, project-areas, study-areas, boundaries,
+      polygons
+    ]
+    extents:
+      spatial:
+        bbox: [-109.14, 30.83, -103.00, 37.89]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: core.feature_provider.DescribedPostgreSQLProvider
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_aem_project_areas
+        geom_field: project_area
+
 {thing_collections_block}
 
   geothermal_wells_bht:
     type: collection
-    title: Geothermal Wells — Bottom-Hole Temperature
+    title: Bottom-Hole Temperature (Geothermal Wells)
     description: >-
       Bottom-hole temperature (BHT) is the temperature at the deepest point
       of a borehole, usually recorded while drilling, and is the cheapest
@@ -392,7 +422,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -410,7 +440,7 @@ resources:
 
   geothermal_wells_temperature_profile:
     type: collection
-    title: Geothermal Wells — Temperature-Depth Profile
+    title: Temperature-Depth Profile (Geothermal Wells)
     description: >-
       How temperature changes with depth down a borehole, summarised as one
       point per well. Every temperature-versus-depth reading logged for the
@@ -427,7 +457,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -445,7 +475,7 @@ resources:
 
   bht_measurements:
     type: collection
-    title: BHT Measurements
+    title: Bottom-Hole Temperature Measurements
     description: >-
       Every individual bottom-hole temperature reading, one feature per
       measurement, for consumers who need the raw record rather than the
@@ -462,7 +492,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -494,7 +524,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -529,7 +559,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -561,7 +591,7 @@ resources:
     keywords: [drill-stem-test, dst, formation-pressure, flow-history, reservoir, wells, nm-wells]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature

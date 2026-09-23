@@ -103,7 +103,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "lakes_ponds_reservoirs",
-        "title": "Lakes, Ponds, and Reservoirs",
+        "title": "Lakes and Reservoirs",
         "thing_type": "lake, pond or reservoir",
         "description": (
             "Standing bodies of surface water monitored as sites -- natural "
@@ -206,7 +206,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "rock_sample_locations",
-        "title": "Rock Sample Locations",
+        "title": "Rock Sample Sites",
         "thing_type": "rock sample location",
         "description": (
             "Places where rock samples were collected or outcrop geology was "
@@ -225,7 +225,7 @@ THING_COLLECTIONS = [
     },
     {
         "id": "soil_gas_sample_locations",
-        "title": "Soil Gas Sample Locations",
+        "title": "Soil Gas Sample Sites",
         "thing_type": "soil gas sample location",
         "description": (
             "Places where gas held in the pore space of soil was sampled. Each "
@@ -424,7 +424,7 @@ def _thing_collections_block(
             "keywords": collection["keywords"],
             "extents": {
                 "spatial": {
-                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "bbox": [-109.14, 30.83, -103.00, 37.89],
                     "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 }
             },
@@ -495,7 +495,7 @@ def _edr_collections_block(
             "keywords": collection["keywords"],
             "extents": {
                 "spatial": {
-                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "bbox": [-109.14, 30.83, -103.00, 37.89],
                     "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
                 },
                 "temporal": {"begin": None, "end": None},

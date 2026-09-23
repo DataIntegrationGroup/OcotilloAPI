@@ -2,15 +2,22 @@
 # deployment.
 #
 # "prod" here names the Dagster+ deployment, not the API's `production` branch.
-# It tracks `staging`, which is this repository's integration branch and the
-# only place `automated_ingestion/` currently exists -- `production` is still on
-# 1.2.2 and would never fire. This mirrors how `ocotillo-api-staging` follows
-# staging, and keeps the code location current with the work.
+# It now tracks `production`, so the deployed code location is the code that has
+# been released rather than whatever last merged to the integration branch.
 #
-# Move this to `production` in the same change that first points the pipeline at
-# the production database. Until then a deploy here publishes code, not data:
-# the location has no database or vendor credentials, so the worst it can do is
-# fail to materialize.
+# It tracked `staging` until this change, on the reasoning that `production` was
+# far behind and did not contain `automated_ingestion/` at all, so a trigger
+# there would never fire. That is no longer true: both branches carry the
+# package, `automated_ingestion/` is byte-identical between them, and the two
+# are at the same release. Only `db/` and `domain/` differ, which is exactly the
+# drift the path filter below exists to catch.
+#
+# **This trigger takes effect only once this file reaches `production`.** A push
+# to `production` runs the workflow as it exists on `production`, so until this
+# change is promoted the old `staging` trigger is what fires. Between merging
+# here and promoting, neither branch deploys the code location and it holds
+# whatever was last published -- bounded by the release cadence, and visible as
+# a code location whose git sha trails `staging`.
 #
 # Path-filtered so an ordinary API change does not spend a Dagster+ build. The
 # filter includes pyproject.toml and uv.lock because the location's dependency
@@ -34,7 +41,7 @@ name: CD (Dagster+ prod)
 
 on:
   push:
-    branches: [staging]
+    branches: [production]
     paths:
       - "automated_ingestion/**"
       # The code location imports db/ models and domain/ rules in-process,
@@ -79,11 +86,11 @@ jobs:
     runs-on: ubuntu-latest
     # Deliberately not bound to the `production` GitHub environment. This job
     # reads only repository-level DAGSTER_CLOUD_API_TOKEN and
-    # DAGSTER_CLOUD_ORGANIZATION_ID -- none of that environment's secrets -- and
-    # it runs on every push to `staging` that touches the code location. Binding
-    # it would put an approval gate on routine merges once `production` requires
-    # reviewers, which is a gate on the wrong thing: this publishes code, not
-    # data.
+    # DAGSTER_CLOUD_ORGANIZATION_ID -- none of that environment's secrets -- so
+    # binding it would add an approval gate that guards nothing this job can
+    # reach. The promotion into `production` is already reviewed, and what this
+    # publishes is code, not data: materializing against the database is a
+    # separate, deliberate act (the schedule ships STOPPED).
     outputs:
       # Set only on the Docker path. The fallback job keys off it being empty.
       build_info: ${{ steps.parse.outputs.build_info }}
@@ -94,7 +101,7 @@ jobs:
       # working tree either path sets up below.
       - name: Prerun checks
         id: prerun
-        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.19
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.23
 
       # parse_workspace performs its own `actions/checkout`, which cleans the
       # working tree -- fine here because the Docker path runs in a separate job
@@ -102,7 +109,7 @@ jobs:
       - name: Parse dagster_cloud.yaml
         if: steps.prerun.outputs.result == 'docker-deploy'
         id: parse
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.19
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.23
         with:
           dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
 
@@ -119,7 +126,7 @@ jobs:
 
       - name: Install uv
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "latest"
 
@@ -155,7 +162,7 @@ jobs:
       # spins up when the dependency hash changes.
       - name: Deploy to Dagster+ prod
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.19
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.23
         with:
           dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
@@ -184,7 +191,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Install uv in container
-        uses: astral-sh/setup-uv@v10.0.1
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "latest"
 
@@ -203,7 +210,7 @@ jobs:
       # checkout_repo is false because requirements.txt is generated above and
       # a second checkout would discard it.
       - name: Deploy to Dagster+ prod
-        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.19
+        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.23
         with:
           organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}

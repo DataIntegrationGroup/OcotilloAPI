@@ -43,7 +43,7 @@ Feature: Retrieve core well information by well ID
     And the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation]
     And the response should include the elevation in feet with vertical datum NAVD88 in the properties
     And the response should include the elevation method (i.e. interpolated from digital elevation model) in the properties
-    And the response should include the UTM coordinates with datum NAD83 in the properties
+    And the response should include the UTM coordinates with datum WGS84 in the properties
 
     # Alternate Identifiers
     And the response should include any alternate IDs for the well like the NMBGMR site_name (i.e. John Smith Well), USGS site number, or the OSE well ID and OSE well tag ID

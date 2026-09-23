@@ -16,7 +16,7 @@
 from typing import Optional, List, TYPE_CHECKING
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Integer, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
@@ -78,6 +78,11 @@ class GroupThingAssociation(Base, AutoBaseMixin):
 
     # Many-To-One: This association links to one Group.
     group: Mapped["Group"] = relationship("Group", back_populates="thing_associations")
+
+    # Postgres does not index foreign keys on its own, and the
+    # ogc_internal_water_well_field_operations LATERAL looks this table up once
+    # per well.
+    __table_args__ = (Index("ix_group_thing_association_thing_id", "thing_id"),)
 
 
 # ============= EOF =============================================

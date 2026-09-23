@@ -56,3 +56,9 @@ app.yaml
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
+
+# mise
+mise.toml
+
+# Data migration change reports (run artifacts, not source)
+reports/

@@ -14,7 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 """
-Publish and range-delete for corrected transducer series.
+Publish, range-delete, and per-reading read/edit/delete for corrected
+transducer series.
 
 Orchestration only: load the well, deployment, and colliding blocks, hand the
 decisions to ``domain.hydrograph``, persist the result. See
@@ -45,7 +46,12 @@ from schemas.transducer import (
     DeletedTransducerObservationsResponse,
     OverlappingBlock,
     PublishedTransducerBlockResponse,
+    ReviewedTransducerBlockResponse,
+    ReviewTransducerBlock,
     TransducerObservationBlockResponse,
+    TransducerObservationDetailResponse,
+    TransducerObservationResponse,
+    UpdateTransducerObservation,
 )
 from services.exceptions_helper import PydanticStyleException
 
@@ -444,6 +450,33 @@ def delete_transducer_observations(
     deleted_observation_count = deleted.rowcount or 0
     session.flush()
 
+    deleted_block_ids, updated_block_ids = _reconcile_blocks(
+        session, deployment_ids, parameter_id, affected_blocks
+    )
+
+    session.commit()
+
+    return DeletedTransducerObservationsResponse(
+        deleted_observation_count=deleted_observation_count,
+        deleted_block_ids=deleted_block_ids,
+        updated_block_ids=updated_block_ids,
+        thing_id=thing_id,
+    )
+
+
+def _reconcile_blocks(
+    session: Session,
+    deployment_ids: list[int],
+    parameter_id: int,
+    affected_blocks: list[TransducerObservationBlock],
+) -> tuple[list[int], list[int]]:
+    """
+    Fit each block to the readings it still covers, after some were deleted.
+
+    A block left with none is deleted; one left with some has its span narrowed
+    to the survivors. Returns ``(deleted_block_ids, updated_block_ids)``. The
+    caller holds the series lock and commits.
+    """
     deleted_block_ids: list[int] = []
     updated_block_ids: list[int] = []
 
@@ -478,13 +511,291 @@ def delete_transducer_observations(
                 .values(start_datetime=new_start, end_datetime=new_end)
             )
 
+    return deleted_block_ids, updated_block_ids
+
+
+# ============= Single reading ===================================
+# Addressed by id rather than by (well, time). Scoped to the route's parameter
+# exactly like the list: a reading under any other parameter is a 404 here, so
+# an id cannot reach data the list on the same path would never show.
+
+
+def _observation_not_found(observation_id: int):
+    return PydanticStyleException(
+        status_code=HTTP_404_NOT_FOUND,
+        detail=[
+            {
+                "loc": ["path", "observation_id"],
+                "msg": f"Transducer observation {observation_id} not found",
+                "type": "value_error",
+                "input": observation_id,
+            }
+        ],
+    )
+
+
+def _load_observation(
+    session: Session, observation_id: int, parameter_id: int
+) -> tuple[TransducerObservation, int]:
+    """The reading and the well its deployment is on, or a 404."""
+    row = session.execute(
+        select(TransducerObservation, Deployment.thing_id)
+        .join(Deployment, Deployment.id == TransducerObservation.deployment_id)
+        .where(
+            TransducerObservation.id == observation_id,
+            TransducerObservation.parameter_id == parameter_id,
+        )
+        # Callers re-read under the series lock; without this the identity map
+        # would hand back the object from the first read with its old values.
+        .execution_options(populate_existing=True)
+    ).first()
+    if row is None:
+        raise _observation_not_found(observation_id)
+    observation, thing_id = row
+    return observation, thing_id
+
+
+def _covering_block(
+    session: Session, thing_id: int, parameter_id: int, instant: datetime
+) -> TransducerObservationBlock | None:
+    """
+    The block the list reader would pair this reading with.
+
+    Same rule as the reader: inclusive on both bounds, and the latest-starting
+    block wins where two claim one instant, which publish's overlap check is
+    there to prevent but legacy data may still carry.
+    """
+    return session.scalars(
+        select(TransducerObservationBlock)
+        .where(
+            TransducerObservationBlock.thing_id == thing_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+            TransducerObservationBlock.start_datetime <= instant,
+            TransducerObservationBlock.end_datetime >= instant,
+        )
+        .order_by(TransducerObservationBlock.start_datetime.desc())
+        .limit(1)
+    ).first()
+
+
+def _detail(
+    session: Session, observation: TransducerObservation, thing_id: int
+) -> TransducerObservationDetailResponse:
+    block = _covering_block(
+        session, thing_id, observation.parameter_id, observation.observation_datetime
+    )
+    return TransducerObservationDetailResponse(
+        observation=TransducerObservationResponse.model_validate(observation),
+        block=(
+            TransducerObservationBlockResponse.model_validate(block)
+            if block is not None
+            else None
+        ),
+        thing_id=thing_id,
+    )
+
+
+def get_transducer_observation(
+    session: Session, observation_id: int, parameter_id: int
+) -> TransducerObservationDetailResponse:
+    """
+    One reading and the block that covers it.
+
+    ``block`` is None for a reading no block covers -- one left behind by a
+    block deleted by hand. The list skips those, since it pairs every row with
+    a block; addressed by id, reporting it as missing would hide a row that is
+    still there and still holds its deployment/parameter/instant.
+    """
+    observation, thing_id = _load_observation(session, observation_id, parameter_id)
+    return _detail(session, observation, thing_id)
+
+
+def update_transducer_observation(
+    session: Session,
+    observation_id: int,
+    parameter_id: int,
+    payload: UpdateTransducerObservation,
+    user=None,
+) -> TransducerObservationDetailResponse:
+    """
+    Edit a reading's value, note, maturity, or release status in place.
+
+    The timestamp, deployment, and parameter are not editable -- the schema
+    refuses them. Nothing links a reading to its block but time, so moving one
+    would drop it out of its block (invisible to the list) or into another
+    block's span. Moving a reading is a delete and a republish.
+
+    A changed value must carry a note. A NULL note means "as measured", so a
+    hand-edited value without one would claim to be what the sensor recorded.
+    """
+    _, thing_id = _load_observation(session, observation_id, parameter_id)
+
+    # Not for the spans -- an edit here moves none -- but so an edit cannot
+    # land on a row a concurrent delete is removing, which would surface as a
+    # stale-row 500 rather than a 404.
+    _lock_series(session, thing_id, parameter_id)
+    observation, _ = _load_observation(session, observation_id, parameter_id)
+    updates = payload.model_dump(exclude_unset=True)
+
+    value_changes = "value" in updates and updates["value"] != observation.value
+    note_after = updates["note"] if "note" in updates else observation.note
+    if value_changes and not note_after:
+        raise _unprocessable(
+            ["body", "note"],
+            note_after,
+            "A changed value needs a note saying why; a reading with no note "
+            "reads as the value the sensor recorded",
+        )
+
+    for key, value in updates.items():
+        setattr(observation, key, _enum_value(value))
+
+    if isinstance(user, dict):
+        observation.updated_by_id = user.get("sub")
+        observation.updated_by_name = user.get("name")
+
+    session.commit()
+    session.refresh(observation)
+    return _detail(session, observation, thing_id)
+
+
+def delete_transducer_observation(
+    session: Session, observation_id: int, parameter_id: int
+) -> DeletedTransducerObservationsResponse:
+    """
+    Delete one reading and reconcile the block that covered it, exactly as a
+    range delete over that one instant would -- but only this row, where a
+    range over the instant would also take a second sensor's reading on the
+    same well.
+    """
+    _, thing_id = _load_observation(session, observation_id, parameter_id)
+
+    _lock_series(session, thing_id, parameter_id)
+
+    # Re-read under the lock: a concurrent delete may have removed the row, or
+    # a range delete narrowed the block, between the first read and the lock.
+    observation, _ = _load_observation(session, observation_id, parameter_id)
+    instant = observation.observation_datetime
+
+    affected_blocks = _overlapping_blocks(
+        session, thing_id, parameter_id, instant, instant
+    )
+
+    session.execute(
+        delete(TransducerObservation).where(TransducerObservation.id == observation_id)
+    )
+    session.flush()
+
+    deleted_block_ids, updated_block_ids = _reconcile_blocks(
+        session,
+        _deployment_ids_for_thing(session, thing_id),
+        parameter_id,
+        affected_blocks,
+    )
+
     session.commit()
 
     return DeletedTransducerObservationsResponse(
-        deleted_observation_count=deleted_observation_count,
+        deleted_observation_count=1,
         deleted_block_ids=deleted_block_ids,
         updated_block_ids=updated_block_ids,
         thing_id=thing_id,
+    )
+
+
+# ============= Block review =====================================
+
+
+def _block_not_found(block_id: int):
+    return PydanticStyleException(
+        status_code=HTTP_404_NOT_FOUND,
+        detail=[
+            {
+                "loc": ["path", "block_id"],
+                "msg": f"Transducer observation block {block_id} not found",
+                "type": "value_error",
+                "input": block_id,
+            }
+        ],
+    )
+
+
+def _load_block(
+    session: Session, block_id: int, parameter_id: int
+) -> TransducerObservationBlock:
+    block = session.scalars(
+        select(TransducerObservationBlock)
+        .where(
+            TransducerObservationBlock.id == block_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+        )
+        .execution_options(populate_existing=True)
+    ).first()
+    if block is None:
+        raise _block_not_found(block_id)
+    return block
+
+
+def review_transducer_block(
+    session: Session,
+    block_id: int,
+    parameter_id: int,
+    payload: ReviewTransducerBlock,
+    user=None,
+) -> ReviewedTransducerBlockResponse:
+    """
+    Set a block's ``review_status`` and move every reading it covers to the
+    matching ``data_maturity``, in one transaction.
+
+    The same mapping publish uses, so a block approved here reads exactly like
+    one published as approved: ``approved`` -> approved, anything else ->
+    provisional. The readings are the ones the list pairs with this block --
+    the well's deployments, this parameter, inside the block's closed span.
+
+    Takes the series lock: a range delete narrowing this block, or a publish
+    replacing it, would otherwise change which readings the span covers between
+    reading it and updating them.
+    """
+    block = _load_block(session, block_id, parameter_id)
+    thing_id = block.thing_id
+
+    _lock_series(session, thing_id, parameter_id)
+    block = _load_block(session, block_id, parameter_id)
+
+    review_status = _enum_value(payload.review_status)
+    data_maturity = _MATURITY_FOR_REVIEW_STATUS.get(review_status, _DEFAULT_MATURITY)
+    updated_by_id, updated_by_name = _created_by(user)
+
+    block.review_status = review_status
+    if updated_by_id is not None or updated_by_name is not None:
+        block.updated_by_id = updated_by_id
+        block.updated_by_name = updated_by_name
+
+    updated_observation_count = 0
+    deployment_ids = _deployment_ids_for_thing(session, thing_id)
+    if deployment_ids:
+        values = {"data_maturity": data_maturity}
+        if updated_by_id is not None or updated_by_name is not None:
+            values.update(updated_by_id=updated_by_id, updated_by_name=updated_by_name)
+        result = session.execute(
+            update(TransducerObservation)
+            .where(
+                TransducerObservation.deployment_id.in_(deployment_ids),
+                TransducerObservation.parameter_id == parameter_id,
+                TransducerObservation.observation_datetime >= block.start_datetime,
+                TransducerObservation.observation_datetime <= block.end_datetime,
+            )
+            .values(**values)
+        )
+        updated_observation_count = result.rowcount or 0
+
+    session.commit()
+    session.refresh(block)
+
+    return ReviewedTransducerBlockResponse(
+        block=TransducerObservationBlockResponse.model_validate(block),
+        data_maturity=data_maturity,
+        updated_observation_count=updated_observation_count,
     )
 
 

@@ -74,9 +74,9 @@ AUTH_DEPENDENCY_CALLABLES = frozenset(
         dependencies.amp_admin_function,
         dependencies.amp_editor_function,
         dependencies.amp_viewer_function,
-        dependencies.amp_staging_function,
         dependencies.lexicon_admin_function,
         dependencies.lexicon_editor_function,
+        dependencies.internal_ogc_function,
         dependencies.no_permission_function,
     }
 )
@@ -167,7 +167,7 @@ def test_public_schema_advertises_only_anonymous_routes():
         (["Admin"], True),
         (["Editor"], True),
         (["Viewer"], True),
-        (["AMPAdmin"], False),
+        (["AMP.Admin"], False),
         ([], False),
     ],
 )
@@ -200,19 +200,19 @@ def test_role_families_stay_orthogonal():
     """General Admin confers nothing in the AMP or Lexicon families."""
     payload = {"groups": ["Admin"]}
     assert not permissions.authorize_groups(
-        payload, require_any=["AMPAdmin", "AMPEditor", "AMPViewer"]
+        payload, require_any=["AMP.Admin", "AMP.Editor", "AMP.Viewer"]
     )
     assert not permissions.authorize_groups(
-        payload, require_any=["LexiconAdmin", "LexiconEditor"]
+        payload, require_any=["Lexicon.Admin", "Lexicon.Editor"]
     )
 
 
 def test_require_all_demands_every_group():
     assert permissions.authorize_groups(
-        {"groups": ["Admin", "AMPAdmin"]}, require_all=["Admin", "AMPAdmin"]
+        {"groups": ["Admin", "AMP.Admin"]}, require_all=["Admin", "AMP.Admin"]
     )
     assert not permissions.authorize_groups(
-        {"groups": ["Admin"]}, require_all=["Admin", "AMPAdmin"]
+        {"groups": ["Admin"]}, require_all=["Admin", "AMP.Admin"]
     )
 
 

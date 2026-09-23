@@ -74,7 +74,13 @@ class ChemistryDriveConfigError(Exception):
 # --- Google Drive access -------------------------------------------------------
 
 
-def _drive_credentials():
+def google_credentials(scopes: list[str]):
+    """Credentials for a Google API, scoped to ``scopes``.
+
+    Shared with the field-sheet ingest, which needs the Sheets scope as well as
+    Drive: both read the same shared folder as the same identity, so they must
+    resolve credentials the same way.
+    """
     from google.oauth2 import service_account
 
     if settings.mode == "production":
@@ -85,13 +91,17 @@ def _drive_credentials():
             )
         decoded = base64.b64decode(key_base64).decode("utf-8")
         return service_account.Credentials.from_service_account_info(
-            json.loads(decoded), scopes=DRIVE_SCOPES
+            json.loads(decoded), scopes=scopes
         )
 
     import google.auth
 
-    creds, _ = google.auth.default(scopes=DRIVE_SCOPES)
+    creds, _ = google.auth.default(scopes=scopes)
     return creds
+
+
+def _drive_credentials():
+    return google_credentials(DRIVE_SCOPES)
 
 
 @lru_cache(maxsize=1)

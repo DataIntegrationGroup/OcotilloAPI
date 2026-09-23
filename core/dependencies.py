@@ -18,7 +18,7 @@ from typing import Annotated, TypeAlias
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from core.permissions import authenticated
+from core.permissions import authenticated, INTERNAL_OGC_GROUP
 from db.engine import get_db_session
 
 session_dependency: TypeAlias = Annotated[Session, Depends(get_db_session)]
@@ -42,7 +42,7 @@ literal Viewer group, so the hierarchy held only as long as whoever
 provisioned the Authentik groups granted all three tiers to every admin.
 
 The three families below are deliberately orthogonal -- general `Admin` does
-not confer `AMPAdmin` or `LexiconAdmin`. Only tiers *within* a family nest.
+not confer `AMP.Admin` or `Lexicon.Admin`. Only tiers *within* a family nest.
 """
 
 # General Purpose Authentication/Permissions -----------------------------------
@@ -54,36 +54,30 @@ viewer_function = authenticated(any_of=["Admin", "Editor", "Viewer"])
 
 # AMP-Specific Authentication/Permissions --------------------------------------
 
-amp_admin_function = authenticated(any_of=["AMPAdmin"])
-amp_editor_function = authenticated(any_of=["AMPAdmin", "AMPEditor"])
-amp_viewer_function = authenticated(any_of=["AMPAdmin", "AMPEditor", "AMPViewer"])
-
-
-# Hydrograph-Corrector Staging Permissions -------------------------------------
-# The hydrograph corrector's publish and range-delete routes write and destroy
-# transducer records, and the workbench driving them is still being validated
-# against real logger files. `AMP.Staging` is its own group with no tier below
-# it and no AMP tier above it -- an AMPAdmin does not satisfy it. Nobody holds
-# it until it is granted in Authentik, so the routes ship dark and reachable
-# only by whoever is testing them.
-#
-# This is deliberately not a fourth rung on the AMP ladder. When the workbench
-# is trusted, these routes move to `amp_admin_dependency` and the group goes
-# away; leaving it as a tier would make that a schema change instead of a
-# one-line edit.
-amp_staging_function = authenticated(any_of=["AMP.Staging"])
+amp_admin_function = authenticated(any_of=["AMP.Admin"])
+amp_editor_function = authenticated(any_of=["AMP.Admin", "AMP.Editor"])
+amp_viewer_function = authenticated(any_of=["AMP.Admin", "AMP.Editor", "AMP.Viewer"])
 
 
 # Lexicon-Specific Authentication/Permissions ----------------------------------
 
-lexicon_admin_function = authenticated(any_of=["LexiconAdmin"])
-lexicon_editor_function = authenticated(any_of=["LexiconAdmin", "LexiconEditor"])
+lexicon_admin_function = authenticated(any_of=["Lexicon.Admin"])
+lexicon_editor_function = authenticated(any_of=["Lexicon.Admin", "Lexicon.Editor"])
 
 
 # OGC-Internal Authentication/Permissions --------------------------------------
-# INTERNAL_OGC_GROUP ("OGCInternal") lives in core/permissions.py, not here --
-# it gates core/internal_ogc_auth.py's ASGI middleware in front of the
-# /ogcapi-internal mount, which runs outside FastAPI's Depends() machinery.
+# INTERNAL_OGC_GROUP ("OGC.Internal") still lives in core/permissions.py, where
+# core/internal_ogc_auth.py's ASGI middleware reads it -- that middleware gates
+# the /ogcapi-internal mount outside FastAPI's Depends() machinery. This is the
+# Depends()-shaped view of the same group, for the API key routes.
+#
+# The key routes are gated on this group and not on a general role on purpose.
+# An API key is a pre-authorized stand-in for OGC.Internal: it reaches the
+# unfiltered, draft-inclusive internal collections. Minting one is therefore
+# exactly as privileged as holding the group, and gating creation on, say,
+# viewer_dependency would let any Viewer issue themselves that access with a
+# button. See docs/api-key-management.md.
+internal_ogc_function = authenticated(any_of=[INTERNAL_OGC_GROUP])
 
 
 # Testing-Specific Authentication/Permissions ----------------------------------
@@ -104,7 +98,7 @@ amp_admin_dependency: TypeAlias = Annotated[dict, Depends(amp_admin_function)]
 amp_editor_dependency: TypeAlias = Annotated[dict, Depends(amp_editor_function)]
 amp_viewer_dependency: TypeAlias = Annotated[dict, Depends(amp_viewer_function)]
 
-amp_staging_dependency: TypeAlias = Annotated[dict, Depends(amp_staging_function)]
+internal_ogc_dependency: TypeAlias = Annotated[dict, Depends(internal_ogc_function)]
 
 no_permission_dependency: TypeAlias = Annotated[dict, Depends(no_permission_function)]
 # ============= EOF =============================================

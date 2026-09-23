@@ -46,13 +46,9 @@ from db import (
     Parameter,
 )
 from db.engine import session_ctx
-from domain.field_staff import (
-    FIELD_STAFF_ORGANIZATION,
-    LEAD_ROLE,
-    PARTICIPANT_ROLE,
-    field_staff_contact_payload,
-)
+from domain.field_staff import field_staff_entries
 from domain.samples import water_level_sample_name
+from domain.units import convert_ft_to_in
 from domain.values import build_notes, enum_value
 from domain.water_levels import (
     GROUNDWATER_LEVEL_ACTIVITY_TYPE,
@@ -74,6 +70,11 @@ from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
+from services.field_event_participant_helper import (
+    ensure_field_event_participants,
+    lead_participant,
+    resolve_measuring_participant,
+)
 from services.thing_helper import add_thing, find_water_wells_by_name
 from services.util import transform_srid
 
@@ -606,27 +607,23 @@ def _make_row_models(rows, session, progress_callback=None):
     return models, validation_errors
 
 
-def _add_field_staff(
-    session: Session, fs: str, field_event: FieldEvent, role: str, user: str
-) -> None:
-    # Contact uniqueness is enforced on (name, organization), so the lookup must
-    # use the same key. Adding contact_type here misses an existing row created
-    # with a different type and then fails on the duplicate insert.
-    contact = session.scalars(
-        select(Contact)
-        .where(Contact.name == fs)
-        .where(Contact.organization == FIELD_STAFF_ORGANIZATION)
-    ).first()
+def _resolve_sample_participant(
+    model: WellInventoryRow, participants: list[FieldEventParticipant]
+) -> FieldEventParticipant | None:
+    """
+    Pick the participant who took the water level reading on this row.
 
-    if not contact:
-        contact = add_contact(
-            session, field_staff_contact_payload(fs), user, commit=False
-        )
+    Unlike the water level CSV, this format leaves the measuring person column
+    optional and operators routinely leave it blank, so a missing value falls
+    back to the ``field_staff`` lead rather than dropping the link. A value that
+    is present but names nobody on the crew is a data-entry error and fails the
+    row, the way the water level importer treats the same mismatch.
+    """
+    sampler = (model.sampler or "").strip()
+    if sampler:
+        return resolve_measuring_participant(sampler, participants)
 
-    fec = FieldEventParticipant(
-        field_event=field_event, contact_id=contact.id, participant_role=role
-    )
-    session.add(fec)
+    return lead_participant(participants)
 
 
 def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) -> str:
@@ -717,7 +714,9 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         first_visit_date=date_time.date(),
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
-        well_casing_diameter=model.casing_diameter_ft,
+        # The CSV reports casing diameter in feet, but the column stores
+        # inches, unlike the depth columns around it.
+        well_casing_diameter=convert_ft_to_in(model.casing_diameter_ft),
         measuring_point_height=universal_mp_height,
         measuring_point_description=model.measuring_point_description,
         well_completion_date=model.date_drilled,
@@ -778,17 +777,19 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         thing_id=well.id,
     )
     session.add(fe)
+    # Flush so the participant lookup below queries a real field_event_id rather
+    # than matching on NULL.
+    session.flush()
 
     # add field staff
-    for fsi, role in (
-        (model.field_staff, LEAD_ROLE),
-        (model.field_staff_2, PARTICIPANT_ROLE),
-        (model.field_staff_3, PARTICIPANT_ROLE),
-    ):
-        if not fsi:
-            continue
-
-        _add_field_staff(session, fsi, fe, role, user)
+    participants = ensure_field_event_participants(
+        session,
+        fe,
+        field_staff_entries(
+            model.field_staff, model.field_staff_2, model.field_staff_3
+        ),
+        user,
+    )
 
     # add field activity
     fa = FieldActivity(
@@ -837,6 +838,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             sample_matrix=SAMPLE_MATRIX,
             sample_method=enum_value(model.sample_method, "Unknown"),
             notes=model.water_level_notes,
+            field_event_participant=_resolve_sample_participant(model, participants),
         )
         session.add(sample)
         session.flush()

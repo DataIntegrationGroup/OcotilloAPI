@@ -18,7 +18,6 @@ import io
 import json
 import mimetypes
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from db import Thing, Asset
@@ -26,17 +25,13 @@ from db.engine import session_ctx
 from fastapi import UploadFile
 from services.asset_helper import upload_and_associate
 from services.gcs_helper import get_storage_bucket, make_blob_name_and_uri
+from services.ingest_result import IngestResult
 from services.water_level_csv import bulk_upload_water_levels
 from services.well_inventory_csv import import_well_inventory_csv
 from sqlalchemy import select
 
-
-@dataclass
-class WellInventoryResult:
-    exit_code: int
-    stdout: str
-    stderr: str
-    payload: dict
+# One shape for every ingest's return value; see services/ingest_result.py.
+WellInventoryResult = IngestResult
 
 
 def well_inventory_csv(source_file: Path | str):

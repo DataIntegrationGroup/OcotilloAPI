@@ -3,6 +3,15 @@
 This repo pushes millions of legacy rows through SQLAlchemy. When Codex or any other agent has to work on
 these transfers, keep the following rules in mind to avoid hour-long runs:
 
+## Branching
+- **Always branch off `staging`**, never off `main` or `production`. This applies to every `chore/`, `fix/`,
+  and `feat/` (feature) branch, including ticket branches named after a Jira key.
+- Fetch first so the new branch starts from the current remote tip:
+  `git fetch origin staging && git switch -c <branch> origin/staging`.
+- Open the PR against `staging`. Promotion to `production` happens later via a separate promotion PR — see
+  `docs/release-flow.md`.
+- The only exception is `hotfix/vX.Y.Z`, which branches off a release tag (`hotfix-start.yml`), not `staging`.
+
 ## 1. Skip ORM object construction once volume climbs
 - **Do not call `session.bulk_save_objects`** for high frequency tables (e.g., transducer observations,
   water-levels, chemistry results). It still instantiates every mapped class and kills throughput.

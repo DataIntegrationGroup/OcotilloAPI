@@ -4,11 +4,10 @@ import socket
 import pytest
 from alembic import command
 from alembic.config import Config
-from dotenv import load_dotenv
 from sqlalchemy import delete, select
 from sqlalchemy import inspect as sa_inspect
 
-from core.initializers import init_lexicon, init_parameter
+from core.initializers import init_lexicon, init_parameter, init_regulatory_limit
 from db import *
 from db.engine import engine, session_ctx
 from db.initialization import (
@@ -19,7 +18,6 @@ from tests import get_parameter_id
 
 
 def pytest_configure():
-    load_dotenv(override=False)
     for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
         host = (os.environ.get(env_name) or "").strip()
         if host != "db":
@@ -68,6 +66,24 @@ def _delete_if_present(session, obj) -> None:
         session.delete(persistent)
 
 
+@pytest.fixture(scope="session")
+def ogc_app():
+    """The API application, built once for the whole session.
+
+    `create_api_app()` mounts pygeoapi, which loads two configurations and
+    builds a provider for every collection -- seven to nine seconds. Three test
+    modules each built their own, so the suite paid that three times over
+    before running a single assertion.
+
+    Shared safely because the modules that use it apply their dependency
+    overrides in their own fixture and clear them on the way out; nothing else
+    mutates the app.
+    """
+    from core.factory import create_api_app
+
+    return create_api_app()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_db():
     """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
@@ -77,6 +93,7 @@ def _setup_test_db():
     _sync_search_vectors()
     init_lexicon()
     init_parameter()
+    init_regulatory_limit()
     _ensure_locations_for_things()
     _ensure_measuring_points_for_wells()
     yield

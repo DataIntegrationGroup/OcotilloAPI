@@ -19,5 +19,9 @@ MATERIALIZED_VIEWS: tuple[str, ...] = (
     # two pivot views above, at per-result grain.
     "ogc_water_chemistry",
     "ogc_internal_water_chemistry",
+    # Field-operations aggregates for the internal-only
+    # ogc_internal_water_well_field_operations layer (e1f2a3b4c5d6). The
+    # feature view itself is a plain view and needs no refresh.
+    "ogc_internal_water_well_field_operations_stats",
     "transducer_daily_data",
 )

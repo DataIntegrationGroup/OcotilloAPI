@@ -26,6 +26,7 @@ from db.thing import Thing
 from schemas.group import GroupResponse
 from services.audit_helper import audit_add, audit_update
 from services.edit_notification_helper import EditEvent, notify_edit_event
+from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter
 
 
@@ -54,6 +55,41 @@ def get_well_counts_by_group_id(
         .group_by(GroupThingAssociation.group_id)
     )
     return {row[0]: int(row[1]) for row in session.execute(stmt).all()}
+
+
+def assert_group_name_type_available(
+    session: Session,
+    name: str | None,
+    group_type: Any,
+    exclude_id: int | None = None,
+) -> None:
+    """
+    Raise 409 if another group already has this name and group_type.
+
+    Mirrors ``uq_group_name_type``. Postgres treats NULLs as distinct in a
+    unique constraint, so an untyped group never conflicts.
+    """
+    if name is None or group_type is None:
+        return
+    group_type = getattr(group_type, "value", group_type)
+
+    stmt = select(Group.id).where(Group.name == name, Group.group_type == group_type)
+    if exclude_id is not None:
+        stmt = stmt.where(Group.id != exclude_id)
+    if session.scalars(stmt).first() is None:
+        return
+
+    raise PydanticStyleException(
+        status_code=HTTP_409_CONFLICT,
+        detail=[
+            {
+                "loc": ["body", "name"],
+                "msg": f"Group with name {name} and group_type {group_type} already exists.",
+                "type": "value_error",
+                "input": {"name": name, "group_type": group_type},
+            }
+        ],
+    )
 
 
 def group_to_response(group: Group, well_count: int = 0) -> GroupResponse:

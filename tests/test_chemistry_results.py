@@ -1,0 +1,363 @@
+# ===============================================================================
+# Copyright 2026 ross
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+"""GET /chemistry/results keys results on when the water was collected.
+
+A lab runs one sample's analytes over days or weeks. Keying results on the
+analysis date turned one visit into several points in time, so the owner
+report for AR-0102 counted eight samples in 2019 where there was one.
+"""
+
+import pytest
+from sqlalchemy import select, text
+
+from core.dependencies import amp_viewer_function
+from db.engine import session_ctx
+from db.parameter import Parameter
+from db.regulatory_limit import RegulatoryLimit
+from main import app
+from tests import client, override_authentication
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
+    yield
+    app.dependency_overrides = {}
+
+
+def _add_sample(session, thing_id, collected_on, point_id, sample_type=None):
+    return session.execute(
+        text(
+            'INSERT INTO "NMA_Chemistry_SampleInfo" '
+            '(thing_id, "CollectionDate", "PublicRelease", '
+            '"nma_SamplePointID", "SampleType") '
+            "VALUES (:tid, :collected, true, :point, :sample_type) "
+            "RETURNING id"
+        ),
+        {
+            "tid": thing_id,
+            "collected": collected_on,
+            "point": point_id,
+            "sample_type": sample_type,
+        },
+    ).scalar()
+
+
+def _add_major(session, sample_id, symbol, value, analysed_on, unit="mg/L"):
+    session.execute(
+        text(
+            'INSERT INTO "NMA_MajorChemistry" '
+            '(chemistry_sample_info_id, "Symbol", "SampleValue", "Units", '
+            '"AnalysisDate", "Uncertainty", "AnalysisMethod", "Notes", '
+            '"AnalysesAgency") VALUES (:sid, :symbol, :val, '
+            ":unit, :analysed, 0.1, 'ICP-MS', 'major note', 'NMBGMR')"
+        ),
+        {
+            "sid": sample_id,
+            "symbol": symbol,
+            "val": value,
+            "unit": unit,
+            "analysed": analysed_on,
+        },
+    )
+
+
+def _add_minor(session, sample_id, point_id, symbol, value, analysed_on):
+    session.execute(
+        text(
+            'INSERT INTO "NMA_MinorTraceChemistry" '
+            '(chemistry_sample_info_id, "nma_SamplePointID", symbol, '
+            "sample_value, units, analysis_date) "
+            "VALUES (:sid, :point, :symbol, :val, 'mg/L', :analysed)"
+        ),
+        {
+            "sid": sample_id,
+            "point": point_id,
+            "symbol": symbol,
+            "val": value,
+            "analysed": analysed_on,
+        },
+    )
+
+
+def _add_radio(session, sample_id, point_id, symbol, value, analysed_on):
+    session.execute(
+        text(
+            'INSERT INTO "NMA_Radionuclides" '
+            '(chemistry_sample_info_id, "nma_SamplePointID", "Symbol", '
+            '"SampleValue", "Units", "AnalysisDate", "Uncertainty", '
+            '"AnalysisMethod", "Notes", "AnalysesAgency") VALUES '
+            "(:sid, :point, :symbol, :val, 'pCi/L', :analysed, "
+            "0.01, 'EPA 900.0', 'rad note', 'NMBGMR')"
+        ),
+        {
+            "sid": sample_id,
+            "point": point_id,
+            "symbol": symbol,
+            "val": value,
+            "analysed": analysed_on,
+        },
+    )
+
+
+def _add_field(session, sample_id, parameter, value):
+    session.execute(
+        text(
+            'INSERT INTO "NMA_FieldParameters" '
+            '(chemistry_sample_info_id, "FieldParameter", "SampleValue", '
+            '"Units") '
+            "VALUES (:sid, :parameter, :val, 'std units')"
+        ),
+        {"sid": sample_id, "parameter": parameter, "val": value},
+    )
+
+
+@pytest.fixture
+def two_samples(water_well_thing):
+    """One sample collected Apr 09 2019 and analysed across three dates, and
+    one collected Dec 20 2018 whose lab work ran into January 2019."""
+    with session_ctx() as session:
+        original_status = session.execute(
+            text("SELECT release_status FROM thing WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        ).scalar()
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+
+        thing_id = water_well_thing.id
+        april = _add_sample(session, thing_id, "2019-04-09", "RES-APR")
+        _add_field(session, april, "pH", 7.4)
+        _add_major(session, april, "Cl", 12.0, "2019-04-16")
+        _add_major(session, april, "Ca", 40.0, "2019-04-22")
+        _add_major(session, april, "Fe", 1.0, "2019-04-23", unit=None)
+        _add_minor(session, april, "RES-APR", "As", 0.012, "2019-05-24")
+        _add_radio(session, april, "RES-APR", "GA", 3.2, "2019-05-25")
+
+        december = _add_sample(session, thing_id, "2018-12-20", "RES-DEC")
+        _add_major(session, december, "SO4", 80.0, "2019-01-07")
+        session.commit()
+
+        yield {
+            "april": april,
+            "december": december,
+            "thing_id": water_well_thing.id,
+        }
+
+        for table in (
+            "NMA_MajorChemistry",
+            "NMA_MinorTraceChemistry",
+            "NMA_Radionuclides",
+            "NMA_FieldParameters",
+        ):
+            session.execute(
+                text(
+                    f'DELETE FROM "{table}" '
+                    "WHERE chemistry_sample_info_id IN (:a, :d)"
+                ),
+                {"a": april, "d": december},
+            )
+        delete_samples = (
+            'DELETE FROM "NMA_Chemistry_SampleInfo" ' "WHERE id IN (:a, :d)"
+        )
+        session.execute(text(delete_samples), {"a": april, "d": december})
+        session.execute(
+            text("UPDATE thing SET release_status = :status WHERE id = :tid"),
+            {"status": original_status, "tid": water_well_thing.id},
+        )
+        session.commit()
+
+
+def _results(thing_id, year):
+    response = client.get(
+        "/chemistry/results",
+        params={
+            "thing_id": thing_id,
+            "start_time": f"{year}-01-01T00:00:00",
+            "end_time": f"{year + 1}-01-01T00:00:00",
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["items"]
+
+
+def test_every_result_in_a_sample_carries_its_collection_date(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+
+    april_sample_id = two_samples["april"]
+    april = [item for item in items if item["sample_id"] == april_sample_id]
+    assert len(april) == 6
+    observation_dates = {item["observation_datetime"] for item in april}
+    assert observation_dates == {"2019-04-09T00:00:00Z"}
+
+
+def test_fd_samples_can_be_excluded(water_well_thing):
+    with session_ctx() as session:
+        original_status = session.execute(
+            text("SELECT release_status FROM thing WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        ).scalar()
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": water_well_thing.id},
+        )
+        sample_id = _add_sample(
+            session, water_well_thing.id, "2019-04-09", "RES-FD", "FD"
+        )
+        _add_major(session, sample_id, "Cl", 12.0, "2019-04-16")
+        session.commit()
+
+        response = client.get(
+            "/chemistry/results",
+            params={
+                "thing_id": water_well_thing.id,
+                "exclude_field_duplicate_samples": True,
+            },
+        )
+
+        session.execute(
+            text(
+                'DELETE FROM "NMA_MajorChemistry" '
+                "WHERE chemistry_sample_info_id = :sid"
+            ),
+            {"sid": sample_id},
+        )
+        session.execute(
+            text('DELETE FROM "NMA_Chemistry_SampleInfo" WHERE id = :sid'),
+            {"sid": sample_id},
+        )
+        session.execute(
+            text("UPDATE thing SET release_status = :status WHERE id = :tid"),
+            {"status": original_status, "tid": water_well_thing.id},
+        )
+        session.commit()
+
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    assert all(item["sample_id"] != sample_id for item in items)
+
+
+def test_every_result_in_a_sample_carries_its_sample_point_id(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+
+    april_sample_id = two_samples["april"]
+    april = [item for item in items if item["sample_id"] == april_sample_id]
+    assert {item["sample_point_id"] for item in april} == {"RES-APR"}
+
+
+def test_analysis_date_is_reported_separately(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+    by_kind = {item["result_kind"]: item for item in items}
+
+    assert by_kind["field"]["analysis_date"] is None
+    assert by_kind["minor"]["analysis_date"] == "2019-05-24"
+    assert by_kind["radionuclide"]["analysis_date"] == "2019-05-25"
+    major_results = [item for item in items if item["result_kind"] == "major"]
+    major_analysis_dates = {item["analysis_date"] for item in major_results}
+    assert major_analysis_dates == {
+        "2019-04-16",
+        "2019-04-22",
+        "2019-04-23",
+    }
+
+
+def test_results_include_enriched_fields_without_renaming_fields(two_samples):
+    items = _results(two_samples["thing_id"], 2019)
+    by_kind = {item["result_kind"]: item for item in items}
+
+    minor = by_kind["minor"]
+    assert minor["source"] == "minor"
+    assert minor["parameter_name"] == "Arsenic"
+    assert minor["parameter_key"] == "minor_arsenic"
+    assert minor["analyte"] is None
+    assert minor["symbol"] == "As"
+    assert minor["standard"]["status"] == "above_mcl"
+
+    def is_chloride(item):
+        return item["parameter_name"] == "Chloride"
+
+    chloride_results = [item for item in items if is_chloride(item)]
+    major = chloride_results[0]
+    assert major["source"] == "major"
+    assert major["parameter_key"] == "major_chloride"
+    assert major["uncertainty"] == 0.1
+    assert major["analysis_method"] == "ICP-MS"
+    assert major["notes"] == "major note"
+    assert major["analyses_agency"] == "NMBGMR"
+    assert major["standard"]["status"] == "below_smcl"
+
+    iron = next(item for item in items if item["parameter_name"] == "Iron")
+    assert iron["unit"] is None
+    assert iron["standard"]["status"] == "not_compared"
+
+    radionuclide = by_kind["radionuclide"]
+    assert radionuclide["source"] == "radionuclide"
+    assert radionuclide["parameter_key"] == "radionuclide_ga"
+    assert radionuclide["standard"]["status"] == "no_limit"
+
+    field = by_kind["field"]
+    assert field["source"] == "field"
+    assert field["analysis_method"] is None
+    assert field["uncertainty"] is None
+
+
+def test_results_standards_follow_seeded_regulatory_limit(two_samples):
+    limit_query = (
+        select(RegulatoryLimit)
+        .join(Parameter)
+        .where(
+            Parameter.parameter_name == "Chloride",
+            Parameter.matrix == "groundwater",
+            RegulatoryLimit.limit_source == "EPA",
+            RegulatoryLimit.limit_type == "SMCL",
+        )
+    )
+
+    with session_ctx() as session:
+        chloride_limit = session.scalar(limit_query)
+        original_value = chloride_limit.limit_value
+        chloride_limit.limit_value = 10
+        session.commit()
+
+    try:
+        items = _results(two_samples["thing_id"], 2019)
+        chloride_results = [
+            item for item in items if item["parameter_name"] == "Chloride"
+        ]
+        chloride = chloride_results[0]
+        assert chloride["standard"]["status"] == "above_smcl"
+        assert chloride["standard"]["secondary_smcl"] == 10.0
+    finally:
+        with session_ctx() as session:
+            chloride_limit = session.scalar(limit_query)
+            chloride_limit.limit_value = original_value
+            session.commit()
+
+
+def test_year_window_follows_collection_not_analysis(two_samples):
+    """A December sample analysed in January belongs to the year it was
+    drawn.
+    """
+    thing_id = two_samples["thing_id"]
+    in_2019 = {item["sample_id"] for item in _results(thing_id, 2019)}
+    in_2018 = {item["sample_id"] for item in _results(thing_id, 2018)}
+
+    assert in_2019 == {two_samples["april"]}
+    assert in_2018 == {two_samples["december"]}
+
+
+# ============= EOF =============================================
