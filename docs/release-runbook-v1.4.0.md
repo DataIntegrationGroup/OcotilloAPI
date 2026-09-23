@@ -112,13 +112,18 @@ This is the versioned checkpoint of what you are promoting. Test against
 
 ### Smoke the RC on staging
 
-`scripts/smoke_test.py` runs the whole list. Read-only unless `--write`:
+`scripts/smoke_test.py` runs the whole list, read-only:
 
 ```bash
 uv run python -m scripts.smoke_test \
   --base-url https://ocotillo-api-staging.newmexicowaterdata.org \
-  --token "$AUTHENTIK_ACCESS_TOKEN" --api-key "$INTERNAL_OGC_KEY" --write
+  --token "$AUTHENTIK_ACCESS_TOKEN"
 ```
+
+The internal-mount checks authenticate with `API_KEY` from `.env`, so they run
+without `--token`; the key has to be one the target accepts, so point
+`--env-file` at the right environment's file when smoking production. `--token`
+is only needed for the Authentik-bearer path and `GET /api_key`.
 
 It exits non-zero on any failure. Checks whose credentials were not supplied
 are skipped rather than failed, so read the summary line — `--strict` turns a
@@ -135,9 +140,9 @@ skip into a failure when the run is unattended. What it covers:
   desktop clients use: bearer, HTTP Basic, and `?token=`
 - `/ogcapi-internal` refuses an anonymous request with a `WWW-Authenticate`
   challenge, and refuses a junk credential
-- `POST /api_key` mints a key; `GET /api_key` lists it; the key reaches
-  `/ogcapi-internal`; revoking it makes the next request fail (`--write` only,
-  since it writes rows to the target database)
+- `GET /api_key` lists the caller's keys and leaks no token. The script does
+  **not** mint or revoke: both write rows that outlive the run, so it uses the
+  key already in `.env` instead. Mint/revoke stays a manual check.
 - `GET /ogcapi-internal/collections/water_well_field_operations/items?limit=1`
   returns rows and is refused without a credential
 

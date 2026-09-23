@@ -22,29 +22,33 @@ mount is reachable by every credential it is supposed to accept and by nothing
 else, and that a user-issued API key can be minted, used, revoked, and is dead
 on the next request.
 
-Read-only by default. The API-key lifecycle writes rows to the target's
-database, so it runs only under ``--write``.
+**Read-only.** Nothing here writes: it authenticates with the API key already
+in ``.env`` rather than issuing one, because minting a key leaves a row behind
+and revoking it leaves another, on whichever database the run points at.
 
     uv run python -m scripts.smoke_test --base-url https://<host>
 
-    # with credentials (either or both)
+    # /api_key and the Authentik-bearer path additionally need a JWT
     uv run python -m scripts.smoke_test --base-url https://<host> \\
-        --token "$AUTHENTIK_ACCESS_TOKEN" --api-key "$INTERNAL_OGC_KEY"
+        --token "$AUTHENTIK_ACCESS_TOKEN"
 
-    # include the mint/use/revoke cycle -- writes to the target database
-    uv run python -m scripts.smoke_test --base-url https://<host> \\
-        --token "$AUTHENTIK_ACCESS_TOKEN" --write
+``API_KEY`` is read from ``.env`` unless ``--api-key`` or ``SMOKE_API_KEY``
+says otherwise, so the internal-mount checks run without being handed a
+credential. Point ``--env-file`` elsewhere to smoke a different environment
+with its own key, and keep in mind the key has to belong to the host being
+tested -- a staging key will simply 401 against production.
 
 Exit status is 0 when nothing failed, 1 when anything did. Checks whose
 credentials were not supplied are SKIPped, which is not a failure unless
 ``--strict`` is passed -- so an unattended run that quietly tested nothing but
 ``/health`` cannot report success.
 
-A check needs a *bearer* credential; the static keys and user-issued keys are
-interchangeable there. ``--api-key`` is additionally exercised through the two
-transports the desktop GIS clients need (HTTP Basic, and ``?token=``), because
-those paths are what ArcGIS Pro and QGIS actually use and they are easy to
-break without noticing. See docs/internal-ogc-desktop-gis.md.
+The internal mount takes a bearer credential of either kind; the static keys
+and user-issued keys are interchangeable there. The API key is additionally
+exercised through the two transports the desktop GIS clients need (HTTP Basic,
+and ``?token=``), because those paths are what ArcGIS Pro and QGIS actually
+use and they are easy to break without noticing. See
+docs/internal-ogc-desktop-gis.md.
 """
 
 from __future__ import annotations
@@ -52,10 +56,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 
 import httpx
+from dotenv import load_dotenv
 
 # Collections the public mount is expected to serve. A short, stable subset
 # rather than the whole list: this is a smoke test, and a config that gains a
@@ -89,7 +95,6 @@ class Smoke:
     base_url: str
     token: str | None
     api_key: str | None
-    write: bool
     results: list[Result] = field(default_factory=list)
 
     # -- plumbing ----------------------------------------------------------
@@ -303,86 +308,34 @@ class Smoke:
 
         self.check(f"{PII_COLLECTION}/items (anonymous) -> 401", anonymous)
 
-    # -- API key lifecycle -------------------------------------------------
-    def check_api_key_lifecycle(self) -> None:
-        """Mint a key, use it, revoke it, and prove it is dead afterwards."""
-        steps = (
-            "POST /api_key mints a key",
-            "GET /api_key lists the new key",
-            "minted key reaches /ogcapi-internal",
-            "DELETE /api_key/{id} revokes it",
-            "revoked key is refused on the next request",
-        )
+    # -- API key routes (read-only) ----------------------------------------
+    def check_api_key_listing(self) -> None:
+        """
+        List the caller's keys. Read-only on purpose: minting one writes a row
+        that outlives the run, and revoking it writes another. The key this
+        script authenticates with is the one in .env, not one it issues.
+        """
+        name = "GET /api_key lists your keys"
         if not self.token:
-            for step in steps:
-                self.record(step, SKIP, "no --token given")
-            return
-        if not self.write:
-            for step in steps:
-                self.record(step, SKIP, "writes to the database; pass --write")
+            self.record(name, SKIP, "no --token given (the route needs a JWT)")
             return
 
-        auth = {"Authorization": f"Bearer {self.token}"}
-        key_id: int | None = None
-        token: str | None = None
-
-        def mint() -> str | None:
-            nonlocal key_id, token
-            response = self.client.post(
-                self.url("/api_key"),
-                headers=auth,
-                json={"name": "smoke test", "lifetime_days": 1},
+        def run() -> str | None:
+            response = self.get(
+                "/api_key", headers={"Authorization": f"Bearer {self.token}"}
             )
-            if problem := self._expected(response, 201):
-                return problem
-            body = response.json()
-            key_id, token = body.get("id"), body.get("token")
-            if not token:
-                return "response carried no token"
-            if key_id is None:
-                return "response carried no id"
-            return None
-
-        self.check(steps[0], mint)
-        if key_id is None or token is None:
-            for step in steps[1:]:
-                self.record(step, SKIP, "no key was minted")
-            return
-
-        def listed() -> str | None:
-            response = self.get("/api_key", headers=auth)
             if problem := self._expected(response, 200):
                 return problem
-            keys = {k.get("id") for k in response.json()}
-            if key_id not in keys:
-                return f"key {key_id} missing from the list"
+            body = response.json()
+            if not isinstance(body, list):
+                return f"expected a list of keys, got {type(body).__name__}"
+            # A token is never echoed back by this route -- only digests are
+            # stored, so a key appearing here would be a leak.
+            if any("token" in key for key in body):
+                return "a listed key carried a token field"
             return None
 
-        def usable() -> str | None:
-            response = self.get(
-                "/ogcapi-internal/collections",
-                headers={"Authorization": f"Bearer {token}"},
-                params={"f": "json"},
-            )
-            return self._expected(response, 200)
-
-        def revoke() -> str | None:
-            response = self.client.delete(self.url(f"/api_key/{key_id}"), headers=auth)
-            return self._expected(response, 204)
-
-        def dead() -> str | None:
-            # Revocation is checked per request, so the very next one fails --
-            # no redeploy, no cache to wait out.
-            response = self.get(
-                "/ogcapi-internal/collections",
-                headers={"Authorization": f"Bearer {token}"},
-            )
-            return self._expected(response, 401)
-
-        self.check(steps[1], listed)
-        self.check(steps[2], usable)
-        self.check(steps[3], revoke)
-        self.check(steps[4], dead)
+        self.check(name, run)
 
     def bearer(self) -> str | None:
         """Whichever credential is available; the mount accepts either."""
@@ -400,7 +353,7 @@ def run_all(smoke: Smoke, expect_version: str | None) -> None:
     smoke.check_internal_with_token()
     smoke.check_internal_with_api_key()
     smoke.check_pii_items()
-    smoke.check_api_key_lifecycle()
+    smoke.check_api_key_listing()
 
 
 def summarize(results: Iterable[Result], strict: bool) -> int:
@@ -454,9 +407,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Fail unless /health reports this version, e.g. 1.4.0",
     )
     parser.add_argument(
-        "--write",
-        action="store_true",
-        help="Run the API-key lifecycle, which writes rows to the target database",
+        "--env-file",
+        default=".env",
+        help="dotenv file to read API_KEY from when --api-key is not given",
     )
     parser.add_argument(
         "--strict",
@@ -469,7 +422,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if not args.base_url:
         parser.error("--base-url is required (or set SMOKE_BASE_URL)")
     args.base_url = args.base_url.rstrip("/")
+    args.api_key = args.api_key or _api_key_from_env_file(args.env_file)
     return args
+
+
+def _api_key_from_env_file(env_file: str) -> str | None:
+    """
+    `API_KEY` out of the dotenv file, if there is one.
+
+    override=False matches db/engine.py: a value already exported wins over the
+    file, so SMOKE_API_KEY and a CI secret both work without editing .env.
+    """
+    path = Path(env_file)
+    if not path.is_file():
+        return None
+    load_dotenv(path, override=False)
+    return os.environ.get("API_KEY") or None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -482,7 +450,6 @@ def main(argv: list[str] | None = None) -> int:
             base_url=args.base_url,
             token=args.token,
             api_key=args.api_key,
-            write=args.write,
         )
         run_all(smoke, args.expect_version)
         return summarize(smoke.results, args.strict)
