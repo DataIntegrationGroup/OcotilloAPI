@@ -109,6 +109,7 @@ def build_water_chemistry_results_query(
     end_time: datetime | None = None,
     sort: str | None = None,
     order: str | None = None,
+    exclude_field_duplicate_samples: bool = False,
 ):
     results = _water_chemistry_results_selectable()
     query = select(results)
@@ -121,6 +122,9 @@ def build_water_chemistry_results_query(
 
     if end_time is not None:
         query = query.where(results.c.observation_datetime < end_time)
+
+    if exclude_field_duplicate_samples:
+        query = query.where(results.c.sample_type.is_distinct_from("FD"))
 
     sort_columns = {
         "observation_datetime": results.c.observation_datetime,
@@ -237,6 +241,7 @@ def _lab_water_chemistry_results_query(model, source: SourceKind):
             Thing.name.label("station_name"),
             Thing.thing_type.label("thing_type"),
             NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            NMA_Chemistry_SampleInfo.sample_type.label("sample_type"),
             sample_point_id,
             parameter_name.label("parameter_name"),
             model.sample_value.label("value"),
@@ -286,6 +291,7 @@ def _field_water_chemistry_results_query():
             Thing.name.label("station_name"),
             Thing.thing_type.label("thing_type"),
             NMA_Chemistry_SampleInfo.id.label("sample_id"),
+            NMA_Chemistry_SampleInfo.sample_type.label("sample_type"),
             sample_point_id,
             parameter_name.label("parameter_name"),
             NMA_FieldParameters.sample_value.label("value"),
