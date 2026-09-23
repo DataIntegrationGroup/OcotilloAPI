@@ -61,7 +61,7 @@ resources:
     keywords: [locations, sites, coordinates, elevation, county, data-reliability]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -108,7 +108,7 @@ resources:
       ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -138,7 +138,7 @@ resources:
     keywords: [water-wells, groundwater-level, depth-to-water, latest-value, below-ground-surface]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -170,7 +170,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -204,7 +204,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -242,7 +242,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -277,7 +277,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -315,7 +315,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -357,7 +357,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -394,7 +394,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -429,7 +429,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -464,7 +464,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -491,7 +491,7 @@ resources:
     keywords: [project-areas, study-areas, boundaries, polygons, projects, groups]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -521,7 +521,7 @@ resources:
     ]
     extents:
       spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
+        bbox: [-109.14, 30.83, -103.00, 37.89]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
