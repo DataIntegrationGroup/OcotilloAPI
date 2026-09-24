@@ -228,10 +228,7 @@ def _lab_water_chemistry_results_query(model, source: SourceKind):
     sample_point_id = NMA_Chemistry_SampleInfo.nma_sample_point_id.label(
         "sample_point_id"
     )
-    parameter_name = func.nullif(
-        func.trim(func.coalesce(model.analyte, model.symbol)),
-        "",
-    )
+    parameter_name = func.nullif(func.trim(model.analyte), "")
     return (
         select(
             _result_id_expression(source, model.id).label("id"),
@@ -500,7 +497,7 @@ def _canonical_parameter_name_for_row(
     metadata: ResultMetadata | None,
 ) -> str | None:
     if metadata:
-        raw_parameter_name = metadata.symbol or metadata.analyte
+        raw_parameter_name = metadata.analyte
     else:
         raw_parameter_name = _row_value(row, "parameter_name")
     return canonical_parameter_name(raw_parameter_name)

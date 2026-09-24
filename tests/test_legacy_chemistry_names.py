@@ -17,6 +17,10 @@
 
 import pytest
 
+from services.chemistry import (
+    ResultMetadata,
+    _canonical_parameter_name_for_row,
+)
 from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 
@@ -51,7 +55,9 @@ def test_distinguishes_nitrate_as_n_from_nitrate_as_no3():
     assert canonical_parameter_name("NO2") == "Nitrite (as NO2)"
 
 
-@pytest.mark.parametrize("symbol", ["CN6", "DO", "ORP", "C14_years", "GA", "Ra226"])
+@pytest.mark.parametrize(
+    "symbol", ["CN6", "DO", "ORP", "C14_years", "GA", "Ra226"]
+)
 def test_leaves_ambiguous_symbols_alone(symbol):
     """An unmapped symbol is reported as-is and compared to nothing.
 
@@ -69,6 +75,20 @@ def test_passes_through_unknown_and_empty_values():
     assert canonical_parameter_name("NotAnAnalyte") == "NotAnAnalyte"
     assert canonical_parameter_name("") == ""
     assert canonical_parameter_name(None) is None
+
+
+def test_chemistry_result_parameter_name_uses_analyte_before_symbol():
+    metadata = ResultMetadata(
+        source="major", source_id=1, analyte="Custom analyte", symbol="Cl"
+    )
+
+    assert _canonical_parameter_name_for_row({}, metadata) == "Custom analyte"
+
+
+def test_chemistry_result_parameter_name_does_not_fall_back_to_symbol():
+    metadata = ResultMetadata(source="major", source_id=1, symbol="Cl")
+
+    assert _canonical_parameter_name_for_row({}, metadata) is None
 
 
 @pytest.mark.parametrize(
@@ -89,7 +109,9 @@ def test_reads_the_source_table_off_the_id(result_id, expected):
     assert result_kind(result_id) == expected
 
 
-@pytest.mark.parametrize("result_id", ["", None, "1234", "unprefixed-", "zzz-1"])
+@pytest.mark.parametrize(
+    "result_id", ["", None, "1234", "unprefixed-", "zzz-1"]
+)
 def test_unrecognized_ids_report_an_unknown_source(result_id):
     assert result_kind(result_id) == "unknown"
 
