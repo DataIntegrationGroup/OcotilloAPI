@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0...v1.4.1-rc) (2026-09-24)
+
+
+### Bug Fixes
+
+* **chemistry/result:** update parameter_name generation BDMS-1292 ([dc8b527](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dc8b52779989bf6f529f52ac2e446c8a1657a975))
+* **services/chemistry:** patch parameter_name field to only use analyte as source ([bd9e4c2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bd9e4c27545e801ecdb7c53466b41ce105d7c7ef))
+
 ## [1.4.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0-rc...v1.4.0-rc.1) (2026-09-23)
 
 
