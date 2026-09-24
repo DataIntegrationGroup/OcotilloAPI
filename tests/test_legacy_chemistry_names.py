@@ -55,9 +55,7 @@ def test_distinguishes_nitrate_as_n_from_nitrate_as_no3():
     assert canonical_parameter_name("NO2") == "Nitrite (as NO2)"
 
 
-@pytest.mark.parametrize(
-    "symbol", ["CN6", "DO", "ORP", "C14_years", "GA", "Ra226"]
-)
+@pytest.mark.parametrize("symbol", ["CN6", "DO", "ORP", "C14_years", "GA", "Ra226"])
 def test_leaves_ambiguous_symbols_alone(symbol):
     """An unmapped symbol is reported as-is and compared to nothing.
 
@@ -109,9 +107,7 @@ def test_reads_the_source_table_off_the_id(result_id, expected):
     assert result_kind(result_id) == expected
 
 
-@pytest.mark.parametrize(
-    "result_id", ["", None, "1234", "unprefixed-", "zzz-1"]
-)
+@pytest.mark.parametrize("result_id", ["", None, "1234", "unprefixed-", "zzz-1"])
 def test_unrecognized_ids_report_an_unknown_source(result_id):
     assert result_kind(result_id) == "unknown"
 
