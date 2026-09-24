@@ -60,13 +60,15 @@ def _add_major(session, sample_id, symbol, value, analysed_on, unit="mg/L"):
     session.execute(
         text(
             'INSERT INTO "NMA_MajorChemistry" '
-            '(chemistry_sample_info_id, "Symbol", "SampleValue", "Units", '
+            '(chemistry_sample_info_id, "Analyte", "Symbol", "SampleValue", '
+            '"Units", '
             '"AnalysisDate", "Uncertainty", "AnalysisMethod", "Notes", '
-            '"AnalysesAgency") VALUES (:sid, :symbol, :val, '
+            '"AnalysesAgency") VALUES (:sid, :analyte, :symbol, :val, '
             ":unit, :analysed, 0.1, 'ICP-MS', 'major note', 'NMBGMR')"
         ),
         {
             "sid": sample_id,
+            "analyte": symbol,
             "symbol": symbol,
             "val": value,
             "unit": unit,
@@ -79,13 +81,14 @@ def _add_minor(session, sample_id, point_id, symbol, value, analysed_on):
     session.execute(
         text(
             'INSERT INTO "NMA_MinorTraceChemistry" '
-            '(chemistry_sample_info_id, "nma_SamplePointID", symbol, '
+            '(chemistry_sample_info_id, "nma_SamplePointID", analyte, symbol, '
             "sample_value, units, analysis_date) "
-            "VALUES (:sid, :point, :symbol, :val, 'mg/L', :analysed)"
+            "VALUES (:sid, :point, :analyte, :symbol, :val, 'mg/L', :analysed)"
         ),
         {
             "sid": sample_id,
             "point": point_id,
+            "analyte": symbol,
             "symbol": symbol,
             "val": value,
             "analysed": analysed_on,
@@ -97,15 +100,17 @@ def _add_radio(session, sample_id, point_id, symbol, value, analysed_on):
     session.execute(
         text(
             'INSERT INTO "NMA_Radionuclides" '
-            '(chemistry_sample_info_id, "nma_SamplePointID", "Symbol", '
+            '(chemistry_sample_info_id, "nma_SamplePointID", "Analyte", '
+            '"Symbol", '
             '"SampleValue", "Units", "AnalysisDate", "Uncertainty", '
             '"AnalysisMethod", "Notes", "AnalysesAgency") VALUES '
-            "(:sid, :point, :symbol, :val, 'pCi/L', :analysed, "
+            "(:sid, :point, :analyte, :symbol, :val, 'pCi/L', :analysed, "
             "0.01, 'EPA 900.0', 'rad note', 'NMBGMR')"
         ),
         {
             "sid": sample_id,
             "point": point_id,
+            "analyte": symbol,
             "symbol": symbol,
             "val": value,
             "analysed": analysed_on,
