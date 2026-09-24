@@ -288,7 +288,7 @@ def test_results_include_enriched_fields_without_renaming_fields(two_samples):
     assert minor["source"] == "minor"
     assert minor["parameter_name"] == "Arsenic"
     assert minor["parameter_key"] == "minor_arsenic"
-    assert minor["analyte"] is None
+    assert minor["analyte"] == "As"
     assert minor["symbol"] == "As"
     assert minor["standard"]["status"] == "above_mcl"
 
