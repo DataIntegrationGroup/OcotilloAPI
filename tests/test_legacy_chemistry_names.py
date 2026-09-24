@@ -17,6 +17,10 @@
 
 import pytest
 
+from services.chemistry import (
+    ResultMetadata,
+    _canonical_parameter_name_for_row,
+)
 from services.legacy_chemistry import canonical_parameter_name, result_kind
 
 
@@ -69,6 +73,20 @@ def test_passes_through_unknown_and_empty_values():
     assert canonical_parameter_name("NotAnAnalyte") == "NotAnAnalyte"
     assert canonical_parameter_name("") == ""
     assert canonical_parameter_name(None) is None
+
+
+def test_chemistry_result_parameter_name_uses_analyte_before_symbol():
+    metadata = ResultMetadata(
+        source="major", source_id=1, analyte="Custom analyte", symbol="Cl"
+    )
+
+    assert _canonical_parameter_name_for_row({}, metadata) == "Custom analyte"
+
+
+def test_chemistry_result_parameter_name_does_not_fall_back_to_symbol():
+    metadata = ResultMetadata(source="major", source_id=1, symbol="Cl")
+
+    assert _canonical_parameter_name_for_row({}, metadata) is None
 
 
 @pytest.mark.parametrize(
