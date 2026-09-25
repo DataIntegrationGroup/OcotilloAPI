@@ -20,10 +20,9 @@ run consistently while the fuller solution is pursued.
   parameters) has its own ingest -- see
   **`docs/chemistry-field-sheet-ingest.md`**. It writes the same
   `NMA_Chemistry_SampleInfo` rows this ingest does, matched on well PointID and
-  collection date. That match runs only from the sheet's side: this ingest
-  dedupes on `WCLab_ID` alone, so a workbook loaded **after** the field sheet
-  creates a second sample point for the same visit. See "Ingest order matters"
-  in that doc.
+  collection date. Both ingests match that way, so either can go first. A
+  workbook loaded after the field sheet adopts the sheet's sample rather than
+  creating a second one. See "Either ingest can go first" in that doc.
 
 ---
 
@@ -111,15 +110,18 @@ Read the summary. Buckets:
   entry and the file's md5 is unchanged).
 - **ingested with skipped samples** — a file loads, but any lab sample
   (`WCLab_ID` / SampleNumber) already recorded for the well is skipped and
-  listed under `skipped_duplicates`; this is normal and not a failure. New lab
-  samples for the same well are appended as a new lettered sample point
-  (`MG-030A`, `MG-030B`, ...).
+  listed under `skipped_duplicates`; this is normal and not a failure. A lab
+  sample whose visit the field sheet already recorded is attached to that
+  sample and listed under `adopted_samples`. Other new lab samples for the same
+  well are appended as a new lettered sample point (`MG-030A`, `MG-030B`, ...).
 - **failed** — nothing loaded for that file (a data-quality abort). Causes:
 
 | Reported cause | Meaning | Action |
 |----------------|---------|--------|
 | `Unmapped analyte Param=...` | A LIMS `Param` name is not in the analyte map. | Send the Param name to engineering to add to `_ANALYTE_MAPPINGS` in `services/chemistry_lims.py`. |
 | `no matching Thing (well) found` | `SamplePointID` has no Ocotillo well. | Verify the PointID; ensure the well was transferred to Data Services first. |
+| `... samples already recorded on <date> ...; cannot tell which one this row belongs to` | The well has more than one field-sheet sample with no `WCLab_ID` on the lab sample's `SampleDate`. | Reconcile the same-day samples by hand, then re-run. |
+| `lab samples X and Y both match field-sheet sample ...` | Two lab samples in the workbook share a well and day with one field-sheet sample. | Decide which lab sample the visit belongs to, reconcile by hand, then re-run. |
 
 Exit code is non-zero if any file failed.
 
@@ -156,13 +158,15 @@ minor) via `lookup_analyte`; compute the value (non-detects become
 `LowerLimit × Dilution` with a `<` symbol); collapse duplicate
 (SamplePointID, WCLab_ID, analyte) rows (prefer EPA 200.7, or "low bromide" for
 Br); resolve the base `SamplePointID → Thing`. Then, per distinct lab sample
-(`WCLab_ID`): if that lab sample is already recorded for the well, skip it;
-otherwise create a new `NMA_Chemistry_SampleInfo` whose `nma_sample_point_id`
-is the base PointID with the **next letter incrementor** appended
-(`A`, `B`, ... `Z`, `AA`, ...), and insert the analyte rows under it.
-A data-quality problem aborts the whole file and nothing is written: a row that
-fails to map, a row with no `SampleNumber`, or a `SamplePointID` with no
-matching well.
+(`WCLab_ID`): if that lab sample is already recorded for the well, skip it. If
+the field sheet already recorded the visit (a sample for the well on the
+reported `SampleDate` with no `WCLab_ID`), stamp the lab id onto that sample
+and insert the analyte rows under it. Otherwise create a new
+`NMA_Chemistry_SampleInfo` whose `nma_sample_point_id` is the base PointID with
+the **next letter incrementor** appended (`A`, `B`, ... `Z`, `AA`, ...), and
+insert the analyte rows under it. A data-quality problem aborts the whole file
+and nothing is written: a row that fails to map, a row with no `SampleNumber`,
+a `SamplePointID` with no matching well, or an ambiguous field-sheet match.
 
 ---
 
@@ -173,7 +177,10 @@ matching well.
   would be treated as a duplicate and skipped; a re-run of the same sample under a
   new SampleNumber would append a spurious extra lettered sample. A row with no
   SampleNumber at all is rejected rather than loaded, since there would be
-  nothing to recognize it by on the next run.
+  nothing to recognize it by on the next run. The one date-based match is
+  adopting a field-sheet sample with no `WCLab_ID` on the reported
+  `SampleDate`. A stored sample that already has a `WCLab_ID` is never
+  adopted.
 - **`.xlsx` only.** Legacy `.xls` LIMS exports are not read; the file must be
   a modern `.xlsx`.
 - **Fixed analyte map.** Unknown `Param` names fail until engineering adds them
