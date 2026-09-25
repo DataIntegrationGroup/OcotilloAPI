@@ -345,7 +345,18 @@ def prep_field_parameters(record: dict) -> dict:
     sample_point_id = str(sample_point_id).strip()
     _reject_unassigned_pointid(sample_point_id)
 
-    measured_at = _to_datetime(_cell(record, "Time", "MeasurementTime"))
+    # Required: the reading time is the only thing that shows a readings row
+    # reached the right visit (see the day check in import_field_tables). A
+    # value that doesn't parse is reported as such rather than as blank, so
+    # the crew fixes the cell they actually typed.
+    measured = _cell(record, "Time", "MeasurementTime")
+    measured_at = _to_datetime(measured)
+    if measured is None:
+        raise FieldParamsMappingError(f"{sample_point_id}: Missing Time")
+    if measured_at is None:
+        raise FieldParamsMappingError(
+            f"{sample_point_id}: Time {measured!r} is not a recognizable date and time"
+        )
 
     measurements = []
     unreadable = []
@@ -702,6 +713,24 @@ def import_field_tables(
                 validation_errors.append(
                     f"{label}: no sample {point} -- it is neither in the "
                     f"{SAMPLE_INFO_TAB} tab nor already in the database"
+                )
+                continue
+
+            # Readings are taken during the visit, so a Time on another day means
+            # the name reached the wrong visit, or one of the two dates is a
+            # typo. Only the day is compared: a reading minutes or hours after
+            # the collection time is the normal case.
+            measured_at = row["measured_at"]
+            if (
+                sample.collection_date is not None
+                and measured_at.date() != sample.collection_date.date()
+            ):
+                validation_errors.append(
+                    f"{label}: {point} was collected on "
+                    f"{sample.collection_date.date().isoformat()}, but these "
+                    f"readings were taken on {measured_at.date().isoformat()}. "
+                    f"Correct the date on one of the two tabs, or the "
+                    f"SamplePointID if it names the wrong visit."
                 )
                 continue
 

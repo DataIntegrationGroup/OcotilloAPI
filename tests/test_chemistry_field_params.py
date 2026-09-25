@@ -377,7 +377,11 @@ def test_a_second_visit_becomes_its_own_sample(
                     **{"SamplePointID": f"{WELL}B"},
                 )
             ],
-            param_rows=[_field_params_row(**{"SamplePointID": f"{WELL}B"})],
+            param_rows=[
+                _field_params_row(
+                    **{"SamplePointID": f"{WELL}B", "Time": "2025-09-02T09:05:00"}
+                )
+            ],
         )
     )
 
