@@ -15,18 +15,22 @@
 # ===============================================================================
 """Tests for the LIMS chemistry ingestion service (services/chemistry_lims.py)."""
 
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 from openpyxl import Workbook
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 
 from db.engine import session_ctx
 from db.nma_legacy import (
     NMA_Chemistry_SampleInfo,
+    NMA_FieldParameters,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
 )
+from services.chemistry_field_params import import_field_tables
+from services.chemistry_field_sheet import SheetTable
 from services.chemistry_lims import (
     _int_to_suffix,
     _suffix_to_int,
@@ -86,9 +90,14 @@ def _cleanup_chemistry():
     """Remove any sample-info (and cascaded analytes) created during a test."""
     yield
     with session_ctx() as session:
+        # By sample point too: a field-sheet sample the LIMS run did not adopt
+        # has no lab id to match on.
         session.execute(
             delete(NMA_Chemistry_SampleInfo).where(
-                NMA_Chemistry_SampleInfo.nma_wclab_id.like("LAB-%")
+                or_(
+                    NMA_Chemistry_SampleInfo.nma_wclab_id.like("LAB-%"),
+                    NMA_Chemistry_SampleInfo.nma_sample_point_id.like("Test Well%"),
+                )
             )
         )
         session.commit()
@@ -379,6 +388,216 @@ def test_bulk_upload_reports_unmapped_analyte(
     assert result.exit_code == 1
     assert result.payload["summary"]["total_rows_imported"] == 0
     assert any("Unmapped analyte" in e for e in result.payload["validation_errors"])
+
+
+# ------------------ adopting field-sheet samples (BDMS-1283) ------------------
+#
+# The field sheet usually lands first and records the visit with no lab id. The
+# LIMS run must attach its results to that sample, not open a second one.
+
+WELL = "Test Well"
+
+
+def _sheet_table(title: str, header: list[str], rows: list[dict]) -> SheetTable:
+    records = []
+    for offset, row in enumerate(rows):
+        record = {column: row.get(column) for column in header}
+        record[SheetTable.ROW_NUMBER_KEY] = offset + 2
+        records.append(record)
+    return SheetTable(title=title, header=header, rows=records)
+
+
+def _field_sheet(point: str = f"{WELL}A", when: str = "2024-06-01T10:15:00"):
+    return [
+        _sheet_table(
+            "ChemistrySampleInfo",
+            ["WellPointID", "SamplePointID", "CollectionDate"],
+            [{"WellPointID": WELL, "SamplePointID": point, "CollectionDate": when}],
+        ),
+        _sheet_table(
+            "FieldParameters",
+            ["SamplePointID", "pHf", "T (C)"],
+            [{"SamplePointID": point, "pHf": 7.1, "T (C)": 16.2}],
+        ),
+    ]
+
+
+def _record_sample(thing_id: int, point: str, when: datetime, wclab_id=None):
+    with session_ctx() as session:
+        session.add(
+            NMA_Chemistry_SampleInfo(
+                thing_id=thing_id,
+                nma_sample_point_id=point,
+                nma_wclab_id=wclab_id,
+                collection_date=when,
+            )
+        )
+        session.commit()
+
+
+def _samples(thing_id: int):
+    with session_ctx() as session:
+        return session.scalars(
+            select(NMA_Chemistry_SampleInfo)
+            .where(NMA_Chemistry_SampleInfo.thing_id == thing_id)
+            .order_by(NMA_Chemistry_SampleInfo.id)
+        ).all()
+
+
+def _major_rows(sample_id: int):
+    with session_ctx() as session:
+        return session.scalars(
+            select(NMA_MajorChemistry).where(
+                NMA_MajorChemistry.chemistry_sample_info_id == sample_id
+            )
+        ).all()
+
+
+def test_field_sheet_then_lims_is_one_sample(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    sheet = import_field_tables(_field_sheet())
+    assert sheet.exit_code == 0, sheet.stderr
+
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [_lims_row("calcium", "12.5"), _lims_row("arsenic", "0.3")],
+    )
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_adopted"] == 1
+    assert result.payload["summary"]["samples_created"] == 0
+    assert result.payload["adopted_samples"][0]["sample_point_id"] == f"{WELL}A"
+
+    (sample,) = _samples(water_well_thing.id)
+    assert sample.nma_wclab_id == "LAB-1"
+    assert sample.nma_sample_point_id == f"{WELL}A"
+    # The crew's time is kept over the lab's date-only SampleDate.
+    assert sample.collection_date == datetime(2024, 6, 1, 10, 15)
+
+    with session_ctx() as session:
+        params = session.scalars(
+            select(NMA_FieldParameters).where(
+                NMA_FieldParameters.chemistry_sample_info_id == sample.id
+            )
+        ).all()
+    # The field readings pick up the lab id, as they would had LIMS gone first.
+    assert len(params) == 2
+    assert {p.nma_wclab_id for p in params} == {"LAB-1"}
+
+    major = _major_rows(sample.id)
+    assert {m.analyte for m in major} == {"Ca"}
+    assert {m.nma_sample_point_id for m in major} == {f"{WELL}A"}
+
+
+def test_rerunning_a_workbook_after_adoption_is_a_skip(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15))
+    path = _write_workbook(tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5")])
+
+    first = bulk_upload_chemistry(path)
+    second = bulk_upload_chemistry(path)
+
+    assert first.payload["summary"]["samples_adopted"] == 1
+    assert second.exit_code == 0, second.stderr
+    assert second.payload["summary"]["samples_skipped"] == 1
+    assert second.payload["summary"]["total_rows_imported"] == 0
+    (sample,) = _samples(water_well_thing.id)
+    assert len(_major_rows(sample.id)) == 1
+
+
+def test_two_unlabelled_samples_on_the_day_abort_the_file(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 9, 0))
+    _record_sample(water_well_thing.id, f"{WELL}B", datetime(2024, 6, 1, 15, 0))
+    path = _write_workbook(tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5")])
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert any("cannot tell which" in e for e in result.payload["validation_errors"])
+    samples = _samples(water_well_thing.id)
+    assert len(samples) == 2
+    assert all(s.nma_wclab_id is None for s in samples)
+    assert all(_major_rows(s.id) == [] for s in samples)
+
+
+def test_two_lab_samples_matching_one_field_sample_abort_the_file(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15))
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", SampleNumber="LAB-2"),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    errors = result.payload["validation_errors"]
+    assert any("LAB-1" in e and "LAB-2" in e for e in errors)
+    (sample,) = _samples(water_well_thing.id)
+    assert sample.nma_wclab_id is None
+    assert _major_rows(sample.id) == []
+
+
+def test_a_sample_with_a_different_lab_id_is_not_adopted(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(
+        water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15), "LAB-9"
+    )
+    path = _write_workbook(tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5")])
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_adopted"] == 0
+    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
+    first, _second = _samples(water_well_thing.id)
+    assert first.nma_wclab_id == "LAB-9"
+
+
+def test_a_blank_sample_date_does_not_adopt_on_the_analysis_date(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """AnalysisTime stands in for a blank SampleDate, but never for matching."""
+    # A field visit on the day the lab analysed an unrelated sample.
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 15, 10, 0))
+    path = _write_workbook(
+        tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", SampleDate=None)]
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_adopted"] == 0
+    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
+    first, _second = _samples(water_well_thing.id)
+    assert first.nma_wclab_id is None
+
+
+def test_a_supplied_letter_that_disagrees_with_the_adopted_sample_warns(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15))
+    path = _write_workbook(
+        tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}C")]
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["adopted_samples"][0]["sample_point_id"] == f"{WELL}A"
+    warnings = result.payload["warnings"]
+    assert len(warnings) == 1
+    assert f"{WELL}C" in warnings[0] and f"{WELL}A" in warnings[0]
 
 
 # ============= EOF =============================================
