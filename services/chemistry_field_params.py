@@ -59,7 +59,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
@@ -80,9 +80,14 @@ from services.chemistry_lims import (
     ChemistryUploadResult,
     _existing_suffix_ints,
     _int_to_suffix,
+    find_sample_for_visit,
     resolve_thing_id,
     split_pointid,
 )
+
+# The LIMS ingest adopts field-sheet samples with the same rule, so both sides
+# share one matcher; see services.chemistry_lims.find_sample_for_visit.
+_find_existing_sample = find_sample_for_visit
 
 DEFAULT_AGENCY = "NMBGMR"
 
@@ -431,48 +436,6 @@ def select_tables(
 
 
 # --- persistence ---------------------------------------------------------------
-
-
-def _find_existing_sample(
-    session: Session, thing_id: int, collection_date: datetime
-) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
-    """The sample already recorded for this well at this collection date.
-
-    Matching is on the well and the date because that is all the field sheet
-    knows -- there is no lab id until the batch comes back. An exact timestamp
-    match wins; failing that, a sample on the same calendar day is treated as
-    the same visit, since the sheet's time and the lab's time for one visit
-    routinely differ by minutes. Two samples on the same day are ambiguous and
-    are reported rather than guessed at.
-    """
-    exact = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            NMA_Chemistry_SampleInfo.collection_date == collection_date,
-        )
-    ).all()
-    if len(exact) == 1:
-        return exact[0], None
-    if len(exact) > 1:
-        return None, "more than one sample already recorded at that exact time"
-
-    same_day = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            func.date(NMA_Chemistry_SampleInfo.collection_date)
-            == collection_date.date(),
-        )
-    ).all()
-    if len(same_day) == 1:
-        return same_day[0], None
-    if len(same_day) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in same_day))
-        return None, (
-            f"{len(same_day)} samples already recorded on "
-            f"{collection_date.date().isoformat()} ({points}); cannot tell which "
-            "one this row belongs to"
-        )
-    return None, None
 
 
 def _apply_attributes(

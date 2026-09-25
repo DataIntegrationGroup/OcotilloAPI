@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any, BinaryIO
 
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from db import (
@@ -441,6 +441,64 @@ def _sample_exists_for_wclab(
         ).first()
         is not None
     )
+
+
+def find_sample_for_visit(
+    session: Session,
+    thing_id: int,
+    collection_date: datetime,
+    *,
+    unlabelled_only: bool = False,
+) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
+    """The sample already recorded for this well at this collection date.
+
+    Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
+    ambiguous, and ``(None, None)`` when there is nothing to match.
+
+    A field visit and its lab batch are one sample, and the two ingests meet on
+    the well and the date because the field sheet has no lab id to offer. An
+    exact timestamp match wins; failing that, a sample on the same calendar day
+    is treated as the same visit, since the sheet's time and the lab's time for
+    one visit routinely differ by minutes. Two samples on the same day are
+    ambiguous and are reported rather than guessed at.
+
+    ``unlabelled_only`` restricts the match to samples with no ``WCLab_ID``. The
+    LIMS ingest uses it to adopt a sample the field sheet made: a sample that
+    already carries a lab id belongs to a different lab sample and must never
+    be relabelled.
+    """
+    conditions = [NMA_Chemistry_SampleInfo.thing_id == thing_id]
+    if unlabelled_only:
+        conditions.append(NMA_Chemistry_SampleInfo.nma_wclab_id.is_(None))
+
+    exact = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            *conditions,
+            NMA_Chemistry_SampleInfo.collection_date == collection_date,
+        )
+    ).all()
+    if len(exact) == 1:
+        return exact[0], None
+    if len(exact) > 1:
+        return None, "more than one sample already recorded at that exact time"
+
+    same_day = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            *conditions,
+            func.date(NMA_Chemistry_SampleInfo.collection_date)
+            == collection_date.date(),
+        )
+    ).all()
+    if len(same_day) == 1:
+        return same_day[0], None
+    if len(same_day) > 1:
+        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in same_day))
+        return None, (
+            f"{len(same_day)} samples already recorded on "
+            f"{collection_date.date().isoformat()} ({points}); cannot tell which "
+            "one this row belongs to"
+        )
+    return None, None
 
 
 def _build_measurement(
