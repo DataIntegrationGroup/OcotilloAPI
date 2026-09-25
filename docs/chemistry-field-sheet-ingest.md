@@ -185,26 +185,32 @@ was created by this run, by an earlier run, or by the LIMS ingest. A parameter
 already recorded for that sample is skipped, so **re-running the same sheet
 loads nothing twice**.
 
-### Ingest order matters
+### Either ingest can go first
 
-The matching above is **one-directional**: the field sheet finds a sample the
-LIMS ingest made, but the LIMS ingest does not find one the field sheet made.
-LIMS decides "already loaded" on `WCLab_ID` alone
-(`_sample_exists_for_wclab` in `services/chemistry_lims.py`), and a
-sheet-created sample has no `WCLab_ID`. So:
+Both ingests match on well plus date with the same rule
+(`find_sample_for_visit` in `services/chemistry_lims.py`), so a visit and its
+lab batch end up as one sample whichever lands first:
 
 | Order | Result |
 |---|---|
-| LIMS, then field sheet | One sample. The sheet matches on PointID + date and fills blanks. |
-| Field sheet, then LIMS | **Two samples** for one visit, even when the dates agree. LIMS allocates the next letter (`RA-116B`) beside the sheet's `RA-116A`; field parameters sit on one, lab results on the other. |
+| LIMS, then field sheet | The sheet matches the LIMS sample on PointID + date and fills blanks. Field parameters take the sample's `WCLab_ID`. |
+| Field sheet, then LIMS | LIMS **adopts** the sheet's sample: it stamps the `WCLab_ID` onto it, backfills that id on the field parameters, and attaches the lab results under the sheet's letter (`RA-116A`). The sheet's collection time is kept. |
 
-In practice crews have field data well before lab results come back, so
-field-first is the common case, and holding field data until the lab reports
-is not a workable rule. The fix belongs in the LIMS ingest — before allocating
-a new letter, match an existing sample for the well on the same calendar day
-that has **no** `WCLab_ID`, and stamp the lab id onto it — and is tracked as a
-follow-up rather than done here. Until then, a field-first well that later
-receives lab results needs its two sample points reconciled by hand.
+Field-first is the usual order, since crews have field data well before lab
+results come back. When LIMS looks for a field-sheet sample to adopt:
+
+- It only considers samples with **no** `WCLab_ID`. A sample with a lab id
+  belongs to another lab sample and is never relabelled.
+- It matches on the workbook's reported `SampleDate` only. When `SampleDate` is
+  blank, LIMS still falls back to the analysis date to date a new sample, but
+  it doesn't adopt on it. The analysis date is weeks after the visit, and
+  matching on it could pick up an unrelated one.
+- Two unlabelled samples on that day, or two lab samples in one workbook that
+  match the same field-sheet sample, **abort the workbook** (nothing written).
+  Reconcile the same-day samples by hand, then re-run.
+
+Adoptions show up in the `bulk-upload` report under **ADOPTED**, and in
+`adopted_samples` in the result payload.
 
 ---
 
@@ -241,12 +247,12 @@ disagreements) or **skips** (parameters already recorded) succeeds.
   — but it means the sheet needs cleaning before the first successful run.
 - **Same-day matching is a heuristic.** Two genuine visits to one well on one
   day are reported as ambiguous rather than loaded.
-- **LIMS does not match sheet-created samples.** Running the field sheet before
-  the LIMS workbook splits one visit across two sample points (section 3,
-  "Ingest order matters"). Needs bidirectional matching in the LIMS ingest.
 - **No lab id on the field side.** If a well is sampled on a day the lab batch
   records differently, the two will not match and a second sample point is
   created, whichever ingest runs first.
+- **Visits split before BDMS-1283 stay split.** Field-first runs before LIMS
+  learned to adopt left a sheet sample and a LIMS sample for one visit. Nothing
+  merges them automatically yet.
 - **`Q` is invented vocabulary.** See section 2.
 - **Lab result tabs are ignored.** `GenChemResults` and `IsotopeResults` are not
   read by this command, and the LIMS ingest reads a LIMS export, not this
