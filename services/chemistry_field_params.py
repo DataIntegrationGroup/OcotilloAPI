@@ -444,44 +444,80 @@ def select_tables(
 # --- persistence ---------------------------------------------------------------
 
 
-def _find_existing_sample(
-    session: Session, thing_id: int, collection_date: datetime
+def _match_visit(
+    session: Session,
+    thing_id: int,
+    row: dict,
+    claimed: set[int],
+    reserved: set[str],
 ) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
-    """The sample already recorded for this well at this collection date.
+    """The sample a ``ChemistrySampleInfo`` row records, if one exists already.
 
-    Matching is on the well and the date because that is all the field sheet
-    knows -- there is no lab id until the batch comes back. An exact timestamp
-    match wins; failing that, a sample on the same calendar day is treated as
-    the same visit, since the sheet's time and the lab's time for one visit
-    routinely differ by minutes. Two samples on the same day are ambiguous and
-    are reported rather than guessed at.
+    Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
+    ambiguous, and ``(None, None)`` when the row is a new sample.
+
+    The row's own ``SamplePointID`` is tried first. It is the one thing that
+    tells apart two samples taken at one well on one day -- a duplicate, or a
+    split with the same timestamp -- and it is what the crew's FieldParameters
+    row uses to find this sample.
+
+    Failing that, the row is matched on the well and the day, the only link to a
+    sample the LIMS ingest made under its own letter. An exact time wins, then
+    the same calendar day, since the sheet's time and the lab's for one visit
+    differ by minutes. Two candidates are reported rather than guessed at.
+    Excluded from that fallback are samples an earlier row of this sheet
+    created or matched (``claimed``) and samples another row names
+    (``reserved``). Without that, the second sample of a same-day pair matched
+    the first and was folded into it.
     """
-    exact = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            NMA_Chemistry_SampleInfo.collection_date == collection_date,
-        )
-    ).all()
-    if len(exact) == 1:
-        return exact[0], None
-    if len(exact) > 1:
-        return None, "more than one sample already recorded at that exact time"
+    supplied = row["sample_point_id"]
+    collection_date = row["collection_date"]
+    day = collection_date.date()
+
+    if supplied:
+        named = session.scalars(
+            select(NMA_Chemistry_SampleInfo).where(
+                NMA_Chemistry_SampleInfo.thing_id == thing_id,
+                NMA_Chemistry_SampleInfo.nma_sample_point_id == supplied,
+            )
+        ).all()
+        if len(named) > 1:
+            return None, (
+                f"has {len(named)} samples named {supplied}; cannot tell which "
+                "one this row is"
+            )
+        if named and (
+            named[0].collection_date is None or named[0].collection_date.date() == day
+        ):
+            return named[0], None
+        # A name recorded on another day belongs to a different visit. The day
+        # fallback below still runs, so the caller can report that conflict
+        # against the sample this visit really is, if there is one.
 
     same_day = session.scalars(
         select(NMA_Chemistry_SampleInfo).where(
             NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            func.date(NMA_Chemistry_SampleInfo.collection_date)
-            == collection_date.date(),
+            func.date(NMA_Chemistry_SampleInfo.collection_date) == day,
         )
     ).all()
-    if len(same_day) == 1:
-        return same_day[0], None
-    if len(same_day) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in same_day))
+    candidates = [
+        s
+        for s in same_day
+        if s.id not in claimed and s.nma_sample_point_id not in reserved
+    ]
+
+    exact = [s for s in candidates if s.collection_date == collection_date]
+    if len(exact) == 1:
+        return exact[0], None
+    if len(exact) > 1:
+        return None, "more than one sample already recorded at that exact time"
+    if len(candidates) == 1:
+        return candidates[0], None
+    if len(candidates) > 1:
+        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in candidates))
         return None, (
-            f"{len(same_day)} samples already recorded on "
-            f"{collection_date.date().isoformat()} ({points}); cannot tell which "
-            "one this row belongs to"
+            f"{len(candidates)} samples already recorded on {day.isoformat()} "
+            f"({points}); cannot tell which one this row belongs to"
         )
     return None, None
 
@@ -584,13 +620,17 @@ def import_field_tables(
         # sample point id -> the sample it names, for the FieldParameters join.
         samples_by_point: dict[str, NMA_Chemistry_SampleInfo] = {}
         used_suffixes: dict[int, set[int]] = {}
+        # Samples earlier rows created or matched, and every name the sheet
+        # gives a sample; see _match_visit.
+        claimed: set[int] = set()
+        reserved = {row["sample_point_id"] for row in sample_rows} - {None}
 
         for row in sample_rows:
             thing_id = thing_ids[row["well_pointid"]]
             label = f"{SAMPLE_INFO_TAB} row {row['row_number']}"
 
-            existing, ambiguity = _find_existing_sample(
-                session, thing_id, row["collection_date"]
+            existing, ambiguity = _match_visit(
+                session, thing_id, row, claimed, reserved
             )
             if ambiguity:
                 validation_errors.append(f"{label}: {row['well_pointid']} {ambiguity}")
@@ -623,6 +663,7 @@ def import_field_tables(
                         f"the database calls it {existing.nma_sample_point_id}; "
                         "matched on well and collection date."
                     )
+                claimed.add(existing.id)
                 samples_by_point[supplied or existing.nma_sample_point_id] = existing
                 if existing.nma_sample_point_id:
                     samples_by_point.setdefault(existing.nma_sample_point_id, existing)
@@ -690,6 +731,7 @@ def import_field_tables(
             session.add(sample)
             session.flush()  # assign sample.id for the FK below
 
+            claimed.add(sample.id)
             samples_by_point[sample_point_id] = sample
             if row["sample_point_id"]:
                 samples_by_point.setdefault(row["sample_point_id"], sample)
