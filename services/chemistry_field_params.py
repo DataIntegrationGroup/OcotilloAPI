@@ -586,8 +586,26 @@ def import_field_tables(
                 continue
 
             if existing is not None:
-                warnings.extend(_apply_attributes(existing, row["attributes"], label))
                 supplied = row["sample_point_id"]
+                owner = (
+                    _sample_point_owner(session, samples_by_point, supplied)
+                    if supplied
+                    else None
+                )
+                if owner is not None and owner.id != existing.id:
+                    # FieldParameters rows find their sample by this name, so a
+                    # name that belongs to another visit would send this visit's
+                    # readings there.
+                    validation_errors.append(
+                        f"{label}: SamplePointID {supplied} already belongs to "
+                        f"{_visit(owner)}, but this row matches the "
+                        f"{row['collection_date'].date().isoformat()} visit, "
+                        f"recorded as {existing.nma_sample_point_id}. Use "
+                        f"{existing.nma_sample_point_id} on this row and on its "
+                        f"{FIELD_PARAMETERS_TAB} row."
+                    )
+                    continue
+                warnings.extend(_apply_attributes(existing, row["attributes"], label))
                 if supplied and existing.nma_sample_point_id != supplied:
                     warnings.append(
                         f"{label}: spreadsheet calls this sample {supplied}, "
@@ -612,10 +630,34 @@ def import_field_tables(
             next_int = (
                 max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
             )
-            used_suffixes[thing_id].add(next_int)
             computed = _int_to_suffix(next_int)
             sample_point_id = f"{base}{computed}"
+            visit_day = row["collection_date"].date().isoformat()
 
+            # A new sample is only reachable from the FieldParameters tab by the
+            # name this row gives it. With no name, the crew's readings row has
+            # to guess one, and a guess that is an earlier visit's name loads the
+            # readings onto that visit instead.
+            supplied = row["sample_point_id"]
+            if not supplied:
+                validation_errors.append(
+                    f"{label}: SamplePointID is blank, and {base} has no sample on "
+                    f"{visit_day} yet. Fill it in (the next free one is "
+                    f"{sample_point_id}) so the {FIELD_PARAMETERS_TAB} readings "
+                    "for this visit can find it."
+                )
+                continue
+            owner = _sample_point_owner(session, samples_by_point, supplied)
+            if owner is not None:
+                validation_errors.append(
+                    f"{label}: SamplePointID {supplied} already belongs to "
+                    f"{_visit(owner)}, and this row is a different visit "
+                    f"({visit_day}). Use the next free one, {sample_point_id}, on "
+                    f"this row and on its {FIELD_PARAMETERS_TAB} row."
+                )
+                continue
+
+            used_suffixes[thing_id].add(next_int)
             supplied_suffix = row["supplied_suffix"]
             if supplied_suffix is not None and supplied_suffix != computed:
                 # The computed incrementor wins because it cannot collide with a
@@ -740,6 +782,28 @@ def _lookup_sample_by_point(
             NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id
         )
     ).first()
+
+
+def _sample_point_owner(
+    session: Session,
+    samples_by_point: dict[str, NMA_Chemistry_SampleInfo],
+    sample_point_id: str,
+) -> NMA_Chemistry_SampleInfo | None:
+    """The sample a FieldParameters row naming ``sample_point_id`` would reach.
+
+    Checked in the same order the FieldParameters join resolves names: a name
+    an earlier row of this sheet claimed, then one already in the database.
+    """
+    return samples_by_point.get(sample_point_id) or _lookup_sample_by_point(
+        session, sample_point_id
+    )
+
+
+def _visit(sample: NMA_Chemistry_SampleInfo) -> str:
+    """How an error message names the visit a sample records."""
+    if sample.collection_date is None:
+        return "another visit"
+    return f"the {sample.collection_date.date().isoformat()} visit"
 
 
 # --- entrypoints ---------------------------------------------------------------
