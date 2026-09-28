@@ -600,4 +600,114 @@ def test_a_supplied_letter_that_disagrees_with_the_adopted_sample_warns(
     assert f"{WELL}C" in warnings[0] and f"{WELL}A" in warnings[0]
 
 
+# ------------- lab samples lettered like the crew's (duplicate pairs) ---------
+#
+# A duplicate pair is two field samples of one well on one day. The lab writes
+# the crew's letter on each bottle, and that letter is the only thing telling
+# which lab sample belongs to which field sample.
+
+
+def _field_pair(thing_id: int):
+    _record_sample(thing_id, f"{WELL}A", datetime(2024, 6, 1, 10, 5))
+    _record_sample(thing_id, f"{WELL}B", datetime(2024, 6, 1, 10, 18))
+
+
+def _lab_ids_and_calcium(thing_id: int):
+    return {
+        s.nma_sample_point_id: (
+            s.nma_wclab_id,
+            [m.sample_value for m in _major_rows(s.id) if m.analyte == "Ca"],
+        )
+        for s in _samples(thing_id)
+    }
+
+
+def test_a_lettered_duplicate_pair_adopts_its_own_field_samples(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _field_pair(water_well_thing.id)
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5", pointid=f"{WELL}B", SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", pointid=f"{WELL}A", SampleNumber="LAB-2"),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_adopted"] == 2
+    assert _lab_ids_and_calcium(water_well_thing.id) == {
+        f"{WELL}A": ("LAB-2", [9.9]),
+        f"{WELL}B": ("LAB-1", [12.5]),
+    }
+
+
+def test_an_unlettered_lab_sample_takes_the_duplicate_its_partner_leaves(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """LAB-1 is planned first and names nothing; it must not take A from LAB-2."""
+    _field_pair(water_well_thing.id)
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", pointid=f"{WELL}A", SampleNumber="LAB-2"),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert _lab_ids_and_calcium(water_well_thing.id) == {
+        f"{WELL}A": ("LAB-2", [9.9]),
+        f"{WELL}B": ("LAB-1", [12.5]),
+    }
+
+
+def test_an_unlettered_duplicate_pair_still_aborts(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """With no letters, nothing tells the pair apart, so a person must."""
+    _field_pair(water_well_thing.id)
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", SampleNumber="LAB-2"),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert any("cannot tell which" in e for e in result.payload["validation_errors"])
+    assert all(
+        lab is None for lab, _ in _lab_ids_and_calcium(water_well_thing.id).values()
+    )
+
+
+@pytest.mark.parametrize(
+    "when,lab_id",
+    [(datetime(2024, 5, 1, 10, 5), None), (datetime(2024, 6, 1, 10, 5), "LAB-9")],
+    ids=["another-day", "already-labelled"],
+)
+def test_a_lettered_lab_sample_does_not_adopt_a_sample_that_is_not_its_visit(
+    when, lab_id, tmp_path, water_well_thing, _cleanup_chemistry
+):
+    _record_sample(water_well_thing.id, f"{WELL}A", when, lab_id)
+    path = _write_workbook(
+        tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}A")]
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_adopted"] == 0
+    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
+    first, _second = _samples(water_well_thing.id)
+    assert first.nma_wclab_id == lab_id
+
+
 # ============= EOF =============================================
