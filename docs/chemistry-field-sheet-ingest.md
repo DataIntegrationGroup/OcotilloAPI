@@ -213,9 +213,10 @@ The run aborts when:
 
 ### Either ingest can go first
 
-Both ingests match on well plus date with the same rule
-(`find_sample_for_visit` in `services/chemistry_lims.py`), so a visit and its
-lab batch end up as one sample whichever lands first:
+Both ingests look for the sample by name first, then fall back to well plus
+date with the same rule (`find_sample_for_visit` in
+`services/chemistry_lims.py`). A visit and its lab batch end up as one sample
+whichever lands first:
 
 | Order | Result |
 |---|---|
@@ -231,9 +232,19 @@ results come back. When LIMS looks for a field-sheet sample to adopt:
   blank, LIMS still falls back to the analysis date to date a new sample, but
   it doesn't adopt on it. The analysis date is weeks after the visit, and
   matching on it could pick up an unrelated one.
-- Two unlabelled samples on that day, or two lab samples in one workbook that
-  match the same field-sheet sample, **abort the workbook** (nothing written).
-  Reconcile the same-day samples by hand, then re-run.
+- **A lab sample with a letter goes to the field-sheet sample of that name**
+  (`SamplePointID` `WL-0264B` adopts field sample `WL-0264B`), as long as it
+  is on the same day. The lab writes the crew's letter on each bottle, so this
+  is how the two halves of a duplicate pair, or a split, find their own field
+  samples.
+- A lab sample without a letter falls back to the well and day, skipping any
+  field-sheet sample another lab sample in the workbook names. So when one
+  duplicate is lettered and the other isn't, the unlettered one takes the
+  sample its partner leaves.
+- Two candidates left for one lab sample, such as an unlettered duplicate pair,
+  or two lab samples in one workbook that match the same field-sheet sample,
+  **abort the workbook** (nothing written). Reconcile the same-day samples by
+  hand, then re-run.
 
 Adoptions show up in the `bulk-upload` report under **ADOPTED**, and in
 `adopted_samples` in the result payload.
@@ -279,10 +290,10 @@ disagreements) or **skips** (parameters already recorded) succeeds.
 - **Same-day matching is a heuristic.** A row whose name isn't in the database
   yet, on a day the well already has two unclaimed samples, is reported as
   ambiguous rather than loaded.
-- **Which duplicate got the lab results can't be checked.** A lab sample under
-  the same letter as the crew's is paired with that row. LIMS records only the
-  date, so if the lab lettered a duplicate pair differently from the crew, the
-  results sit on the wrong duplicate and nothing in the data shows it.
+- **A duplicate pair is only as good as its letters.** Lab and field samples of
+  a same-day pair are paired by letter. LIMS records only the date, so if the
+  lab lettered the pair differently from the crew, the results sit on the
+  wrong duplicate and nothing in the data shows it.
 - **No lab id on the field side.** If a well is sampled on a day the lab batch
   records differently, the two will not match and a second sample point is
   created, whichever ingest runs first.
