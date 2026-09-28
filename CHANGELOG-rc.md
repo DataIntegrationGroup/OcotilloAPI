@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1-rc](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0...v1.4.1-rc) (2026-09-28)
+
+
+### Bug Fixes
+
+* **chemistry/result:** update parameter_name generation BDMS-1292 ([dc8b527](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dc8b52779989bf6f529f52ac2e446c8a1657a975))
+* **chemistry:** keep field-sheet readings on the right sample (BDMS-1273) ([5ee20e0](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/5ee20e03ad38c1721e72b9f4a7ebe2e55c9c780e))
+* **chemistry:** Match sheet rows by name first ([51bffca](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/51bffcae8bdf35b86d097f3416991356a0aad79e))
+* **chemistry:** Reject ambiguous sample points ([2a596be](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2a596be3aabfd2b64137bd7b3f96bc16ff96b214))
+* **chemistry:** Reject readings from another day ([2d2a3ef](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2d2a3efd47288966545ffbcff866f67bafa2f3e5))
+* **services/chemistry:** patch parameter_name field to only use analyte as source ([bd9e4c2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bd9e4c27545e801ecdb7c53466b41ce105d7c7ef))
+
 ## [1.4.0-rc.1](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0-rc...v1.4.0-rc.1) (2026-09-23)
 
 
