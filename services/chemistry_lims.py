@@ -517,6 +517,33 @@ def find_sample_for_visit(
     return None, None
 
 
+def _adoptable_by_name(
+    session: Session, thing_id: int, sample_point_id: str, visit_date: datetime
+) -> NMA_Chemistry_SampleInfo | None:
+    """The field-sheet sample a lab sample names, if it may adopt it.
+
+    The lab writes the crew's letter on the sample, so a name match is how one
+    duplicate of a same-day pair is told from the other. It must still be the
+    same visit (the reported day) and not yet carry a lab id.
+    """
+    named = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id,
+        )
+    ).all()
+    if len(named) != 1:
+        return None
+    (sample,) = named
+    if (
+        sample.nma_wclab_id is None
+        and sample.collection_date is not None
+        and sample.collection_date.date() == visit_date.date()
+    ):
+        return sample
+    return None
+
+
 def _build_measurement(
     model, chemistry_sample_info_id: int, rec: dict, sample_point_id: str
 ):
@@ -599,14 +626,12 @@ def bulk_upload_chemistry(
         # (WL-0434A). The well is always the base (WL-0434), so strip it before
         # resolving; the supplied letter is checked against the computed one
         # below.
-        supplied_suffixes: dict[str, str | None] = {}
         for rec in prepped:
             base, suffix = split_pointid(rec["samplepointid"])
             rec["samplepointid"] = base
-            # Keep the first supplied suffix seen for the well; a workbook
-            # should not disagree with itself, and if it does the mismatch
-            # warning below still fires.
-            supplied_suffixes.setdefault(base, suffix)
+            # Kept per record: a duplicate pair is two lab samples of one well,
+            # and each one's letter is what matches it to its field sample.
+            rec["supplied_suffix"] = suffix
 
         # Resolve every distinct (base) sample point to a Thing up front.
         base_pointids = sorted({r["samplepointid"] for r in prepped})
@@ -644,10 +669,29 @@ def bulk_upload_chemistry(
         # ambiguous match aborts the file with nothing half loaded.
         skipped_duplicates: list[dict] = []
         planned: list[
-            tuple[str, str | None, list[dict], NMA_Chemistry_SampleInfo | None]
+            tuple[
+                str,
+                str | None,
+                list[dict],
+                NMA_Chemistry_SampleInfo | None,
+                str | None,
+            ]
         ] = []
         # field sample id -> the WCLab_ID that claimed it in this workbook
         claimed_by: dict[int, str | None] = {}
+        supplied_by_bucket = {
+            key: next(
+                (r["supplied_suffix"] for r in recs if r["supplied_suffix"]), None
+            )
+            for key, recs in buckets.items()
+        }
+        # Sample points the workbook names, which the well-and-day fallback
+        # leaves to the lab sample naming them.
+        reserved = {
+            f"{base}{suffix}"
+            for (base, _wclab), suffix in supplied_by_bucket.items()
+            if suffix
+        }
 
         for (base, wclab_id), recs in buckets.items():
             thing_id = thing_ids[base]
@@ -665,10 +709,20 @@ def bulk_upload_chemistry(
                 (r["reported_sample_date"] for r in recs if r["reported_sample_date"]),
                 None,
             )
+            supplied = supplied_by_bucket[(base, wclab_id)]
             adopt = None
             if visit_date is not None:
+                if supplied:
+                    adopt = _adoptable_by_name(
+                        session, thing_id, f"{base}{supplied}", visit_date
+                    )
+            if visit_date is not None and adopt is None:
                 adopt, ambiguity = find_sample_for_visit(
-                    session, thing_id, visit_date, unlabelled_only=True
+                    session,
+                    thing_id,
+                    visit_date,
+                    unlabelled_only=True,
+                    reserved=reserved,
                 )
                 if ambiguity:
                     validation_errors.append(
@@ -687,7 +741,7 @@ def bulk_upload_chemistry(
                     continue
                 claimed_by[adopt.id] = wclab_id
 
-            planned.append((base, wclab_id, recs, adopt))
+            planned.append((base, wclab_id, recs, adopt, supplied))
 
         if validation_errors:
             session.rollback()
@@ -706,7 +760,7 @@ def bulk_upload_chemistry(
         adopted: list[dict] = []
         imported = 0
 
-        for base, wclab_id, recs, adopt in planned:
+        for base, wclab_id, recs, adopt, supplied in planned:
             thing_id = thing_ids[base]
 
             if adopt is not None:
@@ -729,7 +783,6 @@ def bulk_upload_chemistry(
                     .values(nma_wclab_id=wclab_id)
                 )
 
-                supplied = supplied_suffixes.get(base)
                 if supplied is not None and f"{base}{supplied}" != sample_point_id:
                     warnings.append(
                         f"{base}: workbook supplied sample point {base}{supplied}, "
@@ -765,7 +818,6 @@ def bulk_upload_chemistry(
             # The workbook may have supplied its own letter. The computed one
             # wins (it cannot collide with an existing sample point), but a
             # disagreement is surfaced so a human can reconcile it.
-            supplied = supplied_suffixes.get(base)
             if supplied is not None and supplied != computed_suffix:
                 warnings.append(
                     f"{base}: workbook supplied sample point {base}{supplied}, "
