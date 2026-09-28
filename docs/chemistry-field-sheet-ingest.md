@@ -154,7 +154,9 @@ dropped, so this ingest introduces the symbol. Rename it here and in
 `FIELD_PARAMETER_COLUMNS` if AMP settles on something else.
 
 The `Time` column is the reading time, which `NMA_FieldParameters` has no column
-for; it is kept in `Notes` as `Measured <ISO timestamp>`.
+for; it is kept in `Notes` as `Measured <ISO timestamp>`. It is **required**,
+date included: it's how the ingest checks that a readings row reached the right
+visit (section 3).
 
 ---
 
@@ -163,13 +165,21 @@ for; it is kept in `Notes` as `Measured <ISO timestamp>`.
 A field visit and its lab batch are **one sample**, so the sheet must not create
 a second `NMA_Chemistry_SampleInfo` row beside the one the LIMS ingest made. The
 sheet carries no `WCLab_ID` — the crew writes the row down before the sample
-reaches a lab — so matching is on **well PointID plus collection date**:
+reaches a lab — so each row is matched in this order:
 
-1. Exact `collection_date` match for that well wins.
-2. Failing that, a sample on the **same calendar day** is treated as the same
-   visit (the sheet's time and the lab's time for one visit routinely differ by
-   minutes).
-3. Two samples on the same day are ambiguous: reported, never guessed at.
+1. **By name.** A sample for that well already carrying the row's
+   `SamplePointID`, on the same day, is the match. The name is what tells
+   apart two samples taken at one well on one day: a duplicate minutes apart,
+   or a split with the same timestamp.
+2. **By well PointID plus collection date**, for a sample the LIMS ingest made
+   under its own letter. An exact `collection_date` wins, then a sample on the
+   **same calendar day** (the sheet's time and the lab's time for one visit
+   routinely differ by minutes). This step skips any sample an earlier row of
+   the sheet already created or matched, and any sample another row names.
+   Without that, the second sample of a same-day pair matched the first and
+   was folded into it.
+3. Two candidates in step 2 are ambiguous: reported, never guessed at.
+4. No match: a new sample.
 
 On a match, the sheet **fills blank columns only**. A value already in the
 database is kept and the disagreement is reported as a warning — a field sheet
@@ -177,13 +187,29 @@ is re-typed and re-sent, so it is not authoritative over what is stored.
 
 With no match, a new sample is created with the **next free letter incrementor**
 for that well (`A`, `B`, ... `Z`, `AA`, ...), the same rule the LIMS ingest uses.
-If the spreadsheet supplied a different letter, the computed one wins (it cannot
-collide with an existing sample point) and the disagreement is reported.
+If the spreadsheet supplied a different letter that is still free, the computed
+one wins and the disagreement is reported.
 
 Field parameters attach to the sample named by their `SamplePointID`, whether it
 was created by this run, by an earlier run, or by the LIMS ingest. A parameter
 already recorded for that sample is skipped, so **re-running the same sheet
 loads nothing twice**.
+
+Because the name is the only link from a `FieldParameters` row to its visit,
+each `SamplePointID` on the `ChemistrySampleInfo` tab must name **one visit**.
+The run aborts when:
+
+- a row that would create a new sample leaves `SamplePointID` blank. The
+  readings row for that visit would have to guess a name, and a guess that
+  matches an earlier visit loads the readings there. A blank is fine on a row
+  that matches a visit already recorded, since that sample already has a name.
+- a row's `SamplePointID` already belongs to a different visit, either in the
+  database or on an earlier row of the same sheet. The error names the letter
+  to use instead.
+- a `FieldParameters` row's `Time` falls on a different calendar day from the
+  collection date of the sample it names. Either the name reached the wrong
+  visit, or one of the two dates is a typo. Only the day is compared, so a
+  reading taken hours after collection loads normally.
 
 ### Either ingest can go first
 
@@ -232,7 +258,12 @@ What aborts a run:
 | `CollectionMethod ... is not a known collection method` | Neither one of the seven `LU_CollectionMethod` meanings nor its code. | Use one from the list in section 2. |
 | `CollectedBy ... is longer than 5 characters` | The legacy column holds a 5-character code. | Use the code, not the name — names belong in `Staff`. |
 | `non-numeric reading(s)` | A field parameter cell holds text. | Blank it or fix the number. |
+| `Missing Time` | A `FieldParameters` row has no reading time. | Fill in the date and time the readings were taken. |
+| `Time ... is not a recognizable date and time` | The `Time` cell isn't a date and time, for example a time with no date. | Retype it with the date, for example `2026-09-25 10:45`. |
 | `no sample <point> -- it is neither in the ChemistrySampleInfo tab nor already in the database` | A `FieldParameters` row with no sample. | Add the sample-info row, or fix the `SamplePointID`. |
+| `SamplePointID is blank, and <well> has no sample on <date> yet` | A new visit with no sample point name. | Fill in the letter the error suggests, on both tabs. |
+| `SamplePointID <point> already belongs to the <date> visit` | Two visits share one sample point name. | Change this row, and its `FieldParameters` row, to the letter the error suggests. |
+| `<point> was collected on <date>, but these readings were taken on <date>` | The readings row's `Time` is on another day from its sample's `CollectionDate`. | Correct whichever date is wrong, or the `SamplePointID` if it names the wrong visit. |
 
 A run that only reports **warnings** (kept database values, letter
 disagreements) or **skips** (parameters already recorded) succeeds.
@@ -245,8 +276,13 @@ disagreements) or **skips** (parameters already recorded) succeeds.
   rule and one living spreadsheet, four blank dates hold up a hundred good rows.
   Deliberate — the alternative is a partly-loaded sheet nobody can reason about
   — but it means the sheet needs cleaning before the first successful run.
-- **Same-day matching is a heuristic.** Two genuine visits to one well on one
-  day are reported as ambiguous rather than loaded.
+- **Same-day matching is a heuristic.** A row whose name isn't in the database
+  yet, on a day the well already has two unclaimed samples, is reported as
+  ambiguous rather than loaded.
+- **Which duplicate got the lab results can't be checked.** A lab sample under
+  the same letter as the crew's is paired with that row. LIMS records only the
+  date, so if the lab lettered a duplicate pair differently from the crew, the
+  results sit on the wrong duplicate and nothing in the data shows it.
 - **No lab id on the field side.** If a well is sampled on a day the lab batch
   records differently, the two will not match and a second sample point is
   created, whichever ingest runs first.

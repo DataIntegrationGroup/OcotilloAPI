@@ -59,7 +59,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
@@ -80,14 +80,9 @@ from services.chemistry_lims import (
     ChemistryUploadResult,
     _existing_suffix_ints,
     _int_to_suffix,
-    find_sample_for_visit,
     resolve_thing_id,
     split_pointid,
 )
-
-# The LIMS ingest adopts field-sheet samples with the same rule, so both sides
-# share one matcher; see services.chemistry_lims.find_sample_for_visit.
-_find_existing_sample = find_sample_for_visit
 
 DEFAULT_AGENCY = "NMBGMR"
 
@@ -350,7 +345,18 @@ def prep_field_parameters(record: dict) -> dict:
     sample_point_id = str(sample_point_id).strip()
     _reject_unassigned_pointid(sample_point_id)
 
-    measured_at = _to_datetime(_cell(record, "Time", "MeasurementTime"))
+    # Required: the reading time is the only thing that shows a readings row
+    # reached the right visit (see the day check in import_field_tables). A
+    # value that doesn't parse is reported as such rather than as blank, so
+    # the crew fixes the cell they actually typed.
+    measured = _cell(record, "Time", "MeasurementTime")
+    measured_at = _to_datetime(measured)
+    if measured is None:
+        raise FieldParamsMappingError(f"{sample_point_id}: Missing Time")
+    if measured_at is None:
+        raise FieldParamsMappingError(
+            f"{sample_point_id}: Time {measured!r} is not a recognizable date and time"
+        )
 
     measurements = []
     unreadable = []
@@ -436,6 +442,84 @@ def select_tables(
 
 
 # --- persistence ---------------------------------------------------------------
+
+
+def _match_visit(
+    session: Session,
+    thing_id: int,
+    row: dict,
+    claimed: set[int],
+    reserved: set[str],
+) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
+    """The sample a ``ChemistrySampleInfo`` row records, if one exists already.
+
+    Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
+    ambiguous, and ``(None, None)`` when the row is a new sample.
+
+    The row's own ``SamplePointID`` is tried first. It is the one thing that
+    tells apart two samples taken at one well on one day -- a duplicate, or a
+    split with the same timestamp -- and it is what the crew's FieldParameters
+    row uses to find this sample.
+
+    Failing that, the row is matched on the well and the day, the only link to a
+    sample the LIMS ingest made under its own letter. An exact time wins, then
+    the same calendar day, since the sheet's time and the lab's for one visit
+    differ by minutes. Two candidates are reported rather than guessed at.
+    Excluded from that fallback are samples an earlier row of this sheet
+    created or matched (``claimed``) and samples another row names
+    (``reserved``). Without that, the second sample of a same-day pair matched
+    the first and was folded into it.
+    """
+    supplied = row["sample_point_id"]
+    collection_date = row["collection_date"]
+    day = collection_date.date()
+
+    if supplied:
+        named = session.scalars(
+            select(NMA_Chemistry_SampleInfo).where(
+                NMA_Chemistry_SampleInfo.thing_id == thing_id,
+                NMA_Chemistry_SampleInfo.nma_sample_point_id == supplied,
+            )
+        ).all()
+        if len(named) > 1:
+            return None, (
+                f"has {len(named)} samples named {supplied}; cannot tell which "
+                "one this row is"
+            )
+        if named and (
+            named[0].collection_date is None or named[0].collection_date.date() == day
+        ):
+            return named[0], None
+        # A name recorded on another day belongs to a different visit. The day
+        # fallback below still runs, so the caller can report that conflict
+        # against the sample this visit really is, if there is one.
+
+    same_day = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            func.date(NMA_Chemistry_SampleInfo.collection_date) == day,
+        )
+    ).all()
+    candidates = [
+        s
+        for s in same_day
+        if s.id not in claimed and s.nma_sample_point_id not in reserved
+    ]
+
+    exact = [s for s in candidates if s.collection_date == collection_date]
+    if len(exact) == 1:
+        return exact[0], None
+    if len(exact) > 1:
+        return None, "more than one sample already recorded at that exact time"
+    if len(candidates) == 1:
+        return candidates[0], None
+    if len(candidates) > 1:
+        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in candidates))
+        return None, (
+            f"{len(candidates)} samples already recorded on {day.isoformat()} "
+            f"({points}); cannot tell which one this row belongs to"
+        )
+    return None, None
 
 
 def _apply_attributes(
@@ -536,27 +620,50 @@ def import_field_tables(
         # sample point id -> the sample it names, for the FieldParameters join.
         samples_by_point: dict[str, NMA_Chemistry_SampleInfo] = {}
         used_suffixes: dict[int, set[int]] = {}
+        # Samples earlier rows created or matched, and every name the sheet
+        # gives a sample; see _match_visit.
+        claimed: set[int] = set()
+        reserved = {row["sample_point_id"] for row in sample_rows} - {None}
 
         for row in sample_rows:
             thing_id = thing_ids[row["well_pointid"]]
             label = f"{SAMPLE_INFO_TAB} row {row['row_number']}"
 
-            existing, ambiguity = _find_existing_sample(
-                session, thing_id, row["collection_date"]
+            existing, ambiguity = _match_visit(
+                session, thing_id, row, claimed, reserved
             )
             if ambiguity:
                 validation_errors.append(f"{label}: {row['well_pointid']} {ambiguity}")
                 continue
 
             if existing is not None:
-                warnings.extend(_apply_attributes(existing, row["attributes"], label))
                 supplied = row["sample_point_id"]
+                owner = (
+                    _sample_point_owner(session, samples_by_point, supplied)
+                    if supplied
+                    else None
+                )
+                if owner is not None and owner.id != existing.id:
+                    # FieldParameters rows find their sample by this name, so a
+                    # name that belongs to another visit would send this visit's
+                    # readings there.
+                    validation_errors.append(
+                        f"{label}: SamplePointID {supplied} already belongs to "
+                        f"{_visit(owner)}, but this row matches the "
+                        f"{row['collection_date'].date().isoformat()} visit, "
+                        f"recorded as {existing.nma_sample_point_id}. Use "
+                        f"{existing.nma_sample_point_id} on this row and on its "
+                        f"{FIELD_PARAMETERS_TAB} row."
+                    )
+                    continue
+                warnings.extend(_apply_attributes(existing, row["attributes"], label))
                 if supplied and existing.nma_sample_point_id != supplied:
                     warnings.append(
                         f"{label}: spreadsheet calls this sample {supplied}, "
                         f"the database calls it {existing.nma_sample_point_id}; "
                         "matched on well and collection date."
                     )
+                claimed.add(existing.id)
                 samples_by_point[supplied or existing.nma_sample_point_id] = existing
                 if existing.nma_sample_point_id:
                     samples_by_point.setdefault(existing.nma_sample_point_id, existing)
@@ -575,10 +682,34 @@ def import_field_tables(
             next_int = (
                 max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
             )
-            used_suffixes[thing_id].add(next_int)
             computed = _int_to_suffix(next_int)
             sample_point_id = f"{base}{computed}"
+            visit_day = row["collection_date"].date().isoformat()
 
+            # A new sample is only reachable from the FieldParameters tab by the
+            # name this row gives it. With no name, the crew's readings row has
+            # to guess one, and a guess that is an earlier visit's name loads the
+            # readings onto that visit instead.
+            supplied = row["sample_point_id"]
+            if not supplied:
+                validation_errors.append(
+                    f"{label}: SamplePointID is blank, and {base} has no sample on "
+                    f"{visit_day} yet. Fill it in (the next free one is "
+                    f"{sample_point_id}) so the {FIELD_PARAMETERS_TAB} readings "
+                    "for this visit can find it."
+                )
+                continue
+            owner = _sample_point_owner(session, samples_by_point, supplied)
+            if owner is not None:
+                validation_errors.append(
+                    f"{label}: SamplePointID {supplied} already belongs to "
+                    f"{_visit(owner)}, and this row is a different visit "
+                    f"({visit_day}). Use the next free one, {sample_point_id}, on "
+                    f"this row and on its {FIELD_PARAMETERS_TAB} row."
+                )
+                continue
+
+            used_suffixes[thing_id].add(next_int)
             supplied_suffix = row["supplied_suffix"]
             if supplied_suffix is not None and supplied_suffix != computed:
                 # The computed incrementor wins because it cannot collide with a
@@ -600,6 +731,7 @@ def import_field_tables(
             session.add(sample)
             session.flush()  # assign sample.id for the FK below
 
+            claimed.add(sample.id)
             samples_by_point[sample_point_id] = sample
             if row["sample_point_id"]:
                 samples_by_point.setdefault(row["sample_point_id"], sample)
@@ -623,6 +755,24 @@ def import_field_tables(
                 validation_errors.append(
                     f"{label}: no sample {point} -- it is neither in the "
                     f"{SAMPLE_INFO_TAB} tab nor already in the database"
+                )
+                continue
+
+            # Readings are taken during the visit, so a Time on another day means
+            # the name reached the wrong visit, or one of the two dates is a
+            # typo. Only the day is compared: a reading minutes or hours after
+            # the collection time is the normal case.
+            measured_at = row["measured_at"]
+            if (
+                sample.collection_date is not None
+                and measured_at.date() != sample.collection_date.date()
+            ):
+                validation_errors.append(
+                    f"{label}: {point} was collected on "
+                    f"{sample.collection_date.date().isoformat()}, but these "
+                    f"readings were taken on {measured_at.date().isoformat()}. "
+                    f"Correct the date on one of the two tabs, or the "
+                    f"SamplePointID if it names the wrong visit."
                 )
                 continue
 
@@ -703,6 +853,28 @@ def _lookup_sample_by_point(
             NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id
         )
     ).first()
+
+
+def _sample_point_owner(
+    session: Session,
+    samples_by_point: dict[str, NMA_Chemistry_SampleInfo],
+    sample_point_id: str,
+) -> NMA_Chemistry_SampleInfo | None:
+    """The sample a FieldParameters row naming ``sample_point_id`` would reach.
+
+    Checked in the same order the FieldParameters join resolves names: a name
+    an earlier row of this sheet claimed, then one already in the database.
+    """
+    return samples_by_point.get(sample_point_id) or _lookup_sample_by_point(
+        session, sample_point_id
+    )
+
+
+def _visit(sample: NMA_Chemistry_SampleInfo) -> str:
+    """How an error message names the visit a sample records."""
+    if sample.collection_date is None:
+        return "another visit"
+    return f"the {sample.collection_date.date().isoformat()} visit"
 
 
 # --- entrypoints ---------------------------------------------------------------

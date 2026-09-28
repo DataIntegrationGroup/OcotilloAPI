@@ -416,8 +416,8 @@ def _field_sheet(point: str = f"{WELL}A", when: str = "2024-06-01T10:15:00"):
         ),
         _sheet_table(
             "FieldParameters",
-            ["SamplePointID", "pHf", "T (C)"],
-            [{"SamplePointID": point, "pHf": 7.1, "T (C)": 16.2}],
+            ["SamplePointID", "Time", "pHf", "T (C)"],
+            [{"SamplePointID": point, "Time": when, "pHf": 7.1, "T (C)": 16.2}],
         ),
     ]
 
