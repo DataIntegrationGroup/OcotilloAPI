@@ -46,7 +46,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Collection
 
 from openpyxl import load_workbook
 from sqlalchemy import func, select, update
@@ -457,52 +457,60 @@ def find_sample_for_visit(
     collection_date: datetime,
     *,
     unlabelled_only: bool = False,
+    exclude_ids: Collection[int] = (),
+    reserved: Collection[str] = (),
 ) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
     """The sample already recorded for this well at this collection date.
 
     Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
     ambiguous, and ``(None, None)`` when there is nothing to match.
 
-    A field visit and its lab batch are one sample, and the two ingests meet on
-    the well and the date because the field sheet has no lab id to offer. An
-    exact timestamp match wins; failing that, a sample on the same calendar day
-    is treated as the same visit, since the sheet's time and the lab's time for
-    one visit routinely differ by minutes. Two samples on the same day are
+    A field visit and its lab batch are one sample, and when neither side names
+    the other's sample they can only meet on the well and the date. An exact
+    timestamp match wins; failing that, a sample on the same calendar day is
+    treated as the same visit, since the sheet's time and the lab's time for one
+    visit routinely differ by minutes. Two candidates on the same day are
     ambiguous and are reported rather than guessed at.
 
-    ``unlabelled_only`` restricts the match to samples with no ``WCLab_ID``. The
-    LIMS ingest uses it to adopt a sample the field sheet made: a sample that
-    already carries a lab id belongs to a different lab sample and must never
-    be relabelled.
+    Both ingests call this only after trying a match by name, and use the
+    filters to keep it from taking a sample that belongs to someone else:
+
+    * ``unlabelled_only`` skips samples with a ``WCLab_ID``. The LIMS ingest
+      uses it to adopt a sample the field sheet made: a sample that already
+      carries a lab id belongs to a different lab sample and must never be
+      relabelled.
+    * ``exclude_ids`` skips samples by id, such as samples earlier rows of the
+      same field sheet created or matched.
+    * ``reserved`` skips samples whose ``nma_sample_point_id`` another row names.
+      A same-day pair, a duplicate or a split, is two samples; without this, a
+      row that names neither could take the one its partner names.
     """
-    conditions = [NMA_Chemistry_SampleInfo.thing_id == thing_id]
+    conditions = [
+        NMA_Chemistry_SampleInfo.thing_id == thing_id,
+        func.date(NMA_Chemistry_SampleInfo.collection_date) == collection_date.date(),
+    ]
     if unlabelled_only:
         conditions.append(NMA_Chemistry_SampleInfo.nma_wclab_id.is_(None))
 
-    exact = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            *conditions,
-            NMA_Chemistry_SampleInfo.collection_date == collection_date,
-        )
-    ).all()
+    candidates = [
+        sample
+        for sample in session.scalars(
+            select(NMA_Chemistry_SampleInfo).where(*conditions)
+        ).all()
+        if sample.id not in exclude_ids and sample.nma_sample_point_id not in reserved
+    ]
+
+    exact = [s for s in candidates if s.collection_date == collection_date]
     if len(exact) == 1:
         return exact[0], None
     if len(exact) > 1:
         return None, "more than one sample already recorded at that exact time"
-
-    same_day = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            *conditions,
-            func.date(NMA_Chemistry_SampleInfo.collection_date)
-            == collection_date.date(),
-        )
-    ).all()
-    if len(same_day) == 1:
-        return same_day[0], None
-    if len(same_day) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in same_day))
+    if len(candidates) == 1:
+        return candidates[0], None
+    if len(candidates) > 1:
+        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in candidates))
         return None, (
-            f"{len(same_day)} samples already recorded on "
+            f"{len(candidates)} samples already recorded on "
             f"{collection_date.date().isoformat()} ({points}); cannot tell which "
             "one this row belongs to"
         )

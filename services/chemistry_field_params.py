@@ -59,7 +59,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
@@ -80,6 +80,7 @@ from services.chemistry_lims import (
     ChemistryUploadResult,
     _existing_suffix_ints,
     _int_to_suffix,
+    find_sample_for_visit,
     resolve_thing_id,
     split_pointid,
 )
@@ -494,32 +495,13 @@ def _match_visit(
         # fallback below still runs, so the caller can report that conflict
         # against the sample this visit really is, if there is one.
 
-    same_day = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            func.date(NMA_Chemistry_SampleInfo.collection_date) == day,
-        )
-    ).all()
-    candidates = [
-        s
-        for s in same_day
-        if s.id not in claimed and s.nma_sample_point_id not in reserved
-    ]
-
-    exact = [s for s in candidates if s.collection_date == collection_date]
-    if len(exact) == 1:
-        return exact[0], None
-    if len(exact) > 1:
-        return None, "more than one sample already recorded at that exact time"
-    if len(candidates) == 1:
-        return candidates[0], None
-    if len(candidates) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in candidates))
-        return None, (
-            f"{len(candidates)} samples already recorded on {day.isoformat()} "
-            f"({points}); cannot tell which one this row belongs to"
-        )
-    return None, None
+    return find_sample_for_visit(
+        session,
+        thing_id,
+        collection_date,
+        exclude_ids=claimed,
+        reserved=reserved,
+    )
 
 
 def _apply_attributes(
