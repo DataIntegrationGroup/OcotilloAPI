@@ -294,6 +294,20 @@ def test_prep_field_parameters_rejects_a_non_numeric_reading():
     assert "pHf" in str(exc.value)
 
 
+@pytest.mark.parametrize("blank", [None, "", "   "])
+def test_prep_field_parameters_requires_a_time(blank):
+    """Without a Time, nothing shows the readings reached the right visit."""
+    with pytest.raises(FieldParamsMappingError, match="Missing Time"):
+        prep_field_parameters(_field_params_row(Time=blank))
+
+
+@pytest.mark.parametrize("written", ["12:07", "noonish", "2025-13-40 12:07"])
+def test_prep_field_parameters_rejects_an_unparseable_time(written):
+    """Reported as the value typed, not as blank, so the right cell gets fixed."""
+    with pytest.raises(FieldParamsMappingError, match="not a recognizable date"):
+        prep_field_parameters(_field_params_row(Time=written))
+
+
 def test_select_tables_finds_renamed_tabs_by_their_headers():
     tables = [
         _table("Sheet1", SAMPLE_INFO_HEADER, [_sample_info_row()]),
@@ -377,12 +391,317 @@ def test_a_second_visit_becomes_its_own_sample(
                     **{"SamplePointID": f"{WELL}B"},
                 )
             ],
-            param_rows=[_field_params_row(**{"SamplePointID": f"{WELL}B"})],
+            param_rows=[
+                _field_params_row(
+                    **{"SamplePointID": f"{WELL}B", "Time": "2025-09-02T09:05:00"}
+                )
+            ],
         )
     )
 
     points = [s.nma_sample_point_id for s in _samples()]
     assert points == [f"{WELL}A", f"{WELL}B"]
+
+
+# A FieldParameters row finds its sample by SamplePointID alone. These cover the
+# ways a visit's readings could reach another visit's sample through that name.
+SECOND_VISIT = "2025-09-02T09:00:00"
+
+
+def _second_visit_params(point: str):
+    return _field_params_row(
+        **{"SamplePointID": point, "Time": "2025-09-02T09:05:00", "pHf": 7.5}
+    )
+
+
+def _first_visit_ph():
+    first = _samples()[0]
+    return {p.field_parameter: p.sample_value for p in _parameters(first.id)}["pHf"]
+
+
+def test_a_new_visit_with_no_sample_point_aborts(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """With no name for the new sample, the readings row's guess reached the
+    earlier visit, and its readings were dropped there as already recorded."""
+    import_field_tables(_tables())
+
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(CollectionDate=SECOND_VISIT, **{"SamplePointID": None})
+            ],
+            param_rows=[_second_visit_params(f"{WELL}A")],
+        )
+    )
+
+    assert result.exit_code == 1
+    errors = result.payload["validation_errors"]
+    assert any("SamplePointID is blank" in e and f"{WELL}B" in e for e in errors)
+    assert [s.nma_sample_point_id for s in _samples()] == [f"{WELL}A"]
+    assert _first_visit_ph() == 6.94
+
+
+def test_a_blank_sample_point_is_fine_for_a_visit_already_recorded(
+    water_well_thing, _cleanup_field_chemistry
+):
+    import_field_tables(_tables())
+
+    result = import_field_tables(
+        _tables(sample_rows=[_sample_info_row(**{"SamplePointID": None})])
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_matched"] == 1
+    assert len(_samples()) == 1
+
+
+def test_two_visits_in_one_sheet_claiming_one_sample_point_abort(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """The second visit's readings would land on the first visit's sample."""
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(),
+                _sample_info_row(CollectionDate=SECOND_VISIT),
+            ],
+            param_rows=[_field_params_row(), _second_visit_params(f"{WELL}A")],
+        )
+    )
+
+    assert result.exit_code == 1
+    errors = result.payload["validation_errors"]
+    assert any(
+        f"{WELL}A already belongs to the 2025-06-10 visit" in e and f"{WELL}B" in e
+        for e in errors
+    )
+    assert _samples() == []
+
+
+def test_a_new_visit_reusing_an_earlier_visits_sample_point_aborts(
+    water_well_thing, _cleanup_field_chemistry
+):
+    import_field_tables(_tables())
+
+    result = import_field_tables(
+        _tables(
+            sample_rows=[_sample_info_row(CollectionDate=SECOND_VISIT)],
+            param_rows=[_second_visit_params(f"{WELL}A")],
+        )
+    )
+
+    assert result.exit_code == 1
+    assert any(
+        f"{WELL}A already belongs to the 2025-06-10 visit" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert [s.nma_sample_point_id for s in _samples()] == [f"{WELL}A"]
+    assert _first_visit_ph() == 6.94
+
+
+def test_a_matched_visit_named_after_another_visit_aborts(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """The name would point the earlier visit's readings at this visit too."""
+    import_field_tables(_tables())
+    import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(
+                    CollectionDate=SECOND_VISIT, **{"SamplePointID": f"{WELL}B"}
+                )
+            ],
+            param_rows=[_second_visit_params(f"{WELL}B")],
+        )
+    )
+
+    # The 2025-09-02 row now says A, which is the 2025-06-10 visit's name.
+    result = import_field_tables(
+        _tables(
+            sample_rows=[_sample_info_row(CollectionDate=SECOND_VISIT)],
+            param_rows=[_second_visit_params(f"{WELL}A")],
+        )
+    )
+
+    assert result.exit_code == 1
+    assert any(
+        f"{WELL}A already belongs to the 2025-06-10 visit" in e
+        and f"recorded as {WELL}B" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert _first_visit_ph() == 6.94
+
+
+def test_readings_naming_an_earlier_visit_abort(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """The sample-info row is right; only the readings row has the old letter."""
+    import_field_tables(_tables())
+
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(
+                    CollectionDate=SECOND_VISIT, **{"SamplePointID": f"{WELL}B"}
+                )
+            ],
+            param_rows=[_second_visit_params(f"{WELL}A")],
+        )
+    )
+
+    assert result.exit_code == 1
+    assert any(
+        "collected on 2025-06-10" in e and "taken on 2025-09-02" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert [s.nma_sample_point_id for s in _samples()] == [f"{WELL}A"]
+    assert _first_visit_ph() == 6.94
+
+
+def test_readings_dated_a_different_day_from_their_visit_abort(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """A mistyped month on one tab: the kind of error the check exists for."""
+    result = import_field_tables(
+        _tables(param_rows=[_field_params_row(Time="2025-05-10T12:07:00")])
+    )
+
+    assert result.exit_code == 1
+    assert any(
+        "collected on 2025-06-10" in e and "taken on 2025-05-10" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert _samples() == []
+
+
+def test_readings_later_on_the_same_day_load(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """Only the day is compared, never the time of day."""
+    result = import_field_tables(
+        _tables(param_rows=[_field_params_row(Time="2025-06-10T17:45:00")])
+    )
+
+    assert result.exit_code == 0, result.stderr
+    (sample,) = _samples()
+    assert len(_parameters(sample.id)) == 6
+
+
+# Two samples at one well on one day: a duplicate minutes apart, or a split at
+# the same timestamp. Matching on the well and day alone folded the second into
+# the first and dropped its readings as already recorded.
+
+
+def _same_day_pair(b_time: str):
+    """A at 10:05 and B at ``b_time`` on 2025-06-10, with distinct pH readings."""
+    return _tables(
+        sample_rows=[
+            _sample_info_row(CollectionDate="2025-06-10T10:05:00"),
+            _sample_info_row(
+                CollectionDate=f"2025-06-10T{b_time}",
+                **{"SamplePointID": f"{WELL}B"},
+            ),
+        ],
+        param_rows=[
+            _field_params_row(Time="2025-06-10T10:05:00", pHf=7.0),
+            _field_params_row(
+                **{
+                    "SamplePointID": f"{WELL}B",
+                    "Time": f"2025-06-10T{b_time}",
+                    "pHf": 8.0,
+                }
+            ),
+        ],
+    )
+
+
+def _ph_by_point():
+    return {
+        s.nma_sample_point_id: {
+            p.field_parameter: p.sample_value for p in _parameters(s.id)
+        }["pHf"]
+        for s in _samples()
+    }
+
+
+@pytest.mark.parametrize("b_time", ["10:18:00", "10:05:00"], ids=["duplicate", "split"])
+def test_a_second_sample_on_the_same_day_is_its_own_sample(
+    b_time, water_well_thing, _cleanup_field_chemistry
+):
+    result = import_field_tables(_same_day_pair(b_time))
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_created"] == 2
+    assert _ph_by_point() == {f"{WELL}A": 7.0, f"{WELL}B": 8.0}
+
+
+@pytest.mark.parametrize("b_time", ["10:18:00", "10:05:00"], ids=["duplicate", "split"])
+def test_rerunning_a_same_day_pair_loads_nothing_twice(
+    b_time, water_well_thing, _cleanup_field_chemistry
+):
+    """A split's identical times left only the names to tell them apart."""
+    import_field_tables(_same_day_pair(b_time))
+    second = import_field_tables(_same_day_pair(b_time))
+
+    assert second.exit_code == 0, second.stderr
+    assert second.payload["summary"]["samples_created"] == 0
+    assert second.payload["summary"]["samples_matched"] == 2
+    assert second.payload["summary"]["total_rows_imported"] == 0
+    assert _ph_by_point() == {f"{WELL}A": 7.0, f"{WELL}B": 8.0}
+
+
+def _lab_sample(thing_id: int, point: str = f"{WELL}A"):
+    """A sample as the LIMS ingest leaves it: a lab id and a date-only date."""
+    with session_ctx() as session:
+        session.add(
+            NMA_Chemistry_SampleInfo(
+                thing_id=thing_id,
+                nma_sample_point_id=point,
+                nma_wclab_id="LAB-1",
+                collection_date=datetime(2025, 6, 10),
+            )
+        )
+        session.commit()
+
+
+@pytest.mark.parametrize("a_first", [True, False], ids=["A-row-first", "B-row-first"])
+def test_a_duplicate_does_not_take_the_lab_sample_its_pair_names(
+    a_first, water_well_thing, _cleanup_field_chemistry
+):
+    """The lab sample goes to the row naming it, whichever row comes first."""
+    _lab_sample(water_well_thing.id)
+    tables = _same_day_pair("10:18:00")
+    if not a_first:
+        tables[0].rows.reverse()
+
+    result = import_field_tables(tables)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["summary"]["samples_matched"] == 1
+    assert result.payload["summary"]["samples_created"] == 1
+    lab_ids = {s.nma_sample_point_id: s.nma_wclab_id for s in _samples()}
+    assert lab_ids == {f"{WELL}A": "LAB-1", f"{WELL}B": None}
+    assert _ph_by_point() == {f"{WELL}A": 7.0, f"{WELL}B": 8.0}
+
+
+def test_a_lab_sample_under_another_letter_is_still_matched_by_day(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """Unchanged: the crew and the lab can letter one visit differently."""
+    _lab_sample(water_well_thing.id)
+    result = import_field_tables(
+        _tables(
+            sample_rows=[_sample_info_row(**{"SamplePointID": f"{WELL}B"})],
+            param_rows=[_field_params_row(**{"SamplePointID": f"{WELL}B"})],
+        )
+    )
+
+    assert result.exit_code == 0, result.stderr
+    (sample,) = _samples()
+    assert sample.nma_sample_point_id == f"{WELL}A"
+    assert any("calls this sample" in w for w in result.payload["warnings"])
+    assert len(_parameters(sample.id)) == 6
 
 
 def test_a_sample_the_lab_ingest_already_created_is_reused(
