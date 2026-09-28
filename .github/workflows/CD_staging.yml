@@ -129,6 +129,19 @@ jobs:
             --quiet \
             --project ${{ vars.GCP_PROJECT_ID }}
 
+      # Same checks the release runbook used to ask someone to run by hand.
+      # Anonymous: the internal mount's key is per-environment and not
+      # available here, so the credentialed checks skip. What remains proves
+      # the new build serves, that the public collections are published, and
+      # that /ogcapi-internal refuses anonymous callers.
+      - name: Smoke test the deployed service
+        env:
+          SMOKE_BASE_URL: ${{ vars.STAGING_BASE_URL || 'https://ocotillo-api-staging.newmexicowaterdata.org' }}
+        run: |
+          uv run --no-dev python -m scripts.smoke_test \
+            --base-url "$SMOKE_BASE_URL" \
+            --expect-version "${{ github.ref_name }}-${{ github.sha }}"
+
       - name: Clean up oldest versions
         run: |
           SERVICE="ocotillo-api-staging"

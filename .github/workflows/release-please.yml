@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - production
-      - staging
       - 'hotfix/v*'
 
 permissions:
@@ -18,14 +17,16 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.resolve_tag.outputs.tag_name }}
     steps:
-      # staging uses its own config/manifest pair: prerelease (rc) versioning,
-      # separate changelog, and its own version state so the rc line never
-      # collides with the stable line tracked in .release-please-manifest.json.
+      # One version line. Staging deploys every push and is not versioned:
+      # the rc line it used to carry cost a second config, a second manifest,
+      # a second changelog and a manifest sync on every back-merge, and
+      # nothing was tested against an rc tag -- v1.4.0-rc was cut and then 97
+      # commits landed before the promotion.
       - id: release
         uses: googleapis/release-please-action@v5
         with:
-          config-file: ${{ github.ref_name == 'staging' && 'release-please-config.staging.json' || 'release-please-config.json' }}
-          manifest-file: ${{ github.ref_name == 'staging' && '.release-please-manifest.staging.json' || '.release-please-manifest.json' }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
           target-branch: ${{ github.ref_name }}
 
       # release-please-action@v5 does not populate a usable `tag_name` output in
@@ -42,7 +43,7 @@ jobs:
         if: ${{ steps.release.outputs.release_created == 'true' }}
         env:
           ACTION_TAG: ${{ steps.release.outputs.tag_name }}
-          MANIFEST: ${{ github.ref_name == 'staging' && '.release-please-manifest.staging.json' || '.release-please-manifest.json' }}
+          MANIFEST: .release-please-manifest.json
         run: |
           tag="$ACTION_TAG"
           if [ -z "$tag" ]; then
@@ -56,14 +57,44 @@ jobs:
           echo "Resolved release tag: $tag"
           echo "tag_name=${tag}" >> "$GITHUB_OUTPUT"
 
-  # When release-please cuts a stable or hotfix release, deploy it. RC releases
-  # on staging never deploy production. The release is created with
+      # Merge the Release PR here rather than by hand.
+      #
+      # The production environment sets `prevent_self_review`, and a
+      # deployment's triggering actor is whoever pushed -- so the person who
+      # merged the Release PR is the one person who cannot approve the deploy
+      # it starts. That blocked v1.4.0 until a second Deployer was found.
+      # Merging with FORWARD_MERGE_TOKEN makes that token's owner the actor
+      # instead, so every Deployer can approve.
+      #
+      # This is not a new decision point: the deliberate one is the promotion
+      # PR (staging -> production). By the time release-please has opened a
+      # Release PR, the decision to ship has already been made, and the PR
+      # only carries the version bump and changelog.
+      - name: Merge the Release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.FORWARD_MERGE_TOKEN }}
+          PR_NUMBER: ${{ fromJson(steps.release.outputs.pr || '{}').number }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::FORWARD_MERGE_TOKEN is not set; merge the Release PR by hand."
+            exit 0
+          fi
+          if [ -z "${PR_NUMBER}" ]; then
+            echo "::warning::release-please reported no Release PR number; merge it by hand."
+            exit 0
+          fi
+          echo "Merging Release PR #${PR_NUMBER}"
+          gh pr merge "${PR_NUMBER}" --squash --repo "${GITHUB_REPOSITORY}"
+
+  # When release-please cuts a stable or hotfix release, deploy it. The
+  # release is created with
   # GITHUB_TOKEN, whose events don't trigger other workflows, so we invoke the
   # production deploy inline (same run) instead of relying on the
   # `release: published` event reaching CD_production.
   deploy-production:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' && github.ref_name != 'staging' }}
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/CD_production.yml
@@ -77,7 +108,7 @@ jobs:
   #   - hotfix release on hotfix/v*   -> open PR hotfix/vX.Y.Z -> production
   forward-merge:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' && github.ref_name != 'staging' }}
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     uses: ./.github/workflows/forward-merge.yml
     with:
       tag_name: ${{ needs.release-please.outputs.tag_name }}
