@@ -2,8 +2,8 @@ name: forward-merge
 
 # Keeps the release branches converged automatically:
 #   - source_branch = production   -> open a back-merge PR production -> staging,
-#     syncing .release-please-manifest.staging.json to the released stable
-#     version so the next staging RC computes from the new baseline.
+#     carrying the release commit and tag history back so staging is not
+#     behind the released code.
 #   - source_branch = hotfix/vX.Y.Z -> open a forward-merge PR into production.
 #     (After that PR merges, run this workflow manually with
 #     source_branch=production to propagate the hotfix on to staging — no
@@ -87,16 +87,6 @@ jobs:
             exit 1
           fi
 
-      - name: Sync staging release-please manifest to released version
-        run: |
-          VERSION="${TAG#v}"
-          jq --arg v "$VERSION" '."." = $v' .release-please-manifest.staging.json > manifest.tmp
-          mv manifest.tmp .release-please-manifest.staging.json
-          if ! git diff --quiet -- .release-please-manifest.staging.json; then
-            git add .release-please-manifest.staging.json
-            git commit -m "chore: sync staging release-please manifest to ${TAG}"
-          fi
-
       # release-please bumps the project version in pyproject.toml but never
       # touches uv.lock, which records the editable ocotilloapi version.
       # tests.yml runs `uv sync --locked`, so the back-merge PR fails CI until
@@ -131,7 +121,7 @@ jobs:
             echo "Automated back-merge after release \`${TAG}\`."
             echo ""
             echo "- Brings the release commit and tag history into \`staging\`."
-            echo "- Syncs \`.release-please-manifest.staging.json\` to \`${TAG#v}\` so the next staging RC versions from the new stable baseline."
+            echo "- Syncs \`uv.lock\` to \`${TAG#v}\` so \`uv sync --locked\` passes on staging."
             echo ""
             echo "If version files conflict with in-flight staging work, accept either side — release-please rewrites them on the next Release PR."
           } > pr-body.md
