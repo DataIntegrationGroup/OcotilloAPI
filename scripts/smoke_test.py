@@ -56,6 +56,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
@@ -95,6 +96,7 @@ class Smoke:
     base_url: str
     token: str | None
     api_key: str | None
+    warmup_seconds: float = 0.0
     results: list[Result] = field(default_factory=list)
 
     # -- plumbing ----------------------------------------------------------
@@ -342,8 +344,47 @@ class Smoke:
         return self.token or self.api_key
 
 
+def wait_until_serving(smoke: Smoke, deadline_seconds: float) -> None:
+    """
+    Poll /health until it answers, before judging anything.
+
+    Run straight after a deploy, the first request pays for an App Engine cold
+    start and the instance's first Cloud SQL connection, which can outlast the
+    per-request timeout. A read timeout there says the instance was still
+    booting, not that the release is broken -- and a deploy that goes red for
+    that is one people learn to ignore.
+    """
+    if deadline_seconds <= 0:
+        return
+
+    started = time.monotonic()
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            response = smoke.get("/health")
+            if response.status_code == 200:
+                if attempt > 1:
+                    waited = time.monotonic() - started
+                    print(f"      ready after {waited:.0f}s", flush=True)
+                return
+            problem = f"status {response.status_code}"
+        except httpx.HTTPError as err:
+            problem = repr(err)
+
+        if time.monotonic() - started >= deadline_seconds:
+            print(
+                f"      still not serving after {deadline_seconds:.0f}s "
+                f"({problem}); checking anyway",
+                flush=True,
+            )
+            return
+        time.sleep(5)
+
+
 def run_all(smoke: Smoke, expect_version: str | None) -> None:
     print(f"Smoke testing {smoke.base_url}\n", flush=True)
+    wait_until_serving(smoke, smoke.warmup_seconds)
     smoke.check_health(expect_version)
     smoke.check_docs()
     smoke.check_public_collections()
@@ -417,6 +458,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Treat skipped checks as failures",
     )
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument(
+        "--warmup",
+        type=float,
+        default=0.0,
+        help=(
+            "seconds to wait for /health before checking; use after a deploy, "
+            "where the first request pays for a cold start"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.base_url:
@@ -450,6 +500,7 @@ def main(argv: list[str] | None = None) -> int:
             base_url=args.base_url,
             token=args.token,
             api_key=args.api_key,
+            warmup_seconds=args.warmup,
         )
         run_all(smoke, args.expect_version)
         return summarize(smoke.results, args.strict)

@@ -170,20 +170,6 @@ jobs:
             --quiet \
             --project ${{ vars.GCP_PROJECT_ID }}
 
-      # The checks the runbook used to ask someone to run by hand. Anonymous:
-      # the internal mount's key is per-environment and not available here, so
-      # the credentialed checks skip. What remains still proves the new build
-      # serves, that the public collections are published, and that
-      # /ogcapi-internal refuses anonymous callers -- which is the check worth
-      # having fail a deploy, since it guards landowner PII.
-      - name: Smoke test the deployed service
-        env:
-          SMOKE_BASE_URL: ${{ vars.PRODUCTION_BASE_URL || 'https://ocotillo-api.newmexicowaterdata.org' }}
-        run: |
-          uv run --no-dev python -m scripts.smoke_test \
-            --base-url "$SMOKE_BASE_URL" \
-            --expect-version "${DEPLOY_TAG#v}"
-
       - name: Clean up oldest versions
         run: |
           SERVICE="ocotillo-api"
@@ -226,3 +212,22 @@ jobs:
       - name: Remove rendered configs
         run: |
           rm app.yaml
+
+      # Last on purpose: a failure here should not skip the housekeeping
+      # above it. Placed before the cleanup, a cold-start timeout left an old
+      # App Engine version undeleted and the deploy untagged.
+      # The checks the runbook used to ask someone to run by hand. Anonymous:
+      # the internal mount's key is per-environment and not available here, so
+      # the credentialed checks skip. What remains still proves the new build
+      # serves, that the public collections are published, and that
+      # /ogcapi-internal refuses anonymous callers -- which is the check worth
+      # having fail a deploy, since it guards landowner PII.
+      - name: Smoke test the deployed service
+        env:
+          SMOKE_BASE_URL: ${{ vars.PRODUCTION_BASE_URL || 'https://ocotillo-api.newmexicowaterdata.org' }}
+        run: |
+          uv run --no-dev python -m scripts.smoke_test \
+            --base-url "$SMOKE_BASE_URL" \
+            --warmup 180 \
+            --timeout 60 \
+            --expect-version "${DEPLOY_TAG#v}"
