@@ -1022,4 +1022,123 @@ def test_the_archive_keeps_a_bad_row_as_written(
     assert archived.rows[0]["CollectionDate"] is None
 
 
+# ------------------- matching by field sample ID (#970) ------------------------
+#
+# The field sample ID (SamplePointID) is authoritative: a row reaches only the
+# record with its own name, and a new record takes that name. Different letters
+# are different field samples, even on the same day.
+
+
+def _named_row(point: str, collected: str):
+    return _sample_info_row(CollectionDate=collected, **{"SamplePointID": point})
+
+
+def _named_reading(point: str, taken: str, ph: float):
+    return _field_params_row(**{"SamplePointID": point, "Time": taken, "pHf": ph})
+
+
+def _stored_sample(thing_id: int, point: str, collected: datetime | None):
+    with session_ctx() as session:
+        session.add(
+            NMA_Chemistry_SampleInfo(
+                thing_id=thing_id,
+                nma_sample_point_id=point,
+                collection_date=collected,
+            )
+        )
+        session.commit()
+
+
+def _ph_on_each_sample():
+    readings = {}
+    for sample in _samples():
+        ph = [
+            p.sample_value for p in _parameters(sample.id) if p.field_parameter == "pHf"
+        ]
+        readings[sample.nma_sample_point_id] = ph
+    return readings
+
+
+def test_same_day_samples_under_other_letters_leave_the_lab_record_alone(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """The lab's A holds results; the sheet's B and C are two other samples."""
+    _lab_sample(water_well_thing.id)
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _named_row(f"{WELL}B", "2025-06-10T10:05:00"),
+                _named_row(f"{WELL}C", "2025-06-10T10:18:00"),
+            ],
+            param_rows=[
+                _named_reading(f"{WELL}B", "2025-06-10T10:05:00", 7.0),
+                _named_reading(f"{WELL}C", "2025-06-10T10:18:00", 8.0),
+            ],
+        )
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert _ph_on_each_sample() == {
+        f"{WELL}A": [],
+        f"{WELL}B": [7.0],
+        f"{WELL}C": [8.0],
+    }
+
+
+def test_new_records_take_the_sheets_letters_in_any_order(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """Rows listed C then B are stored as C and B, not renumbered."""
+    _stored_sample(water_well_thing.id, f"{WELL}A", datetime(2025, 1, 1, 9, 0))
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _named_row(f"{WELL}C", "2025-06-10T10:05:00"),
+                _named_row(f"{WELL}B", "2025-06-10T10:18:00"),
+            ],
+            param_rows=[
+                _named_reading(f"{WELL}C", "2025-06-10T10:05:00", 7.0),
+                _named_reading(f"{WELL}B", "2025-06-10T10:18:00", 8.0),
+            ],
+        )
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["warnings"] == []
+    assert _ph_on_each_sample() == {
+        f"{WELL}A": [],
+        f"{WELL}C": [7.0],
+        f"{WELL}B": [8.0],
+    }
+
+
+def test_a_sample_point_without_a_letter_aborts(
+    water_well_thing, _cleanup_field_chemistry
+):
+    result = import_field_tables(
+        _tables(sample_rows=[_sample_info_row(**{"SamplePointID": WELL})])
+    )
+
+    assert result.exit_code == 1
+    assert any("has no sample letter" in e for e in result.payload["validation_errors"])
+    assert _samples() == []
+
+
+def test_a_new_visit_named_after_an_undated_sample_aborts(
+    water_well_thing, _cleanup_field_chemistry
+):
+    """An undated record can't be shown to be this visit, so the name is taken."""
+    _stored_sample(water_well_thing.id, f"{WELL}A", None)
+
+    result = import_field_tables(_tables())
+
+    assert result.exit_code == 1
+    assert any(
+        f"{WELL}A already belongs to another visit" in e
+        for e in result.payload["validation_errors"]
+    )
+    (undated,) = _samples()
+    assert _parameters(undated.id) == []
+
+
 # ============= EOF =============================================

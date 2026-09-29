@@ -698,4 +698,164 @@ def test_a_letter_naming_a_sample_that_is_not_its_visit_aborts(
     assert _major_rows(only.id) == []
 
 
+# ----------------- matching lab samples by field sample ID (#970) --------------
+#
+# A lab sample's SamplePointID is the field sample ID from the chain of custody.
+# It decides the record outright, a LabSampleID belongs to one field sample, and
+# a re-load that differs from what's stored stops for review.
+
+
+@pytest.mark.parametrize(
+    "second_row,message",
+    [
+        ({"pointid": f"{WELL}B"}, "name more than one sample"),
+        ({"SampleDate": "2024-06-02"}, "SampleDates on 2 different days"),
+        ({"SampleDate": None}, "SampleDate is blank"),
+    ],
+    ids=["two-letters", "two-days", "one-row-undated"],
+)
+def test_a_lab_sample_whose_rows_disagree_aborts(
+    second_row, message, tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """Taking the first row's letter or day would let row order choose."""
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5"),
+            _lims_row("arsenic", "0.3", **second_row),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert any(message in e for e in result.payload["validation_errors"])
+    assert _samples(water_well_thing.id) == []
+
+
+def test_two_lab_samples_naming_a_new_field_sample_abort(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """A field sample has one LabSampleID, recorded yet or not."""
+    path = _write_workbook(
+        tmp_path / "lims.xlsx",
+        [
+            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", SampleNumber="LAB-2"),
+        ],
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert any(
+        "LAB-1 and LAB-2 both name field sample" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert _samples(water_well_thing.id) == []
+
+
+def test_a_letter_naming_no_field_sample_gets_its_own_record(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """Field A exists, the lab names B, and there's no B yet: B is created."""
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 5))
+    path = _write_workbook(
+        tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}B")]
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 0, result.stderr
+    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
+    assert _lab_ids_and_calcium(water_well_thing.id) == {
+        f"{WELL}A": (None, []),
+        f"{WELL}B": ("LAB-1", [12.5]),
+    }
+
+
+def test_a_letter_naming_a_labelled_duplicate_does_not_take_its_partner(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """Field A is unlabelled, field B already has a lab id, and the lab names B."""
+    _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 5))
+    _record_sample(
+        water_well_thing.id, f"{WELL}B", datetime(2024, 6, 1, 10, 18), "LAB-9"
+    )
+    path = _write_workbook(
+        tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}B")]
+    )
+
+    result = bulk_upload_chemistry(path)
+
+    assert result.exit_code == 1
+    assert any(
+        "already has lab id LAB-9" in e for e in result.payload["validation_errors"]
+    )
+    assert _lab_ids_and_calcium(water_well_thing.id) == {
+        f"{WELL}A": (None, []),
+        f"{WELL}B": ("LAB-9", []),
+    }
+
+
+def test_lab_results_first_then_the_field_sheet_is_one_record(
+    tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """LIMS names the record from the chain of custody; the sheet finds it."""
+    path = _write_workbook(tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5")])
+    assert bulk_upload_chemistry(path).exit_code == 0
+
+    sheet = import_field_tables(_field_sheet())
+
+    assert sheet.exit_code == 0, sheet.stderr
+    assert sheet.payload["summary"]["samples_matched"] == 1
+    (sample,) = _samples(water_well_thing.id)
+    assert (sample.nma_sample_point_id, sample.nma_wclab_id) == (f"{WELL}A", "LAB-1")
+    with session_ctx() as session:
+        readings = session.scalars(
+            select(NMA_FieldParameters).where(
+                NMA_FieldParameters.chemistry_sample_info_id == sample.id
+            )
+        ).all()
+    assert len(readings) == 2
+    assert [m.analyte for m in _major_rows(sample.id)] == ["Ca"]
+
+
+@pytest.mark.parametrize(
+    "reload_rows,message",
+    [
+        ([_lims_row("calcium", "12.8")], "Ca was 12.5 mg/L and is now 12.8 mg/L"),
+        (
+            [_lims_row("calcium", "12.5"), _lims_row("arsenic", "0.3")],
+            "As isn't loaded yet",
+        ),
+        (
+            [_lims_row("calcium", "12.5", pointid=f"{WELL}B")],
+            f"the workbook names it {WELL}B",
+        ),
+    ],
+    ids=["corrected-value", "added-analyte", "other-field-sample"],
+)
+def test_a_changed_reload_of_a_lab_sample_stops_for_review(
+    reload_rows, message, tmp_path, water_well_thing, _cleanup_chemistry
+):
+    """Skipping would drop the lab's change without a word."""
+    first = _write_workbook(tmp_path / "first.xlsx", [_lims_row("calcium", "12.5")])
+    assert bulk_upload_chemistry(first).exit_code == 0
+
+    result = bulk_upload_chemistry(
+        _write_workbook(tmp_path / "again.xlsx", reload_rows)
+    )
+
+    assert result.exit_code == 1
+    assert any(
+        "LabSampleID LAB-1 is already loaded" in e and message in e
+        for e in result.payload["validation_errors"]
+    )
+    (sample,) = _samples(water_well_thing.id)
+    assert [(m.analyte, m.sample_value) for m in _major_rows(sample.id)] == [
+        ("Ca", 12.5)
+    ]
+
+
 # ============= EOF =============================================
