@@ -66,7 +66,8 @@ def _write_workbook(path: Path, rows: list[dict]) -> Path:
     return path
 
 
-def _lims_row(param, value, *, pointid="Test Well", method="EPA 200.7", **overrides):
+# The lab records the field sample ID from the chain of custody, letter and all.
+def _lims_row(param, value, *, pointid="Test WellA", method="EPA 200.7", **overrides):
     row = {
         "Param": param,
         "Results_Units": "mg/L",
@@ -273,10 +274,10 @@ def test_bulk_upload_warns_when_supplied_suffix_disagrees(
     assert "Test WellA" in warnings[0] and "Test WellB" in warnings[0]
 
 
-def test_bulk_upload_appends_new_lab_sample_with_next_suffix(
+def test_bulk_upload_adds_a_second_lab_sample_under_its_letter(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
-    # A different WCLab_ID for the same well -> a new lettered sample point.
+    # Another field sample of the same well, with its own LabSampleID.
     _write_workbook(
         tmp_path / "first.xlsx", [_lims_row("calcium", "12.5", SampleNumber="LAB-1")]
     )
@@ -285,7 +286,8 @@ def test_bulk_upload_appends_new_lab_sample_with_next_suffix(
     assert first.payload["created_samples"][0]["sample_point_id"] == "Test WellA"
 
     _write_workbook(
-        tmp_path / "second.xlsx", [_lims_row("calcium", "9.9", SampleNumber="LAB-2")]
+        tmp_path / "second.xlsx",
+        [_lims_row("calcium", "9.9", pointid="Test WellB", SampleNumber="LAB-2")],
     )
     second = bulk_upload_chemistry(tmp_path / "second.xlsx")
     assert second.exit_code == 0, second.stderr
@@ -303,12 +305,12 @@ def test_bulk_upload_appends_new_lab_sample_with_next_suffix(
 def test_bulk_upload_two_lab_samples_in_one_file_get_a_and_b(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
-    # Two distinct lab samples in a single workbook -> A and B in one run.
+    # Two field samples of one well, A and B, each with its own LabSampleID.
     _write_workbook(
         tmp_path / "lims.xlsx",
         [
             _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
-            _lims_row("calcium", "9.9", SampleNumber="LAB-2"),
+            _lims_row("calcium", "9.9", pointid="Test WellB", SampleNumber="LAB-2"),
         ],
     )
     result = bulk_upload_chemistry(tmp_path / "lims.xlsx")
@@ -508,7 +510,7 @@ def test_rerunning_a_workbook_after_adoption_is_a_skip(
     assert len(_major_rows(sample.id)) == 1
 
 
-def test_two_unlabelled_samples_on_the_day_abort_the_file(
+def test_a_letter_picks_its_field_sample_of_two_on_the_day(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
     _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 9, 0))
@@ -517,12 +519,13 @@ def test_two_unlabelled_samples_on_the_day_abort_the_file(
 
     result = bulk_upload_chemistry(path)
 
-    assert result.exit_code == 1
-    assert any("cannot tell which" in e for e in result.payload["validation_errors"])
-    samples = _samples(water_well_thing.id)
-    assert len(samples) == 2
-    assert all(s.nma_wclab_id is None for s in samples)
-    assert all(_major_rows(s.id) == [] for s in samples)
+    assert result.exit_code == 0, result.stderr
+    a, b = _samples(water_well_thing.id)
+    assert (a.nma_wclab_id, [m.analyte for m in _major_rows(a.id)]) == (
+        "LAB-1",
+        ["Ca"],
+    )
+    assert (b.nma_wclab_id, _major_rows(b.id)) == (None, [])
 
 
 def test_two_lab_samples_matching_one_field_sample_abort_the_file(
@@ -564,11 +567,8 @@ def test_a_sample_with_a_different_lab_id_is_not_adopted(
     assert first.nma_wclab_id == "LAB-9"
 
 
-def test_a_blank_sample_date_does_not_adopt_on_the_analysis_date(
-    tmp_path, water_well_thing, _cleanup_chemistry
-):
-    """AnalysisTime stands in for a blank SampleDate, but never for matching."""
-    # A field visit on the day the lab analysed an unrelated sample.
+def test_a_blank_sample_date_aborts(tmp_path, water_well_thing, _cleanup_chemistry):
+    """SampleDate is the collection date; AnalysisTime can't stand in for it."""
     _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 15, 10, 0))
     path = _write_workbook(
         tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", SampleDate=None)]
@@ -576,11 +576,10 @@ def test_a_blank_sample_date_does_not_adopt_on_the_analysis_date(
 
     result = bulk_upload_chemistry(path)
 
-    assert result.exit_code == 0, result.stderr
-    assert result.payload["summary"]["samples_adopted"] == 0
-    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
-    first, _second = _samples(water_well_thing.id)
-    assert first.nma_wclab_id is None
+    assert result.exit_code == 1
+    assert any("SampleDate is blank" in e for e in result.payload["validation_errors"])
+    (only,) = _samples(water_well_thing.id)
+    assert only.nma_wclab_id is None
 
 
 def test_a_supplied_letter_that_disagrees_with_the_adopted_sample_warns(
@@ -644,29 +643,32 @@ def test_a_lettered_duplicate_pair_adopts_its_own_field_samples(
     }
 
 
-def test_an_unlettered_lab_sample_takes_the_duplicate_its_partner_leaves(
+def test_a_lab_sample_without_a_letter_aborts_the_file(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
-    """LAB-1 is planned first and names nothing; it must not take A from LAB-2."""
+    """LAB-1 names no field sample; its lettered partner doesn't load either."""
     _field_pair(water_well_thing.id)
     path = _write_workbook(
         tmp_path / "lims.xlsx",
         [
-            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
+            _lims_row("calcium", "12.5", pointid=WELL, SampleNumber="LAB-1"),
             _lims_row("calcium", "9.9", pointid=f"{WELL}A", SampleNumber="LAB-2"),
         ],
     )
 
     result = bulk_upload_chemistry(path)
 
-    assert result.exit_code == 0, result.stderr
-    assert _lab_ids_and_calcium(water_well_thing.id) == {
-        f"{WELL}A": ("LAB-2", [9.9]),
-        f"{WELL}B": ("LAB-1", [12.5]),
-    }
+    assert result.exit_code == 1
+    assert any(
+        "LAB-1" in e and "has no sample letter" in e
+        for e in result.payload["validation_errors"]
+    )
+    assert all(
+        lab is None for lab, _ in _lab_ids_and_calcium(water_well_thing.id).values()
+    )
 
 
-def test_an_unlettered_duplicate_pair_still_aborts(
+def test_an_unlettered_duplicate_pair_aborts(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
     """With no letters, nothing tells the pair apart, so a person must."""
@@ -674,15 +676,15 @@ def test_an_unlettered_duplicate_pair_still_aborts(
     path = _write_workbook(
         tmp_path / "lims.xlsx",
         [
-            _lims_row("calcium", "12.5", SampleNumber="LAB-1"),
-            _lims_row("calcium", "9.9", SampleNumber="LAB-2"),
+            _lims_row("calcium", "12.5", pointid=WELL, SampleNumber="LAB-1"),
+            _lims_row("calcium", "9.9", pointid=WELL, SampleNumber="LAB-2"),
         ],
     )
 
     result = bulk_upload_chemistry(path)
 
     assert result.exit_code == 1
-    assert any("cannot tell which" in e for e in result.payload["validation_errors"])
+    assert any("has no sample letter" in e for e in result.payload["validation_errors"])
     assert all(
         lab is None for lab, _ in _lab_ids_and_calcium(water_well_thing.id).values()
     )

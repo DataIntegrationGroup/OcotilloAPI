@@ -679,11 +679,64 @@ def bulk_upload_chemistry(
         ] = []
         # field sample id -> the WCLab_ID that claimed it in this workbook
         claimed_by: dict[int, str | None] = {}
+        # A lab sample (every row sharing one SampleNumber) has to name exactly
+        # one field sample and one collection day, because the field sample ID
+        # and the day are what decide where its results go. Taking the first
+        # row's would let row order in the workbook decide; a missing letter or
+        # date leaves nothing to decide on. And a field sample has one
+        # LabSampleID, so two lab samples naming it contradict each other.
+        disagreeing: set[tuple[str, str | None]] = set()
+        named_by: dict[str, list[str | None]] = {}
+        for (base, wclab_id), recs in buckets.items():
+            letters = sorted({r["supplied_suffix"] for r in recs} - {None})
+            dates = [r["reported_sample_date"] for r in recs]
+            days = sorted({d.date() for d in dates if d})
+            label = f"SamplePointID {base} (WCLab_ID {wclab_id})"
+            if not letters:
+                validation_errors.append(
+                    f"{label}: has no sample letter; the SamplePointID must be the "
+                    f"field sample ID from the chain of custody (for example "
+                    f"{base}A)"
+                )
+                disagreeing.add((base, wclab_id))
+            elif len(letters) > 1:
+                named = ", ".join(f"{base}{letter}" for letter in letters)
+                validation_errors.append(
+                    f"{label}: its rows name more than one sample ({named}); "
+                    "cannot tell which field sample it is"
+                )
+                disagreeing.add((base, wclab_id))
+            else:
+                named_by.setdefault(f"{base}{letters[0]}", []).append(wclab_id)
+            if any(d is None for d in dates):
+                validation_errors.append(
+                    f"{label}: SampleDate is blank; it's the collection date the "
+                    "field sample is matched on"
+                )
+                disagreeing.add((base, wclab_id))
+            elif len(days) > 1:
+                dated = ", ".join(day.isoformat() for day in days)
+                validation_errors.append(
+                    f"{label}: its rows give SampleDates on {len(days)} different "
+                    f"days ({dated}); cannot tell which visit it is"
+                )
+                disagreeing.add((base, wclab_id))
+        for point, wclab_ids in named_by.items():
+            if len(wclab_ids) > 1:
+                labs = " and ".join(str(w) for w in wclab_ids)
+                validation_errors.append(
+                    f"SamplePointID {point}: lab samples {labs} both name field "
+                    "sample "
+                    f"{point}; a field sample has one LabSampleID"
+                )
+                disagreeing.update((split_pointid(point)[0], w) for w in wclab_ids)
+
         supplied_by_bucket = {
             key: next(
                 (r["supplied_suffix"] for r in recs if r["supplied_suffix"]), None
             )
             for key, recs in buckets.items()
+            if key not in disagreeing
         }
         # Sample points the workbook names, which the well-and-day fallback
         # leaves to the lab sample naming them.
@@ -694,6 +747,8 @@ def bulk_upload_chemistry(
         }
 
         for (base, wclab_id), recs in buckets.items():
+            if (base, wclab_id) in disagreeing:
+                continue  # already reported above; the file aborts
             thing_id = thing_ids[base]
 
             # Already ingested this lab sample -> skip (idempotent), keep going.
