@@ -250,28 +250,33 @@ def test_bulk_upload_strips_supplied_suffix_to_find_the_well(
     assert result.payload["warnings"] == []
 
 
-def test_bulk_upload_warns_when_supplied_suffix_disagrees(
+def test_bulk_upload_rejects_a_letter_another_lab_sample_holds(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
-    """Computed letter wins; the disagreement is reported but does not fail."""
+    """The letter names A, and A already holds LAB-1, so LAB-2 can't go there.
+
+    This used to load LAB-2 as B with a warning. Now that a letter decides
+    which sample a lab sample belongs to, a letter pointing at another lab
+    sample's results is a contradiction for a person to settle.
+    """
     _write_workbook(
         tmp_path / "first.xlsx",
         [_lims_row("calcium", "12.5", pointid="Test WellA", SampleNumber="LAB-1")],
     )
     bulk_upload_chemistry(tmp_path / "first.xlsx")
 
-    # A second lab sample still labelled 'A', though 'B' is the next free one.
     _write_workbook(
         tmp_path / "second.xlsx",
         [_lims_row("calcium", "9.9", pointid="Test WellA", SampleNumber="LAB-2")],
     )
     result = bulk_upload_chemistry(tmp_path / "second.xlsx")
 
-    assert result.exit_code == 0, result.stderr
-    assert result.payload["created_samples"][0]["sample_point_id"] == "Test WellB"
-    warnings = result.payload["warnings"]
-    assert len(warnings) == 1
-    assert "Test WellA" in warnings[0] and "Test WellB" in warnings[0]
+    assert result.exit_code == 1
+    assert any(
+        "already has lab id LAB-1" in e for e in result.payload["validation_errors"]
+    )
+    (only,) = _samples(water_well_thing.id)
+    assert only.nma_wclab_id == "LAB-1"
 
 
 def test_bulk_upload_adds_a_second_lab_sample_under_its_letter(
@@ -550,23 +555,6 @@ def test_two_lab_samples_matching_one_field_sample_abort_the_file(
     assert _major_rows(sample.id) == []
 
 
-def test_a_sample_with_a_different_lab_id_is_not_adopted(
-    tmp_path, water_well_thing, _cleanup_chemistry
-):
-    _record_sample(
-        water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15), "LAB-9"
-    )
-    path = _write_workbook(tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5")])
-
-    result = bulk_upload_chemistry(path)
-
-    assert result.exit_code == 0, result.stderr
-    assert result.payload["summary"]["samples_adopted"] == 0
-    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
-    first, _second = _samples(water_well_thing.id)
-    assert first.nma_wclab_id == "LAB-9"
-
-
 def test_a_blank_sample_date_aborts(tmp_path, water_well_thing, _cleanup_chemistry):
     """SampleDate is the collection date; AnalysisTime can't stand in for it."""
     _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 15, 10, 0))
@@ -582,9 +570,10 @@ def test_a_blank_sample_date_aborts(tmp_path, water_well_thing, _cleanup_chemist
     assert only.nma_wclab_id is None
 
 
-def test_a_supplied_letter_that_disagrees_with_the_adopted_sample_warns(
+def test_a_letter_naming_no_field_sample_makes_a_new_record_under_it(
     tmp_path, water_well_thing, _cleanup_chemistry
 ):
+    """The lab names C; the same-day field sample A is another sample."""
     _record_sample(water_well_thing.id, f"{WELL}A", datetime(2024, 6, 1, 10, 15))
     path = _write_workbook(
         tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}C")]
@@ -593,10 +582,14 @@ def test_a_supplied_letter_that_disagrees_with_the_adopted_sample_warns(
     result = bulk_upload_chemistry(path)
 
     assert result.exit_code == 0, result.stderr
-    assert result.payload["adopted_samples"][0]["sample_point_id"] == f"{WELL}A"
-    warnings = result.payload["warnings"]
-    assert len(warnings) == 1
-    assert f"{WELL}C" in warnings[0] and f"{WELL}A" in warnings[0]
+    assert result.payload["summary"]["samples_adopted"] == 0
+    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}C"
+    assert result.payload["warnings"] == []
+    field_sample = _samples(water_well_thing.id)[0]
+    assert (field_sample.nma_sample_point_id, field_sample.nma_wclab_id) == (
+        f"{WELL}A",
+        None,
+    )
 
 
 # ------------- lab samples lettered like the crew's (duplicate pairs) ---------
@@ -691,13 +684,17 @@ def test_an_unlettered_duplicate_pair_aborts(
 
 
 @pytest.mark.parametrize(
-    "when,lab_id",
-    [(datetime(2024, 5, 1, 10, 5), None), (datetime(2024, 6, 1, 10, 5), "LAB-9")],
+    "when,lab_id,reason",
+    [
+        (datetime(2024, 5, 1, 10, 5), None, "is from 2024-05-01, not 2024-06-01"),
+        (datetime(2024, 6, 1, 10, 5), "LAB-9", "already has lab id LAB-9"),
+    ],
     ids=["another-day", "already-labelled"],
 )
-def test_a_lettered_lab_sample_does_not_adopt_a_sample_that_is_not_its_visit(
-    when, lab_id, tmp_path, water_well_thing, _cleanup_chemistry
+def test_a_letter_naming_a_sample_that_is_not_its_visit_aborts(
+    when, lab_id, reason, tmp_path, water_well_thing, _cleanup_chemistry
 ):
+    """The letter says these results are A's, and A can't take them."""
     _record_sample(water_well_thing.id, f"{WELL}A", when, lab_id)
     path = _write_workbook(
         tmp_path / "lims.xlsx", [_lims_row("calcium", "12.5", pointid=f"{WELL}A")]
@@ -705,11 +702,11 @@ def test_a_lettered_lab_sample_does_not_adopt_a_sample_that_is_not_its_visit(
 
     result = bulk_upload_chemistry(path)
 
-    assert result.exit_code == 0, result.stderr
-    assert result.payload["summary"]["samples_adopted"] == 0
-    assert result.payload["created_samples"][0]["sample_point_id"] == f"{WELL}B"
-    first, _second = _samples(water_well_thing.id)
-    assert first.nma_wclab_id == lab_id
+    assert result.exit_code == 1
+    assert any(reason in e for e in result.payload["validation_errors"])
+    (only,) = _samples(water_well_thing.id)
+    assert only.nma_wclab_id == lab_id
+    assert _major_rows(only.id) == []
 
 
 # ============= EOF =============================================

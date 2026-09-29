@@ -740,11 +740,12 @@ def water_chemistry_bulk_upload(
 ):
     """
     parse a LIMS chemistry workbook and load it into the NMA Major/Minor
-    chemistry tables. Each distinct lab sample (WCLab_ID) attaches to the
-    field-sheet sample for the same well and day when there is one, and is
-    otherwise appended as a new lettered sample point; a lab sample already
+    chemistry tables. Each distinct lab sample (WCLab_ID) goes to the sample
+    record named with its field sample ID (SamplePointID): the field sheet's,
+    if it has no lab id yet, or a new one under that ID. A lab sample already
     recorded for the well is skipped. A row that fails to map, an unknown well,
-    or an ambiguous field-sheet match aborts the whole file.
+    a missing letter or SampleDate, or a named record that can't take the
+    results aborts the whole file.
     """
     from cli.service_adapter import chemistry_lims_xlsx
 

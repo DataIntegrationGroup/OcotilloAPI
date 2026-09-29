@@ -25,14 +25,12 @@ read an ``.xls`` LIMS export with ``xlrd`` and inserted rows into the SQL Server
 * reads an ``.xlsx`` workbook with ``openpyxl``,
 * maps each LIMS ``Param`` to an analyte code + target table via
   :func:`lookup_analyte`,
-* resolves each ``SamplePointID`` (the base well PointID) to a ``Thing`` by
-  name,
-* attaches each distinct lab sample (``WCLab_ID``) to the field-sheet sample
-  for the same well and day when one exists with no lab id yet, and otherwise
-  appends it as a new ``NMA_Chemistry_SampleInfo`` row whose
-  ``nma_sample_point_id`` is the base PointID with the next letter incrementor
-  appended (``A``, ``B``, ... ``Z``, ``AA``, ...), skipping a lab sample already
-  recorded for that well.
+* resolves each ``SamplePointID`` (the field sample ID, e.g. ``WL-0264B``) to
+  its well's ``Thing`` by the base PointID,
+* puts each distinct lab sample (``WCLab_ID``) on the
+  ``NMA_Chemistry_SampleInfo`` row named with its field sample ID: the one the
+  field sheet made, if it has no lab id yet, or a new one under that ID,
+  skipping a lab sample already recorded for that well.
 
 The public entrypoint is :func:`bulk_upload_chemistry`.
 """
@@ -291,11 +289,10 @@ def prep_record(record: dict) -> dict:
         )
 
     analysis_date = _to_datetime(_get(record, "AnalysisTime"))
-    # Kept apart from the fallback below: the analysis date is weeks after the
-    # visit, so it may stand in as a collection date on a new sample but must
-    # never be used to find the field visit this lab sample belongs to.
+    # The collection date. Nothing stands in for a blank one: the analysis date
+    # is weeks after the visit, and the date is what the field sample is
+    # checked against. A blank is reported when the lab sample is planned.
     reported_sample_date = _to_datetime(_get(record, "SampleDate"))
-    sample_date = reported_sample_date or analysis_date
 
     return {
         "analyte": mapping.analyte,
@@ -305,7 +302,6 @@ def prep_record(record: dict) -> dict:
         "sample_value": sample_value,
         "analysis_method": str(analysis_method) if analysis_method else None,
         "analysis_date": analysis_date,
-        "sample_date": sample_date,
         "reported_sample_date": reported_sample_date,
         "wclab_id": str(wclab_id),
         "samplepointid": str(pointid),
@@ -519,12 +515,18 @@ def find_sample_for_visit(
 
 def _adoptable_by_name(
     session: Session, thing_id: int, sample_point_id: str, visit_date: datetime
-) -> NMA_Chemistry_SampleInfo | None:
-    """The field-sheet sample a lab sample names, if it may adopt it.
+) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
+    """The field-sheet sample a lab sample names, and whether it may adopt it.
 
-    The lab writes the crew's letter on the sample, so a name match is how one
-    duplicate of a same-day pair is told from the other. It must still be the
-    same visit (the reported day) and not yet carry a lab id.
+    Returns ``(sample, None)`` when it may, ``(None, None)`` when no sample has
+    that name yet, and ``(None, reason)`` when one does but can't take these
+    results.
+
+    The lab records the crew's letter on each analysis, so a name match is how
+    one duplicate of a same-day pair is told from the other. The named sample
+    must still be the same visit (the reported day) and not yet carry a lab id.
+    When it isn't, the letter says these results belong to a sample they can't
+    go to, and the caller reports it rather than looking elsewhere.
     """
     named = session.scalars(
         select(NMA_Chemistry_SampleInfo).where(
@@ -532,16 +534,21 @@ def _adoptable_by_name(
             NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id,
         )
     ).all()
-    if len(named) != 1:
-        return None
+    if not named:
+        return None, None
+    if len(named) > 1:
+        return None, f"is the name of {len(named)} samples"
     (sample,) = named
-    if (
-        sample.nma_wclab_id is None
-        and sample.collection_date is not None
-        and sample.collection_date.date() == visit_date.date()
-    ):
-        return sample
-    return None
+    if sample.nma_wclab_id is not None:
+        return None, f"already has lab id {sample.nma_wclab_id}"
+    if sample.collection_date is None:
+        return None, "has no collection date"
+    if sample.collection_date.date() != visit_date.date():
+        return None, (
+            f"is from {sample.collection_date.date().isoformat()}, not "
+            f"{visit_date.date().isoformat()}"
+        )
+    return sample, None
 
 
 def _build_measurement(
@@ -574,23 +581,24 @@ def bulk_upload_chemistry(
     ``source`` may be a filesystem path or the raw ``.xlsx`` bytes (e.g. a file
     downloaded from Google Drive).
 
-    The workbook's ``SamplePointID`` is the base well PointID. For each distinct
-    lab sample (``WCLab_ID`` / SampleNumber) for a well:
+    The workbook's ``SamplePointID`` is the field sample ID the lab copied from
+    the chain of custody (``WL-0264B``). For each distinct lab sample
+    (``WCLab_ID`` / SampleNumber):
 
     * already recorded for the well (same ``WCLab_ID``): skipped, so re-running
       is idempotent;
-    * the field sheet already recorded the visit (a sample on the reported
-      ``SampleDate`` with no ``WCLab_ID``): the lab id is stamped onto that
-      sample and the results attach to it, see :func:`find_sample_for_visit`;
-    * otherwise: a new ``NMA_Chemistry_SampleInfo`` row whose
-      ``nma_sample_point_id`` is the base with the next letter incrementor
-      appended (``A``, ``B``, ... ``Z``, ``AA``, ...).
+    * a record already named with its field sample ID: the lab id is stamped
+      onto it and the results attach to it, provided it has no lab id yet and
+      is dated on the reported ``SampleDate``;
+    * otherwise: a new ``NMA_Chemistry_SampleInfo`` row named with its field
+      sample ID.
 
     A data-quality problem aborts the whole file and nothing is written: a row
     that fails to map, a row with no ``SampleNumber`` (the WCLab_ID that makes a
-    re-ingest recognizable), a ``SamplePointID`` with no matching Thing, or a
-    lab sample that matches more than one field-sheet sample (or shares one with
-    another lab sample in the file).
+    re-ingest recognizable), a ``SamplePointID`` with no matching Thing, a lab
+    sample with no letter or no ``SampleDate``, rows of one lab sample that
+    disagree on either, two lab samples naming one field sample, or a named
+    record that can't take the results.
     """
     if isinstance(source, str):
         source = Path(source)
@@ -677,8 +685,6 @@ def bulk_upload_chemistry(
                 str | None,
             ]
         ] = []
-        # field sample id -> the WCLab_ID that claimed it in this workbook
-        claimed_by: dict[int, str | None] = {}
         # A lab sample (every row sharing one SampleNumber) has to name exactly
         # one field sample and one collection day, because the field sample ID
         # and the day are what decide where its results go. Taking the first
@@ -731,21 +737,6 @@ def bulk_upload_chemistry(
                 )
                 disagreeing.update((split_pointid(point)[0], w) for w in wclab_ids)
 
-        supplied_by_bucket = {
-            key: next(
-                (r["supplied_suffix"] for r in recs if r["supplied_suffix"]), None
-            )
-            for key, recs in buckets.items()
-            if key not in disagreeing
-        }
-        # Sample points the workbook names, which the well-and-day fallback
-        # leaves to the lab sample naming them.
-        reserved = {
-            f"{base}{suffix}"
-            for (base, _wclab), suffix in supplied_by_bucket.items()
-            if suffix
-        }
-
         for (base, wclab_id), recs in buckets.items():
             if (base, wclab_id) in disagreeing:
                 continue  # already reported above; the file aborts
@@ -756,47 +747,22 @@ def bulk_upload_chemistry(
                 skipped_duplicates.append({"pointid": base, "wclab_id": wclab_id})
                 continue
 
-            # The field sheet usually lands first and records the visit with no
-            # lab id. Matching it here, on the well and the reported sample
-            # date, is what keeps a visit and its lab batch one sample whichever
-            # ingest runs first.
-            visit_date = next(
-                (r["reported_sample_date"] for r in recs if r["reported_sample_date"]),
-                None,
-            )
-            supplied = supplied_by_bucket[(base, wclab_id)]
-            adopt = None
-            if visit_date is not None:
-                if supplied:
-                    adopt = _adoptable_by_name(
-                        session, thing_id, f"{base}{supplied}", visit_date
-                    )
-            if visit_date is not None and adopt is None:
-                adopt, ambiguity = find_sample_for_visit(
-                    session,
-                    thing_id,
-                    visit_date,
-                    unlabelled_only=True,
-                    reserved=reserved,
+            # The field sample ID decides where the results go. The record with
+            # that name takes them if it can; if it can't, the letter still says
+            # they're its results, so it's reported rather than sent to another
+            # record; if there's no such record yet, the lab results arrived
+            # before the field sheet and it's created under that ID.
+            point = f"{base}{recs[0]['supplied_suffix']}"
+            visit_date = recs[0]["reported_sample_date"]
+            adopt, reason = _adoptable_by_name(session, thing_id, point, visit_date)
+            if reason:
+                validation_errors.append(
+                    f"SamplePointID {point} (WCLab_ID {wclab_id}): field sample "
+                    f"{point} {reason}, so it can't take these results"
                 )
-                if ambiguity:
-                    validation_errors.append(
-                        f"SamplePointID {base} (WCLab_ID {wclab_id}): {ambiguity}"
-                    )
-                    continue
+                continue
 
-            if adopt is not None:
-                other = claimed_by.get(adopt.id)
-                if other is not None:
-                    validation_errors.append(
-                        f"SamplePointID {base}: lab samples {other} and {wclab_id} "
-                        f"both match field-sheet sample {adopt.nma_sample_point_id}; "
-                        "one visit cannot take two lab ids"
-                    )
-                    continue
-                claimed_by[adopt.id] = wclab_id
-
-            planned.append((base, wclab_id, recs, adopt, supplied))
+            planned.append((base, wclab_id, recs, adopt, point))
 
         if validation_errors:
             session.rollback()
@@ -808,19 +774,15 @@ def bulk_upload_chemistry(
                 created=[],
             )
 
-        # Per-Thing set of used suffix incrementors, seeded from the DB and
-        # extended as we assign new ones within this run.
-        used_suffixes: dict[int, set[int]] = {}
         created: list[dict] = []
         adopted: list[dict] = []
         imported = 0
 
-        for base, wclab_id, recs, adopt, supplied in planned:
+        for base, wclab_id, recs, adopt, point in planned:
             thing_id = thing_ids[base]
 
             if adopt is not None:
                 info = adopt
-                sample_point_id = info.nma_sample_point_id
                 info.nma_wclab_id = wclab_id
                 if not info.analyses_agency:
                     info.analyses_agency = ANALYSES_AGENCY
@@ -837,70 +799,27 @@ def bulk_upload_chemistry(
                     )
                     .values(nma_wclab_id=wclab_id)
                 )
-
-                if supplied is not None and f"{base}{supplied}" != sample_point_id:
-                    warnings.append(
-                        f"{base}: workbook supplied sample point {base}{supplied}, "
-                        f"but lab sample {wclab_id} matched field-sheet sample "
-                        f"{sample_point_id} on collection date; loaded onto "
-                        f"{sample_point_id}."
-                    )
-
-                for rec in recs:
-                    model = _TABLE_MODEL[rec["table"]]
-                    session.add(
-                        _build_measurement(model, info.id, rec, sample_point_id)
-                    )
-                    imported += 1
-                adopted.append(
-                    {
-                        "sample_point_id": sample_point_id,
-                        "wclab_id": wclab_id,
-                        "rows": len(recs),
-                    }
+                outcome = adopted
+            else:
+                info = NMA_Chemistry_SampleInfo(
+                    thing_id=thing_id,
+                    nma_sample_pt_id=uuid.uuid4(),
+                    nma_sample_point_id=point,
+                    nma_wclab_id=wclab_id,
+                    analyses_agency=ANALYSES_AGENCY,
+                    collection_date=recs[0]["reported_sample_date"],
                 )
-                continue
-
-            if thing_id not in used_suffixes:
-                used_suffixes[thing_id] = _existing_suffix_ints(session, thing_id, base)
-            next_int = (
-                max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
-            )
-            used_suffixes[thing_id].add(next_int)
-            computed_suffix = _int_to_suffix(next_int)
-            sample_point_id = f"{base}{computed_suffix}"
-
-            # The workbook may have supplied its own letter. The computed one
-            # wins (it cannot collide with an existing sample point), but a
-            # disagreement is surfaced so a human can reconcile it.
-            if supplied is not None and supplied != computed_suffix:
-                warnings.append(
-                    f"{base}: workbook supplied sample point {base}{supplied}, "
-                    f"but the next free incrementor is {computed_suffix}; "
-                    f"loaded as {sample_point_id}."
-                )
-
-            collection_date = next(
-                (r["sample_date"] for r in recs if r["sample_date"]), None
-            )
-            info = NMA_Chemistry_SampleInfo(
-                thing_id=thing_id,
-                nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id=sample_point_id,
-                nma_wclab_id=wclab_id,
-                analyses_agency=ANALYSES_AGENCY,
-                collection_date=collection_date,
-            )
-            session.add(info)
-            session.flush()  # assign info.id for the FK below
+                session.add(info)
+                session.flush()  # assign info.id for the FK below
+                outcome = created
 
             for rec in recs:
                 model = _TABLE_MODEL[rec["table"]]
-                session.add(_build_measurement(model, info.id, rec, sample_point_id))
+                session.add(_build_measurement(model, info.id, rec, point))
                 imported += 1
-            created.append(
+            outcome.append(
                 {
-                    "sample_point_id": sample_point_id,
+                    "sample_point_id": point,
                     "wclab_id": wclab_id,
                     "rows": len(recs),
                 }
