@@ -45,10 +45,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
 from pathlib import Path
-from typing import Any, BinaryIO, Collection
+from typing import Any, BinaryIO
 
 from openpyxl import load_workbook
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from db import (
@@ -353,12 +353,10 @@ def dedupe_records(records: list[dict]) -> list[dict]:
 # --- persistence ---------------------------------------------------------------
 
 
-_SUFFIX_RE_TEMPLATE = r"^{base}([A-Z]+)$"
-
-# A PointID ending in letters is a *sample point* id, never a base well id:
-# ``WL-0434A`` is a sample point on well ``WL-0434``. The base must therefore
+# A PointID ending in letters is a field sample ID, never a base well id:
+# ``WL-0434A`` is a field sample of well ``WL-0434``. The base must therefore
 # end in a non-letter (``WL-0434``, ``MG-030``) for the trailing letters to
-# count as an incrementor.
+# count as the crew's sample letter.
 _POINTID_SUFFIX_RE = re.compile(r"^(?P<base>.*[^A-Z])(?P<suffix>[A-Z]+)$")
 
 
@@ -385,47 +383,6 @@ def resolve_thing_id(session: Session, pointid: str) -> int | None:
 # The field-sheet ingest resolves wells the same way; kept as a module-private
 # alias so the existing call sites read unchanged.
 _resolve_thing_id = resolve_thing_id
-
-
-def _suffix_to_int(suffix: str) -> int:
-    """Bijective base-26: A->1, B->2, ..., Z->26, AA->27, AB->28, ..."""
-    n = 0
-    for ch in suffix:
-        n = n * 26 + (ord(ch) - ord("A") + 1)
-    return n
-
-
-def _int_to_suffix(n: int) -> str:
-    """Inverse of :func:`_suffix_to_int` (``n`` >= 1)."""
-    letters: list[str] = []
-    while n > 0:
-        n, rem = divmod(n - 1, 26)
-        letters.append(chr(ord("A") + rem))
-    return "".join(reversed(letters))
-
-
-def _existing_suffix_ints(session: Session, thing_id: int, base: str) -> set[int]:
-    """Suffix numbers already used for ``base`` under this Thing.
-
-    Chemistry sample points are the well PointID (``base``) with an appended
-    letter incrementor (``A``, ``B``, ... ``Z``, ``AA``, ...). Returns the set
-    of used incrementors, as bijective-base-26 integers, so the next one can be
-    computed.
-    """
-    values = session.scalars(
-        select(NMA_Chemistry_SampleInfo.nma_sample_point_id).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id
-        )
-    ).all()
-    pattern = re.compile(_SUFFIX_RE_TEMPLATE.format(base=re.escape(base)))
-    used: set[int] = set()
-    for value in values:
-        if not value:
-            continue
-        match = pattern.match(value)
-        if match:
-            used.add(_suffix_to_int(match.group(1)))
-    return used
 
 
 def _sample_for_wclab(
@@ -489,72 +446,6 @@ def _reload_differences(
             now = _describe_result(rec["symbol"], rec["sample_value"], rec["units"])
             differences.append(f"{rec['analyte']} was {was} and is now {now}")
     return differences
-
-
-def find_sample_for_visit(
-    session: Session,
-    thing_id: int,
-    collection_date: datetime,
-    *,
-    unlabelled_only: bool = False,
-    exclude_ids: Collection[int] = (),
-    reserved: Collection[str] = (),
-) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
-    """The sample already recorded for this well at this collection date.
-
-    Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
-    ambiguous, and ``(None, None)`` when there is nothing to match.
-
-    A field visit and its lab batch are one sample, and when neither side names
-    the other's sample they can only meet on the well and the date. An exact
-    timestamp match wins; failing that, a sample on the same calendar day is
-    treated as the same visit, since the sheet's time and the lab's time for one
-    visit routinely differ by minutes. Two candidates on the same day are
-    ambiguous and are reported rather than guessed at.
-
-    Both ingests call this only after trying a match by name, and use the
-    filters to keep it from taking a sample that belongs to someone else:
-
-    * ``unlabelled_only`` skips samples with a ``WCLab_ID``. The LIMS ingest
-      uses it to adopt a sample the field sheet made: a sample that already
-      carries a lab id belongs to a different lab sample and must never be
-      relabelled.
-    * ``exclude_ids`` skips samples by id, such as samples earlier rows of the
-      same field sheet created or matched.
-    * ``reserved`` skips samples whose ``nma_sample_point_id`` another row names.
-      A same-day pair, a duplicate or a split, is two samples; without this, a
-      row that names neither could take the one its partner names.
-    """
-    conditions = [
-        NMA_Chemistry_SampleInfo.thing_id == thing_id,
-        func.date(NMA_Chemistry_SampleInfo.collection_date) == collection_date.date(),
-    ]
-    if unlabelled_only:
-        conditions.append(NMA_Chemistry_SampleInfo.nma_wclab_id.is_(None))
-
-    candidates = [
-        sample
-        for sample in session.scalars(
-            select(NMA_Chemistry_SampleInfo).where(*conditions)
-        ).all()
-        if sample.id not in exclude_ids and sample.nma_sample_point_id not in reserved
-    ]
-
-    exact = [s for s in candidates if s.collection_date == collection_date]
-    if len(exact) == 1:
-        return exact[0], None
-    if len(exact) > 1:
-        return None, "more than one sample already recorded at that exact time"
-    if len(candidates) == 1:
-        return candidates[0], None
-    if len(candidates) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in candidates))
-        return None, (
-            f"{len(candidates)} samples already recorded on "
-            f"{collection_date.date().isoformat()} ({points}); cannot tell which "
-            "one this row belongs to"
-        )
-    return None, None
 
 
 def _adoptable_by_name(

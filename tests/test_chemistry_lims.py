@@ -32,8 +32,6 @@ from db.nma_legacy import (
 from services.chemistry_field_params import import_field_tables
 from services.chemistry_field_sheet import SheetTable
 from services.chemistry_lims import (
-    _int_to_suffix,
-    _suffix_to_int,
     bulk_upload_chemistry,
     dedupe_records,
     prep_record,
@@ -138,15 +136,6 @@ def test_dedupe_prefers_epa_200_7():
     deduped = dedupe_records(rows)
     assert len(deduped) == 1
     assert deduped[0]["sample_value"] == 11.0
-
-
-@pytest.mark.parametrize(
-    "suffix,number",
-    [("A", 1), ("B", 2), ("Z", 26), ("AA", 27), ("AB", 28), ("AZ", 52), ("BA", 53)],
-)
-def test_suffix_bijective_base26_roundtrip(suffix, number):
-    assert _suffix_to_int(suffix) == number
-    assert _int_to_suffix(number) == suffix
 
 
 # ------------------------- ingestion tests -----------------------------------
