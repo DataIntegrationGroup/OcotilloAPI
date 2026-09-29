@@ -38,6 +38,7 @@ The public entrypoint is :func:`bulk_upload_chemistry`.
 from __future__ import annotations
 
 import io
+import math
 import re
 import uuid
 from dataclasses import dataclass
@@ -427,24 +428,67 @@ def _existing_suffix_ints(session: Session, thing_id: int, base: str) -> set[int
     return used
 
 
-def _sample_exists_for_wclab(
+def _sample_for_wclab(
     session: Session, thing_id: int, wclab_id: str | None
-) -> bool:
-    """True if this lab sample (WCLab_ID) is already recorded for the Thing."""
+) -> NMA_Chemistry_SampleInfo | None:
+    """The record already holding this lab sample (WCLab_ID) for the Thing."""
     # Unreachable via prep_record, which rejects a blank SampleNumber. Kept
     # because a None would compare as IS NULL and match legacy rows, silently
     # skipping a real sample.
     if wclab_id is None:
+        return None
+    return session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            NMA_Chemistry_SampleInfo.nma_wclab_id == wclab_id,
+        )
+    ).first()
+
+
+def _describe_result(symbol: str | None, value: float | None, units: str | None):
+    text = f"{symbol or ''}{value if value is not None else 'blank'}"
+    return f"{text} {units}" if units else text
+
+
+def _same_result(stored, rec: dict) -> bool:
+    if (stored.symbol or None) != (rec["symbol"] or None):
         return False
-    return (
-        session.scalars(
-            select(NMA_Chemistry_SampleInfo.id).where(
-                NMA_Chemistry_SampleInfo.thing_id == thing_id,
-                NMA_Chemistry_SampleInfo.nma_wclab_id == wclab_id,
-            )
-        ).first()
-        is not None
-    )
+    if (stored.units or None) != (rec["units"] or None):
+        return False
+    if stored.sample_value is None or rec["sample_value"] is None:
+        return stored.sample_value is None and rec["sample_value"] is None
+    return math.isclose(stored.sample_value, rec["sample_value"], rel_tol=1e-9)
+
+
+def _reload_differences(
+    session: Session, sample: NMA_Chemistry_SampleInfo, sample_point_id: str, recs
+) -> list[str]:
+    """How this workbook's copy of a lab sample differs from the one loaded.
+
+    An exact repeat is a file being run again, and skipping it is harmless.
+    Anything else is the lab sending something new under a LabSampleID the
+    database already holds: a corrected value, an added analyte, or another
+    field sample. Skipping that would drop it without a word, so the caller
+    stops for someone to review it instead.
+    """
+    differences = []
+    if sample.nma_sample_point_id != sample_point_id:
+        differences.append(f"the workbook names it {sample_point_id}")
+    stored = {}
+    for model in (NMA_MajorChemistry, NMA_MinorTraceChemistry):
+        for measurement in session.scalars(
+            select(model).where(model.chemistry_sample_info_id == sample.id)
+        ).all():
+            stored[measurement.analyte] = measurement
+    for rec in recs:
+        loaded = stored.get(rec["analyte"])
+        if loaded is None:
+            differences.append(f"{rec['analyte']} isn't loaded yet")
+        elif not _same_result(loaded, rec):
+            was = _describe_result(loaded.symbol, loaded.sample_value, loaded.units)
+            now = _describe_result(rec["symbol"], rec["sample_value"], rec["units"])
+            differences.append(f"{rec['analyte']} was {was} and is now {now}")
+    return differences
 
 
 def find_sample_for_visit(
@@ -742,9 +786,21 @@ def bulk_upload_chemistry(
                 continue  # already reported above; the file aborts
             thing_id = thing_ids[base]
 
-            # Already ingested this lab sample -> skip (idempotent), keep going.
-            if _sample_exists_for_wclab(session, thing_id, wclab_id):
-                skipped_duplicates.append({"pointid": base, "wclab_id": wclab_id})
+            point = f"{base}{recs[0]['supplied_suffix']}"
+
+            # Already loaded: an exact repeat is skipped, so re-running a file
+            # is harmless; anything new under this LabSampleID stops for review.
+            loaded = _sample_for_wclab(session, thing_id, wclab_id)
+            if loaded is not None:
+                differences = _reload_differences(session, loaded, point, recs)
+                if not differences:
+                    skipped_duplicates.append({"pointid": base, "wclab_id": wclab_id})
+                    continue
+                validation_errors.append(
+                    f"LabSampleID {wclab_id} is already loaded for "
+                    f"{loaded.nma_sample_point_id}; {'; '.join(differences)}. "
+                    "Review before re-loading."
+                )
                 continue
 
             # The field sample ID decides where the results go. The record with
@@ -752,7 +808,6 @@ def bulk_upload_chemistry(
             # they're its results, so it's reported rather than sent to another
             # record; if there's no such record yet, the lab results arrived
             # before the field sheet and it's created under that ID.
-            point = f"{base}{recs[0]['supplied_suffix']}"
             visit_date = recs[0]["reported_sample_date"]
             adopt, reason = _adoptable_by_name(session, thing_id, point, visit_date)
             if reason:
