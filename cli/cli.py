@@ -1052,7 +1052,7 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
         formatter=_describe_sample,
     )
     report.bullet_section(
-        "SAMPLES MATCHED (already recorded for that well and date)",
+        "SAMPLES MATCHED (already recorded under that field sample ID)",
         payload.get("samples_matched", []),
         colors,
         color_key="field",
@@ -1137,10 +1137,10 @@ def water_chemistry_sync_sheet(
     and NMA_FieldParameters. Lab result tabs in the same workbook are left to
     the LIMS ingest.
 
-    Samples are matched to what is already recorded on well PointID plus
-    collection date, so a field visit and its lab batch share one sample and
-    re-running loads nothing twice. Any data-quality problem aborts the whole
-    import.
+    Samples are matched to what is already recorded by field sample ID
+    (SamplePointID, the well plus the crew's letter), so a field sample and its
+    lab results share one record and re-running loads nothing twice. Any
+    data-quality problem aborts the whole import.
     """
     from services.chemistry_drive import ChemistryDriveConfigError
     from services.chemistry_field_params import (

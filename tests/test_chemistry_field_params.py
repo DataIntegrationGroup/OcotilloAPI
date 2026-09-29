@@ -422,8 +422,8 @@ def _first_visit_ph():
 def test_a_new_visit_with_no_sample_point_aborts(
     water_well_thing, _cleanup_field_chemistry
 ):
-    """With no name for the new sample, the readings row's guess reached the
-    earlier visit, and its readings were dropped there as already recorded."""
+    """With no name for the new sample, the readings row had to guess one, and
+    a guess naming the earlier visit loaded its readings there."""
     import_field_tables(_tables())
 
     result = import_field_tables(
@@ -437,29 +437,32 @@ def test_a_new_visit_with_no_sample_point_aborts(
 
     assert result.exit_code == 1
     errors = result.payload["validation_errors"]
-    assert any("SamplePointID is blank" in e and f"{WELL}B" in e for e in errors)
+    assert any("Missing SamplePointID" in e for e in errors)
     assert [s.nma_sample_point_id for s in _samples()] == [f"{WELL}A"]
     assert _first_visit_ph() == 6.94
 
 
-def test_a_blank_sample_point_is_fine_for_a_visit_already_recorded(
+def test_a_blank_sample_point_aborts_even_for_a_recorded_visit(
     water_well_thing, _cleanup_field_chemistry
 ):
+    """Only the field sample ID identifies a sample, so it's never guessed."""
     import_field_tables(_tables())
 
     result = import_field_tables(
         _tables(sample_rows=[_sample_info_row(**{"SamplePointID": None})])
     )
 
-    assert result.exit_code == 0, result.stderr
-    assert result.payload["summary"]["samples_matched"] == 1
+    assert result.exit_code == 1
+    assert any(
+        "Missing SamplePointID" in e for e in result.payload["validation_errors"]
+    )
     assert len(_samples()) == 1
 
 
 def test_two_visits_in_one_sheet_claiming_one_sample_point_abort(
     water_well_thing, _cleanup_field_chemistry
 ):
-    """The second visit's readings would land on the first visit's sample."""
+    """Neither row can be assumed right, so both are reported and neither loads."""
     result = import_field_tables(
         _tables(
             sample_rows=[
@@ -473,9 +476,16 @@ def test_two_visits_in_one_sheet_claiming_one_sample_point_abort(
     assert result.exit_code == 1
     errors = result.payload["validation_errors"]
     assert any(
-        f"{WELL}A already belongs to the 2025-06-10 visit" in e and f"{WELL}B" in e
+        e.startswith("ChemistrySampleInfo row 2:")
+        and "dated 2025-06-10 here but also used on row 3 (2025-09-02)" in e
         for e in errors
     )
+    assert any(
+        e.startswith("ChemistrySampleInfo row 3:")
+        and "dated 2025-09-02 here but also used on row 2 (2025-06-10)" in e
+        for e in errors
+    )
+    assert not any("already belongs to" in e for e in errors)
     assert _samples() == []
 
 
@@ -527,7 +537,7 @@ def test_a_matched_visit_named_after_another_visit_aborts(
     assert result.exit_code == 1
     assert any(
         f"{WELL}A already belongs to the 2025-06-10 visit" in e
-        and f"recorded as {WELL}B" in e
+        and f"{WELL} already uses A, B" in e
         for e in result.payload["validation_errors"]
     )
     assert _first_visit_ph() == 6.94
@@ -685,10 +695,10 @@ def test_a_duplicate_does_not_take_the_lab_sample_its_pair_names(
     assert _ph_by_point() == {f"{WELL}A": 7.0, f"{WELL}B": 8.0}
 
 
-def test_a_lab_sample_under_another_letter_is_still_matched_by_day(
+def test_a_different_letter_is_a_different_sample(
     water_well_thing, _cleanup_field_chemistry
 ):
-    """Unchanged: the crew and the lab can letter one visit differently."""
+    """The lab's WL-A and the sheet's WL-B share a day, but not a field sample."""
     _lab_sample(water_well_thing.id)
     result = import_field_tables(
         _tables(
@@ -698,10 +708,12 @@ def test_a_lab_sample_under_another_letter_is_still_matched_by_day(
     )
 
     assert result.exit_code == 0, result.stderr
-    (sample,) = _samples()
-    assert sample.nma_sample_point_id == f"{WELL}A"
-    assert any("calls this sample" in w for w in result.payload["warnings"])
-    assert len(_parameters(sample.id)) == 6
+    assert result.payload["warnings"] == []
+    lab, field = _samples()
+    assert (lab.nma_sample_point_id, lab.nma_wclab_id) == (f"{WELL}A", "LAB-1")
+    assert _parameters(lab.id) == []
+    assert field.nma_sample_point_id == f"{WELL}B"
+    assert len(_parameters(field.id)) == 6
 
 
 def test_a_sample_the_lab_ingest_already_created_is_reused(

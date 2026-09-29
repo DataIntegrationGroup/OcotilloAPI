@@ -20,11 +20,11 @@ Ingest the AMP chemistry field spreadsheet -- the ``ChemistrySampleInfo`` and
 
 This is the field half of chemistry ingestion. The lab half already arrives as
 a LIMS workbook through :mod:`services.chemistry_lims`, and the two meet at the
-sample: a well visit recorded in the spreadsheet and a lab batch for the same
-visit must end up on one ``NMA_Chemistry_SampleInfo`` row, not two. They are
-matched on **well PointID plus collection date**, because the spreadsheet
-carries no lab id -- the field crew writes it down before the sample reaches a
-lab.
+sample: a field sample recorded in the spreadsheet and its lab results must end
+up on one ``NMA_Chemistry_SampleInfo`` row, not two. They are matched on the
+**field sample ID** (``SamplePointID``, the well plus the crew's letter), which
+the lab copies from the chain of custody. Different letters are different field
+samples, so nothing is matched on the well and date alone.
 
 Shape of the two tabs
 ---------------------
@@ -38,9 +38,9 @@ one row per measurement -- so each populated cell becomes its own
 
 Idempotency and failure
 -----------------------
-Re-running is safe: a sample already recorded for the well at that collection
-date is reused rather than duplicated, and a field parameter already recorded
-for that sample is skipped. As in the LIMS ingest, any data-quality problem
+Re-running is safe: a sample already recorded under that field sample ID, on
+the same day, is reused rather than duplicated, and a field parameter already
+recorded for that sample is skipped. As in the LIMS ingest, any data-quality problem
 aborts the whole import and nothing is written, so a spreadsheet is never half
 loaded.
 
@@ -78,9 +78,6 @@ from services.ingest_raw_zone import (
 )
 from services.chemistry_lims import (
     ChemistryUploadResult,
-    _existing_suffix_ints,
-    _int_to_suffix,
-    find_sample_for_visit,
     resolve_thing_id,
     split_pointid,
 )
@@ -276,15 +273,24 @@ def prep_sample_info(record: dict) -> dict:
     well_pointid = str(well_pointid).strip()
     _reject_unassigned_pointid(well_pointid)
 
-    supplied_suffix = None
-    if sample_point_id:
-        sample_point_id = str(sample_point_id).strip()
-        base, supplied_suffix = split_pointid(sample_point_id)
-        if base != well_pointid:
-            raise FieldParamsMappingError(
-                f"SamplePointID {sample_point_id!r} does not belong to well "
-                f"{well_pointid!r}"
-            )
+    # The field sample ID is the only thing that identifies this sample, to the
+    # FieldParameters tab and to the lab, which copies it from the chain of
+    # custody. Without the crew's letter it can't tell this sample from the
+    # well's others, so both a blank and an unlettered ID are refused.
+    if not sample_point_id:
+        raise FieldParamsMappingError("Missing SamplePointID")
+    sample_point_id = str(sample_point_id).strip()
+    base, supplied_suffix = split_pointid(sample_point_id)
+    if base != well_pointid:
+        raise FieldParamsMappingError(
+            f"SamplePointID {sample_point_id!r} does not belong to well "
+            f"{well_pointid!r}"
+        )
+    if supplied_suffix is None:
+        raise FieldParamsMappingError(
+            f"SamplePointID {sample_point_id!r} has no sample letter; add the "
+            f"crew's letter (for example {sample_point_id}A)"
+        )
 
     collection_date = _cell(record, "CollectionDate", "SampleDate")
     parsed_date = _to_datetime(collection_date)
@@ -331,8 +337,7 @@ def prep_sample_info(record: dict) -> dict:
     return {
         "row_number": record.get(SheetTable.ROW_NUMBER_KEY),
         "well_pointid": well_pointid,
-        "sample_point_id": sample_point_id or None,
-        "supplied_suffix": supplied_suffix,
+        "sample_point_id": sample_point_id,
         "collection_date": parsed_date,
         "attributes": attributes,
     }
@@ -445,63 +450,44 @@ def select_tables(
 # --- persistence ---------------------------------------------------------------
 
 
-def _match_visit(
-    session: Session,
-    thing_id: int,
-    row: dict,
-    claimed: set[int],
-    reserved: set[str],
+def _find_named_sample(
+    session: Session, thing_id: int, sample_point_id: str
 ) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
-    """The sample a ``ChemistrySampleInfo`` row records, if one exists already.
+    """The sample record for this well already named ``sample_point_id``.
 
-    Returns ``(sample, None)`` on a match, ``(None, message)`` when the match is
-    ambiguous, and ``(None, None)`` when the row is a new sample.
+    Returns ``(sample, None)``, ``(None, None)`` when there is none, and
+    ``(None, message)`` when more than one record has the name.
 
-    The row's own ``SamplePointID`` is tried first. It is the one thing that
-    tells apart two samples taken at one well on one day -- a duplicate, or a
-    split with the same timestamp -- and it is what the crew's FieldParameters
-    row uses to find this sample.
-
-    Failing that, the row is matched on the well and the day, the only link to a
-    sample the LIMS ingest made under its own letter. An exact time wins, then
-    the same calendar day, since the sheet's time and the lab's for one visit
-    differ by minutes. Two candidates are reported rather than guessed at.
-    Excluded from that fallback are samples an earlier row of this sheet
-    created or matched (``claimed``) and samples another row names
-    (``reserved``). Without that, the second sample of a same-day pair matched
-    the first and was folded into it.
+    The field sample ID is authoritative: different letters are different field
+    samples, so a row is only ever matched to the record with its own name. The
+    caller checks that the record is the same visit.
     """
-    supplied = row["sample_point_id"]
-    collection_date = row["collection_date"]
-    day = collection_date.date()
+    named = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id,
+        )
+    ).all()
+    if len(named) > 1:
+        return None, (
+            f"has {len(named)} samples named {sample_point_id}; cannot tell which "
+            "one this row is"
+        )
+    return (named[0] if named else None), None
 
-    if supplied:
-        named = session.scalars(
-            select(NMA_Chemistry_SampleInfo).where(
-                NMA_Chemistry_SampleInfo.thing_id == thing_id,
-                NMA_Chemistry_SampleInfo.nma_sample_point_id == supplied,
-            )
-        ).all()
-        if len(named) > 1:
-            return None, (
-                f"has {len(named)} samples named {supplied}; cannot tell which "
-                "one this row is"
-            )
-        if named and (
-            named[0].collection_date is None or named[0].collection_date.date() == day
-        ):
-            return named[0], None
-        # A name recorded on another day belongs to a different visit. The day
-        # fallback below still runs, so the caller can report that conflict
-        # against the sample this visit really is, if there is one.
 
-    return find_sample_for_visit(
-        session,
-        thing_id,
-        collection_date,
-        exclude_ids=claimed,
-        reserved=reserved,
-    )
+def _letters_in_use(session: Session, thing_id: int, base: str) -> str:
+    """The sample letters a well's records already use, for an error message."""
+    letters = set()
+    for name in session.scalars(
+        select(NMA_Chemistry_SampleInfo.nma_sample_point_id).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id
+        )
+    ).all():
+        name_base, letter = split_pointid(name or "")
+        if name_base == base and letter:
+            letters.add(letter)
+    return ", ".join(sorted(letters, key=lambda x: (len(x), x))) or "none"
 
 
 def _apply_attributes(
@@ -599,127 +585,91 @@ def import_field_tables(
                 raw=raw,
             )
 
+        # One field sample ID is one visit. The same ID on rows dated on
+        # different days is two visits claiming one name, and nothing says
+        # which row is right, so every one of them is reported and none loads.
+        rows_by_point: dict[str, list[dict]] = {}
+        for row in sample_rows:
+            rows_by_point.setdefault(row["sample_point_id"], []).append(row)
+        contested: set[str] = set()
+        for point, rows in rows_by_point.items():
+            if len({r["collection_date"].date() for r in rows}) < 2:
+                continue
+            contested.add(point)
+            for row in rows:
+                others = ", ".join(
+                    f"row {r['row_number']} ({r['collection_date'].date().isoformat()})"
+                    for r in rows
+                    if r is not row
+                )
+                validation_errors.append(
+                    f"{SAMPLE_INFO_TAB} row {row['row_number']}: SamplePointID "
+                    f"{point} is dated {row['collection_date'].date().isoformat()} "
+                    f"here but also used on {others}; one field sample can't be "
+                    "two visits. Correct the letter or the date on these rows and "
+                    f"their {FIELD_PARAMETERS_TAB} rows."
+                )
+
         # sample point id -> the sample it names, for the FieldParameters join.
         samples_by_point: dict[str, NMA_Chemistry_SampleInfo] = {}
-        used_suffixes: dict[int, set[int]] = {}
-        # Samples earlier rows created or matched, and every name the sheet
-        # gives a sample; see _match_visit.
-        claimed: set[int] = set()
-        reserved = {row["sample_point_id"] for row in sample_rows} - {None}
 
         for row in sample_rows:
+            if row["sample_point_id"] in contested:
+                continue  # reported above, on every row using the ID
             thing_id = thing_ids[row["well_pointid"]]
             label = f"{SAMPLE_INFO_TAB} row {row['row_number']}"
+            base = row["well_pointid"]
+            point = row["sample_point_id"]
+            visit_day = row["collection_date"].date().isoformat()
 
-            existing, ambiguity = _match_visit(
-                session, thing_id, row, claimed, reserved
-            )
-            if ambiguity:
-                validation_errors.append(f"{label}: {row['well_pointid']} {ambiguity}")
+            existing, problem = _find_named_sample(session, thing_id, point)
+            if problem:
+                validation_errors.append(f"{label}: {base} {problem}")
                 continue
 
             if existing is not None:
-                supplied = row["sample_point_id"]
-                owner = (
-                    _sample_point_owner(session, samples_by_point, supplied)
-                    if supplied
-                    else None
-                )
-                if owner is not None and owner.id != existing.id:
-                    # FieldParameters rows find their sample by this name, so a
-                    # name that belongs to another visit would send this visit's
-                    # readings there.
+                # One field sample is one visit. The same ID on another day (or
+                # on a record with no date) is another field sample that reused
+                # the letter, and FieldParameters rows naming it would reach
+                # that visit.
+                if (
+                    existing.collection_date is None
+                    or existing.collection_date.date() != row["collection_date"].date()
+                ):
                     validation_errors.append(
-                        f"{label}: SamplePointID {supplied} already belongs to "
-                        f"{_visit(owner)}, but this row matches the "
-                        f"{row['collection_date'].date().isoformat()} visit, "
-                        f"recorded as {existing.nma_sample_point_id}. Use "
-                        f"{existing.nma_sample_point_id} on this row and on its "
+                        f"{label}: SamplePointID {point} already belongs to "
+                        f"{_visit(existing)}, and this row is a different visit "
+                        f"({visit_day}). {base} already uses "
+                        f"{_letters_in_use(session, thing_id, base)}; give this "
+                        f"visit a letter it hasn't used, on this row and on its "
                         f"{FIELD_PARAMETERS_TAB} row."
                     )
                     continue
                 warnings.extend(_apply_attributes(existing, row["attributes"], label))
-                if supplied and existing.nma_sample_point_id != supplied:
-                    warnings.append(
-                        f"{label}: spreadsheet calls this sample {supplied}, "
-                        f"the database calls it {existing.nma_sample_point_id}; "
-                        "matched on well and collection date."
-                    )
-                claimed.add(existing.id)
-                samples_by_point[supplied or existing.nma_sample_point_id] = existing
-                if existing.nma_sample_point_id:
-                    samples_by_point.setdefault(existing.nma_sample_point_id, existing)
+                samples_by_point[point] = existing
                 samples_matched.append(
                     {
-                        "sample_point_id": existing.nma_sample_point_id,
-                        "pointid": row["well_pointid"],
+                        "sample_point_id": point,
+                        "pointid": base,
                         "collection_date": row["collection_date"].isoformat(),
                     }
                 )
                 continue
 
-            base = row["well_pointid"]
-            if thing_id not in used_suffixes:
-                used_suffixes[thing_id] = _existing_suffix_ints(session, thing_id, base)
-            next_int = (
-                max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
-            )
-            computed = _int_to_suffix(next_int)
-            sample_point_id = f"{base}{computed}"
-            visit_day = row["collection_date"].date().isoformat()
-
-            # A new sample is only reachable from the FieldParameters tab by the
-            # name this row gives it. With no name, the crew's readings row has
-            # to guess one, and a guess that is an earlier visit's name loads the
-            # readings onto that visit instead.
-            supplied = row["sample_point_id"]
-            if not supplied:
-                validation_errors.append(
-                    f"{label}: SamplePointID is blank, and {base} has no sample on "
-                    f"{visit_day} yet. Fill it in (the next free one is "
-                    f"{sample_point_id}) so the {FIELD_PARAMETERS_TAB} readings "
-                    "for this visit can find it."
-                )
-                continue
-            owner = _sample_point_owner(session, samples_by_point, supplied)
-            if owner is not None:
-                validation_errors.append(
-                    f"{label}: SamplePointID {supplied} already belongs to "
-                    f"{_visit(owner)}, and this row is a different visit "
-                    f"({visit_day}). Use the next free one, {sample_point_id}, on "
-                    f"this row and on its {FIELD_PARAMETERS_TAB} row."
-                )
-                continue
-
-            used_suffixes[thing_id].add(next_int)
-            supplied_suffix = row["supplied_suffix"]
-            if supplied_suffix is not None and supplied_suffix != computed:
-                # The computed incrementor wins because it cannot collide with a
-                # sample point already in the database, but the disagreement is
-                # surfaced so a human can reconcile it.
-                warnings.append(
-                    f"{label}: spreadsheet supplied sample point "
-                    f"{base}{supplied_suffix}, but the next free incrementor is "
-                    f"{computed}; loaded as {sample_point_id}."
-                )
-
             sample = NMA_Chemistry_SampleInfo(
                 thing_id=thing_id,
                 nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id=sample_point_id,
+                nma_sample_point_id=point,
                 collection_date=row["collection_date"],
                 **row["attributes"],
             )
             session.add(sample)
-            session.flush()  # assign sample.id for the FK below
+            session.flush()  # assign sample.id; later rows see the name taken
 
-            claimed.add(sample.id)
-            samples_by_point[sample_point_id] = sample
-            if row["sample_point_id"]:
-                samples_by_point.setdefault(row["sample_point_id"], sample)
+            samples_by_point[point] = sample
             samples_created.append(
                 {
-                    "sample_point_id": sample_point_id,
+                    "sample_point_id": point,
                     "pointid": base,
                     "collection_date": row["collection_date"].isoformat(),
                 }
@@ -835,21 +785,6 @@ def _lookup_sample_by_point(
             NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id
         )
     ).first()
-
-
-def _sample_point_owner(
-    session: Session,
-    samples_by_point: dict[str, NMA_Chemistry_SampleInfo],
-    sample_point_id: str,
-) -> NMA_Chemistry_SampleInfo | None:
-    """The sample a FieldParameters row naming ``sample_point_id`` would reach.
-
-    Checked in the same order the FieldParameters join resolves names: a name
-    an earlier row of this sheet claimed, then one already in the database.
-    """
-    return samples_by_point.get(sample_point_id) or _lookup_sample_by_point(
-        session, sample_point_id
-    )
 
 
 def _visit(sample: NMA_Chemistry_SampleInfo) -> str:
