@@ -25,12 +25,12 @@ read an ``.xls`` LIMS export with ``xlrd`` and inserted rows into the SQL Server
 * reads an ``.xlsx`` workbook with ``openpyxl``,
 * maps each LIMS ``Param`` to an analyte code + target table via
   :func:`lookup_analyte`,
-* resolves each ``SamplePointID`` (the base well PointID) to a ``Thing`` by
-  name,
-* appends each distinct lab sample (``WCLab_ID``) as a new
-  ``NMA_Chemistry_SampleInfo`` row whose ``nma_sample_point_id`` is the base
-  PointID with the next letter incrementor appended (``A``, ``B``, ... ``Z``,
-  ``AA``, ...), skipping a lab sample already recorded for that well.
+* resolves each ``SamplePointID`` (the field sample ID, e.g. ``WL-0264B``) to
+  its well's ``Thing`` by the base PointID,
+* puts each distinct lab sample (``WCLab_ID``) on the
+  ``NMA_Chemistry_SampleInfo`` row named with its field sample ID: the one the
+  field sheet made, if it has no lab id yet, or a new one under that ID,
+  skipping a lab sample already recorded for that well.
 
 The public entrypoint is :func:`bulk_upload_chemistry`.
 """
@@ -38,6 +38,7 @@ The public entrypoint is :func:`bulk_upload_chemistry`.
 from __future__ import annotations
 
 import io
+import math
 import re
 import uuid
 from dataclasses import dataclass
@@ -47,11 +48,12 @@ from pathlib import Path
 from typing import Any, BinaryIO
 
 from openpyxl import load_workbook
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from db import (
     NMA_Chemistry_SampleInfo,
+    NMA_FieldParameters,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
     Thing,
@@ -288,7 +290,10 @@ def prep_record(record: dict) -> dict:
         )
 
     analysis_date = _to_datetime(_get(record, "AnalysisTime"))
-    sample_date = _to_datetime(_get(record, "SampleDate")) or analysis_date
+    # The collection date. Nothing stands in for a blank one: the analysis date
+    # is weeks after the visit, and the date is what the field sample is
+    # checked against. A blank is reported when the lab sample is planned.
+    reported_sample_date = _to_datetime(_get(record, "SampleDate"))
 
     return {
         "analyte": mapping.analyte,
@@ -298,7 +303,7 @@ def prep_record(record: dict) -> dict:
         "sample_value": sample_value,
         "analysis_method": str(analysis_method) if analysis_method else None,
         "analysis_date": analysis_date,
-        "sample_date": sample_date,
+        "reported_sample_date": reported_sample_date,
         "wclab_id": str(wclab_id),
         "samplepointid": str(pointid),
         "test": _get(record, "Test"),
@@ -348,12 +353,10 @@ def dedupe_records(records: list[dict]) -> list[dict]:
 # --- persistence ---------------------------------------------------------------
 
 
-_SUFFIX_RE_TEMPLATE = r"^{base}([A-Z]+)$"
-
-# A PointID ending in letters is a *sample point* id, never a base well id:
-# ``WL-0434A`` is a sample point on well ``WL-0434``. The base must therefore
+# A PointID ending in letters is a field sample ID, never a base well id:
+# ``WL-0434A`` is a field sample of well ``WL-0434``. The base must therefore
 # end in a non-letter (``WL-0434``, ``MG-030``) for the trailing letters to
-# count as an incrementor.
+# count as the crew's sample letter.
 _POINTID_SUFFIX_RE = re.compile(r"^(?P<base>.*[^A-Z])(?P<suffix>[A-Z]+)$")
 
 
@@ -382,65 +385,105 @@ def resolve_thing_id(session: Session, pointid: str) -> int | None:
 _resolve_thing_id = resolve_thing_id
 
 
-def _suffix_to_int(suffix: str) -> int:
-    """Bijective base-26: A->1, B->2, ..., Z->26, AA->27, AB->28, ..."""
-    n = 0
-    for ch in suffix:
-        n = n * 26 + (ord(ch) - ord("A") + 1)
-    return n
-
-
-def _int_to_suffix(n: int) -> str:
-    """Inverse of :func:`_suffix_to_int` (``n`` >= 1)."""
-    letters: list[str] = []
-    while n > 0:
-        n, rem = divmod(n - 1, 26)
-        letters.append(chr(ord("A") + rem))
-    return "".join(reversed(letters))
-
-
-def _existing_suffix_ints(session: Session, thing_id: int, base: str) -> set[int]:
-    """Suffix numbers already used for ``base`` under this Thing.
-
-    Chemistry sample points are the well PointID (``base``) with an appended
-    letter incrementor (``A``, ``B``, ... ``Z``, ``AA``, ...). Returns the set
-    of used incrementors, as bijective-base-26 integers, so the next one can be
-    computed.
-    """
-    values = session.scalars(
-        select(NMA_Chemistry_SampleInfo.nma_sample_point_id).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id
-        )
-    ).all()
-    pattern = re.compile(_SUFFIX_RE_TEMPLATE.format(base=re.escape(base)))
-    used: set[int] = set()
-    for value in values:
-        if not value:
-            continue
-        match = pattern.match(value)
-        if match:
-            used.add(_suffix_to_int(match.group(1)))
-    return used
-
-
-def _sample_exists_for_wclab(
+def _sample_for_wclab(
     session: Session, thing_id: int, wclab_id: str | None
-) -> bool:
-    """True if this lab sample (WCLab_ID) is already recorded for the Thing."""
+) -> NMA_Chemistry_SampleInfo | None:
+    """The record already holding this lab sample (WCLab_ID) for the Thing."""
     # Unreachable via prep_record, which rejects a blank SampleNumber. Kept
     # because a None would compare as IS NULL and match legacy rows, silently
     # skipping a real sample.
     if wclab_id is None:
+        return None
+    return session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            NMA_Chemistry_SampleInfo.nma_wclab_id == wclab_id,
+        )
+    ).first()
+
+
+def _describe_result(symbol: str | None, value: float | None, units: str | None):
+    text = f"{symbol or ''}{value if value is not None else 'blank'}"
+    return f"{text} {units}" if units else text
+
+
+def _same_result(stored, rec: dict) -> bool:
+    if (stored.symbol or None) != (rec["symbol"] or None):
         return False
-    return (
-        session.scalars(
-            select(NMA_Chemistry_SampleInfo.id).where(
-                NMA_Chemistry_SampleInfo.thing_id == thing_id,
-                NMA_Chemistry_SampleInfo.nma_wclab_id == wclab_id,
-            )
-        ).first()
-        is not None
-    )
+    if (stored.units or None) != (rec["units"] or None):
+        return False
+    if stored.sample_value is None or rec["sample_value"] is None:
+        return stored.sample_value is None and rec["sample_value"] is None
+    return math.isclose(stored.sample_value, rec["sample_value"], rel_tol=1e-9)
+
+
+def _reload_differences(
+    session: Session, sample: NMA_Chemistry_SampleInfo, sample_point_id: str, recs
+) -> list[str]:
+    """How this workbook's copy of a lab sample differs from the one loaded.
+
+    An exact repeat is a file being run again, and skipping it is harmless.
+    Anything else is the lab sending something new under a LabSampleID the
+    database already holds: a corrected value, an added analyte, or another
+    field sample. Skipping that would drop it without a word, so the caller
+    stops for someone to review it instead.
+    """
+    differences = []
+    if sample.nma_sample_point_id != sample_point_id:
+        differences.append(f"the workbook names it {sample_point_id}")
+    stored = {}
+    for model in (NMA_MajorChemistry, NMA_MinorTraceChemistry):
+        for measurement in session.scalars(
+            select(model).where(model.chemistry_sample_info_id == sample.id)
+        ).all():
+            stored[measurement.analyte] = measurement
+    for rec in recs:
+        loaded = stored.get(rec["analyte"])
+        if loaded is None:
+            differences.append(f"{rec['analyte']} isn't loaded yet")
+        elif not _same_result(loaded, rec):
+            was = _describe_result(loaded.symbol, loaded.sample_value, loaded.units)
+            now = _describe_result(rec["symbol"], rec["sample_value"], rec["units"])
+            differences.append(f"{rec['analyte']} was {was} and is now {now}")
+    return differences
+
+
+def _adoptable_by_name(
+    session: Session, thing_id: int, sample_point_id: str, visit_date: datetime
+) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
+    """The field-sheet sample a lab sample names, and whether it may adopt it.
+
+    Returns ``(sample, None)`` when it may, ``(None, None)`` when no sample has
+    that name yet, and ``(None, reason)`` when one does but can't take these
+    results.
+
+    The lab records the crew's letter on each analysis, so a name match is how
+    one duplicate of a same-day pair is told from the other. The named sample
+    must still be the same visit (the reported day) and not yet carry a lab id.
+    When it isn't, the letter says these results belong to a sample they can't
+    go to, and the caller reports it rather than looking elsewhere.
+    """
+    named = session.scalars(
+        select(NMA_Chemistry_SampleInfo).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id,
+            NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id,
+        )
+    ).all()
+    if not named:
+        return None, None
+    if len(named) > 1:
+        return None, f"is the name of {len(named)} samples"
+    (sample,) = named
+    if sample.nma_wclab_id is not None:
+        return None, f"already has lab id {sample.nma_wclab_id}"
+    if sample.collection_date is None:
+        return None, "has no collection date"
+    if sample.collection_date.date() != visit_date.date():
+        return None, (
+            f"is from {sample.collection_date.date().isoformat()}, not "
+            f"{visit_date.date().isoformat()}"
+        )
+    return sample, None
 
 
 def _build_measurement(
@@ -473,16 +516,24 @@ def bulk_upload_chemistry(
     ``source`` may be a filesystem path or the raw ``.xlsx`` bytes (e.g. a file
     downloaded from Google Drive).
 
-    The workbook's ``SamplePointID`` is the base well PointID. Each distinct lab
-    sample (``WCLab_ID`` / SampleNumber) for a well becomes a new
-    ``NMA_Chemistry_SampleInfo`` row whose ``nma_sample_point_id`` is the base
-    with the next letter incrementor appended (``A``, ``B``, ... ``Z``, ``AA``,
-    ...). A lab sample already recorded for the well (same ``WCLab_ID``) is
-    skipped, so re-running is idempotent.
+    The workbook's ``SamplePointID`` is the field sample ID the lab copied from
+    the chain of custody (``WL-0264B``). For each distinct lab sample
+    (``WCLab_ID`` / SampleNumber):
+
+    * already recorded for the well (same ``WCLab_ID``): skipped, so re-running
+      is idempotent;
+    * a record already named with its field sample ID: the lab id is stamped
+      onto it and the results attach to it, provided it has no lab id yet and
+      is dated on the reported ``SampleDate``;
+    * otherwise: a new ``NMA_Chemistry_SampleInfo`` row named with its field
+      sample ID.
 
     A data-quality problem aborts the whole file and nothing is written: a row
     that fails to map, a row with no ``SampleNumber`` (the WCLab_ID that makes a
-    re-ingest recognizable), or a ``SamplePointID`` with no matching Thing.
+    re-ingest recognizable), a ``SamplePointID`` with no matching Thing, a lab
+    sample with no letter or no ``SampleDate``, rows of one lab sample that
+    disagree on either, two lab samples naming one field sample, or a named
+    record that can't take the results.
     """
     if isinstance(source, str):
         source = Path(source)
@@ -518,14 +569,12 @@ def bulk_upload_chemistry(
         # (WL-0434A). The well is always the base (WL-0434), so strip it before
         # resolving; the supplied letter is checked against the computed one
         # below.
-        supplied_suffixes: dict[str, str | None] = {}
         for rec in prepped:
             base, suffix = split_pointid(rec["samplepointid"])
             rec["samplepointid"] = base
-            # Keep the first supplied suffix seen for the well; a workbook
-            # should not disagree with itself, and if it does the mismatch
-            # warning below still fires.
-            supplied_suffixes.setdefault(base, suffix)
+            # Kept per record: a duplicate pair is two lab samples of one well,
+            # and each one's letter is what matches it to its field sample.
+            rec["supplied_suffix"] = suffix
 
         # Resolve every distinct (base) sample point to a Thing up front.
         base_pointids = sorted({r["samplepointid"] for r in prepped})
@@ -558,62 +607,165 @@ def bulk_upload_chemistry(
         ):
             buckets.setdefault(bucket_key(rec), []).append(rec)
 
-        # Per-Thing set of used suffix incrementors, seeded from the DB and
-        # extended as we assign new ones within this run.
-        used_suffixes: dict[int, set[int]] = {}
+        # Pass 1 decides what each lab sample becomes (skipped, adopted onto a
+        # field-sheet sample, or new) before anything is written, so an
+        # ambiguous match aborts the file with nothing half loaded.
         skipped_duplicates: list[dict] = []
-        created: list[dict] = []
-        imported = 0
+        planned: list[
+            tuple[
+                str,
+                str | None,
+                list[dict],
+                NMA_Chemistry_SampleInfo | None,
+                str | None,
+            ]
+        ] = []
+        # A lab sample (every row sharing one SampleNumber) has to name exactly
+        # one field sample and one collection day, because the field sample ID
+        # and the day are what decide where its results go. Taking the first
+        # row's would let row order in the workbook decide; a missing letter or
+        # date leaves nothing to decide on. And a field sample has one
+        # LabSampleID, so two lab samples naming it contradict each other.
+        disagreeing: set[tuple[str, str | None]] = set()
+        named_by: dict[str, list[str | None]] = {}
+        for (base, wclab_id), recs in buckets.items():
+            letters = sorted({r["supplied_suffix"] for r in recs} - {None})
+            dates = [r["reported_sample_date"] for r in recs]
+            days = sorted({d.date() for d in dates if d})
+            label = f"SamplePointID {base} (WCLab_ID {wclab_id})"
+            if not letters:
+                validation_errors.append(
+                    f"{label}: has no sample letter; the SamplePointID must be the "
+                    f"field sample ID from the chain of custody (for example "
+                    f"{base}A)"
+                )
+                disagreeing.add((base, wclab_id))
+            elif len(letters) > 1:
+                named = ", ".join(f"{base}{letter}" for letter in letters)
+                validation_errors.append(
+                    f"{label}: its rows name more than one sample ({named}); "
+                    "cannot tell which field sample it is"
+                )
+                disagreeing.add((base, wclab_id))
+            else:
+                named_by.setdefault(f"{base}{letters[0]}", []).append(wclab_id)
+            if any(d is None for d in dates):
+                validation_errors.append(
+                    f"{label}: SampleDate is blank; it's the collection date the "
+                    "field sample is matched on"
+                )
+                disagreeing.add((base, wclab_id))
+            elif len(days) > 1:
+                dated = ", ".join(day.isoformat() for day in days)
+                validation_errors.append(
+                    f"{label}: its rows give SampleDates on {len(days)} different "
+                    f"days ({dated}); cannot tell which visit it is"
+                )
+                disagreeing.add((base, wclab_id))
+        for point, wclab_ids in named_by.items():
+            if len(wclab_ids) > 1:
+                labs = " and ".join(str(w) for w in wclab_ids)
+                validation_errors.append(
+                    f"SamplePointID {point}: lab samples {labs} both name field "
+                    "sample "
+                    f"{point}; a field sample has one LabSampleID"
+                )
+                disagreeing.update((split_pointid(point)[0], w) for w in wclab_ids)
 
         for (base, wclab_id), recs in buckets.items():
+            if (base, wclab_id) in disagreeing:
+                continue  # already reported above; the file aborts
             thing_id = thing_ids[base]
 
-            # Already ingested this lab sample -> skip (idempotent), keep going.
-            if _sample_exists_for_wclab(session, thing_id, wclab_id):
-                skipped_duplicates.append({"pointid": base, "wclab_id": wclab_id})
+            point = f"{base}{recs[0]['supplied_suffix']}"
+
+            # Already loaded: an exact repeat is skipped, so re-running a file
+            # is harmless; anything new under this LabSampleID stops for review.
+            loaded = _sample_for_wclab(session, thing_id, wclab_id)
+            if loaded is not None:
+                differences = _reload_differences(session, loaded, point, recs)
+                if not differences:
+                    skipped_duplicates.append({"pointid": base, "wclab_id": wclab_id})
+                    continue
+                validation_errors.append(
+                    f"LabSampleID {wclab_id} is already loaded for "
+                    f"{loaded.nma_sample_point_id}; {'; '.join(differences)}. "
+                    "Review before re-loading."
+                )
                 continue
 
-            if thing_id not in used_suffixes:
-                used_suffixes[thing_id] = _existing_suffix_ints(session, thing_id, base)
-            next_int = (
-                max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
-            )
-            used_suffixes[thing_id].add(next_int)
-            computed_suffix = _int_to_suffix(next_int)
-            sample_point_id = f"{base}{computed_suffix}"
-
-            # The workbook may have supplied its own letter. The computed one
-            # wins (it cannot collide with an existing sample point), but a
-            # disagreement is surfaced so a human can reconcile it.
-            supplied = supplied_suffixes.get(base)
-            if supplied is not None and supplied != computed_suffix:
-                warnings.append(
-                    f"{base}: workbook supplied sample point {base}{supplied}, "
-                    f"but the next free incrementor is {computed_suffix}; "
-                    f"loaded as {sample_point_id}."
+            # The field sample ID decides where the results go. The record with
+            # that name takes them if it can; if it can't, the letter still says
+            # they're its results, so it's reported rather than sent to another
+            # record; if there's no such record yet, the lab results arrived
+            # before the field sheet and it's created under that ID.
+            visit_date = recs[0]["reported_sample_date"]
+            adopt, reason = _adoptable_by_name(session, thing_id, point, visit_date)
+            if reason:
+                validation_errors.append(
+                    f"SamplePointID {point} (WCLab_ID {wclab_id}): field sample "
+                    f"{point} {reason}, so it can't take these results"
                 )
+                continue
 
-            collection_date = next(
-                (r["sample_date"] for r in recs if r["sample_date"]), None
+            planned.append((base, wclab_id, recs, adopt, point))
+
+        if validation_errors:
+            session.rollback()
+            return _result(
+                processed=processed,
+                imported=0,
+                validation_errors=validation_errors,
+                skipped_duplicates=[],
+                created=[],
             )
-            info = NMA_Chemistry_SampleInfo(
-                thing_id=thing_id,
-                nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id=sample_point_id,
-                nma_wclab_id=wclab_id,
-                analyses_agency=ANALYSES_AGENCY,
-                collection_date=collection_date,
-            )
-            session.add(info)
-            session.flush()  # assign info.id for the FK below
+
+        created: list[dict] = []
+        adopted: list[dict] = []
+        imported = 0
+
+        for base, wclab_id, recs, adopt, point in planned:
+            thing_id = thing_ids[base]
+
+            if adopt is not None:
+                info = adopt
+                info.nma_wclab_id = wclab_id
+                if not info.analyses_agency:
+                    info.analyses_agency = ANALYSES_AGENCY
+                # The sheet's collection_date is kept: the crew's time is more
+                # precise than a date-only SampleDate.
+                #
+                # Field readings written before the lab id existed get it now,
+                # so they read the same as they would had LIMS gone first.
+                session.execute(
+                    update(NMA_FieldParameters)
+                    .where(
+                        NMA_FieldParameters.chemistry_sample_info_id == info.id,
+                        NMA_FieldParameters.nma_wclab_id.is_(None),
+                    )
+                    .values(nma_wclab_id=wclab_id)
+                )
+                outcome = adopted
+            else:
+                info = NMA_Chemistry_SampleInfo(
+                    thing_id=thing_id,
+                    nma_sample_pt_id=uuid.uuid4(),
+                    nma_sample_point_id=point,
+                    nma_wclab_id=wclab_id,
+                    analyses_agency=ANALYSES_AGENCY,
+                    collection_date=recs[0]["reported_sample_date"],
+                )
+                session.add(info)
+                session.flush()  # assign info.id for the FK below
+                outcome = created
 
             for rec in recs:
                 model = _TABLE_MODEL[rec["table"]]
-                session.add(_build_measurement(model, info.id, rec, sample_point_id))
+                session.add(_build_measurement(model, info.id, rec, point))
                 imported += 1
-            created.append(
+            outcome.append(
                 {
-                    "sample_point_id": sample_point_id,
+                    "sample_point_id": point,
                     "wclab_id": wclab_id,
                     "rows": len(recs),
                 }
@@ -627,6 +779,7 @@ def bulk_upload_chemistry(
         validation_errors=validation_errors,
         skipped_duplicates=skipped_duplicates,
         created=created,
+        adopted=adopted,
         warnings=warnings,
     )
 
@@ -638,8 +791,10 @@ def _result(
     validation_errors: list[str],
     skipped_duplicates: list[dict],
     created: list[dict],
+    adopted: list[dict] | None = None,
     warnings: list[str] | None = None,
 ) -> ChemistryUploadResult:
+    adopted = adopted or []
     warnings = warnings or []
     rows_with_issues = len(validation_errors) + len(skipped_duplicates) + len(warnings)
     payload = {
@@ -648,12 +803,14 @@ def _result(
             "total_rows_imported": imported,
             "validation_errors_or_warnings": rows_with_issues,
             "samples_created": len(created),
+            "samples_adopted": len(adopted),
             "samples_skipped": len(skipped_duplicates),
         },
         "validation_errors": validation_errors,
         "warnings": warnings,
         "skipped_duplicates": skipped_duplicates,
         "created_samples": created,
+        "adopted_samples": adopted,
     }
     stderr_parts: list[str] = []
     if validation_errors:

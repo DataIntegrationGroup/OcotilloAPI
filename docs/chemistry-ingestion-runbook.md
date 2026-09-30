@@ -19,11 +19,11 @@ run consistently while the fuller solution is pursued.
 - Field half: the crew's data-entry spreadsheet (sample info + field
   parameters) has its own ingest -- see
   **`docs/chemistry-field-sheet-ingest.md`**. It writes the same
-  `NMA_Chemistry_SampleInfo` rows this ingest does, matched on well PointID and
-  collection date. That match runs only from the sheet's side: this ingest
-  dedupes on `WCLab_ID` alone, so a workbook loaded **after** the field sheet
-  creates a second sample point for the same visit. See "Ingest order matters"
-  in that doc.
+  `NMA_Chemistry_SampleInfo` rows this ingest does, matched on the field
+  sample ID (`SamplePointID`, the well plus the crew's letter). Both ingests
+  match that way, so either can go first. A workbook loaded after the field
+  sheet adopts the sheet's record rather than creating a second one. See
+  "Either ingest can go first" in that doc.
 
 ---
 
@@ -82,9 +82,16 @@ and `NMA_Chemistry_SampleInfo` tables.
    standard LIMS columns: `Param`, `Results_Units`, `Dilution`, `AnalysisTime`,
    `SampleNumber`, `CustomerSampleNumber`, `SamplePointID`, `Method`, `Test`,
    `ReportedND`, `LowerLimit`, `SampleDate`.
-2. Ensure `SamplePointID` matches the well's PointID / Ocotillo Thing name.
-3. Drop the workbook in the shared Drive folder. Do not edit a file in place
-   after it has been ingested — a content change re-ingests it (by md5).
+2. Ensure `SamplePointID` is the **field sample ID from the chain of
+   custody**: the well's PointID (its Ocotillo Thing name) plus the crew's
+   letter, for example `WL-0264B`. A `SamplePointID` without a letter is
+   rejected. The letter is how each lab sample finds its own field sample,
+   including the two halves of a duplicate pair or a split.
+3. Ensure every row has its `SampleDate`, the collection date. A blank one is
+   rejected, since the lab sample is checked against its field sample's date.
+4. Drop the workbook in the shared Drive folder. Do not edit a file in place
+   after it has been ingested — a content change re-ingests it (by md5), and a
+   lab sample whose results changed then stops the file for review.
 
 ---
 
@@ -109,17 +116,26 @@ Read the summary. Buckets:
 - **ingested** — file loaded; shows rows imported.
 - **skipped** — the whole file was already ingested (manifest has a `success`
   entry and the file's md5 is unchanged).
-- **ingested with skipped samples** — a file loads, but any lab sample
-  (`WCLab_ID` / SampleNumber) already recorded for the well is skipped and
-  listed under `skipped_duplicates`; this is normal and not a failure. New lab
-  samples for the same well are appended as a new lettered sample point
-  (`MG-030A`, `MG-030B`, ...).
+- **ingested with skipped samples** — a file loads, but a lab sample
+  (`WCLab_ID` / SampleNumber) already recorded for the well, with exactly the
+  same results, is skipped and listed under `skipped_duplicates`; this is
+  normal and not a failure. A lab sample whose field sample the field sheet
+  already recorded is attached to that record and listed under
+  `adopted_samples`. Any other lab sample gets a new record named with its
+  `SamplePointID` (`MG-030A`, `MG-030B`, ...).
 - **failed** — nothing loaded for that file (a data-quality abort). Causes:
 
 | Reported cause | Meaning | Action |
 |----------------|---------|--------|
 | `Unmapped analyte Param=...` | A LIMS `Param` name is not in the analyte map. | Send the Param name to engineering to add to `_ANALYTE_MAPPINGS` in `services/chemistry_lims.py`. |
 | `no matching Thing (well) found` | `SamplePointID` has no Ocotillo well. | Verify the PointID; ensure the well was transferred to Data Services first. |
+| `... has no sample letter` | `SamplePointID` is just the well (`WL-0264`). | Use the field sample ID from the chain of custody (`WL-0264B`). |
+| `SampleDate is blank` | A row has no collection date. | Fill in `SampleDate` from the chain of custody. |
+| `... its rows name more than one sample ...` | Rows sharing one `SampleNumber` give different letters in `SamplePointID`. | Ask the lab which letter is right, and make the rows agree. |
+| `... its rows give SampleDates on N different days ...` | Rows sharing one `SampleNumber` give different `SampleDate` days. | Ask the lab which date is right, and make the rows agree. |
+| `lab samples X and Y both name field sample ...` | Two `SampleNumber`s in the workbook name the same field sample, which has only one LabSampleID. | Check the letters with the lab, and correct the one that's wrong. |
+| `... field sample <point> already has lab id ...` / `is from <date>, not <date>` / `has no collection date` | The `SamplePointID` names a record that can't be this lab sample's: it holds another lab sample's results, or its date disagrees. | Check the letter and `SampleDate` with the lab and the field sheet; correct whichever is wrong, then re-run. |
+| `LabSampleID X is already loaded for <point>; ...` | This `SampleNumber` was loaded before, and the workbook now differs: a changed value, an added analyte, or another `SamplePointID`. | Review the listed differences with the lab. A correction to stored results is fixed by hand, not by re-loading. |
 
 Exit code is non-zero if any file failed.
 
@@ -156,24 +172,29 @@ minor) via `lookup_analyte`; compute the value (non-detects become
 `LowerLimit × Dilution` with a `<` symbol); collapse duplicate
 (SamplePointID, WCLab_ID, analyte) rows (prefer EPA 200.7, or "low bromide" for
 Br); resolve the base `SamplePointID → Thing`. Then, per distinct lab sample
-(`WCLab_ID`): if that lab sample is already recorded for the well, skip it;
-otherwise create a new `NMA_Chemistry_SampleInfo` whose `nma_sample_point_id`
-is the base PointID with the **next letter incrementor** appended
-(`A`, `B`, ... `Z`, `AA`, ...), and insert the analyte rows under it.
-A data-quality problem aborts the whole file and nothing is written: a row that
-fails to map, a row with no `SampleNumber`, or a `SamplePointID` with no
-matching well.
+(`WCLab_ID`): its rows must share one lettered `SamplePointID` (the field
+sample ID) and one `SampleDate`, and no other lab sample in the file may name
+the same field sample. If that lab sample is already recorded for the well, skip
+it when the stored results are identical, and stop for review when they're not.
+If a record is already named with its field sample ID, stamp the lab id onto it
+and insert the analyte rows under it; the record must have no `WCLab_ID` yet and
+be dated on the `SampleDate`, or the file aborts. Otherwise create a new
+`NMA_Chemistry_SampleInfo` named with the field sample ID, and insert the
+analyte rows under it. A data-quality problem aborts the whole file and nothing
+is written.
 
 ---
 
 ## 7. Known gaps
 
-- **Duplicate detection is WCLab_ID-only.** A re-ingest is recognized by the lab
-  `WCLab_ID` (SampleNumber). A genuinely new lab sample with a reused SampleNumber
-  would be treated as a duplicate and skipped; a re-run of the same sample under a
-  new SampleNumber would append a spurious extra lettered sample. A row with no
-  SampleNumber at all is rejected rather than loaded, since there would be
-  nothing to recognize it by on the next run.
+- **Re-loads are recognized by `WCLab_ID`.** A lab sample already loaded is
+  skipped only when the workbook's copy is identical: same `SamplePointID`, and
+  the same value, `<` symbol and units for every analyte. Anything else stops
+  the file for review, so a correction from the lab is never dropped silently,
+  but nor is it applied: stored results are corrected by hand. A genuinely new
+  lab sample under a reused SampleNumber stops the same way. A row with no
+  SampleNumber is rejected, since there would be nothing to recognize it by on
+  the next run.
 - **`.xlsx` only.** Legacy `.xls` LIMS exports are not read; the file must be
   a modern `.xlsx`.
 - **Fixed analyte map.** Unknown `Param` names fail until engineering adds them
@@ -198,7 +219,9 @@ matching well.
 ## 8. Assumptions
 
 - One lab batch per `.xlsx`, with the standard LIMS column set (section 3).
-- `SamplePointID` == the well PointID == the Ocotillo `Thing.name`.
+- `SamplePointID` is the field sample ID from the chain of custody: the well
+  PointID (the Ocotillo `Thing.name`) followed by the crew's sample letter.
+- `SampleDate` is the collection date, filled on every row.
 - All files in the shared folder are chemistry LIMS workbooks (the sync filters
   to `.xlsx` by MIME type).
 - Analyses agency is NMBGMR; non-detects and units follow the AMPAPI
@@ -212,9 +235,8 @@ matching well.
 
 Candidate improvements, roughly in priority order:
 
-- **Stronger duplicate detection** than WCLab_ID alone (e.g. also compare
-  collection date / analyte set) so a reused or missing SampleNumber can't cause
-  a wrong skip or a spurious appended sample.
+- **Applying lab corrections.** A changed re-load now stops for review;
+  loading the corrected values in place of the stored ones is still manual.
 - **Alerting** on failed files (email/Slack) rather than relying on reading CLI
   output.
 - Make the **analyte map** data-driven (lexicon-backed) so new params don't
