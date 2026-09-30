@@ -1027,6 +1027,11 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
                 ("samples matched", summary.get("samples_matched", 0), "accent"),
                 ("readings skipped", summary.get("parameters_skipped", 0), "muted"),
                 (
+                    "rows failed",
+                    summary.get("rows_failed", 0),
+                    "issue" if summary.get("rows_failed") else "ok",
+                ),
+                (
                     "rows_with_issues",
                     rows_with_issues,
                     "issue" if rows_with_issues else "ok",
@@ -1080,6 +1085,23 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
 
     report.validation_errors_section(payload.get("validation_errors", []), colors)
 
+    reports = payload.get("reports") or {}
+    if reports:
+        typer.echo()
+        typer.secho("REPORTS", fg=colors["accent"], bold=True)
+        labels = {
+            "failed_rows": "failed row workbook",
+            "loadable": "loadable copy",
+        }
+        for key, path in reports.items():
+            if path:
+                typer.secho(f"  - {labels[key]}: {path}", fg=colors["ok"])
+            else:
+                typer.secho(
+                    f"  - {labels[key]}: not written, since no row failed",
+                    fg=colors["muted"],
+                )
+
     report.rule(colors)
 
 
@@ -1127,6 +1149,14 @@ def water_chemistry_sync_sheet(
         False,
         "--list-snapshots",
         help="List the archived snapshots and exit.",
+    ),
+    failed_rows: str = typer.Option(
+        None,
+        "--failed-rows",
+        help=(
+            "Write the failed row workbook here: every row that stops the run, "
+            "why, and what it held. Written only when a row fails."
+        ),
     ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
@@ -1180,11 +1210,16 @@ def water_chemistry_sync_sheet(
                 None if replay == "latest" else replay,
                 dry_run=dry_run,
                 raw_url=raw_url,
+                failed_rows_path=failed_rows,
             )
             source = f"raw zone snapshot {replay}"
         else:
             result = sync_field_sheet(
-                sheet, dry_run=dry_run, archive=not no_raw, raw_url=raw_url
+                sheet,
+                dry_run=dry_run,
+                archive=not no_raw,
+                raw_url=raw_url,
+                failed_rows_path=failed_rows,
             )
             source = sheet or os.environ.get("CHEMISTRY_FIELD_SHEET_ID", "")
     except (ChemistryDriveConfigError, FieldSheetError, RawZoneError) as exc:
@@ -1227,6 +1262,23 @@ def water_chemistry_field_upload(
             "Defaults to $INGESTION_GCS_BUCKET, then $OCO_RAW_ZONE_DIR."
         ),
     ),
+    failed_rows: str = typer.Option(
+        None,
+        "--failed-rows",
+        help=(
+            "Write the failed row workbook here: every row that stops the run, "
+            "why, and what it held. Written only when a row fails."
+        ),
+    ),
+    loadable: str = typer.Option(
+        None,
+        "--loadable",
+        help=(
+            "Write a loadable copy of the .xlsx export here, with every failed "
+            "row blanked, so the rest can load while those are fixed. Needs a "
+            "single .xlsx --file. Written only when a row fails."
+        ),
+    ),
     theme: ThemeMode = typer.Option(
         ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
@@ -1243,7 +1295,12 @@ def water_chemistry_field_upload(
     colors = _palette(theme)
     try:
         result = upload_field_export(
-            file_paths, dry_run=dry_run, archive=not no_raw, raw_url=raw_url
+            file_paths,
+            dry_run=dry_run,
+            archive=not no_raw,
+            raw_url=raw_url,
+            failed_rows_path=failed_rows,
+            loadable_path=loadable,
         )
     except (FieldSheetError, RawZoneError) as exc:
         typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
