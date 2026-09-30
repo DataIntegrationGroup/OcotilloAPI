@@ -52,6 +52,34 @@ one-shot batch; this spreadsheet is a living document that grows week over
 week, so it is re-read in full every run and idempotency comes from the
 database instead (section 3).
 
+### Finding and setting aside failed rows
+
+Any failed row stops the whole run (section 4), and one dry run reports every
+failed row. Two options write that out as files, so the rows can be fixed and
+the rest loaded in the meantime:
+
+```bash
+oco water-chemistry field-upload --file sheet.xlsx --dry-run \
+    --failed-rows sheet_failed_rows.xlsx --loadable sheet_loadable.xlsx
+```
+
+- `--failed-rows PATH` writes the **failed row workbook**: every row that
+  stopped the run, on a sheet per tab, with its row number in the Google Sheet,
+  why it failed, and the cells it held. `sync-sheet` takes it too.
+- `--loadable PATH` (`field-upload` only, one `.xlsx`) writes the **loadable
+  copy**: the export with every failed row blanked. Rows are blanked, not
+  deleted, so every row keeps its number. A dry run on the copy should pass,
+  and loading it loads everything else.
+
+Both are written only when a row fails, and neither changes what reaches the
+database. The cycle is:
+
+1. Dry-run with both options.
+2. Load the loadable copy, if the rest shouldn't wait.
+3. Fix the failed rows **in the Google Sheet**, using the failed row workbook.
+4. Download a fresh copy, then dry-run and load it. Rows loaded in step 2 are
+   matched and skipped, and only the fixed rows are new.
+
 ---
 
 ## 1a. The raw zone (dlt)
@@ -233,7 +261,12 @@ Adoptions show up in the `bulk-upload` report under **ADOPTED**, and in
 
 Any data-quality problem **aborts the whole import and nothing is written** —
 the same rule as the LIMS ingest, so a spreadsheet is never half loaded. Every
-offending row is reported in one pass, so one round of fixes clears them.
+failing row is reported in one pass: a row that fails is set aside, and the
+rest still go through every check. A `FieldParameters` row whose
+`ChemistrySampleInfo` row failed is reported as depending on it, rather than
+with a knock-on error. The result also carries the failures as data
+(`failed_rows`: tab, row, `SamplePointID`, reason, and the row it depends on),
+which is what `--failed-rows` writes out.
 
 What aborts a run:
 
@@ -242,7 +275,8 @@ What aborts a run:
 | `Missing CollectionDate` | The row has no date to match on. | Fill the date in the spreadsheet. |
 | `CollectionDate ... is not a recognizable date` | Not ISO, US-style, or a real date cell. | Fix the cell. |
 | `PointID 'WL-####' has no well identifier assigned yet` | A real sample whose well has not been given an id. | Assign the PointID, then re-run. |
-| `WellPointID ...: no matching Thing (well) found` | The well is not in Ocotillo. | Transfer or create the well first. |
+| `WellPointID ...: no matching Thing (well) found` | The well is not in Ocotillo. Reported on each of its rows. | Transfer or create the well first. |
+| `its ChemistrySampleInfo row N failed: ...` | A `FieldParameters` row whose sample-info row failed; the reason is that row's. | Fix row N; this row then loads with it. |
 | `SamplePointID ... does not belong to well ...` | The lettered point's base is a different well. | Fix one of the two cells. |
 | `CollectionMethod ... is not a known collection method` | Neither one of the seven `LU_CollectionMethod` meanings nor its code. | Use one from the list in section 2. |
 | `CollectedBy ... is longer than 5 characters` | The legacy column holds a 5-character code. | Use the code, not the name — names belong in `Staff`. |
@@ -266,7 +300,12 @@ disagreements) or **skips** (parameters already recorded) succeeds.
 - **A handful of bad rows blocks the whole sheet.** With the abort-everything
   rule and one living spreadsheet, four blank dates hold up a hundred good rows.
   Deliberate — the alternative is a partly-loaded sheet nobody can reason about
-  — but it means the sheet needs cleaning before the first successful run.
+  — but it means the sheet needs cleaning before it loads. `--loadable` makes a
+  copy without those rows, so the rest can load while they're fixed.
+- **A fixed row can fail on a check it never reached.** A row is only checked as
+  far as it got. When its missing `CollectionDate` is filled in, it may then
+  meet a later check, such as a letter the well already uses. One pass reports
+  everything the data allows, not what fixing it will reveal.
 - **Letters are trusted.** Lab and field records meet only on the field sample
   ID. If the lab copies a letter wrong from the chain of custody, its results
   go to the sample that letter names, when that sample can take them, and
