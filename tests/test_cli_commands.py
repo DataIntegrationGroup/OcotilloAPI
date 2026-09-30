@@ -923,4 +923,130 @@ def test_cli_module_scope_imports_never_reach_db_engine():
     )
 
 
+# ------------------------- field-upload reports --------------------------------
+
+
+def _field_export(path):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    info = workbook.active
+    info.title = "ChemistrySampleInfo"
+    info.append(["WellPointID", "SamplePointID", "CollectionDate"])
+    info.append(["WL-1", "WL-1A", "2025-06-10"])
+    info.append(["WL-1", "WL-1B", None])
+    params = workbook.create_sheet("FieldParameters")
+    params.append(["SamplePointID", "Time", "pHf"])
+    workbook.save(path)
+    return path
+
+
+def _canned_import(failed_rows):
+    """Stand in for the database half of the ingest with a fixed outcome."""
+    from services.chemistry_field_params import _result
+
+    def fake(tables, *, dry_run=False, raw=None):
+        return _result(
+            processed=2,
+            imported=0,
+            validation_errors=[
+                f"{f['tab']} row {f['row']}: {f['reason']}" for f in failed_rows
+            ],
+            failed_rows=failed_rows,
+            dry_run=dry_run,
+        )
+
+    return fake
+
+
+def test_field_upload_writes_both_reports_when_a_row_fails(tmp_path, monkeypatch):
+    from openpyxl import load_workbook
+
+    failed = [
+        {
+            "tab": "ChemistrySampleInfo",
+            "row": 3,
+            "sample_point_id": "WL-1B",
+            "reason": "Missing CollectionDate",
+            "caused_by": None,
+        }
+    ]
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import(failed)
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "failed row workbook:" in result.output
+    assert "loadable copy:" in result.output
+    failed_sheet = load_workbook(tmp_path / "failed.xlsx")["ChemistrySampleInfo"]
+    assert [c.value for c in failed_sheet[2]][:2] == [3, "Missing CollectionDate"]
+    loadable = load_workbook(tmp_path / "loadable.xlsx")["ChemistrySampleInfo"]
+    assert [c.value for c in loadable[3]] == [None, None, None]
+
+
+def test_field_upload_writes_no_reports_when_nothing_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import([])
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "not written, since no row failed" in result.output
+    assert not (tmp_path / "failed.xlsx").exists()
+    assert not (tmp_path / "loadable.xlsx").exists()
+
+
+def test_field_upload_refuses_a_loadable_copy_of_a_csv(tmp_path):
+    export = tmp_path / "info.csv"
+    export.write_text("WellPointID,SamplePointID,CollectionDate\n")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "needs a single .xlsx file" in result.output
+    assert not (tmp_path / "loadable.xlsx").exists()
+
+
 # ============= EOF =============================================
