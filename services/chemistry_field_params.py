@@ -70,6 +70,8 @@ from services.chemistry_field_sheet import (
     SheetTable,
     read_google_spreadsheet,
     read_local_export,
+    write_failed_rows_workbook,
+    write_loadable_copy,
 )
 from services.ingest_raw_zone import (
     archive_tables,
@@ -889,12 +891,15 @@ def sync_field_sheet(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest the field spreadsheet from Google Drive.
 
     ``reference`` is a spreadsheet URL or file id; it defaults to
     ``$CHEMISTRY_FIELD_SHEET_ID``. Unless ``archive`` is off, the tabs are
     written to the raw zone first and the load is mapped from that snapshot.
+    ``failed_rows_path`` writes the failed row workbook, see
+    :func:`_write_reports`.
     """
     reference = reference or os.environ.get(SHEET_ID_ENV_VAR, "").strip()
     if not reference:
@@ -902,6 +907,7 @@ def sync_field_sheet(
             f"No spreadsheet given. Pass --sheet-id, or set {SHEET_ID_ENV_VAR}."
         )
     tables = read_google_spreadsheet(reference, tabs=None)
+    read_tables = tables
 
     raw = None
     # A dry run writes nothing anywhere, the archive included -- an operator
@@ -910,7 +916,8 @@ def sync_field_sheet(
         tables, raw = _archive_then_read(
             tables, source_label=reference, raw_url=raw_url
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(result, read_tables, failed_rows_path=failed_rows_path)
 
 
 def upload_field_export(
@@ -919,16 +926,27 @@ def upload_field_export(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
+    loadable_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest downloaded ``.xlsx``/``.csv`` copies of the field spreadsheet.
 
     More than one path is accepted because a CSV export holds a single tab, so
-    the two tabs arrive as two files.
+    the two tabs arrive as two files. ``failed_rows_path`` and ``loadable_path``
+    write the reports described in :func:`_write_reports`; a loadable copy is
+    made from the export itself, so it needs a single ``.xlsx``.
     """
     paths = [Path(path) for path in paths]
+    if loadable_path and (len(paths) != 1 or paths[0].suffix.lower() != ".xlsx"):
+        # Checked before reading, so a mistyped command fails before a run.
+        raise FieldSheetError(
+            "A loadable copy is made from the export itself, so it needs a "
+            "single .xlsx file."
+        )
     tables: list[SheetTable] = []
     for path in paths:
         tables.extend(read_local_export(path))
+    read_tables = tables
 
     raw = None
     if archive and not dry_run:  # see sync_field_sheet
@@ -937,7 +955,13 @@ def upload_field_export(
             source_label=", ".join(path.name for path in paths),
             raw_url=raw_url,
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(
+        result,
+        read_tables,
+        failed_rows_path=failed_rows_path,
+        loadable=(paths[0], loadable_path) if loadable_path else None,
+    )
 
 
 def replay_field_sheet(
@@ -945,6 +969,7 @@ def replay_field_sheet(
     *,
     dry_run: bool = False,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest an archived snapshot again, without reading the source.
 
@@ -954,7 +979,7 @@ def replay_field_sheet(
     """
     tables = read_snapshot(FIELD_SHEET_DATASET, load_id, raw_url=raw_url)
     resolved = load_id or "latest"
-    return import_field_tables(
+    result = import_field_tables(
         tables,
         dry_run=dry_run,
         raw={
@@ -964,6 +989,47 @@ def replay_field_sheet(
             "replayed": True,
         },
     )
+    return _write_reports(result, tables, failed_rows_path=failed_rows_path)
+
+
+def _write_reports(
+    result: ChemistryUploadResult,
+    tables: Sequence[SheetTable],
+    *,
+    failed_rows_path: Path | str | None = None,
+    loadable: tuple[Path, Path | str] | None = None,
+) -> ChemistryUploadResult:
+    """Write the reports asked for, and record their paths in the payload.
+
+    The failed row workbook holds every row that stopped the run, with why. The
+    loadable copy is the ``.xlsx`` export with those rows blanked, which can be
+    loaded while the failed rows are fixed. Both are only written when some row
+    failed: otherwise there's nothing to list, and the export loads as it is.
+    Neither changes what reaches the database.
+    """
+    failed = result.payload.get("failed_rows", [])
+    # The ingest's standard tab names, mapped to this source's tables.
+    info, params = select_tables(tables)
+    by_tab = {
+        tab: table
+        for tab, table in ((SAMPLE_INFO_TAB, info), (FIELD_PARAMETERS_TAB, params))
+        if table is not None
+    }
+    reports: dict[str, str | None] = {}
+    if failed_rows_path:
+        reports["failed_rows"] = (
+            str(write_failed_rows_workbook(by_tab, failed, failed_rows_path))
+            if failed
+            else None
+        )
+    if loadable:
+        source, path = loadable
+        titles = {tab: table.title for tab, table in by_tab.items()}
+        reports["loadable"] = (
+            str(write_loadable_copy(source, titles, failed, path)) if failed else None
+        )
+    result.payload["reports"] = reports
+    return result
 
 
 # --- result shaping ------------------------------------------------------------
