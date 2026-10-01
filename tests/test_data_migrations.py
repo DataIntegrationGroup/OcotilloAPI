@@ -38,6 +38,10 @@ consolidate_groups = importlib.import_module(
 convert_casing_diameter = importlib.import_module(
     "data_migrations.migrations." "20260914_0001_convert_well_inventory_casing_diameter"
 )
+backfill_thing_release_status = importlib.import_module(
+    "data_migrations.migrations."
+    "20261001_0001_backfill_well_inventory_thing_release_status"
+)
 parity_groups = importlib.import_module(
     "data_migrations.migrations." "20260905_0003_group_table_parity_with_staging"
 )
@@ -45,7 +49,7 @@ seed_epa_limits = importlib.import_module(
     "data_migrations.migrations.20260916_0001_seed_epa_regulatory_limits"
 )
 from db.lexicon import LexiconCategory
-from db.location import Location
+from db.location import Location, LocationThingAssociation
 from db.notes import Notes
 from db.parameter import Parameter
 from db.regulatory_limit import RegulatoryLimit
@@ -1587,6 +1591,129 @@ def test_convert_casing_diameter_dry_run_writes_nothing(tmp_path, monkeypatch):
         assert imported.well_casing_diameter == 0.5
 
         _cleanup_wells(session, [imported])
+
+
+# ==============================================================================
+# Well inventory Thing release status (20261001_0001)
+# ==============================================================================
+
+
+def _make_inventory_thing_at_location(
+    session, name, thing_status, location_status, activity_type="well inventory"
+):
+    """A Thing at a Location, plus the field activity the importer stamps."""
+    location = Location(
+        point="POINT(-106.9 34.06)", elevation=1400.0, release_status=location_status
+    )
+    thing = Thing(name=name, thing_type="water well", release_status=thing_status)
+    session.add_all([location, thing])
+    session.commit()
+
+    session.add(LocationThingAssociation(location_id=location.id, thing_id=thing.id))
+    event = FieldEvent(thing_id=thing.id, event_date=datetime.now(timezone.utc))
+    session.add(event)
+    session.commit()
+
+    session.add(FieldActivity(field_event_id=event.id, activity_type=activity_type))
+    session.commit()
+    session.refresh(thing)
+    return thing, location
+
+
+def _cleanup_things_at_locations(session, pairs):
+    for thing, location in pairs:
+        session.execute(delete(Thing).where(Thing.id == thing.id))
+        session.execute(delete(Location).where(Location.id == location.id))
+    session.commit()
+
+
+def test_backfill_thing_release_status_copies_public_and_private(tmp_path, monkeypatch):
+    monkeypatch.setattr(backfill_thing_release_status, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        public = _make_inventory_thing_at_location(
+            session, "Release Public", "draft", "public"
+        )
+        private = _make_inventory_thing_at_location(
+            session, "Release Private", "draft", "private"
+        )
+
+        backfill_thing_release_status.run(session)
+
+        session.refresh(public[0])
+        session.refresh(private[0])
+        assert public[0].release_status == "public"
+        assert private[0].release_status == "private"
+
+        _cleanup_things_at_locations(session, [public, private])
+
+
+def test_backfill_thing_release_status_leaves_other_activity_types(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(backfill_thing_release_status, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        # Same shape, different provenance: not created by the importer.
+        other = _make_inventory_thing_at_location(
+            session, "Release Other Activity", "draft", "public", "groundwater level"
+        )
+
+        backfill_thing_release_status.run(session)
+
+        session.refresh(other[0])
+        assert other[0].release_status == "draft"
+
+        _cleanup_things_at_locations(session, [other])
+
+
+def test_backfill_thing_release_status_keeps_non_draft_things(tmp_path, monkeypatch):
+    monkeypatch.setattr(backfill_thing_release_status, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        # Someone already chose a status for this Thing; the Location must not
+        # override it.
+        chosen = _make_inventory_thing_at_location(
+            session, "Release Already Private", "private", "public"
+        )
+
+        backfill_thing_release_status.run(session)
+
+        session.refresh(chosen[0])
+        assert chosen[0].release_status == "private"
+
+        _cleanup_things_at_locations(session, [chosen])
+
+
+def test_backfill_thing_release_status_leaves_draft_locations(tmp_path, monkeypatch):
+    monkeypatch.setattr(backfill_thing_release_status, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        unanswered = _make_inventory_thing_at_location(
+            session, "Release Unanswered", "draft", "draft"
+        )
+
+        planned = backfill_thing_release_status.dry_run(session)
+        backfill_thing_release_status.run(session)
+
+        assert unanswered[0].id not in {p.thing_id for p in planned}
+        session.refresh(unanswered[0])
+        assert unanswered[0].release_status == "draft"
+
+        _cleanup_things_at_locations(session, [unanswered])
+
+
+def test_backfill_thing_release_status_dry_run_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(backfill_thing_release_status, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        imported = _make_inventory_thing_at_location(
+            session, "Release Dry Run", "draft", "public"
+        )
+
+        planned = backfill_thing_release_status.dry_run(session)
+
+        assert imported[0].id in {p.thing_id for p in planned}
+        session.refresh(imported[0])
+        assert imported[0].release_status == "draft"
+        assert list(tmp_path.glob("backfill_thing_release_status_*.csv"))
+
+        _cleanup_things_at_locations(session, [imported])
 
 
 # ==============================================================================
