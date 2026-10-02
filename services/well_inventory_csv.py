@@ -711,6 +711,9 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         location_id=loc.id,
         group_id=group.id,
         name=name,
+        # Visibility filters key on the Thing, not the Location, so the well
+        # needs the same release status or a public well stays hidden.
+        release_status=loc.release_status,
         first_visit_date=date_time.date(),
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
