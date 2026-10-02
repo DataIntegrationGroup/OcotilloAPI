@@ -70,6 +70,8 @@ from services.chemistry_field_sheet import (
     SheetTable,
     read_google_spreadsheet,
     read_local_export,
+    write_failed_rows_workbook,
+    write_loadable_copy,
 )
 from services.ingest_raw_zone import (
     archive_tables,
@@ -450,6 +452,12 @@ def select_tables(
 # --- persistence ---------------------------------------------------------------
 
 
+def _point_as_typed(record: dict, *headings: str) -> str | None:
+    """The SamplePointID a row gave, read before anything can have failed."""
+    value = _cell(record, *headings)
+    return str(value).strip() if value is not None else None
+
+
 def _find_named_sample(
     session: Session, thing_id: int, sample_point_id: str
 ) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
@@ -536,14 +544,37 @@ def import_field_tables(
 
     validation_errors: list[str] = []
     warnings: list[str] = []
+    # Every row that stops the run, as data: the CLI writes these out, and one
+    # pass has to find them all, so no stage stops at the first failure.
+    failed_rows: list[dict] = []
+    # ChemistrySampleInfo rows that failed, by the SamplePointID they gave, so a
+    # FieldParameters row naming one reports that instead of a knock-on error.
+    failed_points: dict[str, tuple[int, str]] = {}
+
+    def fail(tab, row, reason, *, point=None, caused_by=None):
+        failed_rows.append(
+            {
+                "tab": tab,
+                "row": row,
+                "sample_point_id": point,
+                "reason": reason,
+                "caused_by": caused_by,
+            }
+        )
+        validation_errors.append(f"{tab} row {row}: {reason}")
+        if tab == SAMPLE_INFO_TAB and point:
+            failed_points.setdefault(point, (row, reason))
 
     sample_rows: list[dict] = []
     for record in sample_info_table.rows if sample_info_table else []:
         try:
             sample_rows.append(prep_sample_info(record))
         except FieldParamsMappingError as exc:
-            validation_errors.append(
-                f"{SAMPLE_INFO_TAB} row {record.get(SheetTable.ROW_NUMBER_KEY)}: {exc}"
+            fail(
+                SAMPLE_INFO_TAB,
+                record.get(SheetTable.ROW_NUMBER_KEY),
+                str(exc),
+                point=_point_as_typed(record, "SamplePointID"),
             )
 
     param_rows: list[dict] = []
@@ -551,9 +582,11 @@ def import_field_tables(
         try:
             param_rows.append(prep_field_parameters(record))
         except FieldParamsMappingError as exc:
-            validation_errors.append(
-                f"{FIELD_PARAMETERS_TAB} row "
-                f"{record.get(SheetTable.ROW_NUMBER_KEY)}: {exc}"
+            fail(
+                FIELD_PARAMETERS_TAB,
+                record.get(SheetTable.ROW_NUMBER_KEY),
+                str(exc),
+                point=_point_as_typed(record, "SamplePointID", "PointID"),
             )
 
     processed = len(sample_rows) + len(param_rows)
@@ -564,26 +597,24 @@ def import_field_tables(
     imported = 0
 
     with session_ctx() as session:
-        # Resolve every well up front so an unknown PointID is reported once.
+        # Resolve every well up front. A row whose well is unknown is reported
+        # and set aside, and the rest go on to the checks below, so one pass
+        # reports every failing row instead of stopping here.
         thing_ids: dict[str, int | None] = {}
         for row in sample_rows:
             pointid = row["well_pointid"]
             if pointid not in thing_ids:
                 thing_ids[pointid] = resolve_thing_id(session, pointid)
-        for pointid, thing_id in sorted(thing_ids.items()):
-            if thing_id is None:
-                validation_errors.append(
-                    f"WellPointID {pointid}: no matching Thing (well) found"
+        for row in sample_rows:
+            if thing_ids[row["well_pointid"]] is None:
+                fail(
+                    SAMPLE_INFO_TAB,
+                    row["row_number"],
+                    f"WellPointID {row['well_pointid']}: no matching Thing "
+                    "(well) found",
+                    point=row["sample_point_id"],
                 )
-
-        if validation_errors:
-            return _result(
-                processed=processed,
-                imported=0,
-                validation_errors=validation_errors,
-                warnings=warnings,
-                raw=raw,
-            )
+        sample_rows = [r for r in sample_rows if thing_ids[r["well_pointid"]]]
 
         # One field sample ID is one visit. The same ID on rows dated on
         # different days is two visits claiming one name, and nothing says
@@ -602,12 +633,15 @@ def import_field_tables(
                     for r in rows
                     if r is not row
                 )
-                validation_errors.append(
-                    f"{SAMPLE_INFO_TAB} row {row['row_number']}: SamplePointID "
-                    f"{point} is dated {row['collection_date'].date().isoformat()} "
-                    f"here but also used on {others}; one field sample can't be "
-                    "two visits. Correct the letter or the date on these rows and "
-                    f"their {FIELD_PARAMETERS_TAB} rows."
+                fail(
+                    SAMPLE_INFO_TAB,
+                    row["row_number"],
+                    f"SamplePointID {point} is dated "
+                    f"{row['collection_date'].date().isoformat()} here but also "
+                    f"used on {others}; one field sample can't be two visits. "
+                    "Correct the letter or the date on these rows and their "
+                    f"{FIELD_PARAMETERS_TAB} rows.",
+                    point=point,
                 )
 
         # sample point id -> the sample it names, for the FieldParameters join.
@@ -624,7 +658,9 @@ def import_field_tables(
 
             existing, problem = _find_named_sample(session, thing_id, point)
             if problem:
-                validation_errors.append(f"{label}: {base} {problem}")
+                fail(
+                    SAMPLE_INFO_TAB, row["row_number"], f"{base} {problem}", point=point
+                )
                 continue
 
             if existing is not None:
@@ -636,13 +672,16 @@ def import_field_tables(
                     existing.collection_date is None
                     or existing.collection_date.date() != row["collection_date"].date()
                 ):
-                    validation_errors.append(
-                        f"{label}: SamplePointID {point} already belongs to "
+                    fail(
+                        SAMPLE_INFO_TAB,
+                        row["row_number"],
+                        f"SamplePointID {point} already belongs to "
                         f"{_visit(existing)}, and this row is a different visit "
                         f"({visit_day}). {base} already uses "
                         f"{_letters_in_use(session, thing_id, base)}; give this "
                         f"visit a letter it hasn't used, on this row and on its "
-                        f"{FIELD_PARAMETERS_TAB} row."
+                        f"{FIELD_PARAMETERS_TAB} row.",
+                        point=point,
                     )
                     continue
                 warnings.extend(_apply_attributes(existing, row["attributes"], label))
@@ -676,17 +715,34 @@ def import_field_tables(
             )
 
         for row in param_rows:
-            label = f"{FIELD_PARAMETERS_TAB} row {row['row_number']}"
             point = row["sample_point_id"]
+            # The row naming this sample failed above, so the readings can't
+            # load either. Say that, rather than looking the name up in the
+            # database, where it can find another visit's record and fail the
+            # day check with a message that points at the wrong problem.
+            if point in failed_points and point not in samples_by_point:
+                source_row, source_reason = failed_points[point]
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"its {SAMPLE_INFO_TAB} row {source_row} failed: "
+                    f"{source_reason}",
+                    point=point,
+                    caused_by={"tab": SAMPLE_INFO_TAB, "row": source_row},
+                )
+                continue
             sample = samples_by_point.get(point)
             if sample is None:
                 sample = _lookup_sample_by_point(session, point)
                 if sample is not None:
                     samples_by_point[point] = sample
             if sample is None:
-                validation_errors.append(
-                    f"{label}: no sample {point} -- it is neither in the "
-                    f"{SAMPLE_INFO_TAB} tab nor already in the database"
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"no sample {point} -- it is neither in the "
+                    f"{SAMPLE_INFO_TAB} tab nor already in the database",
+                    point=point,
                 )
                 continue
 
@@ -699,12 +755,15 @@ def import_field_tables(
                 sample.collection_date is not None
                 and measured_at.date() != sample.collection_date.date()
             ):
-                validation_errors.append(
-                    f"{label}: {point} was collected on "
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"{point} was collected on "
                     f"{sample.collection_date.date().isoformat()}, but these "
                     f"readings were taken on {measured_at.date().isoformat()}. "
                     f"Correct the date on one of the two tabs, or the "
-                    f"SamplePointID if it names the wrong visit."
+                    f"SamplePointID if it names the wrong visit.",
+                    point=point,
                 )
                 continue
 
@@ -755,6 +814,7 @@ def import_field_tables(
                 imported=0,
                 validation_errors=validation_errors,
                 warnings=warnings,
+                failed_rows=failed_rows,
                 raw=raw,
             )
 
@@ -768,6 +828,7 @@ def import_field_tables(
         imported=imported,
         validation_errors=validation_errors,
         warnings=warnings,
+        failed_rows=failed_rows,
         samples_created=samples_created,
         samples_matched=samples_matched,
         skipped_parameters=skipped_parameters,
@@ -830,12 +891,15 @@ def sync_field_sheet(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest the field spreadsheet from Google Drive.
 
     ``reference`` is a spreadsheet URL or file id; it defaults to
     ``$CHEMISTRY_FIELD_SHEET_ID``. Unless ``archive`` is off, the tabs are
     written to the raw zone first and the load is mapped from that snapshot.
+    ``failed_rows_path`` writes the failed row workbook, see
+    :func:`_write_reports`.
     """
     reference = reference or os.environ.get(SHEET_ID_ENV_VAR, "").strip()
     if not reference:
@@ -843,6 +907,7 @@ def sync_field_sheet(
             f"No spreadsheet given. Pass --sheet-id, or set {SHEET_ID_ENV_VAR}."
         )
     tables = read_google_spreadsheet(reference, tabs=None)
+    read_tables = tables
 
     raw = None
     # A dry run writes nothing anywhere, the archive included -- an operator
@@ -851,7 +916,8 @@ def sync_field_sheet(
         tables, raw = _archive_then_read(
             tables, source_label=reference, raw_url=raw_url
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(result, read_tables, failed_rows_path=failed_rows_path)
 
 
 def upload_field_export(
@@ -860,16 +926,27 @@ def upload_field_export(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
+    loadable_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest downloaded ``.xlsx``/``.csv`` copies of the field spreadsheet.
 
     More than one path is accepted because a CSV export holds a single tab, so
-    the two tabs arrive as two files.
+    the two tabs arrive as two files. ``failed_rows_path`` and ``loadable_path``
+    write the reports described in :func:`_write_reports`; a loadable copy is
+    made from the export itself, so it needs a single ``.xlsx``.
     """
     paths = [Path(path) for path in paths]
+    if loadable_path and (len(paths) != 1 or paths[0].suffix.lower() != ".xlsx"):
+        # Checked before reading, so a mistyped command fails before a run.
+        raise FieldSheetError(
+            "A loadable copy is made from the export itself, so it needs a "
+            "single .xlsx file."
+        )
     tables: list[SheetTable] = []
     for path in paths:
         tables.extend(read_local_export(path))
+    read_tables = tables
 
     raw = None
     if archive and not dry_run:  # see sync_field_sheet
@@ -878,7 +955,13 @@ def upload_field_export(
             source_label=", ".join(path.name for path in paths),
             raw_url=raw_url,
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(
+        result,
+        read_tables,
+        failed_rows_path=failed_rows_path,
+        loadable=(paths[0], loadable_path) if loadable_path else None,
+    )
 
 
 def replay_field_sheet(
@@ -886,6 +969,7 @@ def replay_field_sheet(
     *,
     dry_run: bool = False,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest an archived snapshot again, without reading the source.
 
@@ -895,7 +979,7 @@ def replay_field_sheet(
     """
     tables = read_snapshot(FIELD_SHEET_DATASET, load_id, raw_url=raw_url)
     resolved = load_id or "latest"
-    return import_field_tables(
+    result = import_field_tables(
         tables,
         dry_run=dry_run,
         raw={
@@ -905,6 +989,47 @@ def replay_field_sheet(
             "replayed": True,
         },
     )
+    return _write_reports(result, tables, failed_rows_path=failed_rows_path)
+
+
+def _write_reports(
+    result: ChemistryUploadResult,
+    tables: Sequence[SheetTable],
+    *,
+    failed_rows_path: Path | str | None = None,
+    loadable: tuple[Path, Path | str] | None = None,
+) -> ChemistryUploadResult:
+    """Write the reports asked for, and record their paths in the payload.
+
+    The failed row workbook holds every row that stopped the run, with why. The
+    loadable copy is the ``.xlsx`` export with those rows blanked, which can be
+    loaded while the failed rows are fixed. Both are only written when some row
+    failed: otherwise there's nothing to list, and the export loads as it is.
+    Neither changes what reaches the database.
+    """
+    failed = result.payload.get("failed_rows", [])
+    # The ingest's standard tab names, mapped to this source's tables.
+    info, params = select_tables(tables)
+    by_tab = {
+        tab: table
+        for tab, table in ((SAMPLE_INFO_TAB, info), (FIELD_PARAMETERS_TAB, params))
+        if table is not None
+    }
+    reports: dict[str, str | None] = {}
+    if failed_rows_path:
+        reports["failed_rows"] = (
+            str(write_failed_rows_workbook(by_tab, failed, failed_rows_path))
+            if failed
+            else None
+        )
+    if loadable:
+        source, path = loadable
+        titles = {tab: table.title for tab, table in by_tab.items()}
+        reports["loadable"] = (
+            str(write_loadable_copy(source, titles, failed, path)) if failed else None
+        )
+    result.payload["reports"] = reports
+    return result
 
 
 # --- result shaping ------------------------------------------------------------
@@ -916,6 +1041,7 @@ def _result(
     imported: int,
     validation_errors: list[str],
     warnings: list[str] | None = None,
+    failed_rows: list[dict] | None = None,
     samples_created: list[dict] | None = None,
     samples_matched: list[dict] | None = None,
     skipped_parameters: list[dict] | None = None,
@@ -923,6 +1049,7 @@ def _result(
     raw: dict | None = None,
 ) -> ChemistryUploadResult:
     warnings = warnings or []
+    failed_rows = failed_rows or []
     samples_created = samples_created or []
     samples_matched = samples_matched or []
     skipped_parameters = skipped_parameters or []
@@ -935,9 +1062,11 @@ def _result(
             "samples_created": len(samples_created),
             "samples_matched": len(samples_matched),
             "parameters_skipped": len(skipped_parameters),
+            "rows_failed": len(failed_rows),
             "dry_run": dry_run,
         },
         "validation_errors": validation_errors,
+        "failed_rows": failed_rows,
         "warnings": warnings,
         "samples_created": samples_created,
         "samples_matched": samples_matched,

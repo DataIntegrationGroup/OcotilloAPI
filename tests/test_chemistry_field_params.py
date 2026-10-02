@@ -1141,4 +1141,91 @@ def test_a_new_visit_named_after_an_undated_sample_aborts(
     assert _parameters(undated.id) == []
 
 
+# ------------------ one pass reports every failing row (BDMS-1273) -------------
+#
+# Each stage used to stop at the first failure, so finding every bad row took
+# several dry runs. The run still aborts as a whole; it just says everything.
+
+
+def test_one_pass_reports_every_failing_row(water_well_thing, _cleanup_field_chemistry):
+    """A parse error, an unknown well and a day mismatch, all in one run."""
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(CollectionDate=None, **{"SamplePointID": f"{WELL}B"}),
+                _sample_info_row(
+                    **{"WellPointID": "NO-WELL-1", "SamplePointID": "NO-WELL-1A"}
+                ),
+                _sample_info_row(),
+            ],
+            param_rows=[_field_params_row(Time="2025-05-10T12:07:00")],
+        )
+    )
+
+    assert result.exit_code == 1
+    failed = {(f["tab"], f["row"]): f for f in result.payload["failed_rows"]}
+    assert set(failed) == {
+        ("ChemistrySampleInfo", 2),
+        ("ChemistrySampleInfo", 3),
+        ("FieldParameters", 2),
+    }
+    assert failed[("ChemistrySampleInfo", 2)]["reason"] == "Missing CollectionDate"
+    assert "no matching Thing" in failed[("ChemistrySampleInfo", 3)]["reason"]
+    assert "taken on 2025-05-10" in failed[("FieldParameters", 2)]["reason"]
+    assert failed[("FieldParameters", 2)]["sample_point_id"] == f"{WELL}A"
+    assert all(f["caused_by"] is None for f in failed.values())
+    assert result.payload["summary"]["rows_failed"] == 3
+    assert len(result.payload["validation_errors"]) == 3
+    assert _samples() == []
+
+
+def test_readings_of_a_failed_row_say_so(water_well_thing, _cleanup_field_chemistry):
+    """Not a day-check error against the other visit's record of that name."""
+    _stored_sample(water_well_thing.id, f"{WELL}A", datetime(2025, 1, 1, 9, 0))
+
+    result = import_field_tables(_tables())
+
+    assert result.exit_code == 1
+    readings = [
+        f for f in result.payload["failed_rows"] if f["tab"] == "FieldParameters"
+    ]
+    assert len(readings) == 1
+    assert readings[0]["caused_by"] == {"tab": "ChemistrySampleInfo", "row": 2}
+    assert readings[0]["reason"].startswith(
+        "its ChemistrySampleInfo row 2 failed: SamplePointID"
+    )
+    assert not any("was collected on" in e for e in result.payload["validation_errors"])
+
+
+def test_an_unknown_well_is_reported_on_each_of_its_rows(
+    water_well_thing, _cleanup_field_chemistry
+):
+    result = import_field_tables(
+        _tables(
+            sample_rows=[
+                _sample_info_row(
+                    **{"WellPointID": "NO-WELL-1", "SamplePointID": "NO-WELL-1A"}
+                ),
+                _sample_info_row(
+                    CollectionDate="2025-06-11T09:00:00",
+                    **{"WellPointID": "NO-WELL-1", "SamplePointID": "NO-WELL-1B"},
+                ),
+            ],
+            param_rows=[],
+        )
+    )
+
+    assert result.exit_code == 1
+    assert [e for e in result.payload["validation_errors"]] == [
+        "ChemistrySampleInfo row 2: WellPointID NO-WELL-1: no matching Thing "
+        "(well) found",
+        "ChemistrySampleInfo row 3: WellPointID NO-WELL-1: no matching Thing "
+        "(well) found",
+    ]
+    assert [f["sample_point_id"] for f in result.payload["failed_rows"]] == [
+        "NO-WELL-1A",
+        "NO-WELL-1B",
+    ]
+
+
 # ============= EOF =============================================
