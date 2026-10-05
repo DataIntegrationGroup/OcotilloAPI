@@ -15,7 +15,7 @@
 # ===============================================================================
 import importlib
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from sqlalchemy import delete, select, update
 
@@ -44,6 +44,9 @@ parity_groups = importlib.import_module(
 seed_epa_limits = importlib.import_module(
     "data_migrations.migrations.20260916_0001_seed_epa_regulatory_limits"
 )
+olwc_corrections = importlib.import_module(
+    "data_migrations.migrations." "20261002_0001_correct_olwc_well_depth_and_mp_height"
+)
 from db.lexicon import LexiconCategory
 from db.location import Location
 from db.notes import Notes
@@ -51,6 +54,9 @@ from db.parameter import Parameter
 from db.regulatory_limit import RegulatoryLimit
 from db.field import FieldActivity, FieldEvent
 from db.group import Group, GroupThingAssociation
+from db.measuring_point_history import MeasuringPointHistory
+from db.observation import Observation
+from db.sample import Sample
 from db.thing import Thing
 from db.engine import session_ctx
 from db.transducer import TransducerObservation
@@ -2026,3 +2032,328 @@ def test_orphan_duplicate_names_are_absent_from_the_snapshot():
     rows = parity_groups._load_snapshot()
     names = {row["name"] for row in rows}
     assert not (parity_groups.ORPHAN_DUPLICATE_NAMES & names)
+
+
+# --- OLWC 2025 well depth and MP height corrections ---------------------------
+
+# The Things were created, and their placeholder history rows started, on this
+# day. The migration keeps the date on the wells that need one value.
+PLACEHOLDER_START = date(2026, 2, 27)
+
+
+def _make_olwc_well(session, name, readings=(), history=None, depth=None):
+    """A water well with water level readings (day, MP height) and MP history.
+
+    history defaults to the single null-height placeholder row staging has.
+    Each history item is (height, start_date, end_date).
+    """
+    thing = Thing(
+        name=name,
+        thing_type="water well",
+        well_depth=depth,
+        release_status="public",
+    )
+    session.add(thing)
+    session.commit()
+    session.refresh(thing)
+
+    for day, mp in readings:
+        moment = datetime.combine(day, time(17, 0), tzinfo=timezone.utc)
+        event = FieldEvent(thing_id=thing.id, event_date=moment)
+        session.add(event)
+        session.commit()
+        activity = FieldActivity(
+            field_event_id=event.id, activity_type="groundwater level"
+        )
+        session.add(activity)
+        session.commit()
+        sample = Sample(
+            field_activity_id=activity.id,
+            sample_date=moment,
+            sample_name=f"{name} reading {day}",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+        )
+        session.add(sample)
+        session.commit()
+        session.add(
+            Observation(
+                sample_id=sample.id,
+                parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+                observation_datetime=moment,
+                value=100.0,
+                unit="ft",
+                measuring_point_height=mp,
+            )
+        )
+        session.commit()
+
+    for height, start, end in history or [(None, PLACEHOLDER_START, None)]:
+        session.add(
+            MeasuringPointHistory(
+                thing_id=thing.id,
+                measuring_point_height=height,
+                start_date=start,
+                end_date=end,
+                release_status="public",
+            )
+        )
+    session.commit()
+    return thing
+
+
+def _olwc_roster() -> set[str]:
+    return (
+        set(olwc_corrections.WELL_DEPTHS)
+        | {fix[0] for fix in olwc_corrections.OBSERVATION_MP_FIXES}
+        | set(olwc_corrections.HISTORY_SET)
+        | set(olwc_corrections.HISTORY_SPLIT)
+    )
+
+
+def _make_olwc_roster(session, skip=()):
+    """Every well the migration names, in the state staging had before it ran."""
+    readings = {}
+    for name, day, old, _new in olwc_corrections.OBSERVATION_MP_FIXES:
+        readings.setdefault(name, []).append((day, old))
+    # The latest reading of both wells already held the right value.
+    readings["OG-0042"].append((date(2025, 12, 18), -0.1))
+    readings["OG-0072"].append((date(2025, 12, 18), 0.0))
+    return {
+        name: _make_olwc_well(session, name, readings.get(name, ()))
+        for name in sorted(_olwc_roster())
+        if name not in skip
+    }
+
+
+def _olwc_history(session, thing):
+    return [
+        (float(r.measuring_point_height), r.start_date, r.end_date)
+        for r in session.scalars(
+            select(MeasuringPointHistory)
+            .where(MeasuringPointHistory.thing_id == thing.id)
+            .order_by(MeasuringPointHistory.start_date)
+        )
+    ]
+
+
+def _olwc_reading_mps(session, thing):
+    return [
+        (o.observation_datetime.date(), o.measuring_point_height)
+        for o in session.scalars(
+            select(Observation)
+            .join(Sample, Observation.sample_id == Sample.id)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+            .where(FieldEvent.thing_id == thing.id)
+            .order_by(Observation.observation_datetime)
+        )
+    ]
+
+
+def test_olwc_constants_are_consistent():
+    mod = olwc_corrections
+    assert len(mod.WELL_DEPTHS) == 6
+    assert len(mod.HISTORY_SET) == 14
+    assert set(mod.HISTORY_SPLIT) == {"OG-0016", "OG-0072"}
+    # A well is filled in one way or the other, never both.
+    assert not set(mod.HISTORY_SET) & set(mod.HISTORY_SPLIT)
+    # Wells deliberately left alone.
+    for untouched in ("OG-0031", "OG-0067", "OG-0092", "OG-0093", "OG-0094"):
+        assert untouched not in _olwc_roster()
+    # Every corrected reading gets a matching history height.
+    for name, _day, _old, new in mod.OBSERVATION_MP_FIXES:
+        expected = mod.HISTORY_SET.get(name)
+        if expected is not None:
+            assert expected == new
+    for name, periods in mod.HISTORY_SPLIT.items():
+        *earlier, current = periods
+        assert current[2] is None, f"{name} current row must stay open"
+        for (_h, _s, end), (_h2, next_start, _e2) in zip(periods, periods[1:]):
+            assert end == next_start, f"{name} rows must be contiguous"
+        assert all(end is not None for _h, _s, end in earlier)
+
+
+def test_olwc_corrections_apply_the_decided_values(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    mod = olwc_corrections
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            mod.run(session)
+            session.commit()
+            session.expire_all()
+
+            for name, depth in mod.WELL_DEPTHS.items():
+                assert wells[name].well_depth == depth
+            assert wells["OG-0081"].well_depth is None
+
+            assert _olwc_reading_mps(session, wells["OG-0042"]) == [
+                (date(2023, 1, 24), -0.1),
+                (date(2024, 12, 18), -0.1),
+                (date(2025, 12, 18), -0.1),
+            ]
+            assert _olwc_reading_mps(session, wells["OG-0066"]) == [
+                (date(2023, 1, 24), -0.3),
+                (date(2024, 12, 18), -0.3),
+            ]
+            assert _olwc_reading_mps(session, wells["OG-0072"]) == [
+                (date(2023, 1, 25), -0.4),
+                (date(2024, 12, 19), -0.4),
+                (date(2025, 12, 18), 0.0),
+            ]
+
+            for name, height in mod.HISTORY_SET.items():
+                assert _olwc_history(session, wells[name]) == [
+                    (height, PLACEHOLDER_START, None)
+                ], name
+                # Numeric column: the property returns a Decimal.
+                assert float(wells[name].measuring_point_height) == height
+
+            for name, periods in mod.HISTORY_SPLIT.items():
+                assert _olwc_history(session, wells[name]) == [
+                    (h, s, e) for h, s, e in periods
+                ], name
+                # The API's value is the current row, and 0 must not read as unset.
+                assert float(wells[name].measuring_point_height) == periods[-1][0]
+
+            # Inserted rows keep the well's real status, not the model default.
+            rows = session.scalars(
+                select(MeasuringPointHistory).where(
+                    MeasuringPointHistory.thing_id == wells["OG-0016"].id
+                )
+            ).all()
+            assert {r.release_status for r in rows} == {"public"}
+            assert len(list(tmp_path.glob("correct_olwc_*.csv"))) == 1
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def test_olwc_corrections_dry_run_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            changes = olwc_corrections.dry_run(session)
+            session.rollback()
+            session.expire_all()
+
+            assert changes
+            assert wells["OG-0079"].well_depth is None
+            histories = session.scalars(
+                select(MeasuringPointHistory).where(
+                    MeasuringPointHistory.thing_id == wells["OG-0016"].id
+                )
+            ).all()
+            assert len(histories) == 1
+            assert histories[0].measuring_point_height is None
+            assert len(list(tmp_path.glob("correct_olwc_*.csv"))) == 1
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def test_olwc_corrections_second_run_finds_nothing_to_do(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            olwc_corrections.run(session)
+            session.commit()
+
+            assert olwc_corrections.dry_run(session) == []
+            olwc_corrections.run(session)
+            session.commit()
+            session.expire_all()
+            assert len(_olwc_history(session, wells["OG-0072"])) == 2
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def _assert_olwc_run_refused(session, wells, expected_in_message):
+    try:
+        olwc_corrections.run(session)
+    except ValueError as exc:
+        assert expected_in_message in str(exc)
+    else:
+        raise AssertionError("expected the migration to refuse")
+    session.rollback()
+    session.expire_all()
+    # Nothing was written, including to wells that were fine.
+    assert wells["OG-0079"].well_depth is None
+    assert _olwc_reading_mps(session, wells["OG-0066"])[0][1] == 0.3
+
+
+def test_olwc_corrections_refuse_when_a_well_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session, skip=("OG-0027",))
+        try:
+            _assert_olwc_run_refused(session, wells, "OG-0027: expected 1 water well")
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def test_olwc_corrections_refuse_a_duplicate_well_name(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        twin = _make_olwc_well(session, "OG-0027")
+        try:
+            _assert_olwc_run_refused(session, wells, "OG-0027: expected 1 water well")
+        finally:
+            _cleanup_wells(session, [*wells.values(), twin])
+
+
+def test_olwc_corrections_refuse_an_unexpected_reading_value(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            reading = session.scalars(
+                select(Observation)
+                .join(Sample, Observation.sample_id == Sample.id)
+                .where(Sample.sample_name == "OG-0072 reading 2023-01-25")
+            ).one()
+            reading.measuring_point_height = 0.9
+            session.commit()
+            _assert_olwc_run_refused(
+                session, wells, "OG-0072: 2023-01-25 reading MP is 0.9"
+            )
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def test_olwc_corrections_refuse_a_depth_that_is_already_different(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            wells["OG-0086"].well_depth = 111.0
+            session.commit()
+            _assert_olwc_run_refused(session, wells, "OG-0086: well_depth is 111.0")
+        finally:
+            _cleanup_wells(session, list(wells.values()))
+
+
+def test_olwc_corrections_refuse_unexpected_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(olwc_corrections, "REPORT_DIR", tmp_path)
+    with session_ctx() as session:
+        wells = _make_olwc_roster(session)
+        try:
+            session.add(
+                MeasuringPointHistory(
+                    thing_id=wells["OG-0081"].id,
+                    measuring_point_height=9.0,
+                    start_date=date(2026, 3, 1),
+                    release_status="public",
+                )
+            )
+            session.commit()
+            _assert_olwc_run_refused(
+                session, wells, "OG-0081: expected one open null-height history row"
+            )
+        finally:
+            _cleanup_wells(session, list(wells.values()))
