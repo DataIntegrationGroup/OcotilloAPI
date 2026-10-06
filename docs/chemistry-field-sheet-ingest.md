@@ -24,6 +24,9 @@ ingest does not read them** — lab results are the LIMS ingest's business.
 
 ## 1. Commands
 
+New to this? `docs/chemistry-field-sheet-ingest-walkthrough.md` walks through a
+first load step by step, from installing the tools to checking the result.
+
 ```bash
 # From Drive, dry run first: reads, validates, reports, writes nothing.
 oco water-chemistry sync-sheet --dry-run
