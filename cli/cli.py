@@ -102,6 +102,37 @@ def _palette(theme: ThemeMode) -> dict[str, str]:
     }
 
 
+@cli.command("db-info")
+def db_info(
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    show which database the CLI is connected to, as the server reports it.
+    Reads only. Run it before an ingest to check where the data will go.
+    """
+    from cli.database_info import connected_database, describe_failure
+
+    colors = _palette(theme)
+    try:
+        info = connected_database()
+    except Exception as exc:
+        # An operator checking their setup needs the reason, not a traceback.
+        typer.secho(
+            f"Could not connect to the database: {describe_failure(exc)}",
+            fg=colors["issue"],
+            bold=True,
+            err=True,
+        )
+        raise typer.Exit(1) from exc
+
+    typer.secho(f"Database:     {info.name}", fg=colors["ok"], bold=True)
+    typer.echo(f"User:         {info.user}")
+    typer.echo(f"Connected to: {info.connected_to}")
+    typer.echo(f"Server:       {info.server or 'address not reported'}")
+
+
 @cli.command("initialize-lexicon")
 def initialize_lexicon(
     theme: ThemeMode = typer.Option(
