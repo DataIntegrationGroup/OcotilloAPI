@@ -97,6 +97,15 @@ and `NMA_Chemistry_SampleInfo` tables.
 
 ## 4. Process — Engineer (run the ingest)
 
+Check which database the run will reach, as the server reports it:
+
+```bash
+oco db-info
+```
+
+The `sync-drive` and `bulk-upload` reports also name the database under their
+headline.
+
 Dry run first to see what is new without writing anything:
 
 ```bash

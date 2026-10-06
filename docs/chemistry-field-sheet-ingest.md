@@ -47,6 +47,12 @@ runs as — application-default credentials locally, the `GCS_SERVICE_ACCOUNT_KE
 service account in production. Set `CHEMISTRY_FIELD_SHEET_ID` to the sheet id or
 URL, and a raw zone (next section).
 
+Check where a run will go with `oco db-info`. It prints the database and user
+as the server reports them, and the address it connected to. `POSTGRES_DB`
+alone doesn't prove that: the Cloud SQL proxy and a local Docker database can
+both answer on `localhost:5432`. Every report also names the database under its
+headline.
+
 There is **no manifest**. The LIMS sync needs one because a workbook is a
 one-shot batch; this spreadsheet is a living document that grows week over
 week, so it is re-read in full every run and idempotency comes from the
