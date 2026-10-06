@@ -2,8 +2,8 @@
 
 This guide walks you through copying the field crew's chemistry spreadsheet
 into the Ocotillo database. You don't need any programming experience. You'll
-download the spreadsheet, type commands into Terminal, and change a few lines
-in one settings file.
+download the spreadsheet, type commands into a terminal (Terminal on a Mac, Git
+Bash on Windows), and change a few lines in one settings file.
 
 Plan on about 30 minutes the first time. Later runs take about 5.
 
@@ -35,22 +35,31 @@ ID from the chain of custody, which is how its results find this sample later.
 Check that you have each of these. If you're missing one, ask the Data
 Services lead before going further.
 
-- [ ] A Mac with the OcotilloAPI project downloaded to
-      `~/PycharmProjects/OcotilloAPI`.
+- [ ] A copy of the OcotilloAPI project on your computer, in any folder.
+      This guide calls that folder `<path-to-OcotilloAPI>`.
+- [ ] Windows only: Git Bash installed. It's part of Git for Windows. The
+      commands in this guide are written for a Mac or Linux terminal, and Git
+      Bash runs them the same way. Nobody has followed this guide on Windows
+      yet, so tell the Data Services lead about anything that doesn't work.
 - [ ] `uv` installed. It manages the project's Python packages.
 - [ ] The Google Cloud command-line tool (`gcloud`) installed.
 - [ ] The Cloud SQL proxy program (`cloud-sql-proxy`) downloaded. It opens a
       secure connection to the database.
-- [ ] A Google account with database access in Google Cloud.
+- [ ] A Google account with read and write access to the Ocotillo databases.
+      The practice run needs write access too: it saves every row and then
+      undoes it.
 - [ ] Permission to view the field spreadsheet in Google Sheets.
 - [ ] The name of the database to load into: `ocotillo-staging` for
       practice, `ocotillo` for production.
 
 ## A few basics
 
-- **Terminal** is the Mac app where you type commands. Open it with
-  Spotlight (press `Cmd` + `Space`, type "Terminal", press `Return`).
-- **Running a command** means pasting it into Terminal and pressing `Return`.
+- **The terminal** is where you type commands. On a Mac, open the Terminal
+  app (press `Cmd` + `Space`, type "Terminal", press `Return`). On Windows,
+  open Git Bash from the Start menu.
+- **Running a command** means pasting it into the terminal and pressing
+  `Return` (`Enter` on Windows). To paste into Git Bash, right-click and
+  choose **Paste**, or press `Shift` + `Insert`.
   Paste one command at a time and wait for it to finish. You'll know it's
   finished when the prompt, the line ending in `%` or `$`, comes back.
 - **Stopping a command** that's still running: press `Ctrl` + `C`.
@@ -59,17 +68,18 @@ Services lead before going further.
 
 ---
 
-## Step 1. Open Terminal in the project folder
+## Step 1. Open a terminal in the project folder
 
-Open Terminal and run:
+Open a terminal and run this, with your project folder in place of
+`<path-to-OcotilloAPI>`:
 
 ```bash
-cd ~/PycharmProjects/OcotilloAPI
+cd <path-to-OcotilloAPI>
 ```
 
-This moves Terminal into the project folder. Every command in this guide
-assumes you've run it first. If you close Terminal, run it again when you
-come back.
+For example, `cd ~/PycharmProjects/OcotilloAPI`. This moves the terminal into
+the project folder. Every command in this guide assumes you've run it first.
+If you close the terminal, run it again when you come back.
 
 ## Step 2. Install the packages the ingest needs
 
@@ -94,7 +104,7 @@ gcloud auth application-default login
 
 A browser window opens. Pick your work Google account and allow the
 permissions it asks for. When the browser says you're signed in, go back to
-Terminal.
+the terminal.
 
 Run the command exactly as shown. Adding extra permissions for Google Drive or
 Sheets makes Google block the sign-in with a "tried to access sensitive info"
@@ -106,10 +116,11 @@ yourself in the next step.
 1. Open the field spreadsheet in Google Sheets.
 2. Choose **File > Download > Microsoft Excel (.xlsx)**. The file saves to
    your **Downloads** folder.
-3. Open Downloads in Finder and rename the file. Any name works if it uses
-   only letters, numbers, hyphens (`-`) and underscores (`_`), for example
-   `field-data-2026-10-05.xlsx`. The original name has an `&` in it, and
-   Terminal treats `&` and spaces as special characters.
+3. Open your Downloads folder (Finder on a Mac, File Explorer on Windows) and
+   rename the file. Any name works if it uses only letters, numbers, hyphens
+   (`-`) and underscores (`_`), for example `field-data-2026-10-05.xlsx`. The
+   original name has an `&` in it, and the terminal treats `&` and spaces as
+   special characters.
 
 From here on, the guide writes your file's name as `<file-name>`, without the
 `.xlsx`. If you named it `field-data-2026-10-05.xlsx`, then
@@ -124,13 +135,22 @@ include the crew's latest rows.
 which database to use. It also holds passwords, so **never email it, paste
 it into chat, or upload it anywhere**.
 
-Open it in TextEdit:
+Open it in any editor that saves plain text, such as an IDE like PyCharm or
+VS Code, but not a word processor like Word. If you don't have one, use the
+editor that comes with your computer. On a Mac, this opens it in TextEdit:
 
 ```bash
 open -e .env
 ```
 
-Make these two changes, then save (`Cmd` + `S`) and close the file.
+On Windows, this opens it in Notepad:
+
+```bash
+notepad .env
+```
+
+Make the two changes in 5a and 5b below, then save (`Cmd` + `S` on a Mac,
+`Ctrl` + `S` on Windows) and close the file.
 
 ### 5a. Choose where the ingest keeps its copy
 
@@ -166,40 +186,36 @@ connection to it, and it has to keep running for the whole ingest.
 
 1. If Docker Desktop is running a local Ocotillo database, stop it first. Two
    databases on the same connection point will confuse the ingest.
-2. Open a **second** Terminal window (`Cmd` + `N`).
-3. Start the proxy in that window. Replace the path with wherever you saved
-   the program:
+2. Open a **second** terminal window, and run Step 1 in it.
+3. Start the proxy in that window, with the program's location in place of
+   `<path-to-cloud-sql-proxy>`, for example `~/cloud-sql-proxy`. On Windows
+   the program's name ends in `.exe`.
 
    ```bash
-   ~/cloud-sql-proxy waterdatainitiative-271000:us-west4:dataservices --auto-iam-authn
+   <path-to-cloud-sql-proxy> waterdatainitiative-271000:us-west4:dataservices --auto-iam-authn
    ```
 
 4. Wait for a line that says the proxy is **ready for new connections**.
-5. Leave this window open and go back to your first Terminal window.
+5. Leave this window open and go back to your first terminal window.
 
 ## Step 7. Confirm which database you're connected to
 
-Copy all five lines below and paste them into the first Terminal window
-together:
+In your first terminal window, run:
 
 ```bash
-uv run python - <<'EOF'
-from dotenv import load_dotenv; load_dotenv(".env")
-from sqlalchemy import text
-from db.engine import session_ctx
-with session_ctx() as s: print("Connected to:", s.execute(text("select current_database()")).scalar())
-EOF
+uv run oco db-info
 ```
 
-It only reads the database name and changes nothing. You may see some extra
-log lines. Look for this one:
+It asks the database server which database you reached, and changes nothing.
+Look at the first line:
 
 ```
-Connected to: ocotillo-staging
+Database:     ocotillo-staging
 ```
 
 **If the name isn't the database you expected, stop here.** Go back to
-Step 5b.
+Step 5b. If it says `Could not connect to the database`, go back to Step 6
+and check the proxy is still running.
 
 ## Step 8. Do a practice run
 
@@ -207,7 +223,7 @@ A practice run, or dry run, reads the file and checks every row. It reports
 what it would save, but it saves nothing to the database and keeps no copy.
 
 Copy all three lines and paste them together. The `\` at the end of a line
-tells Terminal the command continues on the next one.
+tells the terminal the command continues on the next one.
 
 ```bash
 uv run oco water-chemistry field-upload --file ~/Downloads/<file-name>.xlsx --dry-run \
@@ -229,6 +245,9 @@ Read the top line of the report:
 |---|---|---|
 | `DRY RUN (nothing written)` | Every row passed. | Go to Step 10. |
 | `ABORTED -- nothing written` | At least one row has a problem. | Go to Step 9. |
+
+Just under the top line, **Database** names the database the run checked
+against. It should match Step 7.
 
 The summary under the top line counts what a real run would do:
 
@@ -265,7 +284,7 @@ are real: **samples created**, **samples matched** and **readings skipped**
 are what the rest of the sheet would do. Step 8 explains what each count
 means.
 
-If this run says `ABORTED` too, send the whole Terminal output to the Data
+If this run says `ABORTED` too, send the whole terminal output to the Data
 Services lead.
 
 ### 9b. Fix the failed rows in the Google Sheet
@@ -342,9 +361,10 @@ files:
 uv run oco water-chemistry field-upload --file ~/Downloads/<file-name>.xlsx
 ```
 
-The top line should say `SUCCESS`. The summary numbers should match what the
-practice run reported. Just under the top line, a line starting `Archived`
-tells you the copy of the file was saved.
+The top line should say `SUCCESS`. Just under it, **Database** names the
+database the data was saved to. Check it's the one you meant. The summary
+numbers should match what the practice run reported, and a line starting
+`Archived` tells you the copy of the file was saved.
 
 If you see a **WARNINGS** section, the data still loaded. Warnings point out
 things a person should look at, such as the sheet disagreeing with a value
@@ -365,9 +385,9 @@ saved, and that running the ingest again doesn't duplicate it.
 
 ## Step 12. Finish up
 
-1. Go to the Terminal window running the proxy and press `Ctrl` + `C` to stop
+1. Go to the terminal window running the proxy and press `Ctrl` + `C` to stop
    it.
-2. Close both Terminal windows.
+2. Close both terminal windows.
 3. Delete `<file-name>.xlsx` from Downloads, along with
    `<file-name>_loadable.xlsx` if you made one. The ingest kept its own copy
    in Step 10, and next time you'll download a fresh one. Keep
@@ -386,10 +406,10 @@ check `POSTGRES_DB` again before every run.
 | `No raw zone configured ...` | `.env` doesn't say where to keep the copy. | Repeat Step 5a, and remember to save the file. |
 | `No such file or directory` naming `<file-name>.xlsx` | The file isn't in Downloads under that exact name. | Repeat Step 4, including the rename. |
 | `Found neither a ChemistrySampleInfo nor a FieldParameters tab` | The file isn't the field spreadsheet, or its tabs were renamed. | Download the right spreadsheet, or ask the sheet's keeper about the tab names. |
-| `connection refused`, or the command hangs | The proxy isn't running. | Repeat Step 6. |
+| `Could not connect to the database`, `connection refused`, or the command hangs | The proxy isn't running. | Repeat Step 6, then Step 7. |
 | `command not found: uv` or `command not found: gcloud` | The tool isn't installed. | Ask the Data Services lead for help installing it. |
 
-If anything else goes wrong, copy the whole Terminal output. Send it to the
+If anything else goes wrong, copy the whole terminal output. Send it to the
 Data Services lead, with a note about which step you were on.
 
 ## What happens when a cell is left blank
