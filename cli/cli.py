@@ -102,6 +102,59 @@ def _palette(theme: ThemeMode) -> dict[str, str]:
     }
 
 
+def _print_database(colors: dict[str, str]) -> None:
+    """Name the database a run used, under a chemistry report's headline.
+
+    The ingest wrote through the same engine, so this is where its results went.
+    It's asked of the server rather than read from POSTGRES_DB, since the name in
+    .env doesn't prove which server localhost reached. A report still prints when
+    the database can't be reached (a dry run that only lists Drive files, say),
+    so a failure here is reported on the line rather than raised.
+    """
+    from cli.database_info import connected_database, describe_failure
+
+    try:
+        name = connected_database().name
+    except Exception as exc:
+        typer.secho(
+            f"Database: not connected ({describe_failure(exc)})",
+            fg=colors["issue"],
+        )
+        return
+    typer.secho(f"Database: {name}", fg=colors["accent"])
+
+
+@cli.command("db-info")
+def db_info(
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    show which database the CLI is connected to, as the server reports it.
+    Reads only. Run it before an ingest to check where the data will go.
+    """
+    from cli.database_info import connected_database, describe_failure
+
+    colors = _palette(theme)
+    try:
+        info = connected_database()
+    except Exception as exc:
+        # An operator checking their setup needs the reason, not a traceback.
+        typer.secho(
+            f"Could not connect to the database: {describe_failure(exc)}",
+            fg=colors["issue"],
+            bold=True,
+            err=True,
+        )
+        raise typer.Exit(1) from exc
+
+    typer.secho(f"Database:     {info.name}", fg=colors["ok"], bold=True)
+    typer.echo(f"User:         {info.user}")
+    typer.echo(f"Connected to: {info.connected_to}")
+    typer.echo(f"Server:       {info.server or 'address not reported'}")
+
+
 @cli.command("initialize-lexicon")
 def initialize_lexicon(
     theme: ThemeMode = typer.Option(
@@ -764,6 +817,8 @@ def water_chemistry_bulk_upload(
         colors,
         ok=result.exit_code == 0,
     )
+    _print_database(colors)
+    typer.echo()
 
     if summary:
         report.summary_section(report.import_summary_rows(summary, colors), colors)
@@ -873,6 +928,7 @@ def water_chemistry_sync_drive(
         colors,
         ok=result.exit_code == 0,
     )
+    _print_database(colors)
     typer.secho(f"Folder: {result.folder_id}", fg=colors["accent"])
     typer.echo()
 
@@ -1007,6 +1063,7 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
     else:
         headline = "[CHEMISTRY FIELD SHEET] ABORTED -- nothing written"
     report.banner(headline, colors, ok=result.exit_code == 0)
+    _print_database(colors)
     typer.secho(f"Source: {source}", fg=colors["accent"])
     raw = payload.get("raw") or {}
     if raw.get("load_id"):

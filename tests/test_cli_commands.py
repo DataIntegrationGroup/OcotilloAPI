@@ -1049,4 +1049,100 @@ def test_field_upload_refuses_a_loadable_copy_of_a_csv(tmp_path):
     assert not (tmp_path / "loadable.xlsx").exists()
 
 
+def _refuse_connection():
+    """Stand in for a database the CLI can't reach."""
+    raise ConnectionError(
+        "connection refused\n"
+        "(Background on this error at: https://sqlalche.me/e/20/rvf5)"
+    )
+
+
+def test_db_info_names_the_database_it_reached():
+    result = CliRunner().invoke(cli, ["db-info"])
+
+    assert result.exit_code == 0, result.output
+    assert "Database:     ocotilloapi_test" in result.output
+
+
+def test_db_info_says_in_one_line_why_it_could_not_connect(monkeypatch):
+    monkeypatch.setattr("cli.database_info.connected_database", _refuse_connection)
+
+    result = CliRunner().invoke(cli, ["db-info"])
+
+    assert result.exit_code == 1
+    assert (
+        "Could not connect to the database: ConnectionError: connection refused"
+        in result.output
+    )
+    assert "Background on this error" not in result.output
+    assert "Traceback" not in result.output
+
+
+def test_field_upload_report_names_the_database(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import([])
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "field-upload", "--file", str(export), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_bulk_upload_report_names_the_database(tmp_path, monkeypatch):
+    workbook = tmp_path / "batch.xlsx"
+    workbook.write_bytes(b"")
+    monkeypatch.setattr(
+        "cli.service_adapter.chemistry_lims_xlsx",
+        lambda path: SimpleNamespace(exit_code=0, payload={}),
+    )
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "bulk-upload", "--file", str(workbook)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_sync_drive_report_names_the_database(monkeypatch):
+    from services.chemistry_drive import DriveSyncResult
+
+    monkeypatch.setattr(
+        "services.chemistry_drive.sync_and_ingest",
+        lambda folder_id=None, dry_run=False: DriveSyncResult(
+            folder_id="folder", dry_run=dry_run
+        ),
+    )
+
+    result = CliRunner().invoke(cli, ["water-chemistry", "sync-drive", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_a_report_still_prints_when_the_database_is_unreachable(monkeypatch):
+    # A Drive dry run only lists files, so it shouldn't fail for want of a
+    # database; the report says the database wasn't reached instead.
+    from services.chemistry_drive import DriveSyncResult
+
+    monkeypatch.setattr(
+        "services.chemistry_drive.sync_and_ingest",
+        lambda folder_id=None, dry_run=False: DriveSyncResult(
+            folder_id="folder", dry_run=dry_run
+        ),
+    )
+    monkeypatch.setattr("cli.database_info.connected_database", _refuse_connection)
+
+    result = CliRunner().invoke(cli, ["water-chemistry", "sync-drive", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert (
+        "Database: not connected (ConnectionError: connection refused)" in result.output
+    )
+
+
 # ============= EOF =============================================
