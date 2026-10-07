@@ -307,3 +307,4 @@ To drop the existing schema and rebuild from migrations before transferring data
 ```bash
 export DROP_AND_REBUILD_DB=true
 ```
+<!-- hotfix -->
