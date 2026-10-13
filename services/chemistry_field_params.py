@@ -74,7 +74,7 @@ from services.chemistry_field_sheet import (
     write_loadable_copy,
 )
 from services.ingest_raw_zone import (
-    archive_tables,
+    archive_then_read,
     raw_zone_url,
     read_snapshot,
 )
@@ -858,33 +858,6 @@ def _visit(sample: NMA_Chemistry_SampleInfo) -> str:
 # --- entrypoints ---------------------------------------------------------------
 
 
-def _archive_then_read(
-    tables: Sequence[SheetTable],
-    *,
-    source_label: str,
-    raw_url: str | None,
-) -> tuple[list[SheetTable], dict]:
-    """Archive what was read, then read it back and map *that*.
-
-    The round trip is the point: what gets loaded is provably what was kept, and
-    the replay path is exercised on every run rather than the first time someone
-    needs it.
-    """
-    extract = archive_tables(
-        tables,
-        dataset=FIELD_SHEET_DATASET,
-        source_label=source_label,
-        raw_url=raw_url,
-    )
-    archived = read_snapshot(FIELD_SHEET_DATASET, extract.load_id, raw_url=extract.url)
-    return archived, {
-        "load_id": extract.load_id,
-        "url": extract.url,
-        "dataset": extract.dataset,
-        "rows_archived": extract.total_rows,
-    }
-
-
 def sync_field_sheet(
     reference: str | None = None,
     *,
@@ -913,8 +886,11 @@ def sync_field_sheet(
     # A dry run writes nothing anywhere, the archive included -- an operator
     # checking what would happen should not leave a snapshot behind.
     if archive and not dry_run:
-        tables, raw = _archive_then_read(
-            tables, source_label=reference, raw_url=raw_url
+        tables, raw = archive_then_read(
+            tables,
+            dataset=FIELD_SHEET_DATASET,
+            source_label=reference,
+            raw_url=raw_url,
         )
     result = import_field_tables(tables, dry_run=dry_run, raw=raw)
     return _write_reports(result, read_tables, failed_rows_path=failed_rows_path)
@@ -950,8 +926,9 @@ def upload_field_export(
 
     raw = None
     if archive and not dry_run:  # see sync_field_sheet
-        tables, raw = _archive_then_read(
+        tables, raw = archive_then_read(
             tables,
+            dataset=FIELD_SHEET_DATASET,
             source_label=", ".join(path.name for path in paths),
             raw_url=raw_url,
         )

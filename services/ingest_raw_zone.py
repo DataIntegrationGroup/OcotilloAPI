@@ -236,6 +236,35 @@ def archive_tables(
     )
 
 
+def archive_then_read(
+    tables: Sequence[SheetTable],
+    *,
+    dataset: str,
+    source_label: str,
+    raw_url: str | None = None,
+) -> tuple[list[SheetTable], dict]:
+    """Archive what was read, then read it back so the caller maps *that*.
+
+    The round trip is the point: what gets loaded is provably what was kept, and
+    the replay path is exercised on every run rather than the first time someone
+    needs it. Returns the archived tables and the ``raw`` block an ingest
+    reports.
+    """
+    extract = archive_tables(
+        tables,
+        dataset=dataset,
+        source_label=source_label,
+        raw_url=raw_url,
+    )
+    archived = read_snapshot(dataset, extract.load_id, raw_url=extract.url)
+    return archived, {
+        "load_id": extract.load_id,
+        "url": extract.url,
+        "dataset": extract.dataset,
+        "rows_archived": extract.total_rows,
+    }
+
+
 # --- reading back --------------------------------------------------------------
 
 
