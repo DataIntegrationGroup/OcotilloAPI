@@ -89,9 +89,9 @@ DEFAULT_AGENCY = "NMBGMR"
 SAMPLE_INFO_TAB = "ChemistrySampleInfo"
 FIELD_PARAMETERS_TAB = "FieldParameters"
 
-# Tabs this ingest reads. The workbook also carries lab results
-# (``GenChemResults``, ``IsotopeResults``); those are the LIMS ingest's
-# business and are left alone here.
+# Tabs this ingest reads. The workbook also carries lab results:
+# ``IsotopeResults`` loads separately, once the labs report
+# (services/chemistry_isotopes.py), and ``GenChemResults`` has no ingest yet.
 FIELD_SHEET_TABS = (SAMPLE_INFO_TAB, FIELD_PARAMETERS_TAB)
 
 SHEET_ID_ENV_VAR = "CHEMISTRY_FIELD_SHEET_ID"
