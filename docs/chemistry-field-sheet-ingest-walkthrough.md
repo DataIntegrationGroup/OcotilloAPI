@@ -474,3 +474,8 @@ custody. If the two disagree, the lab results stop at their own load, or
 attach to a different sample. Before changing a letter to get past an error
 in Step 9, check which letter the crew wrote on the chain of custody, and tell
 whoever loads the lab results about the change.
+
+Isotope results are typed into this same spreadsheet, on the IsotopeResults
+tab, and loaded with their own command once the labs report. They attach to
+the samples this guide loads, so load the field sheet first. See
+`docs/chemistry-isotope-ingest-walkthrough.md`.

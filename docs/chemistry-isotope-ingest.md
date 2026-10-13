@@ -17,6 +17,8 @@ isotope results already live.
 - Target table: `NMA_MinorTraceChemistry` (`db/nma_legacy.py`).
 - Vocabulary: `LEGACY_ANALYTE_NAMES` and `LEGACY_UNITS` in
   `services/legacy_chemistry.py`.
+- Step-by-step guide for whoever runs it:
+  `docs/chemistry-isotope-ingest-walkthrough.md`.
 
 ## Why it is its own command
 
@@ -198,8 +200,9 @@ as the other chemistry ingests. One pass reports every failed row.
 | `... is already stored for ... and differs: ...` | A stored result changed. | Review with the lab; correct the stored result by hand if the new one stands. |
 | `... is stored N times for ...` | The table already holds two such results. | Reconcile them by hand. |
 
-A run that reports only **warnings** (a repeated row, an undated sample),
-**skips**, or **empty rows** (a row with a lab but no results) succeeds.
+A run that reports only **warnings** (a repeated row, an undated sample, a
+column it doesn't read), **skips**, or **empty rows** (a row with a lab but no
+results) succeeds.
 
 ---
 
@@ -221,4 +224,8 @@ A run that reports only **warnings** (a repeated row, an undated sample),
   headings are accepted.
 - **Lab names are a fixed list.** A new lab fails until it is added to
   `ISOTOPE_LABS`.
+- **New measurement columns don't load.** The ingest reads only the columns
+  in `ISOTOPE_COLUMNS`. A column added to the tab for a new measurement loads
+  nothing until it is added there. The report names any column it doesn't
+  read, under WARNINGS, and the run still succeeds.
 - **`GenChemResults` still has no ingest path.**
