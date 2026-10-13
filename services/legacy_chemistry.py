@@ -154,6 +154,17 @@ LEGACY_ANALYTE_NAMES: dict[str, str] = {
     "d34S-SO4": "Sulfate 34 isotope ratio",
 }
 
+# Unit abbreviations the legacy chemistry tables store, with what each means.
+# The lexicon's `unit` category serves the Observation model and has none of
+# these, so an ingest writing an NMA_* table spells its units from here rather
+# than inventing its own, and every row of one quantity reads the same.
+LEGACY_UNITS: dict[str, str] = {
+    "pm": "per mil (‰, parts per thousand)",
+    "pmc": "percent modern carbon",
+    "TU": "tritium units",
+    "yrs": "years",
+}
+
 _LEGACY_ANALYTE_NAMES_LOWER = {
     symbol.lower(): name for symbol, name in LEGACY_ANALYTE_NAMES.items()
 }
