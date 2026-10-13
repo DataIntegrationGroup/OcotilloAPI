@@ -509,6 +509,32 @@ def test_a_repeated_row_loads_once(water_well_thing, _cleanup_isotopes):
     assert len(_results(sample_id)) == 2
 
 
+def test_a_column_the_ingest_does_not_read_is_named(
+    water_well_thing, _cleanup_isotopes
+):
+    """A lab's new measurement would otherwise never load, with no sign why."""
+    sample_id = _record_sample(water_well_thing.id)
+    table = _table([_nmbgmr_row()])
+    table.header += ["87Sr/86Sr", ""]
+    for record in table.rows:
+        record["87Sr/86Sr"] = 0.7101
+
+    result = import_isotope_table([table])
+
+    assert result.exit_code == 0, result.stderr
+    (warning,) = result.payload["warnings"]
+    assert "doesn't read the column(s) '87Sr/86Sr'" in warning
+    assert len(_results(sample_id)) == 2
+
+
+def test_the_template_columns_raise_no_warning(water_well_thing, _cleanup_isotopes):
+    _record_sample(water_well_thing.id)
+
+    result = import_isotope_table([_table([_beta_row()])])
+
+    assert result.payload["warnings"] == []
+
+
 def test_empty_rows_are_reported_and_skipped(water_well_thing, _cleanup_isotopes):
     _record_sample(water_well_thing.id)
 

@@ -173,6 +173,25 @@ _LABS_BY_KEY = {_lab_key(lab): lab for lab in ISOTOPE_LABS}
 
 _VALUE_HEADINGS = frozenset(_normalize_header(c.header) for c in ISOTOPE_COLUMNS)
 
+# Every heading this ingest reads. Anything else on the tab is skipped, and the
+# report names it: a lab reporting a new measurement gets a new column, and
+# without a warning its results would never load and nobody would know.
+_KNOWN_HEADINGS = frozenset(
+    _normalize_header(heading)
+    for heading in (
+        *_SAMPLE_ID_HEADINGS,
+        "AnalysisLab",
+        "AnalysisDate",
+        "ChemistryLabID",
+        *(
+            heading
+            for column in ISOTOPE_COLUMNS
+            for heading in (column.header, column.qualifier, column.uncertainty)
+            if heading
+        ),
+    )
+)
+
 
 # --- row normalization ---------------------------------------------------------
 
@@ -433,6 +452,18 @@ def import_isotope_table(
 
     validation_errors: list[str] = []
     warnings: list[str] = []
+    unread = [
+        heading
+        for heading in table.header
+        if heading and _normalize_header(heading) not in _KNOWN_HEADINGS
+    ]
+    if unread:
+        warnings.append(
+            f"{ISOTOPE_TAB}: this ingest doesn't read the column(s) "
+            f"{', '.join(repr(h) for h in unread)}, so nothing in them was "
+            "loaded. If they hold results, ask engineering to add them to "
+            "ISOTOPE_COLUMNS."
+        )
     # Every row that stops the run, as data: the CLI writes these out, and one
     # pass has to find them all, so no stage stops at the first failure.
     failed_rows: list[dict] = []
