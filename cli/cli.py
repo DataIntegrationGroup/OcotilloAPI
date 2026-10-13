@@ -1051,17 +1051,21 @@ def water_chemistry_manifest_status(
     typer.secho("=" * 72, fg=colors["accent"])
 
 
-def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> None:
-    """Print the outcome of a chemistry field-sheet import."""
-    payload = result.payload if isinstance(result.payload, dict) else {}
-    summary = payload.get("summary", {})
+def _print_sheet_ingest_header(
+    result, colors: dict[str, str], label: str, source: str
+) -> None:
+    """The top of a spreadsheet ingest's report: outcome, database, source.
 
-    if summary.get("dry_run"):
-        headline = "[CHEMISTRY FIELD SHEET] DRY RUN (nothing written)"
+    Shared by the field-sheet and isotope reports, so both say the same thing
+    about where a run went and what it archived.
+    """
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    if payload.get("summary", {}).get("dry_run"):
+        headline = f"[{label}] DRY RUN (nothing written)"
     elif result.exit_code == 0:
-        headline = "[CHEMISTRY FIELD SHEET] SUCCESS"
+        headline = f"[{label}] SUCCESS"
     else:
-        headline = "[CHEMISTRY FIELD SHEET] ABORTED -- nothing written"
+        headline = f"[{label}] ABORTED -- nothing written"
     report.banner(headline, colors, ok=result.exit_code == 0)
     _print_database(colors)
     typer.secho(f"Source: {source}", fg=colors["accent"])
@@ -1073,6 +1077,35 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
             fg=colors["accent"],
         )
     typer.echo()
+
+
+def _print_sheet_ingest_reports(payload: dict, colors: dict[str, str]) -> None:
+    """Where a spreadsheet ingest wrote its failed row workbook and loadable copy."""
+    reports = payload.get("reports") or {}
+    if not reports:
+        return
+    typer.echo()
+    typer.secho("REPORTS", fg=colors["accent"], bold=True)
+    labels = {
+        "failed_rows": "failed row workbook",
+        "loadable": "loadable copy",
+    }
+    for key, path in reports.items():
+        if path:
+            typer.secho(f"  - {labels[key]}: {path}", fg=colors["ok"])
+        else:
+            typer.secho(
+                f"  - {labels[key]}: not written, since no row failed",
+                fg=colors["muted"],
+            )
+
+
+def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> None:
+    """Print the outcome of a chemistry field-sheet import."""
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+
+    _print_sheet_ingest_header(result, colors, "CHEMISTRY FIELD SHEET", source)
 
     if summary:
         rows_with_issues = summary.get("validation_errors_or_warnings", 0)
@@ -1142,22 +1175,7 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
 
     report.validation_errors_section(payload.get("validation_errors", []), colors)
 
-    reports = payload.get("reports") or {}
-    if reports:
-        typer.echo()
-        typer.secho("REPORTS", fg=colors["accent"], bold=True)
-        labels = {
-            "failed_rows": "failed row workbook",
-            "loadable": "loadable copy",
-        }
-        for key, path in reports.items():
-            if path:
-                typer.secho(f"  - {labels[key]}: {path}", fg=colors["ok"])
-            else:
-                typer.secho(
-                    f"  - {labels[key]}: not written, since no row failed",
-                    fg=colors["muted"],
-                )
+    _print_sheet_ingest_reports(payload, colors)
 
     report.rule(colors)
 
