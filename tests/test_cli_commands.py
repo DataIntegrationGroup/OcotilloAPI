@@ -1145,4 +1145,108 @@ def test_a_report_still_prints_when_the_database_is_unreachable(monkeypatch):
     )
 
 
+def _isotope_export(path):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "IsotopeResults"
+    sheet.append(["WellPointID", "AnalysisLab", "H2r (pm)"])
+    sheet.append(["WL-1A", "NMBGMR", -103.4])
+    sheet.append(["WL-1", "NMBGMR", -90.1])
+    workbook.save(path)
+    return path
+
+
+def _canned_isotope_import(failed_rows):
+    """Stand in for the database half of the isotope ingest."""
+    from services.chemistry_isotopes import _result
+
+    def fake(tables, *, dry_run=False, raw=None):
+        return _result(
+            processed=3,
+            imported=0 if failed_rows else 1,
+            validation_errors=[
+                f"{f['tab']} row {f['row']}: {f['reason']}" for f in failed_rows
+            ],
+            failed_rows=failed_rows,
+            skipped_results=[
+                {
+                    "sample_point_id": "WL-2A",
+                    "analyte": "O18r",
+                    "analysis_lab": "NMBGMR",
+                }
+            ],
+            empty_rows=[
+                {"row": 4, "sample_point_id": "WL-3A", "analysis_lab": "NMBGMR"}
+            ],
+            dry_run=dry_run,
+        )
+
+    return fake
+
+
+def test_isotope_upload_reports_what_it_would_load(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_isotopes.import_isotope_table",
+        _canned_isotope_import([]),
+    )
+    export = _isotope_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "isotope-upload", "--file", str(export), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[ISOTOPE RESULTS] DRY RUN" in result.output
+    assert "Database: ocotilloapi_test" in result.output
+    assert "WL-2A: O18r (NMBGMR)" in result.output
+    assert "row 4: WL-3A (NMBGMR)" in result.output
+
+
+def test_isotope_upload_writes_the_failed_rows(tmp_path, monkeypatch):
+    from openpyxl import load_workbook
+
+    failed = [
+        {
+            "tab": "IsotopeResults",
+            "row": 3,
+            "sample_point_id": "WL-1",
+            "reason": "SamplePointID 'WL-1' has no sample letter",
+            "caused_by": None,
+        }
+    ]
+    monkeypatch.setattr(
+        "services.chemistry_isotopes.import_isotope_table",
+        _canned_isotope_import(failed),
+    )
+    export = _isotope_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "isotope-upload",
+            "--file",
+            str(export),
+            "--no-raw",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[ISOTOPE RESULTS] ABORTED" in result.output
+    failed_sheet = load_workbook(tmp_path / "failed.xlsx")["IsotopeResults"]
+    assert [c.value for c in failed_sheet[2]][:2] == [
+        3,
+        "SamplePointID 'WL-1' has no sample letter",
+    ]
+    loadable = load_workbook(tmp_path / "loadable.xlsx")["IsotopeResults"]
+    assert [c.value for c in loadable[3]] == [None, None, None]
+    assert [c.value for c in loadable[2]] == ["WL-1A", "NMBGMR", -103.4]
+
+
 # ============= EOF =============================================
