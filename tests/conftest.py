@@ -66,6 +66,16 @@ def _delete_if_present(session, obj) -> None:
         session.delete(persistent)
 
 
+@pytest.fixture()
+def raw_zone(tmp_path, monkeypatch):
+    """A raw zone on disk for the ingests that archive what they read.
+
+    dlt's own state goes in tmp_path too, kept out of the developer's home.
+    """
+    monkeypatch.setenv("DLT_DATA_DIR", str(tmp_path / "dlt"))
+    return (tmp_path / "raw").resolve().as_uri()
+
+
 @pytest.fixture(scope="session")
 def ogc_app():
     """The API application, built once for the whole session.
