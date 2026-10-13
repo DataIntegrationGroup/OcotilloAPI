@@ -24,6 +24,9 @@ run consistently while the fuller solution is pursued.
   match that way, so either can go first. A workbook loaded after the field
   sheet adopts the sheet's record rather than creating a second one. See
   "Either ingest can go first" in that doc.
+- Isotope results: the same spreadsheet's `IsotopeResults` tab, reported by
+  several labs, loads into `NMA_MinorTraceChemistry` with its own command. See
+  **`docs/chemistry-isotope-ingest.md`**.
 
 ---
 

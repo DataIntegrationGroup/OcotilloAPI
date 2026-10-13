@@ -18,7 +18,10 @@ and `FieldParameters` tabs become `NMA_Chemistry_SampleInfo` and
   (`db/nma_legacy.py`).
 
 The same workbook also carries `GenChemResults` and `IsotopeResults`. **This
-ingest does not read them** — lab results are the LIMS ingest's business.
+ingest does not read them.** `IsotopeResults` has its own command, run once the
+labs report: see **`docs/chemistry-isotope-ingest.md`**. Its results attach to
+the samples this ingest records, so load sample info first. `GenChemResults`
+has no ingest path yet.
 
 ---
 
@@ -330,9 +333,10 @@ disagreements) or **skips** (parameters already recorded) succeeds.
   learned to adopt left a sheet sample and a LIMS sample for one visit. Nothing
   merges them automatically yet.
 - **`Q` is invented vocabulary.** See section 2.
-- **Lab result tabs are ignored.** `GenChemResults` and `IsotopeResults` are not
-  read by this command, and the LIMS ingest reads a LIMS export, not this
-  workbook — so those tabs currently have no ingest path.
+- **`GenChemResults` is ignored.** This command doesn't read it, and the LIMS
+  ingest reads a LIMS export, not this workbook, so the tab has no ingest path.
+  `IsotopeResults` loads with `isotope-upload` / `isotope-sync-sheet`
+  (`docs/chemistry-isotope-ingest.md`).
 - **No alerting, and prod excludes the CLI deps.** As with the LIMS ingest, this
   runs from an engineer's machine and failures surface only in its output.
 - **The raw zone is write-and-keep.** Nothing prunes old snapshots, and nothing
