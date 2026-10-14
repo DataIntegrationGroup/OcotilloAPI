@@ -142,8 +142,11 @@ pre-commit install
 # Edit `.env` to configure database connection and app settings
 cp .env.example .env
 ```
+
+#### 5. Setup GCS credentials
+Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
+
 Notes:
-* Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
 * PostgreSQL uses the default port 5432.
 
 Minimum vars to set in `.env` for local development:
