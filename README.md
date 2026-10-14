@@ -22,16 +22,19 @@ supports research, field operations, and public data delivery for the Bureau of 
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
 - 🧾 Interactive API documentation via OpenAPI and ReDoc
+- 🗺️ OGC API - Features endpoints and documentation via OpenAPI and ReDoc
 
 ---
 
 ## 🗺️ OGC API - Features
 
-The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
-In App Engine deployments, `/ogcapi` is served from the same
-application as the primary API. The service is intended to scale to zero
+The API exposes OGC API - Features endpoints under `/ogcapi` for publicly available data
+and `/ogcapi-internal` for both public and privata data using `pygeoapi`.
+In App Engine deployments, `/ogcapi` and `/ogcapi-internal` are served from the same
+application as the primary API. The services are intended to scale to zero
 outside business hours and be kept warm during the workday with Cloud Scheduler
-hits to `/_ah/warmup`.
+hits to `/_ah/warmup`. Access to `/ogcapi-internal` requires api keys, which are available 
+through the Data Services team.
 
 ### Landing & metadata
 
