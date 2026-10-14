@@ -222,7 +222,7 @@ Notes:
 
 #### Staging Data
 
-To get staging data into the database: `python -m transfers.transfer` from the root directory of the project.
+To get staging data into the database run `uv run python -m transfers.transfer` from the root directory of the project.
 
 ### 🧭 Project Structure
 ```text
