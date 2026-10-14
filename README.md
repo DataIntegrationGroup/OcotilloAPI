@@ -143,9 +143,6 @@ pre-commit install
 cp .env.example .env
 ```
 
-#### 5. Setup GCS credentials
-Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
-
 Notes:
 * PostgreSQL uses the default port 5432.
 
@@ -180,7 +177,10 @@ Optional telemetry vars:
 
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
-#### 5. Database and server
+#### 5. Setup GCS credentials
+Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
+
+#### 6. Database and server
 
 Choose one of the following:
 
