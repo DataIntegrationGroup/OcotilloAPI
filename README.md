@@ -284,8 +284,8 @@ app/
       2. Validations against values in the database will be handled at the endpoint with custom checks and 409 errors will be raised
 4. Revise tests
     1. Revise fixtures and testing data
-    2. Revise tests and assertions
-    5. Add tests for validations as necessary
+    2. Revise tests and/or code so they all pass
+    5. Add new tests as necessary
 5. Revise documentation
 
 Notes:
