@@ -163,7 +163,7 @@ _SAMPLE_INFO_FIELDS = {
 }
 
 # CollectedBy is a 5-character code column in the legacy schema.
-_COLLECTED_BY_MAX = 5
+_COLLECTED_BY_MAX_LENGTH = 5
 
 # NM_Aquifer's LU_CollectionMethod, meaning -> code. The sheet may hold either;
 # the meaning is preferred because "F" and "H" are both faucets, and a crew
@@ -319,9 +319,9 @@ def prep_sample_info(record: dict) -> dict:
         )
 
     collected_by = attributes.get("collected_by")
-    if collected_by is not None and len(str(collected_by)) > _COLLECTED_BY_MAX:
+    if collected_by is not None and len(str(collected_by)) > _COLLECTED_BY_MAX_LENGTH:
         raise FieldParamsMappingError(
-            f"CollectedBy {collected_by!r} is longer than {_COLLECTED_BY_MAX} "
+            f"CollectedBy {collected_by!r} is longer than {_COLLECTED_BY_MAX_LENGTH} "
             "characters, which is all the column holds"
         )
 

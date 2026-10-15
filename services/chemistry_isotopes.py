@@ -104,7 +104,7 @@ never picks up the other's snapshot.
 _SAMPLE_ID_HEADINGS = ("SamplePointID", "WellPointID")
 
 # The legacy column is String(25).
-_LAB_ID_MAX = 25
+_LAB_ID_MAX_LENGTH = 25
 
 QUALIFIERS = frozenset({"<", ">"})
 
@@ -210,9 +210,9 @@ def _lab_id(value: Any) -> str | None:
     text = str(value).strip()
     if not text:
         return None
-    if len(text) > _LAB_ID_MAX:
+    if len(text) > _LAB_ID_MAX_LENGTH:
         raise IsotopeMappingError(
-            f"ChemistryLabID {text!r} is longer than {_LAB_ID_MAX} characters, "
+            f"ChemistryLabID {text!r} is longer than {_LAB_ID_MAX_LENGTH} characters, "
             "which is all the column holds"
         )
     return text
@@ -295,7 +295,8 @@ def prep_isotope_row(record: dict) -> dict:
         if value is None:
             # A qualifier or uncertainty with no value beside it qualifies
             # nothing; it is most likely a value typed into the wrong column.
-            filled = [
+            # Name the cells that *are* filled, so the message points at them.
+            stray = [
                 heading
                 for heading, cell in (
                     (column.qualifier, qualifier),
@@ -303,7 +304,7 @@ def prep_isotope_row(record: dict) -> dict:
                 )
                 if cell is not None
             ]
-            problems.append(f"{' and '.join(filled)} filled but {column.header} blank")
+            problems.append(f"{' and '.join(stray)} filled but {column.header} blank")
             continue
 
         # Strict: the qualifier has its own column, so a value carrying one is
