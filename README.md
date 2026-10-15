@@ -227,19 +227,28 @@ To get staging data into the database run `uv run python -m transfers.transfer` 
 ### 🧭 Project Structure
 ```text
 app/
+
+├── .dockerignore           # Files and directories for Docker to ignore
 ├── .env                    # Environment variables
+├── .gitignore              # Files and directories for git to ignore
+├── .gcloudignore           # Files and directories for Google Cloud to ignore
 ├── .pre-commit-config.yaml # pre-commit hook configuration file
-├── constants.py            # Static variables used throughout the code
+├── .release-please-manifest.json # Contains the current version. Do not updated by hand
+├── ADR{n}.md               # Documents containing architectual decision records
 ├── docker-compose.yml      # Docker compose file to build database and start server
 ├── entrypoint.sh           # Used by Docker to run database migrations and start server
 ├── main.py                 # FastAPI entry point
 |
 ├── alembic/                # Alembic configuration and migration scripts
-├── api/                    # Route declarations
-├── core/                   # Settings, application config, and dependencies
+├── api/                    # Custom route declarations
+├── cli/                    # Custom-built CLI for interacting with the API and DB, such as data ingestion protocols
+├── core/                   # Settings, application config, ogc api config, constants, and dependencies
+├── data_migrations         # Used to migrate data from one form to another. For data that already exists in DB, not for transferring data to the DB
 ├── db/                     # Database models, sessions, and engine
 ├── docker/                 # Custom Docker files
+├── docs/                   # Documentation about the app, such as decisions made and how things work
 ├── schemas/                # Pydantic schemas and validations
+├── scripts/                # Unique scripts for unique tasks. They do not comprise part of the API
 ├── services/               # Reusable business logic, helpers, and database interactions
 ├── tests/                  # Code tests
 └── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
@@ -271,17 +280,17 @@ Notes:
 
 ## 📦 Ocotillo CLI
 
-The `oco` command exposes project automation and bulk data utilities.
+The `oco` command exposes project automation and bulk data utilities. There are different commands (entry points), each of 
+which has multiple sub-commands.
 
 ```bash
-# Display available commands
+# Display available commands, some of which have or require sub-commands 
 oco --help
 
-# Bulk import water level data from a CSV
-oco water-levels bulk-upload --file water_levels.csv --output json
+# Display available sub-commands
+oco {command} --help
 ```
 
-The bulk upload command parses and validates each row, creates the corresponding field events/samples/observations, and prints a JSON summary (matching the API response shape) so the workflow can be automated or scripted.
 ## 🧪 Testing
 
 ```bash
