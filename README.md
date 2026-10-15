@@ -298,7 +298,7 @@ Notes:
 ## 📦 Ocotillo CLI
 
 The `oco` command exposes project automation, database utilities, and data ingestion utilities.
-There are different commands (entry points), each of which has multiple sub-commands.
+There are different commands, most of which have and require multiple sub-commands.
 
 ```bash
 # Display available commands, some of which have or require sub-commands 
