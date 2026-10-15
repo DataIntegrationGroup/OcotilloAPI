@@ -202,6 +202,8 @@ Notes:
 
 **Option B: Docker Compose (dev)**
 
+From the root folder of the project...
+
 ```bash
 # include -d flag for silent/detached build
 docker compose up --build
