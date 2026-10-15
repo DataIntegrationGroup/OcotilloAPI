@@ -23,7 +23,8 @@ isotope results already live.
 ## Why it is its own command
 
 Isotope results are lab data. They come back weeks or months after the sample
-and its field parameters were entered, and from several labs:
+is collected, usually well after its sample info and field parameters have
+been entered, and from several labs:
 
 | Lab | What it reports |
 |---|---|

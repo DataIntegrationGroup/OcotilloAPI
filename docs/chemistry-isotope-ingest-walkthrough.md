@@ -21,8 +21,9 @@ is one sample's results from one lab. For example, the labs currently report:
 
 The ingest only loads the measurement columns it knows about. If a lab starts
 reporting something new and a column is added to the tab for it, the ingest
-skips that column, and the report names it under **WARNINGS** (Step 6). Tell
-the Data Services lead, so the ingest can be set up to read it.
+skips that column, and the report names it under **WARNINGS** (Step 6). If
+this happens, tell the Data Services lead so the ingest can be set up to read
+it.
 
 You download the spreadsheet as an Excel file. The ingest reads the
 IsotopeResults tab and saves each result to the database, along with its lab,
@@ -31,15 +32,19 @@ the same measurement for a sample, both are kept.
 
 Each row finds its sample by the **field sample ID**: the well plus the crew's
 letter, such as `RA-092A`. On this tab it's in the column headed
-`WellPointID`, even though it holds the sample ID, not just the well.
+`WellPointID`, even though it holds the sample ID, not just the well ID.
 
 **The ingest never creates a sample.** The tab has no collection date, so it
 can only add results to a sample that's already in the database. Load the
-sample info first (Step 3 below).
+sample info before the isotope results (Step 3 below).
 
-As with the field sheet, it's safe to run more than once. If any row has a
-problem, the ingest stops and saves **nothing**, and a practice run lists
-every problem at once.
+As with the field sheet, it's safe to run more than once. A result that's
+already loaded is skipped, so nothing gets saved twice. A result that has
+changed since it was loaded stops the run instead (see
+[When a result changes](#when-a-result-changes)).
+
+If any row has a problem, the ingest stops and saves **nothing**. A practice
+run, or dry run, lists every problem at once.
 
 ## Before you start
 

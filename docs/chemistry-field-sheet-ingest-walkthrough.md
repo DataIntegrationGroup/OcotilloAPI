@@ -22,9 +22,9 @@ that file and saves them to the database. It's safe to run more than once. A
 row that's already loaded is skipped, so nothing gets saved twice.
 
 If any row in the sheet has a problem, the ingest stops and saves **nothing**.
-A practice run lists every problem at once. It can also save the problem rows
-to their own spreadsheet, and make a copy of the sheet without them, so the
-rest can load while the problem rows are fixed.
+A practice run, or dry run, lists every problem at once. It can also save the
+problem rows to their own spreadsheet, and make a copy of the sheet without
+them, so the rest can load while the problem rows are fixed.
 
 Each sample is known by its **field sample ID**, the `SamplePointID` column:
 the well plus the crew's letter, such as `WL-0264A`. The lab copies the same
