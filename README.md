@@ -320,4 +320,4 @@ uv run pytest
 uv run behave tests/features
 ```
 
-> Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
+Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
