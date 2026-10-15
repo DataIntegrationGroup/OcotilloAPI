@@ -228,6 +228,20 @@ Notes:
 
 To get staging data into the database run `uv run python -m transfers.transfer` from the root directory of the project.
 
+Configure the `.env` file with the appropriate credentials before running transfers.
+
+If contact transfers fail with `OwnerKey normalization collisions`, add or update
+`transfers/data/owners_ownerkey_mapper.json` to map inconsistent `OwnerKey` values
+to a single canonical spelling before re-running the transfer.
+
+To drop the existing schema and rebuild from migrations before transferring data, run:
+
+```bash
+export DROP_AND_REBUILD_DB=true
+```
+
+or set `DROP_AND_REBUILD_DB=true` in `.env`.
+
 ### 🧭 Project Structure
 ```text
 app/
@@ -306,23 +320,3 @@ uv run behave tests/features
 ```
 
 > Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
-
-## 🔄 Data Transfers
-
-Legacy or staging datasets can be imported using the transfer utilities:
-
-```bash
-python -m transfers.transfer
-```
-
-Configure the `.env` file with the appropriate credentials before running transfers.
-
-If contact transfers fail with `OwnerKey normalization collisions`, add or update
-`transfers/data/owners_ownerkey_mapper.json` to map inconsistent `OwnerKey` values
-to a single canonical spelling before re-running the transfer.
-
-To drop the existing schema and rebuild from migrations before transferring data, set:
-
-```bash
-export DROP_AND_REBUILD_DB=true
-```
