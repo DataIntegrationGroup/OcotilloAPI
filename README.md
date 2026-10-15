@@ -227,6 +227,7 @@ Notes:
 #### Staging Data
 
 To get staging data into the database run `uv run python -m transfers.transfer` from the root directory of the project.
+This data can be used for a variety of development purposes, such as OcotilloIU or to test data ingestion.
 
 Configure the `.env` file with the appropriate credentials before running transfers.
 
