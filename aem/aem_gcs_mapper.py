@@ -1042,6 +1042,28 @@ for folder_name, survey_id in SURVEY_ID_MAP.items():
                 }
             )
 
+# ── Keep source subfolders where flattening would collide ────────────────────
+# Destinations keep only the file name, so same-named files from different
+# subfolders (e.g. first- and second-pass inversion plots) would overwrite each
+# other. Only those files keep their subfolders relative to the survey folder,
+# so paths stay unique and traceable; all other paths are unchanged.
+sources_by_dest = {}
+for r in rows:
+    if r["action"] != "SKIP":
+        sources_by_dest.setdefault(r["proposed_gcs_path"], set()).add(r["source_path"])
+clashes = {dest for dest, sources in sources_by_dest.items() if len(sources) > 1}
+for r in rows:
+    if r["action"] == "SKIP" or r["proposed_gcs_path"] not in clashes:
+        continue
+    folder, _, fname = r["proposed_gcs_path"].rpartition("/")
+    survey_root = Path(ROOT) / r["survey_folder"]
+    subfolders = Path(os.path.relpath(Path(r["source_path"]).parent, survey_root))
+    if subfolders.parts and subfolders.parts[0] != ".":
+        r["proposed_gcs_path"] = f"{folder}/{subfolders.as_posix()}/{fname}"
+    r["action_notes"] = (
+        r["action_notes"] + " — source subfolders kept to avoid a path collision"
+    ).lstrip(" —")
+
 # Sort: survey → processing stage → filename
 STAGE_ORDER = {
     "raw_acquisition": 0,
