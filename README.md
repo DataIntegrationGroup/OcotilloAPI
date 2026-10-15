@@ -186,12 +186,14 @@ Choose one of the following:
 
 **Option A: Local PostgreSQL + PostGIS**
 
+From the root folder of the project...
+
 ```bash
 # run database migrations
 alembic upgrade head
 
 # start development server
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
 Notes:
