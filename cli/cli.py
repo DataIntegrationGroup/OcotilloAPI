@@ -1051,17 +1051,21 @@ def water_chemistry_manifest_status(
     typer.secho("=" * 72, fg=colors["accent"])
 
 
-def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> None:
-    """Print the outcome of a chemistry field-sheet import."""
-    payload = result.payload if isinstance(result.payload, dict) else {}
-    summary = payload.get("summary", {})
+def _print_sheet_ingest_header(
+    result, colors: dict[str, str], label: str, source: str
+) -> None:
+    """The top of a spreadsheet ingest's report: outcome, database, source.
 
-    if summary.get("dry_run"):
-        headline = "[CHEMISTRY FIELD SHEET] DRY RUN (nothing written)"
+    Shared by the field-sheet and isotope reports, so both say the same thing
+    about where a run went and what it archived.
+    """
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    if payload.get("summary", {}).get("dry_run"):
+        headline = f"[{label}] DRY RUN (nothing written)"
     elif result.exit_code == 0:
-        headline = "[CHEMISTRY FIELD SHEET] SUCCESS"
+        headline = f"[{label}] SUCCESS"
     else:
-        headline = "[CHEMISTRY FIELD SHEET] ABORTED -- nothing written"
+        headline = f"[{label}] ABORTED -- nothing written"
     report.banner(headline, colors, ok=result.exit_code == 0)
     _print_database(colors)
     typer.secho(f"Source: {source}", fg=colors["accent"])
@@ -1073,6 +1077,35 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
             fg=colors["accent"],
         )
     typer.echo()
+
+
+def _print_sheet_ingest_reports(payload: dict, colors: dict[str, str]) -> None:
+    """Where a spreadsheet ingest wrote its failed row workbook and loadable copy."""
+    reports = payload.get("reports") or {}
+    if not reports:
+        return
+    typer.echo()
+    typer.secho("REPORTS", fg=colors["accent"], bold=True)
+    labels = {
+        "failed_rows": "failed row workbook",
+        "loadable": "loadable copy",
+    }
+    for key, path in reports.items():
+        if path:
+            typer.secho(f"  - {labels[key]}: {path}", fg=colors["ok"])
+        else:
+            typer.secho(
+                f"  - {labels[key]}: not written, since no row failed",
+                fg=colors["muted"],
+            )
+
+
+def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> None:
+    """Print the outcome of a chemistry field-sheet import."""
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+
+    _print_sheet_ingest_header(result, colors, "CHEMISTRY FIELD SHEET", source)
 
     if summary:
         rows_with_issues = summary.get("validation_errors_or_warnings", 0)
@@ -1142,22 +1175,7 @@ def _render_field_sheet_result(result, colors: dict[str, str], source: str) -> N
 
     report.validation_errors_section(payload.get("validation_errors", []), colors)
 
-    reports = payload.get("reports") or {}
-    if reports:
-        typer.echo()
-        typer.secho("REPORTS", fg=colors["accent"], bold=True)
-        labels = {
-            "failed_rows": "failed row workbook",
-            "loadable": "loadable copy",
-        }
-        for key, path in reports.items():
-            if path:
-                typer.secho(f"  - {labels[key]}: {path}", fg=colors["ok"])
-            else:
-                typer.secho(
-                    f"  - {labels[key]}: not written, since no row failed",
-                    fg=colors["muted"],
-                )
+    _print_sheet_ingest_reports(payload, colors)
 
     report.rule(colors)
 
@@ -1222,8 +1240,8 @@ def water_chemistry_sync_sheet(
     """
     ingest the AMP chemistry field spreadsheet from Google Drive: the
     ChemistrySampleInfo and FieldParameters tabs, into NMA_Chemistry_SampleInfo
-    and NMA_FieldParameters. Lab result tabs in the same workbook are left to
-    the LIMS ingest.
+    and NMA_FieldParameters. The IsotopeResults tab loads separately, with
+    `isotope-sync-sheet`, once the labs report.
 
     Samples are matched to what is already recorded by field sample ID
     (SamplePointID, the well plus the crew's letter), so a field sample and its
@@ -1364,6 +1382,288 @@ def water_chemistry_field_upload(
         raise typer.Exit(1) from exc
 
     _render_field_sheet_result(result, colors, ", ".join(file_paths))
+    raise typer.Exit(result.exit_code)
+
+
+def _render_isotope_result(result, colors: dict[str, str], source: str) -> None:
+    """Print the outcome of an isotope results import."""
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+
+    _print_sheet_ingest_header(result, colors, "ISOTOPE RESULTS", source)
+
+    if summary:
+        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
+        report.summary_section(
+            [
+                ("rows read", summary.get("total_rows_processed", 0), "accent"),
+                ("results loaded", summary.get("total_rows_imported", 0), "ok"),
+                (
+                    "samples with results",
+                    summary.get("samples_with_results", 0),
+                    "ok",
+                ),
+                ("results skipped", summary.get("results_skipped", 0), "muted"),
+                ("rows empty", summary.get("rows_empty", 0), "muted"),
+                (
+                    "rows failed",
+                    summary.get("rows_failed", 0),
+                    "issue" if summary.get("rows_failed") else "ok",
+                ),
+                (
+                    "rows_with_issues",
+                    rows_with_issues,
+                    "issue" if rows_with_issues else "ok",
+                ),
+            ],
+            colors,
+            label_width=20,
+            value_width=6,
+            divider=False,
+        )
+
+    def _describe_result(entry: dict) -> str:
+        return (
+            f"{entry['sample_point_id']}: {entry['analyte']} "
+            f"({entry['analysis_lab']})"
+        )
+
+    report.bullet_section(
+        "SKIPPED (already recorded, identical)",
+        payload.get("skipped_results", []),
+        colors,
+        color_key="field",
+        title_color_key="muted",
+        formatter=_describe_result,
+    )
+    report.bullet_section(
+        "EMPTY ROWS (no results; nothing to load)",
+        payload.get("empty_rows", []),
+        colors,
+        color_key="field",
+        title_color_key="muted",
+        limit=None,
+        formatter=lambda entry: (
+            f"row {entry['row']}: {entry['sample_point_id'] or '(no ID)'} "
+            f"({entry['analysis_lab'] or 'no lab'})"
+        ),
+    )
+    report.bullet_section(
+        "WARNINGS (loaded, but check these)",
+        payload.get("warnings", []),
+        colors,
+        color_key="field",
+    )
+
+    report.validation_errors_section(payload.get("validation_errors", []), colors)
+
+    _print_sheet_ingest_reports(payload, colors)
+
+    report.rule(colors)
+
+
+@water_chemistry.command("isotope-sync-sheet")
+def water_chemistry_isotope_sync_sheet(
+    sheet: str = typer.Option(
+        None,
+        "--sheet-id",
+        "--url",
+        help=(
+            "Google spreadsheet id or URL holding the IsotopeResults tab. "
+            "Defaults to $CHEMISTRY_FIELD_SHEET_ID."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help=(
+            "Read, validate and report without writing anything -- no database "
+            "rows and no raw-zone snapshot."
+        ),
+    ),
+    replay: str = typer.Option(
+        None,
+        "--replay",
+        help=(
+            "Load an archived snapshot again instead of reading the sheet. "
+            "Pass a load id, or 'latest'."
+        ),
+    ),
+    no_raw: bool = typer.Option(
+        False,
+        "--no-raw",
+        help="Skip the raw-zone archive and map straight from the sheet.",
+    ),
+    raw_url: str = typer.Option(
+        None,
+        "--raw-url",
+        help=(
+            "Raw zone to archive into (gs://bucket/prefix or file:///path). "
+            "Defaults to $INGESTION_GCS_BUCKET, then $OCO_RAW_ZONE_DIR."
+        ),
+    ),
+    list_snapshots: bool = typer.Option(
+        False,
+        "--list-snapshots",
+        help="List the archived snapshots and exit.",
+    ),
+    failed_rows: str = typer.Option(
+        None,
+        "--failed-rows",
+        help=(
+            "Write the failed row workbook here: every row that stops the run, "
+            "why, and what it held. Written only when a row fails."
+        ),
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    ingest the IsotopeResults tab of the AMP chemistry field spreadsheet from
+    Google Drive into NMA_MinorTraceChemistry.
+
+    Results attach to samples already recorded under their field sample ID
+    (SamplePointID, the well plus the crew's letter), so load the sample info
+    with `sync-sheet` or `field-upload` first. Results from different labs are
+    kept side by side; one already stored is skipped, and one stored with a
+    different value stops the run for review. Any data-quality problem aborts
+    the whole import.
+    """
+    from services.chemistry_drive import ChemistryDriveConfigError
+    from services.chemistry_field_sheet import FieldSheetError
+    from services.chemistry_isotopes import (
+        ISOTOPE_DATASET,
+        replay_isotope_sheet,
+        sync_isotope_sheet,
+    )
+    from services.ingest_raw_zone import RawZoneError, list_snapshots as _snapshots
+
+    colors = _palette(theme)
+
+    if list_snapshots:
+        try:
+            snapshots = _snapshots(ISOTOPE_DATASET, raw_url=raw_url)
+        except RawZoneError as exc:
+            typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+            raise typer.Exit(1) from exc
+        report.banner("[ISOTOPE RESULTS] SNAPSHOTS", colors)
+        report.bullet_section(
+            "ARCHIVED SNAPSHOTS (newest last)",
+            snapshots,
+            colors,
+            color_key="field",
+            title_color_key="accent",
+            limit=None,
+        )
+        if not snapshots:
+            typer.secho("  none archived yet", fg=colors["muted"])
+        report.rule(colors)
+        raise typer.Exit(0)
+
+    try:
+        if replay:
+            result = replay_isotope_sheet(
+                None if replay == "latest" else replay,
+                dry_run=dry_run,
+                raw_url=raw_url,
+                failed_rows_path=failed_rows,
+            )
+            source = f"raw zone snapshot {replay}"
+        else:
+            result = sync_isotope_sheet(
+                sheet,
+                dry_run=dry_run,
+                archive=not no_raw,
+                raw_url=raw_url,
+                failed_rows_path=failed_rows,
+            )
+            source = sheet or os.environ.get("CHEMISTRY_FIELD_SHEET_ID", "")
+    except (ChemistryDriveConfigError, FieldSheetError, RawZoneError) as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    _render_isotope_result(result, colors, source)
+    raise typer.Exit(result.exit_code)
+
+
+@water_chemistry.command("isotope-upload")
+def water_chemistry_isotope_upload(
+    file_paths: list[str] = typer.Option(
+        ...,
+        "--file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help=(
+            "Downloaded copy of the field spreadsheet (.xlsx), or a .csv of its "
+            "IsotopeResults tab."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Read, validate and report without writing anything.",
+    ),
+    no_raw: bool = typer.Option(
+        False,
+        "--no-raw",
+        help="Skip the raw-zone archive and map straight from the file.",
+    ),
+    raw_url: str = typer.Option(
+        None,
+        "--raw-url",
+        help=(
+            "Raw zone to archive into (gs://bucket/prefix or file:///path). "
+            "Defaults to $INGESTION_GCS_BUCKET, then $OCO_RAW_ZONE_DIR."
+        ),
+    ),
+    failed_rows: str = typer.Option(
+        None,
+        "--failed-rows",
+        help=(
+            "Write the failed row workbook here: every row that stops the run, "
+            "why, and what it held. Written only when a row fails."
+        ),
+    ),
+    loadable: str = typer.Option(
+        None,
+        "--loadable",
+        help=(
+            "Write a loadable copy of the .xlsx export here, with every failed "
+            "row blanked, so the rest can load while those are fixed. Needs a "
+            "single .xlsx --file. Written only when a row fails."
+        ),
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    """
+    ingest the IsotopeResults tab from a downloaded copy of the AMP chemistry
+    field spreadsheet. Same rules as `isotope-sync-sheet`, for an engineer who
+    has the file but not Drive access to the sheet.
+    """
+    from services.chemistry_field_sheet import FieldSheetError
+    from services.chemistry_isotopes import upload_isotope_export
+    from services.ingest_raw_zone import RawZoneError
+
+    colors = _palette(theme)
+    try:
+        result = upload_isotope_export(
+            file_paths,
+            dry_run=dry_run,
+            archive=not no_raw,
+            raw_url=raw_url,
+            failed_rows_path=failed_rows,
+            loadable_path=loadable,
+        )
+    except (FieldSheetError, RawZoneError) as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    _render_isotope_result(result, colors, ", ".join(file_paths))
     raise typer.Exit(result.exit_code)
 
 

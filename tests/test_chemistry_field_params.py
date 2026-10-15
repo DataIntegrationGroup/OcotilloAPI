@@ -905,13 +905,6 @@ def test_upload_from_one_csv_per_tab(
 # ------------------------- raw zone -------------------------------------------
 
 
-@pytest.fixture()
-def raw_zone(tmp_path, monkeypatch):
-    """A raw zone on disk, with dlt's own state kept out of the developer's home."""
-    monkeypatch.setenv("DLT_DATA_DIR", str(tmp_path / "dlt"))
-    return (tmp_path / "raw").resolve().as_uri()
-
-
 def _workbook(tmp_path, sample_rows=None, param_rows=None):
     workbook = Workbook()
     workbook.remove(workbook.active)
