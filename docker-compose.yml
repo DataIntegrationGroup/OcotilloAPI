@@ -42,6 +42,7 @@ services:
       - PYGEOAPI_POSTGRES_USER=${POSTGRES_USER}
       - PYGEOAPI_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs_credentials.json
+      - UVICORN_RELOAD=${UVICORN_RELOAD}
     ports:
       - "8000:8000"
     depends_on:
