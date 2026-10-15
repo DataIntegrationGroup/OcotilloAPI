@@ -270,32 +270,30 @@ app/
 ├── scripts/                # Unique scripts for unique tasks. They do not comprise part of the API
 ├── services/               # Reusable business logic, helpers, and database interactions
 ├── tests/                  # Code tests
-└── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
+└── transfers/              # Scripts to transfer data from legacy systems to current db schema, as well as seed staging data
 ```
 
 ## Model Changes
 
 1. Revise models in the `db/` directory
-2. Revise schemas in the `schemas/` directory
+2. Run alembic to create upgrade/downgrade scripts
+    1. Make sure data is not lost due to upgrades/downgrades
+3. Revise schemas in the `schemas/` directory
     1. Add validators for both fields and models as necessary
       1. Validations on incoming data only should be handled by Pydantic and 422 errors will be raised (default Pydantic)
       2. Validations against values in the database will be handled at the endpoint with custom checks and 409 errors will be raised
-3. Revise tests
-    1. Revise fixtures in `tests/conftest.py`
-    2. Revise fields in POST test payloads and asserts
-    3. Revise fields in PATCH test payloads and asserts
-    4. Revise fields in GET all and GET by ID test asserts
+4. Revise tests
+    1. Revise fixtures and testing data
+    2. Revise tests and assertions
     5. Add tests for validations as necessary
-
-Bonus:
-- Update transfer scripts by revising fields and delineating where they come from in `NM_Aquifer`
+5. Revise documentation
 
 Notes:
 - All `Create` schema fields are defined as `<type>` if non-nullable and `<type> | None = None` if nullable
 - All `Update` schema fields are optional and default to `None`
 - All `Response` schema fields are defined as `<type>` if non-nullable and `<type> | None` if nullable
 - All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
-- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file---
+- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file
 
 ## 📦 Ocotillo CLI
 
