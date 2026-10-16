@@ -973,9 +973,10 @@ def propose(fpath, detected_type, survey_id, survey_folder):
         )
 
     if detected_type == "edi_mt":
+        # MT has its own survey_id alongside the AEM survey it was collected with
         return (
             "minimally_processed",
-            f"surveys/mimbres_mt/aem/raw/leveled_xyz/{fname}",
+            f"surveys/{sid}_mt/aem/raw/leveled_xyz/{fname}",
             "N",
             "",
             "MOVE",
