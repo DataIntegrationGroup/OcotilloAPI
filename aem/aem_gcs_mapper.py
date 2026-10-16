@@ -347,6 +347,12 @@ def classify_grd(fpath):
     return "grd_unknown_format"
 
 
+def is_xyz_in_raw_folder(fname, ext, parent):
+    # Fallback for SkyTEM XYZ exports whose names carry no raw/processed hint
+    # (e.g. Lower Rio Grande Production_10Hz_WB_XYZ.XYZ under "Data/Raw ")
+    return ext == ".xyz" and "raw" in (part.strip() for part in Path(parent).parts)
+
+
 DETECTORS = [
     # System files — check first so they don't match other patterns
     ("thumbs_db", is_thumbs_db),
@@ -413,6 +419,8 @@ DETECTORS = [
     ("gdoc_stub", is_gdoc),
     ("ini_config", is_ini),
     ("esri_mappackage", is_mpkx),
+    # Last, so every named XYZ type above wins
+    ("skytem_raw_xyz", is_xyz_in_raw_folder),
 ]
 
 
