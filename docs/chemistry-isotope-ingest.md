@@ -68,6 +68,19 @@ workbook, and a copy of the export with those rows blanked, which loads the
 rest while the failed rows are fixed. A failure fails the **whole sheet row**,
 so the loadable copy holds back every result on that row.
 
+**Empty rows**, with a sample and a lab but no results, don't stop the run,
+but both reports account for them:
+
+- The workbook lists them alongside the failed rows, in row order, with a
+  reason starting `Empty, not a failure`, so the review covers them in one
+  place. It is written when any row failed **or** is empty.
+- The loadable copy blanks them along with the failed rows, so every row left
+  in it is one that loads. It is still written only when a row failed;
+  otherwise the export loads as it is.
+
+The loadable copy shows what a dry run found would load, not what a real run
+loaded. The record of a real run is its report and its raw-zone snapshot.
+
 ## 1a. The raw zone
 
 As with the field sheet, every real run archives what it read before mapping,
