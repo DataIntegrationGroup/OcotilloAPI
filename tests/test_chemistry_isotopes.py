@@ -609,6 +609,67 @@ def test_failed_rows_and_a_loadable_copy_are_written(
     assert len(_results(sample_id)) == 5
 
 
+def test_empty_rows_are_listed_and_blanked_in_the_reports(
+    tmp_path, water_well_thing, _cleanup_isotopes
+):
+    """Every row left in the loadable copy is one that loads."""
+    sample_id = _record_sample(water_well_thing.id)
+    empty = {"WellPointID": POINT, "AnalysisLab": "Beta Analytic"}
+    path = _workbook(tmp_path, [_beta_row(), empty, _nmbgmr_row(WellPointID=WELL)])
+
+    result = upload_isotope_export(
+        [path],
+        dry_run=True,
+        failed_rows_path=tmp_path / "failed.xlsx",
+        loadable_path=tmp_path / "loadable.xlsx",
+    )
+
+    assert result.exit_code == 1
+    # One sheet, in row order, so every row with an issue is in one place.
+    failed = load_workbook(result.payload["reports"]["failed_rows"])
+    assert failed.sheetnames == ["IsotopeResults"]
+    sheet = failed["IsotopeResults"]
+    assert [c.value for c in sheet["A"][1:]] == [3, 4]
+    assert sheet["B2"].value.startswith("Empty, not a failure")
+    assert sheet["C2"].value == POINT
+    assert "has no sample letter" in sheet["B3"].value
+
+    loadable_path = result.payload["reports"]["loadable"]
+    copy = load_workbook(loadable_path)["IsotopeResults"]
+    assert copy["A2"].value == POINT
+    assert [c.value for c in copy[3]] == [None] * len(HEADER)
+    assert [c.value for c in copy[4]] == [None] * len(HEADER)
+
+    loaded = upload_isotope_export([loadable_path], archive=False)
+    assert loaded.exit_code == 0, loaded.stderr
+    assert loaded.payload["empty_rows"] == []
+    assert len(_results(sample_id)) == 5
+
+
+def test_empty_rows_alone_still_write_the_workbook(
+    tmp_path, water_well_thing, _cleanup_isotopes
+):
+    """Nothing failed, so the export loads as it is and needs no copy."""
+    _record_sample(water_well_thing.id)
+    empty = {"WellPointID": POINT, "AnalysisLab": "NMBGMR"}
+    path = _workbook(tmp_path, [_beta_row(), empty])
+
+    result = upload_isotope_export(
+        [path],
+        dry_run=True,
+        failed_rows_path=tmp_path / "failed.xlsx",
+        loadable_path=tmp_path / "loadable.xlsx",
+    )
+
+    assert result.exit_code == 0, result.stderr
+    reports = result.payload["reports"]
+    sheet = load_workbook(reports["failed_rows"])["IsotopeResults"]
+    assert [c.value for c in sheet["A"][1:]] == [3]
+    assert sheet["B2"].value.startswith("Empty, not a failure")
+    assert reports["loadable"] is None
+    assert not (tmp_path / "loadable.xlsx").exists()
+
+
 def test_upload_archives_the_tab_then_loads_that(
     tmp_path, raw_zone, water_well_thing, _cleanup_isotopes
 ):
