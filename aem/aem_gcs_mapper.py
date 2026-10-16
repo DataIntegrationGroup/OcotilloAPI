@@ -1068,7 +1068,9 @@ for r in rows:
     survey_root = Path(ROOT) / r["survey_folder"]
     subfolders = Path(os.path.relpath(Path(r["source_path"]).parent, survey_root))
     if subfolders.parts and subfolders.parts[0] != ".":
-        r["proposed_gcs_path"] = f"{folder}/{subfolders.as_posix()}/{fname}"
+        # Source folder names can end in a space (e.g. "Data/Raw "); trim each.
+        kept = "/".join(part.strip() for part in subfolders.parts)
+        r["proposed_gcs_path"] = f"{folder}/{kept}/{fname}"
     r["action_notes"] = (
         r["action_notes"] + " — source subfolders kept to avoid a path collision"
     ).lstrip(" —")
