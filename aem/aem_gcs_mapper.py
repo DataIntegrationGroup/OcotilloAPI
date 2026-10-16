@@ -347,6 +347,12 @@ def classify_grd(fpath):
     return "grd_unknown_format"
 
 
+def is_xyz_in_raw_folder(fname, ext, parent):
+    # Fallback for SkyTEM XYZ exports whose names carry no raw/processed hint
+    # (e.g. Lower Rio Grande Production_10Hz_WB_XYZ.XYZ under "Data/Raw ")
+    return ext == ".xyz" and "raw" in (part.strip() for part in Path(parent).parts)
+
+
 DETECTORS = [
     # System files — check first so they don't match other patterns
     ("thumbs_db", is_thumbs_db),
@@ -413,6 +419,8 @@ DETECTORS = [
     ("gdoc_stub", is_gdoc),
     ("ini_config", is_ini),
     ("esri_mappackage", is_mpkx),
+    # Last, so every named XYZ type above wins
+    ("skytem_raw_xyz", is_xyz_in_raw_folder),
 ]
 
 
@@ -973,9 +981,10 @@ def propose(fpath, detected_type, survey_id, survey_folder):
         )
 
     if detected_type == "edi_mt":
+        # MT has its own survey_id alongside the AEM survey it was collected with
         return (
             "minimally_processed",
-            f"surveys/mimbres_mt/aem/raw/leveled_xyz/{fname}",
+            f"surveys/{sid}_mt/aem/raw/leveled_xyz/{fname}",
             "N",
             "",
             "MOVE",
@@ -1041,6 +1050,30 @@ for folder_name, survey_id in SURVEY_ID_MAP.items():
                     "action_notes": action_notes,
                 }
             )
+
+# ── Keep source subfolders where flattening would collide ────────────────────
+# Destinations keep only the file name, so same-named files from different
+# subfolders (e.g. first- and second-pass inversion plots) would overwrite each
+# other. Only those files keep their subfolders relative to the survey folder,
+# so paths stay unique and traceable; all other paths are unchanged.
+sources_by_dest = {}
+for r in rows:
+    if r["action"] != "SKIP":
+        sources_by_dest.setdefault(r["proposed_gcs_path"], set()).add(r["source_path"])
+clashes = {dest for dest, sources in sources_by_dest.items() if len(sources) > 1}
+for r in rows:
+    if r["action"] == "SKIP" or r["proposed_gcs_path"] not in clashes:
+        continue
+    folder, _, fname = r["proposed_gcs_path"].rpartition("/")
+    survey_root = Path(ROOT) / r["survey_folder"]
+    subfolders = Path(os.path.relpath(Path(r["source_path"]).parent, survey_root))
+    if subfolders.parts and subfolders.parts[0] != ".":
+        # Source folder names can end in a space (e.g. "Data/Raw "); trim each.
+        kept = "/".join(part.strip() for part in subfolders.parts)
+        r["proposed_gcs_path"] = f"{folder}/{kept}/{fname}"
+    r["action_notes"] = (
+        r["action_notes"] + " — source subfolders kept to avoid a path collision"
+    ).lstrip(" —")
 
 # Sort: survey → processing stage → filename
 STAGE_ORDER = {
