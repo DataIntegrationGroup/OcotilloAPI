@@ -838,13 +838,13 @@ def replay_isotope_sheet(
     return _write_reports(result, tables, failed_rows_path=failed_rows_path)
 
 
-# How the failed row workbook lists a row with no results. It doesn't stop the
-# run, so it isn't a failure, but whoever works through the workbook needs to
-# see it: an empty row may be results still due from a lab, or results nobody
-# typed in.
+# How the failed row workbook lists a row with no results. Unlike the rows that
+# failed, it doesn't stop the run, but whoever works through the workbook needs
+# to see it: an empty row may be results still due from a lab, or results
+# nobody typed in.
 EMPTY_ROW_REASON = (
-    "Empty, not a failure: no results on this row, so nothing was loaded. Fill "
-    "them in once the lab reports, or delete the row."
+    "Empty, didn't stop the run: no results on this row, so nothing was "
+    "loaded. Fill them in once the lab reports, or delete the row."
 )
 
 

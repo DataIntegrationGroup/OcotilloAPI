@@ -72,8 +72,8 @@ so the loadable copy holds back every result on that row.
 but both reports account for them:
 
 - The workbook lists them alongside the failed rows, in row order, with a
-  reason starting `Empty, not a failure`, so the review covers them in one
-  place. It is written when any row failed **or** is empty.
+  reason starting `Empty, didn't stop the run`, so the review covers them in
+  one place. It is written when any row failed **or** is empty.
 - The loadable copy blanks them along with the failed rows, so every row left
   in it is one that loads. It is still written only when a row failed;
   otherwise the export loads as it is.

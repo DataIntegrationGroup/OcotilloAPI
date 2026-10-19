@@ -630,7 +630,7 @@ def test_empty_rows_are_listed_and_blanked_in_the_reports(
     assert failed.sheetnames == ["IsotopeResults"]
     sheet = failed["IsotopeResults"]
     assert [c.value for c in sheet["A"][1:]] == [3, 4]
-    assert sheet["B2"].value.startswith("Empty, not a failure")
+    assert sheet["B2"].value.startswith("Empty, didn't stop the run")
     assert sheet["C2"].value == POINT
     assert "has no sample letter" in sheet["B3"].value
 
@@ -665,7 +665,7 @@ def test_empty_rows_alone_still_write_the_workbook(
     reports = result.payload["reports"]
     sheet = load_workbook(reports["failed_rows"])["IsotopeResults"]
     assert [c.value for c in sheet["A"][1:]] == [3]
-    assert sheet["B2"].value.startswith("Empty, not a failure")
+    assert sheet["B2"].value.startswith("Empty, didn't stop the run")
     assert reports["loadable"] is None
     assert not (tmp_path / "loadable.xlsx").exists()
 

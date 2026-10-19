@@ -172,9 +172,9 @@ Open `<file-name>_isotope_failed_rows.xlsx` from Downloads. **Source row** is
 the row number in the Google Sheet, and **Why it failed** says what's wrong.
 Fix the problems **in the Google Sheet**, not in the downloaded file.
 
-Rows whose **Why it failed** starts with `Empty, not a failure` have a sample
-and a lab but no results. They didn't stop the run. Fill in the results once
-the lab reports them, or delete the row if it was added by mistake.
+Rows whose **Why it failed** starts with `Empty, didn't stop the run` have a
+sample and a lab but no results. Fill in the results once the lab reports
+them, or delete the row if it was added by mistake.
 
 | Why it failed says | How to fix it |
 |---|---|
