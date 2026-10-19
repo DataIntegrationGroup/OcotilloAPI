@@ -838,6 +838,16 @@ def replay_isotope_sheet(
     return _write_reports(result, tables, failed_rows_path=failed_rows_path)
 
 
+# How the failed row workbook lists a row with no results. Unlike the rows that
+# failed, it doesn't stop the run, but whoever works through the workbook needs
+# to see it: an empty row may be results still due from a lab, or results
+# nobody typed in.
+EMPTY_ROW_REASON = (
+    "Empty, didn't stop the run: no results on this row, so nothing was "
+    "loaded. Fill them in once the lab reports, or delete the row."
+)
+
+
 def _write_reports(
     result: ChemistryUploadResult,
     tables: Sequence[SheetTable],
@@ -845,27 +855,37 @@ def _write_reports(
     failed_rows_path: Path | str | None = None,
     loadable: tuple[Path, Path | str] | None = None,
 ) -> ChemistryUploadResult:
-    """Write the failed row workbook and loadable copy, when a row failed.
+    """Write the failed row workbook and loadable copy.
 
-    The same two reports as the field sheet's, for this one tab. A failure
-    fails the whole sheet row, so the loadable copy holds back every result on
-    it until it is fixed.
+    The same two reports as the field sheet's, for this one tab, plus the empty
+    rows. The workbook lists failed and empty rows together, in row order, so
+    there is one place to look; it is written when there is either. The
+    loadable copy blanks both, so every row left in it is one that loads, and
+    is written only when a row failed: otherwise the export loads as it is.
+
+    A failure fails the whole sheet row, so the loadable copy holds back every
+    result on it until it is fixed.
     """
     failed = result.payload.get("failed_rows", [])
+    empty = [
+        {"tab": ISOTOPE_TAB, "row": entry["row"], "reason": EMPTY_ROW_REASON}
+        for entry in result.payload.get("empty_rows", [])
+    ]
+    listed = failed + empty
     table = select_isotope_table(tables)
     by_tab = {ISOTOPE_TAB: table} if table is not None else {}
     reports: dict[str, str | None] = {}
     if failed_rows_path:
         reports["failed_rows"] = (
-            str(write_failed_rows_workbook(by_tab, failed, failed_rows_path))
-            if failed
+            str(write_failed_rows_workbook(by_tab, listed, failed_rows_path))
+            if listed
             else None
         )
     if loadable:
         source, path = loadable
         titles = {tab: t.title for tab, t in by_tab.items()}
         reports["loadable"] = (
-            str(write_loadable_copy(source, titles, failed, path)) if failed else None
+            str(write_loadable_copy(source, titles, listed, path)) if failed else None
         )
     result.payload["reports"] = reports
     return result

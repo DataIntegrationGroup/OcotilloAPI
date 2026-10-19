@@ -117,13 +117,15 @@ uv run oco water-chemistry isotope-upload --file ~/Downloads/<file-name>.xlsx --
     --loadable ~/Downloads/<file-name>_isotope_loadable.xlsx
 ```
 
-As with the field sheet, the last two lines ask for two extra files, written
-only if a row has a problem:
+As with the field sheet, the last two lines ask for two extra files:
 
 - **`<file-name>_isotope_failed_rows.xlsx`**: every row with a problem, with
-  its row number in the Google Sheet and why it failed.
+  its row number in the Google Sheet and why it failed. Empty rows are listed
+  on the same sheet, in row order, so every row that needs a look is in one
+  place. Written if any row failed or is empty.
 - **`<file-name>_isotope_loadable.xlsx`**: your download with the problem rows
-  blanked out on the IsotopeResults tab, so everything else can load now.
+  and the empty rows blanked out on the IsotopeResults tab, so every row left
+  in it is one that loads. Written only if a row failed.
 
 Read the top line of the report:
 
@@ -141,7 +143,7 @@ The summary counts what a real run would do:
 - **samples with results**: how many samples those results belong to.
 - **results skipped**: results already saved on an earlier run.
 - **rows empty**: rows with a lab but no results. They're listed under
-  **EMPTY ROWS** and skipped.
+  **EMPTY ROWS** and skipped. An empty row doesn't stop the run.
 - **rows failed**: rows with a problem. One practice run finds all of them.
 
 **If the top line says `ABORTED`, expect `0` for results loaded, samples with
@@ -169,6 +171,10 @@ the Data Services lead.
 Open `<file-name>_isotope_failed_rows.xlsx` from Downloads. **Source row** is
 the row number in the Google Sheet, and **Why it failed** says what's wrong.
 Fix the problems **in the Google Sheet**, not in the downloaded file.
+
+Rows whose **Why it failed** starts with `Empty, didn't stop the run` have a
+sample and a lab but no results. Fill in the results once the lab reports
+them, or delete the row if it was added by mistake.
 
 | Why it failed says | How to fix it |
 |---|---|
@@ -203,6 +209,10 @@ You don't have to wait for every row to be fixed. Do Step 6 with
 `<file-name>_isotope_loadable.xlsx` in place of `<file-name>.xlsx`. Once the
 rows are fixed, download a fresh copy and start again from Step 4. Results
 already loaded show as **results skipped**.
+
+The loadable copy shows what **would** load when you made it, not what **was**
+loaded. To see what a real run loaded, use its report, or the snapshot named
+on its `Archived` line.
 
 ## Step 6. Do the real run
 
