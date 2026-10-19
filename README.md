@@ -29,12 +29,17 @@ supports research, field operations, and public data delivery for the Bureau of 
 ## 🗺️ OGC API - Features
 
 The API exposes OGC API - Features endpoints under `/ogcapi` for publicly available data
-and `/ogcapi-internal` for both public and privata data using `pygeoapi`.
+and `/ogcapi-internal` for both public and private data using `pygeoapi`. `/ogcapi-internal` is for internal
+use only and includes private data, such as wells and measurements marked as private and contact details.
 In App Engine deployments, `/ogcapi` and `/ogcapi-internal` are served from the same
 application as the primary API. The services are intended to scale to zero
 outside business hours and be kept warm during the workday with Cloud Scheduler
 hits to `/_ah/warmup`. Access to `/ogcapi-internal` requires api keys, which are available 
 through the Data Services team.
+
+Note about `/ogcapi-internal`: accounts in the Authentik `OGC.Internal` group
+can create their own keys through `api/api_key.py`. See [docs/api-key-management.md](docs/api-key-management.md)
+for more information.
 
 ### Landing & metadata
 
@@ -178,7 +183,11 @@ Optional telemetry vars:
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Setup GCS credentials
-Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
+Create the file `gcs_credentials.json` in the root directory of the project and obtain its contents from a teammate. Set the
+environment `GOOGLE_APPLICATION_CREDENTIALS` variable in `.env` to the absolute
+path to `gcs_credentials.json`. Set it as the absolute path, not relative, since relative
+only works when if the app is spun up from the project root directory. Docker sets its own path
+so using an absolute path will not adversely effect the app if Docker is used.
 
 #### 6. Database and server
 
@@ -227,7 +236,9 @@ Notes:
 #### Staging Data
 
 To get staging data into the database run `uv run python -m transfers.transfer` from the root directory of the project.
-This data can be used for a variety of development purposes, such as OcotilloIU or to test data ingestion.
+This data can be used for a variety of development purposes, such as OcotilloIU or to test data ingestion. Note: `transfers/transfers.py`
+is no longer maintained and kept only for staging data and backfills. See [transfers/README.md](./transfers/README.md) for more
+information.
 
 Configure the `.env` file with the appropriate credentials before running transfers.
 
@@ -252,8 +263,8 @@ app/
 ├── .gitignore              # Files and directories for git to ignore
 ├── .gcloudignore           # Files and directories for Google Cloud to ignore
 ├── .pre-commit-config.yaml # pre-commit hook configuration file
-├── .release-please-manifest.json # Contains the current version. Do not updated by hand
-├── ADR{n}.md               # Documents containing architectual decision records
+├── .release-please-manifest.json # Contains the current version. Do not update by hand
+├── ADR{n}.md               # Documents containing architectural decision records
 ├── docker-compose.yml      # Docker compose file to build database and start server
 ├── entrypoint.sh           # Used by Docker to run database migrations and start server
 ├── main.py                 # FastAPI entry point
@@ -262,7 +273,7 @@ app/
 ├── api/                    # Custom route declarations
 ├── cli/                    # Custom-built CLI for interacting with the API and DB, such as data ingestion protocols
 ├── core/                   # Settings, application config, ogc api config, constants, and dependencies
-├── data_migrations         # Used to migrate data from one form to another. For data that already exists in DB, not for transferring data to the DB
+├── data_migrations/        # Used to migrate data from one form to another. For data that already exists in DB, not for transferring data to the DB
 ├── db/                     # Database models, sessions, and engine
 ├── docker/                 # Custom Docker files
 ├── docs/                   # Documentation about the app, such as decisions made and how things work
@@ -285,7 +296,7 @@ app/
 4. Revise tests
     1. Revise fixtures and testing data
     2. Revise tests and/or code so they all pass
-    5. Add new tests as necessary
+    3. Add new tests as necessary
 5. Revise documentation
 
 Notes:
