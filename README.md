@@ -33,7 +33,7 @@ The API serves OGC API - Features endpoints through `pygeoapi` under two paths:
 - `/ogcapi` serves publicly available data.
 - `/ogcapi-internal` is for internal use only. It is not filtered by `release_status`, so it serves private and draft records as well, such as wells and observations. It also includes contact details (name, organization, role, phone, email) for well owners and operators.
 
-Access to `/ogcapi-internal` requires an API key or an Authentik account in the `OGC.Internal` group. A Data Services team member can grant access to OGC.Internal`. `OGC.Internal` members mint their own API keys through the `/api_key` endpoints; keys expire within 365 days. Treat a key as a credential for personal data. See [docs/api-key-management.md](docs/api-key-management.md) and [docs/internal-ogc-desktop-gis.md](docs/internal-ogc-desktop-gis.md) for details.
+Access to `/ogcapi-internal` requires an API key or an Authentik account in the `OGC.Internal` group. A Data Services team member can grant access to OGC. Internal`. `OGC.Internal` members mint their own API keys through the `/api_key` endpoints; keys expire within 365 days. Treat a key as a credential for personal data. See [docs/api-key-management.md](docs/api-key-management.md) and [docs/internal-ogc-desktop-gis.md](docs/internal-ogc-desktop-gis.md) for details.
 
 When the API runs in App Engine, both paths are part of the same application as the main API. The application is meant to shut down outside business hours and stay available during the workday. Cloud Scheduler keeps it awake by sending requests to `/_ah/warmup`.
 
