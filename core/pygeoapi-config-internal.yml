@@ -416,16 +416,17 @@ resources:
     description: >-
       Trace elements and isotopes measured in groundwater -- arsenic,
       uranium, lead, iron, manganese, boron, lithium and dozens more, plus
-      the stable isotopes and carbon-14 used to work out how long water has
-      been underground. Built the same way as the major chemistry layer:
-      legacy laboratory records are mapped onto one canonical analyte set,
-      the most recent result for each analyte at each well is kept, and the
-      values are laid out as fixed columns each with its own units column.
+      the stable isotopes, carbon-14 and tritium used to work out how long
+      water has been underground. Built the same way as the major
+      chemistry layer: legacy laboratory records are mapped onto one
+      canonical analyte set, the most recent result for each analyte at
+      each well is kept, and the values are laid out as fixed columns each
+      with its own units column.
       Use it for contaminant screening and for questions about the age and
       origin of groundwater.
     keywords: [
       water-wells, water-quality, chemistry, trace-elements, minor-chemistry,
-      isotopes, arsenic, uranium, carbon-14, contaminants
+      isotopes, arsenic, uranium, carbon-14, tritium, contaminants
     ]
     extents:
       spatial:

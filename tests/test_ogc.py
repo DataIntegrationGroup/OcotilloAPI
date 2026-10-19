@@ -392,6 +392,57 @@ def test_ogc_minor_chemistry_wells_uses_latest_per_analyte(water_well_thing):
         session.commit()
 
 
+@pytest.mark.parametrize(
+    "view_name",
+    ["ogc_minor_chemistry_wells", "ogc_internal_minor_chemistry_wells"],
+)
+def test_ogc_minor_chemistry_wells_publishes_tritium(water_well_thing, view_name):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MINRTRIT1",
+            collection_date=datetime(2024, 5, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Legacy code 3H normalizes to the token 3h. The value is slightly
+        # negative because the tritium lab reports it that way for water with
+        # almost none; the view must carry it through, not drop it.
+        tritium = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRTRIT1",
+            analyte="3H",
+            symbol="",
+            sample_value=-0.05,
+            units="TU",
+            analysis_date=date(2024, 6, 1),
+        )
+        session.add(tritium)
+        session.commit()
+
+        session.execute(text(f"REFRESH MATERIALIZED VIEW {view_name}"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT tritium, tritium_units, analyte_count "
+                f"FROM {view_name} WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.tritium) == -0.05
+        assert row.tritium_units == "TU"
+        assert row.analyte_count == 1
+
+        session.delete(tritium)
+        session.delete(csi)
+        session.commit()
+        session.execute(text(f"REFRESH MATERIALIZED VIEW {view_name}"))
+        session.commit()
+
+
 def test_ogc_water_elevation_wells_computes_elevation_minus_depth_to_water(
     water_well_thing, groundwater_level_observation
 ):

@@ -8,6 +8,13 @@ shared between f4a5b6c7d8e9 (public) and 2d3c3a268652 (internal). If someone
 fixes an analyte mapping in one file without the other, the public and
 internal chemistry layers silently diverge -- this test turns that into a
 loud, specific CI failure instead.
+
+The minor chemistry comparisons guard superseded copies. cab78adfe059 rebuilt
+both minor views (adding tritium) from one shared builder, so the live
+definition lives there and can't drift between mounts. Change the minor
+analyte mapping in a new migration copied from cab78adfe059, not in these two
+files: editing them keeps this test green and changes nothing in the database.
+The major chemistry comparisons still guard the live definitions.
 """
 
 import ast

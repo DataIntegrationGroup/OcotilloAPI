@@ -89,15 +89,16 @@ supports it.
    view is built. That belongs in the collection description.
 3. Run `uv run pytest tests/test_ogc_field_descriptions.py`.
 
-The 190 chemistry analyte columns are generated:
+The 192 chemistry analyte columns are generated:
 
 ```bash
 uv run python -m cli.generate_chemistry_field_descriptions
 ```
 
 Review the output and paste it into the YAML. The generator reads the analyte
-lists out of the view migration — `core/parameter.json` holds only two field
-parameters, so the lexicon cannot supply this. A hand-written entry in the YAML
+lists out of the migrations that last built each view, named at the top of the
+script — `core/parameter.json` holds only two field parameters, so the lexicon
+cannot supply this. A hand-written entry in the YAML
 wins over the generated one.
 
 ### Why not `COMMENT ON COLUMN`
