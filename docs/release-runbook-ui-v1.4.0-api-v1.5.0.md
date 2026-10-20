@@ -120,14 +120,13 @@ not on the day.
 
       ```bash
       gcloud auth login
-      gcloud app versions list --service=ocotillo-api --project=<GCP_PROJECT_ID>
-      gcloud app versions list --service=ocotillo     --project=<GCP_PROJECT_ID>
+      gcloud app versions list --service=ocotillo-api --project=waterdatainitiative-271000
+      gcloud app versions list --service=ocotillo     --project=waterdatainitiative-271000
       ```
 
-      `<GCP_PROJECT_ID>` is the `GCP_PROJECT_ID` variable under each repo's
-      **Settings → Secrets and variables → Actions → Variables**. If you cannot
-      see that page, ask the Deployer for the value. Write it here:
-      `<GCP_PROJECT_ID> = ______`.
+      Both services live in the GCP project `waterdatainitiative-271000`.
+      If either command returns a permission error, ask the Deployer for
+      App Engine viewer access on that project.
 
 - [ ] **Accounts for testing**: you can sign in to staging and production
       Ocotillo, and you know of at least one user in `AMP.Admin` who can test
@@ -151,9 +150,9 @@ Run both of these and paste the output into the release channel. These are the
 versions you roll back to if something goes wrong.
 
 ```bash
-gcloud app versions list --service=ocotillo-api --project=<GCP_PROJECT_ID> \
+gcloud app versions list --service=ocotillo-api --project=waterdatainitiative-271000 \
   --sort-by=~version.createTime --limit=5
-gcloud app versions list --service=ocotillo --project=<GCP_PROJECT_ID> \
+gcloud app versions list --service=ocotillo --project=waterdatainitiative-271000 \
   --sort-by=~version.createTime --limit=5
 ```
 
@@ -173,8 +172,8 @@ The data migrations in section 6 have no undo. The backup is the only way back.
 Ask the Database owner to run:
 
 ```bash
-gcloud sql backups create --instance=<PROD_INSTANCE> \
-  --project=<GCP_PROJECT_ID> \
+gcloud sql backups create --instance=dataservices \
+  --project=waterdatainitiative-271000 \
   --description="pre-release-1.4 (API v1.5.0)"
 ```
 
@@ -265,7 +264,7 @@ channel. Any `FAIL` means stop.
 Find the staging UI URL:
 
 ```bash
-gcloud app services browse ocotillo-staging --project=<GCP_PROJECT_ID> --no-launch-browser
+gcloud app services browse ocotillo-staging --project=waterdatainitiative-271000 --no-launch-browser
 ```
 
 Then check each of these and tick them off in the channel:
@@ -395,7 +394,7 @@ curl -s https://ocotillo-api.newmexicowaterdata.org/health
 Expect JSON that reports `1.5.0` and a healthy database. Then:
 
 ```bash
-gcloud app versions list --service=ocotillo-api --project=<GCP_PROJECT_ID> \
+gcloud app versions list --service=ocotillo-api --project=waterdatainitiative-271000 \
   --sort-by=~version.createTime --limit=3
 ```
 
@@ -631,7 +630,7 @@ Send all traffic back to the version you recorded in 2.3:
 ```bash
 gcloud app services set-traffic ocotillo \
   --splits=<UI_PREVIOUS_VERSION>=1 \
-  --project=<GCP_PROJECT_ID>
+  --project=waterdatainitiative-271000
 ```
 
 This takes effect in about a minute and changes no data. It does not change
@@ -644,7 +643,7 @@ forward with a hotfix (section 10) before merging anything else to UI
 ```bash
 gcloud app services set-traffic ocotillo-api \
   --splits=<API_PREVIOUS_VERSION>=1 \
-  --project=<GCP_PROJECT_ID>
+  --project=waterdatainitiative-271000
 ```
 
 That gets `v1.4.0` code serving again. This release has no schema migrations,
