@@ -96,7 +96,7 @@ Fill these in before release day.
 |---|---|---|
 | Release driver | `<you>` | Runs every step in this document and posts each step in the release channel |
 | Deployer (approver) | `<senior engineer>` | Approves the production API deploy in GitHub (step 4.5). Must be in the `production` environment's required reviewers. |
-| Database owner | `<senior engineer>` | Takes the Cloud SQL backup (2.4) and makes the dry-run call on the data migrations (6.1) |
+| Database owner | `<senior engineer>` | Takes the Cloud SQL backup (2.3) and makes the dry-run call on the data migrations (6.1) |
 | Rollback decider | `<lead>` | Makes the call to roll back (section 9). The release driver never rolls back alone. |
 
 Release channel: `<#channel>`. Post a one-line message at the start and end of
@@ -132,19 +132,7 @@ not on the day.
       Ocotillo, and you know of at least one user in `AMP.Admin` who can test
       a HydroSync publish (step 8.2).
 
-### 2.2 Confirm the release-please merge token exists
-
-The Release PR merges itself using the `FORWARD_MERGE_TOKEN` repo secret. Ask
-the Deployer to confirm it exists under OcotilloAPI **Settings → Secrets and
-variables → Actions → Repository secrets**, and that it belongs to a machine
-account, **not** to a person who is also a Deployer (see
-[`release-flow.md`](release-flow.md) step 2.4 for why that matters).
-
-If it does not exist, the release still works, but step 4.3 becomes manual and
-the person who merges the Release PR **cannot** approve the deploy. Plan for
-two Deployers to be available.
-
-### 2.3 Write down what is serving now (your rollback targets)
+### 2.2 Write down what is serving now (your rollback targets)
 
 Run both of these and paste the output into the release channel. These are the
 versions you roll back to if something goes wrong.
@@ -166,7 +154,7 @@ deletes the oldest version on every deploy. Check that the version you just
 recorded will still exist after one more deploy. If it is the oldest one in
 the list, tell the Deployer before release day.
 
-### 2.4 Database backup (Database owner)
+### 2.3 Database backup (Database owner)
 
 The data migrations in section 6 have no undo. The backup is the only way back.
 Ask the Database owner to run:
@@ -180,7 +168,7 @@ gcloud sql backups create --instance=dataservices \
 Do this **on release day, right before section 4**, not the day before, so the
 backup includes yesterday's data. Record the backup id: `______`.
 
-### 2.5 Check the last release's data migrations
+### 2.4 Check the last release's data migrations
 
 The v1.4.0 release left four data migrations to apply by hand. Confirm they
 were applied before you add two more.
@@ -204,7 +192,7 @@ apply them as part of this release without a decision.
 
 `status` applies nothing. It is always safe to run.
 
-### 2.6 Announce the freeze
+### 2.5 Announce the freeze
 
 Post in the release channel: "Merge freeze on `staging` in OcotilloUI and
 OcotilloAPI from `<time>` until Release 1.4 is done." Anything merged into
@@ -296,7 +284,7 @@ Post "Starting 4. API promotion" in the channel.
 
 ### 4.1 Take the backup
 
-Ask the Database owner to run the backup in 2.4 now, and wait until they post
+Ask the Database owner to run the backup in 2.3 now, and wait until they post
 the backup id.
 
 ### 4.2 Open and merge the promotion PR
@@ -474,7 +462,7 @@ OcotilloAPI → **Actions** → **Data Migrations** → **Run workflow**:
 - environment: `production`
 - action: `status`
 
-Confirm the two new ids are listed as **pending** and the four from 2.5 are
+Confirm the two new ids are listed as **pending** and the four from 2.4 are
 **applied**.
 
 ### 6.3 Run each migration, one at a time
@@ -569,7 +557,7 @@ in 4.5.
 
 If **install & build** fails, nothing has shipped, and production still serves
 v1.3.0. Stop and ask. If **deploy** fails, check with `gcloud app versions list`
-(section 2.3) which version is serving before doing anything else.
+(section 2.2) which version is serving before doing anything else.
 
 ---
 
@@ -625,7 +613,7 @@ to report clearly what broke, when, and which step you were on.
 
 ### Roll back the UI (fast, safe)
 
-Send all traffic back to the version you recorded in 2.3:
+Send all traffic back to the version you recorded in 2.2:
 
 ```bash
 gcloud app services set-traffic ocotillo \
@@ -651,7 +639,7 @@ so v1.4.0 code works against the database unchanged.
 
 **Data migrations do not roll back** with traffic. If a data migration is the
 problem, the options are a narrow corrective data migration (each migration's
-docstring explains how) or restoring the 2.4 backup. Both are the Database
+docstring explains how) or restoring the 2.3 backup. Both are the Database
 owner's decision. Never restore a backup on your own.
 
 If you roll back the API, roll back the UI too unless the decider says
@@ -695,9 +683,9 @@ Fill this in as you go. It is the record of what actually happened.
 
 | Step | Time | Who | Result / link |
 |---|---|---|---|
-| 2.3 API serving version | | | |
-| 2.3 UI serving version | | | |
-| 2.4 Backup id | | | |
+| 2.2 API serving version | | | |
+| 2.2 UI serving version | | | |
+| 2.3 Backup id | | | |
 | 3.1 #425 merged | | | |
 | 4.2 API promotion PR | | | |
 | 4.3 Release PR (1.5.0) | | | |
