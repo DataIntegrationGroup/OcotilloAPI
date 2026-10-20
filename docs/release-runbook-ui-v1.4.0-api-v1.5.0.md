@@ -194,10 +194,44 @@ apply them as part of this release without a decision.
 
 ### 2.5 Announce the freeze
 
-Post in the release channel: "Merge freeze on `staging` in OcotilloUI and
-OcotilloAPI from `<time>` until Release 1.4 is done." Anything merged into
-`staging` after you verify it (section 3) would ship without having been
-tested.
+Announce it in **two** places.
+
+**1. The release channel (for the team).** Post: "Merge freeze on `staging` in
+OcotilloUI and OcotilloAPI from `<time>` until Release 1.4 is done." Anything
+merged into `staging` after you verify it (section 3) would ship without having
+been tested.
+
+**2. The public status page, <https://ocotillo.openstatus.dev> (for users).**
+Users don't care about a merge freeze. What they need to know is that a release
+is coming and the app may briefly misbehave while it deploys. Post it as a
+**maintenance** entry:
+
+1. Sign in to the OpenStatus dashboard at <https://app.openstatus.dev>. If you
+   don't have an account on the Ocotillo workspace, ask the Deployer for an
+   invite before release day.
+2. Open the **ocotillo** status page and create a new **maintenance**.
+3. Fill it in:
+   - **Title:** `Ocotillo release 1.4`
+   - **Start / end:** the release window you agreed with the team (for example
+     the day's start time plus 3 hours). Give it more time than you expect to
+     need. Finishing early looks fine to users; running past the window looks
+     like an outage.
+   - **Affected:** the OcotilloAPI production monitor (and the UI, if it is
+     listed)
+   - **Message:**
+
+     > We are releasing an update to Ocotillo (web app v1.4.0, API v1.5.0)
+     > during this window. Ocotillo stays available, but you may need to
+     > refresh the page, and HydroSync publishing should wait until the window
+     > ends. New in this release: a public landing page, account sign-up
+     > requests, HydroSync (formerly the hydrograph corrector) improvements,
+     > and chemistry report updates.
+
+4. Save it, then open <https://ocotillo.openstatus.dev> in a private window and
+   check that the maintenance shows. Paste the link in the release channel.
+
+Post the status page entry **at least one working day before** the release, so
+users who subscribe to it get notice.
 
 ---
 
@@ -604,12 +638,21 @@ For 30 minutes after the UI deploy, keep an eye on:
 
 Post "Release 1.4 done: UI v1.4.0, API v1.5.0" in the channel.
 
+Then close the maintenance on <https://ocotillo.openstatus.dev>: open it in the
+OpenStatus dashboard, set its end time to now (or mark it complete), and add
+an update: "Release 1.4 is complete. Refresh Ocotillo to get the new version."
+
 ---
 
 ## 9. Rollback
 
 **The rollback decider makes the call, not the release driver.** Your job is
 to report clearly what broke, when, and which step you were on.
+
+If there is a rollback or any user-visible outage, add an update to the
+maintenance on <https://ocotillo.openstatus.dev> right away, e.g. "We found a
+problem with the release and have reverted to the previous version.
+Ocotillo is available." The rollback decider approves the wording.
 
 ### Roll back the UI (fast, safe)
 
@@ -669,6 +712,7 @@ next.
 - [ ] API back-merge PR `production → staging` merged (section 5)
 - [ ] Data migration logs saved to the release ticket (6.3)
 - [ ] Post "Merge freeze lifted" in the release channel
+- [ ] Maintenance on <https://ocotillo.openstatus.dev> closed with a completion update (section 8.3)
 - [ ] Release notes circulated to users: the new landing and signup pages, the
       HydroSync rename and what changed in it, chemistry report standards, and
       wells from the field inventory now appearing as public
