@@ -30,6 +30,10 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+# Load .env file FIRST, before any database imports. Do not override
+# environment variables already set by the runtime (e.g., Cloud Run jobs).
+load_dotenv()
+
 from transfers.thing_transfer import (
     transfer_rock_sample_locations,
     transfer_springs,
@@ -42,10 +46,6 @@ from transfers.thing_transfer import (
     transfer_other_site_types,
     transfer_outfall_wastewater_return_flow,
 )
-
-# Load .env file FIRST, before any database imports. Do not override
-# environment variables already set by the runtime (e.g., Cloud Run jobs).
-load_dotenv()
 
 # In managed runtime environments, DB_DRIVER is occasionally omitted while
 # CLOUD_SQL_* vars are present. Default to cloudsql in that case to avoid
