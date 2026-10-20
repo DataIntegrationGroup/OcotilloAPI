@@ -233,6 +233,73 @@ is coming and the app may briefly misbehave while it deploys. Post it as a
 Post the status page entry **at least one working day before** the release, so
 users who subscribe to it get notice.
 
+
+### 2.6 Set up the staging smoke test
+
+You run the smoke test in section 3.3. Set it up today, because two of the
+steps depend on other people.
+
+**What the smoke test is.** `scripts/smoke_test.py` in OcotilloAPI sends a
+handful of **read-only** HTTP requests to a deployed API and reports PASS,
+FAIL or SKIP for each one. It needs no database access and doesn't write
+anything. It runs 13 checks in three groups:
+
+| Group | Checks | Needs |
+|---|---|---|
+| Public | `/health` (app up and the database reachable), `/docs`, `/ogcapi/collections` lists the public layers, `water_well_field_operations` is **not** on the public mount, `/ogcapi-internal` refuses an anonymous request and a junk credential | nothing |
+| API key | `/ogcapi-internal/collections` with an API key sent three ways (bearer header, HTTP Basic, `?token=`), which are the ways ArcGIS Pro and QGIS send it; `water_well_field_operations` returns rows with a credential and refuses without one | a **staging** API key |
+| Authentik | `/ogcapi-internal/collections` with your login token, and `GET /api_key` lists your keys without leaking them | an Authentik **access token** for staging |
+
+With no credentials, 7 checks pass and 6 are skipped. That proves very little,
+so you need both credentials.
+
+**1. Check you are in `OGC.Internal`.** The internal mount and API keys are
+limited to the Authentik group `OGC.Internal`. Sign in to the **staging** UI,
+<https://ocotillo-staging.newmexicowaterdata.org>, and open **Settings**. If
+you see an **API keys** card, you are in the group. If you don't, ask the Deployer to add you to `OGC.Internal`
+in Authentik, or to run 3.3 for you.
+
+**2. Install the tools.** You need `git`, `uv`, and Python 3.13 (`uv`
+installs Python for you). Then:
+
+```bash
+git clone https://github.com/DataIntegrationGroup/OcotilloAPI.git
+cd OcotilloAPI
+git checkout --detach origin/staging
+uv sync --locked
+uv run python -m scripts.smoke_test --help
+```
+
+The last command should print the script's options. You do **not** need a
+`.env`, a database, or Docker for the smoke test.
+
+**3. Mint a staging API key.** In the **staging** UI, open **Settings → API
+keys**, click to create a key, and name it `release-1.4-smoke-<your name>`.
+The full key is shown **once**. Copy it into your password manager now, not
+into a file in the repo (the repo's `.gitignore` covers `.env` only, so a file
+like `.env.staging` could get committed). A key minted on staging only works
+against staging. Keys expire after 365 days at most. Revoke this one after the
+release (section 11).
+
+**4. Learn how to get an Authentik token.** The token is what the UI sends to
+the API after you sign in. It expires within minutes, so you'll copy a fresh
+one on release day just before running the test. Practise it now:
+
+1. Sign in to <https://ocotillo-staging.newmexicowaterdata.org> in Chrome or
+   Firefox.
+2. Open DevTools (`F12`, or `Cmd+Option+I` on a Mac).
+3. **Application** tab (Chrome) or **Storage** tab (Firefox) → **Local
+   Storage** → the staging UI's address.
+4. Find the key `access_token` and copy its value. It's a long string that
+   starts with `eyJ`.
+
+Treat it like a password: don't paste it into chat or a ticket. It is your
+identity until it expires.
+
+**5. Dry run the test today.** Do 3.3 now against staging, end to end. If it
+doesn't end with `13 passed, 0 failed, 0 skipped`, sort it out with the
+Deployer today, not during the release.
+
 ---
 
 ## 3. Release day: verify staging
@@ -267,29 +334,78 @@ If either is red, stop. Do not release over red CI.
 
 ### 3.3 Smoke test the staging API
 
-The API repo has a read-only smoke test script. From an OcotilloAPI checkout of
-`staging`, with your `.env` set up (see the API README):
+You set this up the day before, in 2.6. Do it in this order, because the
+Authentik token expires within minutes.
 
-```bash
-git fetch origin && git checkout origin/staging
-uv sync --locked
-uv run python -m scripts.smoke_test \
-  --base-url https://ocotillo-api-staging.newmexicowaterdata.org
-```
+1. In your OcotilloAPI checkout, get the latest `staging`:
 
-It exits non-zero on any failure. Checks it has no credentials for are
-**skipped**, not failed. Read the summary line at the end and paste it into the
-channel. Any `FAIL` means stop.
+   ```bash
+   cd OcotilloAPI
+   git fetch origin && git checkout --detach origin/staging
+   uv sync --locked
+   ```
+
+2. Load the staging API key you minted in 2.6. `read -s` keeps it off the
+   screen and out of your shell history:
+
+   ```bash
+   read -s -p "Staging API key: " SMOKE_API_KEY && export SMOKE_API_KEY && echo
+   ```
+
+3. Get a fresh Authentik token (2.6, step 4), then load it the same way:
+
+   ```bash
+   read -s -p "Authentik token: " SMOKE_TOKEN && export SMOKE_TOKEN && echo
+   ```
+
+4. Run the smoke test **straight away**:
+
+   ```bash
+   uv run python -m scripts.smoke_test \
+     --base-url https://ocotillo-api-staging.newmexicowaterdata.org \
+     --env-file /dev/null \
+     --strict
+   ```
+
+   `--env-file /dev/null` stops the script from reading `API_KEY` out of your
+   local development `.env`. That key belongs to your local API, so staging
+   would answer `401`. `--strict` turns any **skipped** check into a failure,
+   so the run can't pass while quietly testing nothing.
+
+5. Read the last lines of the output. A good run ends with:
+
+   ```
+   13 passed, 0 failed, 0 skipped
+   ```
+
+   Paste that line into the release channel.
+
+6. Clear the credentials from your shell:
+
+   ```bash
+   unset SMOKE_API_KEY SMOKE_TOKEN
+   ```
+
+**Reading the result**
+
+| You see | It means | Do |
+|---|---|---|
+| `13 passed, 0 failed, 0 skipped` | Staging is good | Carry on |
+| `FAIL GET /ogcapi-internal/collections (Authentik bearer)` and `FAIL GET /api_key lists your keys`, both with `401` | Your token expired between step 3 and step 4 | Get a new token, run step 3 and step 4 again |
+| `FAIL ... (API key, bearer/basic/?token=)` with `401` | The key is wrong, revoked, or minted on production instead of staging | Mint a new key on **staging** (2.6, step 3) |
+| `FAIL ... (Authentik bearer)` with `403` | Your token is valid, but your account is not in `OGC.Internal` | Ask the Deployer; see 2.6, step 1 |
+| `SKIP` lines, and `--strict: skipped checks count as failures` | A credential wasn't exported | Check `echo ${SMOKE_API_KEY:+set} ${SMOKE_TOKEN:+set}` prints `set set` |
+| Any `FAIL` on `/health`, `/docs`, `/ogcapi/collections`, `water_well_field_operations absent from public mount`, or `(anonymous) -> 401` | A real problem with staging | **Stop.** Post the full output in the channel |
+
+The last row matters most. `water_well_field_operations` carries landowner
+names, phone numbers and emails. If that check fails, the data may be public,
+so treat it as an incident rather than a test failure.
 
 ### 3.4 Click through the staging UI
 
-Find the staging UI URL:
-
-```bash
-gcloud app services browse ocotillo-staging --project=waterdatainitiative-271000 --no-launch-browser
-```
-
-Then check each of these and tick them off in the channel:
+Open <https://ocotillo-staging.newmexicowaterdata.org> in a private/incognito
+window, so you don't get a cached old build. Then check each of these and tick
+them off in the channel:
 
 - [ ] The footer of the side navigation reads **v1.4.0**
 - [ ] Landing page loads, and the light/dark toggle works
@@ -712,6 +828,7 @@ next.
 - [ ] API back-merge PR `production → staging` merged (section 5)
 - [ ] Data migration logs saved to the release ticket (6.3)
 - [ ] Post "Merge freeze lifted" in the release channel
+- [ ] Revoke your `release-1.4-smoke-…` API key in the staging UI (Settings → API keys)
 - [ ] Maintenance on <https://ocotillo.openstatus.dev> closed with a completion update (section 8.3)
 - [ ] Release notes circulated to users: the new landing and signup pages, the
       HydroSync rename and what changed in it, chemistry report standards, and
