@@ -15,6 +15,7 @@ python -m cli.cli --help
 
 ## Common commands
 
+- `python -m cli.cli db-info` (which database, user and server the CLI reaches)
 - `python -m cli.cli restore-local-db path/to/dump.sql`
 - `python -m cli.cli restore-local-db gs://ocotillo/sql-exports/latest.sql.gz`
 - `python -m cli.cli scoped-transfer --pointid SM-0001`

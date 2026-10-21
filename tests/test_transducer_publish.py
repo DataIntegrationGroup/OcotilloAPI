@@ -25,7 +25,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import event, select, text
 
 from core.dependencies import amp_admin_function, amp_viewer_function
 from db import Deployment, Sensor, Thing, TransducerObservation
@@ -176,6 +176,46 @@ def test_publish_creates_one_block_and_all_of_its_readings(published_well):
     # Span is derived from the data, not sent by the client.
     assert block["start_datetime"] == "2025-01-15T00:00:00Z"
     assert block["end_datetime"] == "2025-01-15T12:00:00Z"
+
+
+def test_publish_batches_its_readings_rather_than_one_round_trip_each(
+    published_well,
+):
+    """
+    BDMS-1445: a plain executemany goes to pg8000 one row per round trip, so
+    publish time grew with the row count -- noticeable at a few hundred
+    readings and past the request timeout at ~47k. The readings have to reach
+    the database as a few multi-row INSERT statements.
+
+    Asserts the statement shape rather than a duration, which would be flaky
+    and, against a database a millisecond away, would not show the problem.
+    """
+    thing_id, _ = published_well
+    count = 2500
+    rows_per_statement = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        # The space and bracket keep the block table's INSERT out of this.
+        if (
+            statement.lstrip()
+            .upper()
+            .startswith("INSERT INTO TRANSDUCER_OBSERVATION (")
+        ):
+            # One "(%s" per VALUES tuple. An executemany would have one tuple
+            # and its rows in `parameters`, which is the round-trip-per-row case.
+            rows_per_statement.append(statement.count("(%s"))
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        response = client.post(PUBLISH_URL, json=_payload(thing_id, hours=range(count)))
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert response.status_code == 201, response.text
+    assert response.json()["observation_count"] == count
+    assert sum(rows_per_statement) == count, rows_per_statement
+    # Hundreds of rows to a statement; the exact page size is SQLAlchemy's.
+    assert len(rows_per_statement) <= count // 100, rows_per_statement
 
 
 def test_published_readings_come_back_from_the_read_endpoint(published_well):

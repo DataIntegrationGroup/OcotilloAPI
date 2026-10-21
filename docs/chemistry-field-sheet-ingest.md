@@ -18,11 +18,17 @@ and `FieldParameters` tabs become `NMA_Chemistry_SampleInfo` and
   (`db/nma_legacy.py`).
 
 The same workbook also carries `GenChemResults` and `IsotopeResults`. **This
-ingest does not read them** — lab results are the LIMS ingest's business.
+ingest does not read them.** `IsotopeResults` has its own command, run once the
+labs report: see **`docs/chemistry-isotope-ingest.md`**. Its results attach to
+the samples this ingest records, so load sample info first. `GenChemResults`
+has no ingest path yet.
 
 ---
 
 ## 1. Commands
+
+New to this? `docs/chemistry-field-sheet-ingest-walkthrough.md` walks through a
+first load step by step, from installing the tools to checking the result.
 
 ```bash
 # From Drive, dry run first: reads, validates, reports, writes nothing.
@@ -47,10 +53,44 @@ runs as — application-default credentials locally, the `GCS_SERVICE_ACCOUNT_KE
 service account in production. Set `CHEMISTRY_FIELD_SHEET_ID` to the sheet id or
 URL, and a raw zone (next section).
 
+Check where a run will go with `oco db-info`. It prints the database and user
+as the server reports them, and the address it connected to. `POSTGRES_DB`
+alone doesn't prove that: the Cloud SQL proxy and a local Docker database can
+both answer on `localhost:5432`. Every report also names the database under its
+headline.
+
 There is **no manifest**. The LIMS sync needs one because a workbook is a
 one-shot batch; this spreadsheet is a living document that grows week over
 week, so it is re-read in full every run and idempotency comes from the
 database instead (section 3).
+
+### Finding and setting aside failed rows
+
+Any failed row stops the whole run (section 4), and one dry run reports every
+failed row. Two options write that out as files, so the rows can be fixed and
+the rest loaded in the meantime:
+
+```bash
+oco water-chemistry field-upload --file sheet.xlsx --dry-run \
+    --failed-rows sheet_failed_rows.xlsx --loadable sheet_loadable.xlsx
+```
+
+- `--failed-rows PATH` writes the **failed row workbook**: every row that
+  stopped the run, on a sheet per tab, with its row number in the Google Sheet,
+  why it failed, and the cells it held. `sync-sheet` takes it too.
+- `--loadable PATH` (`field-upload` only, one `.xlsx`) writes the **loadable
+  copy**: the export with every failed row blanked. Rows are blanked, not
+  deleted, so every row keeps its number. A dry run on the copy should pass,
+  and loading it loads everything else.
+
+Both are written only when a row fails, and neither changes what reaches the
+database. The cycle is:
+
+1. Dry-run with both options.
+2. Load the loadable copy, if the rest shouldn't wait.
+3. Fix the failed rows **in the Google Sheet**, using the failed row workbook.
+4. Download a fresh copy, then dry-run and load it. Rows loaded in step 2 are
+   matched and skipped, and only the fixed rows are new.
 
 ---
 
@@ -96,8 +136,8 @@ group, so the API image is unaffected.
 | Spreadsheet heading | Goes to |
 |---|---|
 | `WellPointID` | resolved to `Thing.name`; the sample's well |
-| `SamplePointID` | the lettered sample point (`RA-116A`); checked against the well |
-| `CollectionDate` | `CollectionDate` — **required**, it is the match key |
+| `SamplePointID` | the field sample ID (`RA-116A`) — **required, with the crew's letter**; it is the match key, and is checked against the well |
+| `CollectionDate` | `CollectionDate` — **required**; a match must be dated the same day |
 | `AnalysisAgency` | `AnalysesAgency` (defaults to `NMBGMR`) |
 | `SampleType (SD)` | `SampleType` |
 | `CollectionMethod (F = faucet)` | `CollectionMethod`, as the legacy code (see below) |
@@ -154,57 +194,78 @@ dropped, so this ingest introduces the symbol. Rename it here and in
 `FIELD_PARAMETER_COLUMNS` if AMP settles on something else.
 
 The `Time` column is the reading time, which `NMA_FieldParameters` has no column
-for; it is kept in `Notes` as `Measured <ISO timestamp>`.
+for; it is kept in `Notes` as `Measured <ISO timestamp>`. It is **required**,
+date included: it's how the ingest checks that a readings row reached the right
+visit (section 3).
 
 ---
 
 ## 3. How samples are matched
 
-A field visit and its lab batch are **one sample**, so the sheet must not create
-a second `NMA_Chemistry_SampleInfo` row beside the one the LIMS ingest made. The
-sheet carries no `WCLab_ID` — the crew writes the row down before the sample
-reaches a lab — so matching is on **well PointID plus collection date**:
+A field sample and its lab results are **one sample record**, so the sheet must
+not create a second `NMA_Chemistry_SampleInfo` row beside the one the LIMS
+ingest made. They're matched on the **field sample ID**, the `SamplePointID`:
+the well plus the crew's letter (`WL-0264B`). The lab copies it from the chain
+of custody, so it's the one name both halves share. **Different letters are
+different field samples**, so nothing is ever matched on the well and date
+alone.
 
-1. Exact `collection_date` match for that well wins.
-2. Failing that, a sample on the **same calendar day** is treated as the same
-   visit (the sheet's time and the lab's time for one visit routinely differ by
-   minutes).
-3. Two samples on the same day are ambiguous: reported, never guessed at.
+Each `ChemistrySampleInfo` row:
+
+1. **Must have a lettered `SamplePointID`.** A blank one, or one with no letter
+   (`WL-0264`), aborts the run. So does the same `SamplePointID` on rows dated
+   on different days: every one of those rows is reported, and none loads,
+   since nothing says which date is right.
+2. **Matches the record already named with it**, if that record is dated on the
+   same day. The name is what tells apart two samples taken at one well on one
+   day: a duplicate minutes apart, or a split at the same time.
+3. **Aborts the run** if a record with that name is from another day, or has
+   no date. The crew reused a letter, and the error lists the letters the well
+   already uses so a free one can be picked.
+4. **Creates a record** named with its `SamplePointID` when none exists.
 
 On a match, the sheet **fills blank columns only**. A value already in the
 database is kept and the disagreement is reported as a warning — a field sheet
 is re-typed and re-sent, so it is not authoritative over what is stored.
 
-With no match, a new sample is created with the **next free letter incrementor**
-for that well (`A`, `B`, ... `Z`, `AA`, ...), the same rule the LIMS ingest uses.
-If the spreadsheet supplied a different letter, the computed one wins (it cannot
-collide with an existing sample point) and the disagreement is reported.
-
 Field parameters attach to the sample named by their `SamplePointID`, whether it
 was created by this run, by an earlier run, or by the LIMS ingest. A parameter
 already recorded for that sample is skipped, so **re-running the same sheet
-loads nothing twice**.
+loads nothing twice**. A `FieldParameters` row whose `Time` falls on a
+different calendar day from its sample's collection date aborts the run: either
+the name reached the wrong visit, or one of the two dates is a typo. Only the
+day is compared, so a reading taken minutes after collection loads normally.
 
-### Ingest order matters
+### Either ingest can go first
 
-The matching above is **one-directional**: the field sheet finds a sample the
-LIMS ingest made, but the LIMS ingest does not find one the field sheet made.
-LIMS decides "already loaded" on `WCLab_ID` alone
-(`_sample_exists_for_wclab` in `services/chemistry_lims.py`), and a
-sheet-created sample has no `WCLab_ID`. So:
+Both ingests match on the field sample ID, so a field sample and its lab results
+end up as one record whichever lands first:
 
 | Order | Result |
 |---|---|
-| LIMS, then field sheet | One sample. The sheet matches on PointID + date and fills blanks. |
-| Field sheet, then LIMS | **Two samples** for one visit, even when the dates agree. LIMS allocates the next letter (`RA-116B`) beside the sheet's `RA-116A`; field parameters sit on one, lab results on the other. |
+| LIMS, then field sheet | LIMS creates the record under the `SamplePointID` from the chain of custody. The sheet's row with that ID matches it and fills blanks, and its field parameters take the record's `WCLab_ID`. |
+| Field sheet, then LIMS | LIMS **adopts** the sheet's record of that name: it stamps the `WCLab_ID` onto it, backfills that id on the field parameters, and attaches the lab results. The sheet's collection time is kept. |
 
-In practice crews have field data well before lab results come back, so
-field-first is the common case, and holding field data until the lab reports
-is not a workable rule. The fix belongs in the LIMS ingest — before allocating
-a new letter, match an existing sample for the well on the same calendar day
-that has **no** `WCLab_ID`, and stamp the lab id onto it — and is tracked as a
-follow-up rather than done here. Until then, a field-first well that later
-receives lab results needs its two sample points reconciled by hand.
+Field-first is the usual order, since crews have field data well before lab
+results come back. For each lab sample (every workbook row sharing one
+`SampleNumber`, the LabSampleID):
+
+- **Its rows must agree, and be complete.** One lettered `SamplePointID` and
+  one `SampleDate` (the collection date). No letter, a blank `SampleDate`, two
+  letters, or dates on two days abort the workbook.
+- **One LabSampleID belongs to one field sample.** Two lab samples in the
+  workbook naming the same field sample abort it.
+- **The record named with its `SamplePointID` takes the results** if it has no
+  `WCLab_ID` yet and is dated on the `SampleDate`. If it already has a lab id,
+  is from another day, or has no date, the workbook **aborts** and the error
+  says which. If no record has that name yet, one is created under it.
+- **A LabSampleID already loaded** is skipped if the workbook's copy is an exact
+  repeat, so re-running a file is harmless. If anything differs (a corrected
+  value, an added analyte, or another `SamplePointID`), the workbook aborts and
+  lists the differences for review.
+
+Adoptions show up in the `bulk-upload` report under **ADOPTED**, and in
+`adopted_samples` in the result payload.
 
 ---
 
@@ -212,7 +273,12 @@ receives lab results needs its two sample points reconciled by hand.
 
 Any data-quality problem **aborts the whole import and nothing is written** —
 the same rule as the LIMS ingest, so a spreadsheet is never half loaded. Every
-offending row is reported in one pass, so one round of fixes clears them.
+failing row is reported in one pass: a row that fails is set aside, and the
+rest still go through every check. A `FieldParameters` row whose
+`ChemistrySampleInfo` row failed is reported as depending on it, rather than
+with a knock-on error. The result also carries the failures as data
+(`failed_rows`: tab, row, `SamplePointID`, reason, and the row it depends on),
+which is what `--failed-rows` writes out.
 
 What aborts a run:
 
@@ -221,12 +287,20 @@ What aborts a run:
 | `Missing CollectionDate` | The row has no date to match on. | Fill the date in the spreadsheet. |
 | `CollectionDate ... is not a recognizable date` | Not ISO, US-style, or a real date cell. | Fix the cell. |
 | `PointID 'WL-####' has no well identifier assigned yet` | A real sample whose well has not been given an id. | Assign the PointID, then re-run. |
-| `WellPointID ...: no matching Thing (well) found` | The well is not in Ocotillo. | Transfer or create the well first. |
+| `WellPointID ...: no matching Thing (well) found` | The well is not in Ocotillo. Reported on each of its rows. | Transfer or create the well first. |
+| `its ChemistrySampleInfo row N failed: ...` | A `FieldParameters` row whose sample-info row failed; the reason is that row's. | Fix row N; this row then loads with it. |
 | `SamplePointID ... does not belong to well ...` | The lettered point's base is a different well. | Fix one of the two cells. |
 | `CollectionMethod ... is not a known collection method` | Neither one of the seven `LU_CollectionMethod` meanings nor its code. | Use one from the list in section 2. |
 | `CollectedBy ... is longer than 5 characters` | The legacy column holds a 5-character code. | Use the code, not the name — names belong in `Staff`. |
 | `non-numeric reading(s)` | A field parameter cell holds text. | Blank it or fix the number. |
+| `Missing Time` | A `FieldParameters` row has no reading time. | Fill in the date and time the readings were taken. |
+| `Time ... is not a recognizable date and time` | The `Time` cell isn't a date and time, for example a time with no date. | Retype it with the date, for example `2026-09-25 10:45`. |
 | `no sample <point> -- it is neither in the ChemistrySampleInfo tab nor already in the database` | A `FieldParameters` row with no sample. | Add the sample-info row, or fix the `SamplePointID`. |
+| `Missing SamplePointID` | The row has no field sample ID. | Fill in the well plus the crew's letter, on both tabs. |
+| `SamplePointID ... has no sample letter` | The ID is just the well (`WL-0264`). | Add the crew's letter (`WL-0264A`), on both tabs. |
+| `SamplePointID <point> is dated <date> here but also used on row N (<date>)` | Rows of this sheet give one field sample ID two different days. | Decide which date is right, and give the other visit a letter the well hasn't used, on these rows and their `FieldParameters` rows. |
+| `SamplePointID <point> already belongs to the <date> visit` | Two visits share one field sample ID. | Give this visit a letter the well hasn't used (the error lists the ones in use), on this row and its `FieldParameters` row. |
+| `<point> was collected on <date>, but these readings were taken on <date>` | The readings row's `Time` is on another day from its sample's `CollectionDate`. | Correct whichever date is wrong, or the `SamplePointID` if it names the wrong visit. |
 
 A run that only reports **warnings** (kept database values, letter
 disagreements) or **skips** (parameters already recorded) succeeds.
@@ -238,19 +312,31 @@ disagreements) or **skips** (parameters already recorded) succeeds.
 - **A handful of bad rows blocks the whole sheet.** With the abort-everything
   rule and one living spreadsheet, four blank dates hold up a hundred good rows.
   Deliberate — the alternative is a partly-loaded sheet nobody can reason about
-  — but it means the sheet needs cleaning before the first successful run.
-- **Same-day matching is a heuristic.** Two genuine visits to one well on one
-  day are reported as ambiguous rather than loaded.
-- **LIMS does not match sheet-created samples.** Running the field sheet before
-  the LIMS workbook splits one visit across two sample points (section 3,
-  "Ingest order matters"). Needs bidirectional matching in the LIMS ingest.
-- **No lab id on the field side.** If a well is sampled on a day the lab batch
-  records differently, the two will not match and a second sample point is
-  created, whichever ingest runs first.
+  — but it means the sheet needs cleaning before it loads. `--loadable` makes a
+  copy without those rows, so the rest can load while they're fixed.
+- **A fixed row can fail on a check it never reached.** A row is only checked as
+  far as it got. When its missing `CollectionDate` is filled in, it may then
+  meet a later check, such as a letter the well already uses. One pass reports
+  everything the data allows, not what fixing it will reveal.
+- **Letters are trusted.** Lab and field records meet only on the field sample
+  ID. If the lab copies a letter wrong from the chain of custody, its results
+  go to the sample that letter names, when that sample can take them, and
+  nothing in the data shows it.
+- **Dates must agree.** A lab `SampleDate` on another day from the field
+  sheet's `CollectionDate` for the same field sample stops the load, whichever
+  ingest runs second. Someone checks which date is wrong.
+- **Older records may not match their field sample IDs.** Before #970, both
+  ingests could name a new record with a computed "next free" letter instead of
+  the one supplied. A load that meets such a record reports it as another
+  visit's, and someone reconciles it by hand.
+- **Visits split before BDMS-1283 stay split.** Field-first runs before LIMS
+  learned to adopt left a sheet sample and a LIMS sample for one visit. Nothing
+  merges them automatically yet.
 - **`Q` is invented vocabulary.** See section 2.
-- **Lab result tabs are ignored.** `GenChemResults` and `IsotopeResults` are not
-  read by this command, and the LIMS ingest reads a LIMS export, not this
-  workbook — so those tabs currently have no ingest path.
+- **`GenChemResults` is ignored.** This command doesn't read it, and the LIMS
+  ingest reads a LIMS export, not this workbook, so the tab has no ingest path.
+  `IsotopeResults` loads with `isotope-upload` / `isotope-sync-sheet`
+  (`docs/chemistry-isotope-ingest.md`).
 - **No alerting, and prod excludes the CLI deps.** As with the LIMS ingest, this
   runs from an engineer's machine and failures surface only in its output.
 - **The raw zone is write-and-keep.** Nothing prunes old snapshots, and nothing

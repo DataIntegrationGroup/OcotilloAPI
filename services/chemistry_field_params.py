@@ -20,11 +20,11 @@ Ingest the AMP chemistry field spreadsheet -- the ``ChemistrySampleInfo`` and
 
 This is the field half of chemistry ingestion. The lab half already arrives as
 a LIMS workbook through :mod:`services.chemistry_lims`, and the two meet at the
-sample: a well visit recorded in the spreadsheet and a lab batch for the same
-visit must end up on one ``NMA_Chemistry_SampleInfo`` row, not two. They are
-matched on **well PointID plus collection date**, because the spreadsheet
-carries no lab id -- the field crew writes it down before the sample reaches a
-lab.
+sample: a field sample recorded in the spreadsheet and its lab results must end
+up on one ``NMA_Chemistry_SampleInfo`` row, not two. They are matched on the
+**field sample ID** (``SamplePointID``, the well plus the crew's letter), which
+the lab copies from the chain of custody. Different letters are different field
+samples, so nothing is matched on the well and date alone.
 
 Shape of the two tabs
 ---------------------
@@ -38,9 +38,9 @@ one row per measurement -- so each populated cell becomes its own
 
 Idempotency and failure
 -----------------------
-Re-running is safe: a sample already recorded for the well at that collection
-date is reused rather than duplicated, and a field parameter already recorded
-for that sample is skipped. As in the LIMS ingest, any data-quality problem
+Re-running is safe: a sample already recorded under that field sample ID, on
+the same day, is reused rather than duplicated, and a field parameter already
+recorded for that sample is skipped. As in the LIMS ingest, any data-quality problem
 aborts the whole import and nothing is written, so a spreadsheet is never half
 loaded.
 
@@ -59,7 +59,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
@@ -70,16 +70,16 @@ from services.chemistry_field_sheet import (
     SheetTable,
     read_google_spreadsheet,
     read_local_export,
+    write_failed_rows_workbook,
+    write_loadable_copy,
 )
 from services.ingest_raw_zone import (
-    archive_tables,
+    archive_then_read,
     raw_zone_url,
     read_snapshot,
 )
 from services.chemistry_lims import (
     ChemistryUploadResult,
-    _existing_suffix_ints,
-    _int_to_suffix,
     resolve_thing_id,
     split_pointid,
 )
@@ -89,9 +89,9 @@ DEFAULT_AGENCY = "NMBGMR"
 SAMPLE_INFO_TAB = "ChemistrySampleInfo"
 FIELD_PARAMETERS_TAB = "FieldParameters"
 
-# Tabs this ingest reads. The workbook also carries lab results
-# (``GenChemResults``, ``IsotopeResults``); those are the LIMS ingest's
-# business and are left alone here.
+# Tabs this ingest reads. The workbook also carries lab results:
+# ``IsotopeResults`` loads separately, once the labs report
+# (services/chemistry_isotopes.py), and ``GenChemResults`` has no ingest yet.
 FIELD_SHEET_TABS = (SAMPLE_INFO_TAB, FIELD_PARAMETERS_TAB)
 
 SHEET_ID_ENV_VAR = "CHEMISTRY_FIELD_SHEET_ID"
@@ -163,7 +163,7 @@ _SAMPLE_INFO_FIELDS = {
 }
 
 # CollectedBy is a 5-character code column in the legacy schema.
-_COLLECTED_BY_MAX = 5
+_COLLECTED_BY_MAX_LENGTH = 5
 
 # NM_Aquifer's LU_CollectionMethod, meaning -> code. The sheet may hold either;
 # the meaning is preferred because "F" and "H" are both faucets, and a crew
@@ -275,15 +275,24 @@ def prep_sample_info(record: dict) -> dict:
     well_pointid = str(well_pointid).strip()
     _reject_unassigned_pointid(well_pointid)
 
-    supplied_suffix = None
-    if sample_point_id:
-        sample_point_id = str(sample_point_id).strip()
-        base, supplied_suffix = split_pointid(sample_point_id)
-        if base != well_pointid:
-            raise FieldParamsMappingError(
-                f"SamplePointID {sample_point_id!r} does not belong to well "
-                f"{well_pointid!r}"
-            )
+    # The field sample ID is the only thing that identifies this sample, to the
+    # FieldParameters tab and to the lab, which copies it from the chain of
+    # custody. Without the crew's letter it can't tell this sample from the
+    # well's others, so both a blank and an unlettered ID are refused.
+    if not sample_point_id:
+        raise FieldParamsMappingError("Missing SamplePointID")
+    sample_point_id = str(sample_point_id).strip()
+    base, supplied_suffix = split_pointid(sample_point_id)
+    if base != well_pointid:
+        raise FieldParamsMappingError(
+            f"SamplePointID {sample_point_id!r} does not belong to well "
+            f"{well_pointid!r}"
+        )
+    if supplied_suffix is None:
+        raise FieldParamsMappingError(
+            f"SamplePointID {sample_point_id!r} has no sample letter; add the "
+            f"crew's letter (for example {sample_point_id}A)"
+        )
 
     collection_date = _cell(record, "CollectionDate", "SampleDate")
     parsed_date = _to_datetime(collection_date)
@@ -310,9 +319,9 @@ def prep_sample_info(record: dict) -> dict:
         )
 
     collected_by = attributes.get("collected_by")
-    if collected_by is not None and len(str(collected_by)) > _COLLECTED_BY_MAX:
+    if collected_by is not None and len(str(collected_by)) > _COLLECTED_BY_MAX_LENGTH:
         raise FieldParamsMappingError(
-            f"CollectedBy {collected_by!r} is longer than {_COLLECTED_BY_MAX} "
+            f"CollectedBy {collected_by!r} is longer than {_COLLECTED_BY_MAX_LENGTH} "
             "characters, which is all the column holds"
         )
 
@@ -330,8 +339,7 @@ def prep_sample_info(record: dict) -> dict:
     return {
         "row_number": record.get(SheetTable.ROW_NUMBER_KEY),
         "well_pointid": well_pointid,
-        "sample_point_id": sample_point_id or None,
-        "supplied_suffix": supplied_suffix,
+        "sample_point_id": sample_point_id,
         "collection_date": parsed_date,
         "attributes": attributes,
     }
@@ -345,7 +353,18 @@ def prep_field_parameters(record: dict) -> dict:
     sample_point_id = str(sample_point_id).strip()
     _reject_unassigned_pointid(sample_point_id)
 
-    measured_at = _to_datetime(_cell(record, "Time", "MeasurementTime"))
+    # Required: the reading time is the only thing that shows a readings row
+    # reached the right visit (see the day check in import_field_tables). A
+    # value that doesn't parse is reported as such rather than as blank, so
+    # the crew fixes the cell they actually typed.
+    measured = _cell(record, "Time", "MeasurementTime")
+    measured_at = _to_datetime(measured)
+    if measured is None:
+        raise FieldParamsMappingError(f"{sample_point_id}: Missing Time")
+    if measured_at is None:
+        raise FieldParamsMappingError(
+            f"{sample_point_id}: Time {measured!r} is not a recognizable date and time"
+        )
 
     measurements = []
     unreadable = []
@@ -433,46 +452,50 @@ def select_tables(
 # --- persistence ---------------------------------------------------------------
 
 
-def _find_existing_sample(
-    session: Session, thing_id: int, collection_date: datetime
+def _point_as_typed(record: dict, *headings: str) -> str | None:
+    """The SamplePointID a row gave, read before anything can have failed."""
+    value = _cell(record, *headings)
+    return str(value).strip() if value is not None else None
+
+
+def _find_named_sample(
+    session: Session, thing_id: int, sample_point_id: str
 ) -> tuple[NMA_Chemistry_SampleInfo | None, str | None]:
-    """The sample already recorded for this well at this collection date.
+    """The sample record for this well already named ``sample_point_id``.
 
-    Matching is on the well and the date because that is all the field sheet
-    knows -- there is no lab id until the batch comes back. An exact timestamp
-    match wins; failing that, a sample on the same calendar day is treated as
-    the same visit, since the sheet's time and the lab's time for one visit
-    routinely differ by minutes. Two samples on the same day are ambiguous and
-    are reported rather than guessed at.
+    Returns ``(sample, None)``, ``(None, None)`` when there is none, and
+    ``(None, message)`` when more than one record has the name.
+
+    The field sample ID is authoritative: different letters are different field
+    samples, so a row is only ever matched to the record with its own name. The
+    caller checks that the record is the same visit.
     """
-    exact = session.scalars(
+    named = session.scalars(
         select(NMA_Chemistry_SampleInfo).where(
             NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            NMA_Chemistry_SampleInfo.collection_date == collection_date,
+            NMA_Chemistry_SampleInfo.nma_sample_point_id == sample_point_id,
         )
     ).all()
-    if len(exact) == 1:
-        return exact[0], None
-    if len(exact) > 1:
-        return None, "more than one sample already recorded at that exact time"
-
-    same_day = session.scalars(
-        select(NMA_Chemistry_SampleInfo).where(
-            NMA_Chemistry_SampleInfo.thing_id == thing_id,
-            func.date(NMA_Chemistry_SampleInfo.collection_date)
-            == collection_date.date(),
-        )
-    ).all()
-    if len(same_day) == 1:
-        return same_day[0], None
-    if len(same_day) > 1:
-        points = ", ".join(sorted(s.nma_sample_point_id or "?" for s in same_day))
+    if len(named) > 1:
         return None, (
-            f"{len(same_day)} samples already recorded on "
-            f"{collection_date.date().isoformat()} ({points}); cannot tell which "
-            "one this row belongs to"
+            f"has {len(named)} samples named {sample_point_id}; cannot tell which "
+            "one this row is"
         )
-    return None, None
+    return (named[0] if named else None), None
+
+
+def _letters_in_use(session: Session, thing_id: int, base: str) -> str:
+    """The sample letters a well's records already use, for an error message."""
+    letters = set()
+    for name in session.scalars(
+        select(NMA_Chemistry_SampleInfo.nma_sample_point_id).where(
+            NMA_Chemistry_SampleInfo.thing_id == thing_id
+        )
+    ).all():
+        name_base, letter = split_pointid(name or "")
+        if name_base == base and letter:
+            letters.add(letter)
+    return ", ".join(sorted(letters, key=lambda x: (len(x), x))) or "none"
 
 
 def _apply_attributes(
@@ -521,14 +544,37 @@ def import_field_tables(
 
     validation_errors: list[str] = []
     warnings: list[str] = []
+    # Every row that stops the run, as data: the CLI writes these out, and one
+    # pass has to find them all, so no stage stops at the first failure.
+    failed_rows: list[dict] = []
+    # ChemistrySampleInfo rows that failed, by the SamplePointID they gave, so a
+    # FieldParameters row naming one reports that instead of a knock-on error.
+    failed_points: dict[str, tuple[int, str]] = {}
+
+    def fail(tab, row, reason, *, point=None, caused_by=None):
+        failed_rows.append(
+            {
+                "tab": tab,
+                "row": row,
+                "sample_point_id": point,
+                "reason": reason,
+                "caused_by": caused_by,
+            }
+        )
+        validation_errors.append(f"{tab} row {row}: {reason}")
+        if tab == SAMPLE_INFO_TAB and point:
+            failed_points.setdefault(point, (row, reason))
 
     sample_rows: list[dict] = []
     for record in sample_info_table.rows if sample_info_table else []:
         try:
             sample_rows.append(prep_sample_info(record))
         except FieldParamsMappingError as exc:
-            validation_errors.append(
-                f"{SAMPLE_INFO_TAB} row {record.get(SheetTable.ROW_NUMBER_KEY)}: {exc}"
+            fail(
+                SAMPLE_INFO_TAB,
+                record.get(SheetTable.ROW_NUMBER_KEY),
+                str(exc),
+                point=_point_as_typed(record, "SamplePointID"),
             )
 
     param_rows: list[dict] = []
@@ -536,9 +582,11 @@ def import_field_tables(
         try:
             param_rows.append(prep_field_parameters(record))
         except FieldParamsMappingError as exc:
-            validation_errors.append(
-                f"{FIELD_PARAMETERS_TAB} row "
-                f"{record.get(SheetTable.ROW_NUMBER_KEY)}: {exc}"
+            fail(
+                FIELD_PARAMETERS_TAB,
+                record.get(SheetTable.ROW_NUMBER_KEY),
+                str(exc),
+                point=_point_as_typed(record, "SamplePointID", "PointID"),
             )
 
     processed = len(sample_rows) + len(param_rows)
@@ -549,117 +597,173 @@ def import_field_tables(
     imported = 0
 
     with session_ctx() as session:
-        # Resolve every well up front so an unknown PointID is reported once.
+        # Resolve every well up front. A row whose well is unknown is reported
+        # and set aside, and the rest go on to the checks below, so one pass
+        # reports every failing row instead of stopping here.
         thing_ids: dict[str, int | None] = {}
         for row in sample_rows:
             pointid = row["well_pointid"]
             if pointid not in thing_ids:
                 thing_ids[pointid] = resolve_thing_id(session, pointid)
-        for pointid, thing_id in sorted(thing_ids.items()):
-            if thing_id is None:
-                validation_errors.append(
-                    f"WellPointID {pointid}: no matching Thing (well) found"
+        for row in sample_rows:
+            if thing_ids[row["well_pointid"]] is None:
+                fail(
+                    SAMPLE_INFO_TAB,
+                    row["row_number"],
+                    f"WellPointID {row['well_pointid']}: no matching Thing "
+                    "(well) found",
+                    point=row["sample_point_id"],
                 )
+        sample_rows = [r for r in sample_rows if thing_ids[r["well_pointid"]]]
 
-        if validation_errors:
-            return _result(
-                processed=processed,
-                imported=0,
-                validation_errors=validation_errors,
-                warnings=warnings,
-                raw=raw,
-            )
+        # One field sample ID is one visit. The same ID on rows dated on
+        # different days is two visits claiming one name, and nothing says
+        # which row is right, so every one of them is reported and none loads.
+        rows_by_point: dict[str, list[dict]] = {}
+        for row in sample_rows:
+            rows_by_point.setdefault(row["sample_point_id"], []).append(row)
+        contested: set[str] = set()
+        for point, rows in rows_by_point.items():
+            if len({r["collection_date"].date() for r in rows}) < 2:
+                continue
+            contested.add(point)
+            for row in rows:
+                others = ", ".join(
+                    f"row {r['row_number']} ({r['collection_date'].date().isoformat()})"
+                    for r in rows
+                    if r is not row
+                )
+                fail(
+                    SAMPLE_INFO_TAB,
+                    row["row_number"],
+                    f"SamplePointID {point} is dated "
+                    f"{row['collection_date'].date().isoformat()} here but also "
+                    f"used on {others}; one field sample can't be two visits. "
+                    "Correct the letter or the date on these rows and their "
+                    f"{FIELD_PARAMETERS_TAB} rows.",
+                    point=point,
+                )
 
         # sample point id -> the sample it names, for the FieldParameters join.
         samples_by_point: dict[str, NMA_Chemistry_SampleInfo] = {}
-        used_suffixes: dict[int, set[int]] = {}
 
         for row in sample_rows:
+            if row["sample_point_id"] in contested:
+                continue  # reported above, on every row using the ID
             thing_id = thing_ids[row["well_pointid"]]
             label = f"{SAMPLE_INFO_TAB} row {row['row_number']}"
+            base = row["well_pointid"]
+            point = row["sample_point_id"]
+            visit_day = row["collection_date"].date().isoformat()
 
-            existing, ambiguity = _find_existing_sample(
-                session, thing_id, row["collection_date"]
-            )
-            if ambiguity:
-                validation_errors.append(f"{label}: {row['well_pointid']} {ambiguity}")
+            existing, problem = _find_named_sample(session, thing_id, point)
+            if problem:
+                fail(
+                    SAMPLE_INFO_TAB, row["row_number"], f"{base} {problem}", point=point
+                )
                 continue
 
             if existing is not None:
-                warnings.extend(_apply_attributes(existing, row["attributes"], label))
-                supplied = row["sample_point_id"]
-                if supplied and existing.nma_sample_point_id != supplied:
-                    warnings.append(
-                        f"{label}: spreadsheet calls this sample {supplied}, "
-                        f"the database calls it {existing.nma_sample_point_id}; "
-                        "matched on well and collection date."
+                # One field sample is one visit. The same ID on another day (or
+                # on a record with no date) is another field sample that reused
+                # the letter, and FieldParameters rows naming it would reach
+                # that visit.
+                if (
+                    existing.collection_date is None
+                    or existing.collection_date.date() != row["collection_date"].date()
+                ):
+                    fail(
+                        SAMPLE_INFO_TAB,
+                        row["row_number"],
+                        f"SamplePointID {point} already belongs to "
+                        f"{_visit(existing)}, and this row is a different visit "
+                        f"({visit_day}). {base} already uses "
+                        f"{_letters_in_use(session, thing_id, base)}; give this "
+                        f"visit a letter it hasn't used, on this row and on its "
+                        f"{FIELD_PARAMETERS_TAB} row.",
+                        point=point,
                     )
-                samples_by_point[supplied or existing.nma_sample_point_id] = existing
-                if existing.nma_sample_point_id:
-                    samples_by_point.setdefault(existing.nma_sample_point_id, existing)
+                    continue
+                warnings.extend(_apply_attributes(existing, row["attributes"], label))
+                samples_by_point[point] = existing
                 samples_matched.append(
                     {
-                        "sample_point_id": existing.nma_sample_point_id,
-                        "pointid": row["well_pointid"],
+                        "sample_point_id": point,
+                        "pointid": base,
                         "collection_date": row["collection_date"].isoformat(),
                     }
                 )
                 continue
 
-            base = row["well_pointid"]
-            if thing_id not in used_suffixes:
-                used_suffixes[thing_id] = _existing_suffix_ints(session, thing_id, base)
-            next_int = (
-                max(used_suffixes[thing_id]) + 1 if used_suffixes[thing_id] else 1
-            )
-            used_suffixes[thing_id].add(next_int)
-            computed = _int_to_suffix(next_int)
-            sample_point_id = f"{base}{computed}"
-
-            supplied_suffix = row["supplied_suffix"]
-            if supplied_suffix is not None and supplied_suffix != computed:
-                # The computed incrementor wins because it cannot collide with a
-                # sample point already in the database, but the disagreement is
-                # surfaced so a human can reconcile it.
-                warnings.append(
-                    f"{label}: spreadsheet supplied sample point "
-                    f"{base}{supplied_suffix}, but the next free incrementor is "
-                    f"{computed}; loaded as {sample_point_id}."
-                )
-
             sample = NMA_Chemistry_SampleInfo(
                 thing_id=thing_id,
                 nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id=sample_point_id,
+                nma_sample_point_id=point,
                 collection_date=row["collection_date"],
                 **row["attributes"],
             )
             session.add(sample)
-            session.flush()  # assign sample.id for the FK below
+            session.flush()  # assign sample.id; later rows see the name taken
 
-            samples_by_point[sample_point_id] = sample
-            if row["sample_point_id"]:
-                samples_by_point.setdefault(row["sample_point_id"], sample)
+            samples_by_point[point] = sample
             samples_created.append(
                 {
-                    "sample_point_id": sample_point_id,
+                    "sample_point_id": point,
                     "pointid": base,
                     "collection_date": row["collection_date"].isoformat(),
                 }
             )
 
         for row in param_rows:
-            label = f"{FIELD_PARAMETERS_TAB} row {row['row_number']}"
             point = row["sample_point_id"]
+            # The row naming this sample failed above, so the readings can't
+            # load either. Say that, rather than looking the name up in the
+            # database, where it can find another visit's record and fail the
+            # day check with a message that points at the wrong problem.
+            if point in failed_points and point not in samples_by_point:
+                source_row, source_reason = failed_points[point]
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"its {SAMPLE_INFO_TAB} row {source_row} failed: "
+                    f"{source_reason}",
+                    point=point,
+                    caused_by={"tab": SAMPLE_INFO_TAB, "row": source_row},
+                )
+                continue
             sample = samples_by_point.get(point)
             if sample is None:
                 sample = _lookup_sample_by_point(session, point)
                 if sample is not None:
                     samples_by_point[point] = sample
             if sample is None:
-                validation_errors.append(
-                    f"{label}: no sample {point} -- it is neither in the "
-                    f"{SAMPLE_INFO_TAB} tab nor already in the database"
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"no sample {point} -- it is neither in the "
+                    f"{SAMPLE_INFO_TAB} tab nor already in the database",
+                    point=point,
+                )
+                continue
+
+            # Readings are taken during the visit, so a Time on another day means
+            # the name reached the wrong visit, or one of the two dates is a
+            # typo. Only the day is compared: a reading minutes or hours after
+            # the collection time is the normal case.
+            measured_at = row["measured_at"]
+            if (
+                sample.collection_date is not None
+                and measured_at.date() != sample.collection_date.date()
+            ):
+                fail(
+                    FIELD_PARAMETERS_TAB,
+                    row["row_number"],
+                    f"{point} was collected on "
+                    f"{sample.collection_date.date().isoformat()}, but these "
+                    f"readings were taken on {measured_at.date().isoformat()}. "
+                    f"Correct the date on one of the two tabs, or the "
+                    f"SamplePointID if it names the wrong visit.",
+                    point=point,
                 )
                 continue
 
@@ -710,6 +814,7 @@ def import_field_tables(
                 imported=0,
                 validation_errors=validation_errors,
                 warnings=warnings,
+                failed_rows=failed_rows,
                 raw=raw,
             )
 
@@ -723,6 +828,7 @@ def import_field_tables(
         imported=imported,
         validation_errors=validation_errors,
         warnings=warnings,
+        failed_rows=failed_rows,
         samples_created=samples_created,
         samples_matched=samples_matched,
         skipped_parameters=skipped_parameters,
@@ -742,34 +848,14 @@ def _lookup_sample_by_point(
     ).first()
 
 
+def _visit(sample: NMA_Chemistry_SampleInfo) -> str:
+    """How an error message names the visit a sample records."""
+    if sample.collection_date is None:
+        return "another visit"
+    return f"the {sample.collection_date.date().isoformat()} visit"
+
+
 # --- entrypoints ---------------------------------------------------------------
-
-
-def _archive_then_read(
-    tables: Sequence[SheetTable],
-    *,
-    source_label: str,
-    raw_url: str | None,
-) -> tuple[list[SheetTable], dict]:
-    """Archive what was read, then read it back and map *that*.
-
-    The round trip is the point: what gets loaded is provably what was kept, and
-    the replay path is exercised on every run rather than the first time someone
-    needs it.
-    """
-    extract = archive_tables(
-        tables,
-        dataset=FIELD_SHEET_DATASET,
-        source_label=source_label,
-        raw_url=raw_url,
-    )
-    archived = read_snapshot(FIELD_SHEET_DATASET, extract.load_id, raw_url=extract.url)
-    return archived, {
-        "load_id": extract.load_id,
-        "url": extract.url,
-        "dataset": extract.dataset,
-        "rows_archived": extract.total_rows,
-    }
 
 
 def sync_field_sheet(
@@ -778,12 +864,15 @@ def sync_field_sheet(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest the field spreadsheet from Google Drive.
 
     ``reference`` is a spreadsheet URL or file id; it defaults to
     ``$CHEMISTRY_FIELD_SHEET_ID``. Unless ``archive`` is off, the tabs are
     written to the raw zone first and the load is mapped from that snapshot.
+    ``failed_rows_path`` writes the failed row workbook, see
+    :func:`_write_reports`.
     """
     reference = reference or os.environ.get(SHEET_ID_ENV_VAR, "").strip()
     if not reference:
@@ -791,15 +880,20 @@ def sync_field_sheet(
             f"No spreadsheet given. Pass --sheet-id, or set {SHEET_ID_ENV_VAR}."
         )
     tables = read_google_spreadsheet(reference, tabs=None)
+    read_tables = tables
 
     raw = None
     # A dry run writes nothing anywhere, the archive included -- an operator
     # checking what would happen should not leave a snapshot behind.
     if archive and not dry_run:
-        tables, raw = _archive_then_read(
-            tables, source_label=reference, raw_url=raw_url
+        tables, raw = archive_then_read(
+            tables,
+            dataset=FIELD_SHEET_DATASET,
+            source_label=reference,
+            raw_url=raw_url,
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(result, read_tables, failed_rows_path=failed_rows_path)
 
 
 def upload_field_export(
@@ -808,25 +902,43 @@ def upload_field_export(
     dry_run: bool = False,
     archive: bool = True,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
+    loadable_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest downloaded ``.xlsx``/``.csv`` copies of the field spreadsheet.
 
     More than one path is accepted because a CSV export holds a single tab, so
-    the two tabs arrive as two files.
+    the two tabs arrive as two files. ``failed_rows_path`` and ``loadable_path``
+    write the reports described in :func:`_write_reports`; a loadable copy is
+    made from the export itself, so it needs a single ``.xlsx``.
     """
     paths = [Path(path) for path in paths]
+    if loadable_path and (len(paths) != 1 or paths[0].suffix.lower() != ".xlsx"):
+        # Checked before reading, so a mistyped command fails before a run.
+        raise FieldSheetError(
+            "A loadable copy is made from the export itself, so it needs a "
+            "single .xlsx file."
+        )
     tables: list[SheetTable] = []
     for path in paths:
         tables.extend(read_local_export(path))
+    read_tables = tables
 
     raw = None
     if archive and not dry_run:  # see sync_field_sheet
-        tables, raw = _archive_then_read(
+        tables, raw = archive_then_read(
             tables,
+            dataset=FIELD_SHEET_DATASET,
             source_label=", ".join(path.name for path in paths),
             raw_url=raw_url,
         )
-    return import_field_tables(tables, dry_run=dry_run, raw=raw)
+    result = import_field_tables(tables, dry_run=dry_run, raw=raw)
+    return _write_reports(
+        result,
+        read_tables,
+        failed_rows_path=failed_rows_path,
+        loadable=(paths[0], loadable_path) if loadable_path else None,
+    )
 
 
 def replay_field_sheet(
@@ -834,6 +946,7 @@ def replay_field_sheet(
     *,
     dry_run: bool = False,
     raw_url: str | None = None,
+    failed_rows_path: Path | str | None = None,
 ) -> ChemistryUploadResult:
     """Ingest an archived snapshot again, without reading the source.
 
@@ -843,7 +956,7 @@ def replay_field_sheet(
     """
     tables = read_snapshot(FIELD_SHEET_DATASET, load_id, raw_url=raw_url)
     resolved = load_id or "latest"
-    return import_field_tables(
+    result = import_field_tables(
         tables,
         dry_run=dry_run,
         raw={
@@ -853,6 +966,47 @@ def replay_field_sheet(
             "replayed": True,
         },
     )
+    return _write_reports(result, tables, failed_rows_path=failed_rows_path)
+
+
+def _write_reports(
+    result: ChemistryUploadResult,
+    tables: Sequence[SheetTable],
+    *,
+    failed_rows_path: Path | str | None = None,
+    loadable: tuple[Path, Path | str] | None = None,
+) -> ChemistryUploadResult:
+    """Write the reports asked for, and record their paths in the payload.
+
+    The failed row workbook holds every row that stopped the run, with why. The
+    loadable copy is the ``.xlsx`` export with those rows blanked, which can be
+    loaded while the failed rows are fixed. Both are only written when some row
+    failed: otherwise there's nothing to list, and the export loads as it is.
+    Neither changes what reaches the database.
+    """
+    failed = result.payload.get("failed_rows", [])
+    # The ingest's standard tab names, mapped to this source's tables.
+    info, params = select_tables(tables)
+    by_tab = {
+        tab: table
+        for tab, table in ((SAMPLE_INFO_TAB, info), (FIELD_PARAMETERS_TAB, params))
+        if table is not None
+    }
+    reports: dict[str, str | None] = {}
+    if failed_rows_path:
+        reports["failed_rows"] = (
+            str(write_failed_rows_workbook(by_tab, failed, failed_rows_path))
+            if failed
+            else None
+        )
+    if loadable:
+        source, path = loadable
+        titles = {tab: table.title for tab, table in by_tab.items()}
+        reports["loadable"] = (
+            str(write_loadable_copy(source, titles, failed, path)) if failed else None
+        )
+    result.payload["reports"] = reports
+    return result
 
 
 # --- result shaping ------------------------------------------------------------
@@ -864,6 +1018,7 @@ def _result(
     imported: int,
     validation_errors: list[str],
     warnings: list[str] | None = None,
+    failed_rows: list[dict] | None = None,
     samples_created: list[dict] | None = None,
     samples_matched: list[dict] | None = None,
     skipped_parameters: list[dict] | None = None,
@@ -871,6 +1026,7 @@ def _result(
     raw: dict | None = None,
 ) -> ChemistryUploadResult:
     warnings = warnings or []
+    failed_rows = failed_rows or []
     samples_created = samples_created or []
     samples_matched = samples_matched or []
     skipped_parameters = skipped_parameters or []
@@ -883,9 +1039,11 @@ def _result(
             "samples_created": len(samples_created),
             "samples_matched": len(samples_matched),
             "parameters_skipped": len(skipped_parameters),
+            "rows_failed": len(failed_rows),
             "dry_run": dry_run,
         },
         "validation_errors": validation_errors,
+        "failed_rows": failed_rows,
         "warnings": warnings,
         "samples_created": samples_created,
         "samples_matched": samples_matched,

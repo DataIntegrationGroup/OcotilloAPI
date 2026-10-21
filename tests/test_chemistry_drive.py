@@ -51,7 +51,8 @@ LIMS_HEADER = [
 ]
 
 
-def _workbook_bytes(param="calcium", value="12.5", pointid="Test Well"):
+# The lab records the field sample ID from the chain of custody, letter and all.
+def _workbook_bytes(param="calcium", value="12.5", pointid="Test WellA"):
     wb = Workbook()
     ws = wb.active
     ws.append(LIMS_HEADER)

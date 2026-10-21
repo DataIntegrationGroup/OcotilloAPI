@@ -923,4 +923,330 @@ def test_cli_module_scope_imports_never_reach_db_engine():
     )
 
 
+# ------------------------- field-upload reports --------------------------------
+
+
+def _field_export(path):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    info = workbook.active
+    info.title = "ChemistrySampleInfo"
+    info.append(["WellPointID", "SamplePointID", "CollectionDate"])
+    info.append(["WL-1", "WL-1A", "2025-06-10"])
+    info.append(["WL-1", "WL-1B", None])
+    params = workbook.create_sheet("FieldParameters")
+    params.append(["SamplePointID", "Time", "pHf"])
+    workbook.save(path)
+    return path
+
+
+def _canned_import(failed_rows):
+    """Stand in for the database half of the ingest with a fixed outcome."""
+    from services.chemistry_field_params import _result
+
+    def fake(tables, *, dry_run=False, raw=None):
+        return _result(
+            processed=2,
+            imported=0,
+            validation_errors=[
+                f"{f['tab']} row {f['row']}: {f['reason']}" for f in failed_rows
+            ],
+            failed_rows=failed_rows,
+            dry_run=dry_run,
+        )
+
+    return fake
+
+
+def test_field_upload_writes_both_reports_when_a_row_fails(tmp_path, monkeypatch):
+    from openpyxl import load_workbook
+
+    failed = [
+        {
+            "tab": "ChemistrySampleInfo",
+            "row": 3,
+            "sample_point_id": "WL-1B",
+            "reason": "Missing CollectionDate",
+            "caused_by": None,
+        }
+    ]
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import(failed)
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "failed row workbook:" in result.output
+    assert "loadable copy:" in result.output
+    failed_sheet = load_workbook(tmp_path / "failed.xlsx")["ChemistrySampleInfo"]
+    assert [c.value for c in failed_sheet[2]][:2] == [3, "Missing CollectionDate"]
+    loadable = load_workbook(tmp_path / "loadable.xlsx")["ChemistrySampleInfo"]
+    assert [c.value for c in loadable[3]] == [None, None, None]
+
+
+def test_field_upload_writes_no_reports_when_nothing_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import([])
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "not written, since no row failed" in result.output
+    assert not (tmp_path / "failed.xlsx").exists()
+    assert not (tmp_path / "loadable.xlsx").exists()
+
+
+def test_field_upload_refuses_a_loadable_copy_of_a_csv(tmp_path):
+    export = tmp_path / "info.csv"
+    export.write_text("WellPointID,SamplePointID,CollectionDate\n")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "field-upload",
+            "--file",
+            str(export),
+            "--dry-run",
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "needs a single .xlsx file" in result.output
+    assert not (tmp_path / "loadable.xlsx").exists()
+
+
+def _refuse_connection():
+    """Stand in for a database the CLI can't reach."""
+    raise ConnectionError(
+        "connection refused\n"
+        "(Background on this error at: https://sqlalche.me/e/20/rvf5)"
+    )
+
+
+def test_db_info_names_the_database_it_reached():
+    result = CliRunner().invoke(cli, ["db-info"])
+
+    assert result.exit_code == 0, result.output
+    assert "Database:     ocotilloapi_test" in result.output
+
+
+def test_db_info_says_in_one_line_why_it_could_not_connect(monkeypatch):
+    monkeypatch.setattr("cli.database_info.connected_database", _refuse_connection)
+
+    result = CliRunner().invoke(cli, ["db-info"])
+
+    assert result.exit_code == 1
+    assert (
+        "Could not connect to the database: ConnectionError: connection refused"
+        in result.output
+    )
+    assert "Background on this error" not in result.output
+    assert "Traceback" not in result.output
+
+
+def test_field_upload_report_names_the_database(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_field_params.import_field_tables", _canned_import([])
+    )
+    export = _field_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "field-upload", "--file", str(export), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_bulk_upload_report_names_the_database(tmp_path, monkeypatch):
+    workbook = tmp_path / "batch.xlsx"
+    workbook.write_bytes(b"")
+    monkeypatch.setattr(
+        "cli.service_adapter.chemistry_lims_xlsx",
+        lambda path: SimpleNamespace(exit_code=0, payload={}),
+    )
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "bulk-upload", "--file", str(workbook)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_sync_drive_report_names_the_database(monkeypatch):
+    from services.chemistry_drive import DriveSyncResult
+
+    monkeypatch.setattr(
+        "services.chemistry_drive.sync_and_ingest",
+        lambda folder_id=None, dry_run=False: DriveSyncResult(
+            folder_id="folder", dry_run=dry_run
+        ),
+    )
+
+    result = CliRunner().invoke(cli, ["water-chemistry", "sync-drive", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert "Database: ocotilloapi_test" in result.output
+
+
+def test_a_report_still_prints_when_the_database_is_unreachable(monkeypatch):
+    # A Drive dry run only lists files, so it shouldn't fail for want of a
+    # database; the report says the database wasn't reached instead.
+    from services.chemistry_drive import DriveSyncResult
+
+    monkeypatch.setattr(
+        "services.chemistry_drive.sync_and_ingest",
+        lambda folder_id=None, dry_run=False: DriveSyncResult(
+            folder_id="folder", dry_run=dry_run
+        ),
+    )
+    monkeypatch.setattr("cli.database_info.connected_database", _refuse_connection)
+
+    result = CliRunner().invoke(cli, ["water-chemistry", "sync-drive", "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert (
+        "Database: not connected (ConnectionError: connection refused)" in result.output
+    )
+
+
+def _isotope_export(path):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "IsotopeResults"
+    sheet.append(["WellPointID", "AnalysisLab", "H2r (pm)"])
+    sheet.append(["WL-1A", "NMBGMR", -103.4])
+    sheet.append(["WL-1", "NMBGMR", -90.1])
+    workbook.save(path)
+    return path
+
+
+def _canned_isotope_import(failed_rows):
+    """Stand in for the database half of the isotope ingest."""
+    from services.chemistry_isotopes import _result
+
+    def fake(tables, *, dry_run=False, raw=None):
+        return _result(
+            processed=3,
+            imported=0 if failed_rows else 1,
+            validation_errors=[
+                f"{f['tab']} row {f['row']}: {f['reason']}" for f in failed_rows
+            ],
+            failed_rows=failed_rows,
+            skipped_results=[
+                {
+                    "sample_point_id": "WL-2A",
+                    "analyte": "O18r",
+                    "analysis_lab": "NMBGMR",
+                }
+            ],
+            empty_rows=[
+                {"row": 4, "sample_point_id": "WL-3A", "analysis_lab": "NMBGMR"}
+            ],
+            dry_run=dry_run,
+        )
+
+    return fake
+
+
+def test_isotope_upload_reports_what_it_would_load(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "services.chemistry_isotopes.import_isotope_table",
+        _canned_isotope_import([]),
+    )
+    export = _isotope_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli, ["water-chemistry", "isotope-upload", "--file", str(export), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[ISOTOPE RESULTS] DRY RUN" in result.output
+    assert "Database: ocotilloapi_test" in result.output
+    assert "WL-2A: O18r (NMBGMR)" in result.output
+    assert "row 4: WL-3A (NMBGMR)" in result.output
+
+
+def test_isotope_upload_writes_the_failed_rows(tmp_path, monkeypatch):
+    from openpyxl import load_workbook
+
+    failed = [
+        {
+            "tab": "IsotopeResults",
+            "row": 3,
+            "sample_point_id": "WL-1",
+            "reason": "SamplePointID 'WL-1' has no sample letter",
+            "caused_by": None,
+        }
+    ]
+    monkeypatch.setattr(
+        "services.chemistry_isotopes.import_isotope_table",
+        _canned_isotope_import(failed),
+    )
+    export = _isotope_export(tmp_path / "sheet.xlsx")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "water-chemistry",
+            "isotope-upload",
+            "--file",
+            str(export),
+            "--no-raw",
+            "--failed-rows",
+            str(tmp_path / "failed.xlsx"),
+            "--loadable",
+            str(tmp_path / "loadable.xlsx"),
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[ISOTOPE RESULTS] ABORTED" in result.output
+    failed_sheet = load_workbook(tmp_path / "failed.xlsx")["IsotopeResults"]
+    assert [c.value for c in failed_sheet[2]][:2] == [
+        3,
+        "SamplePointID 'WL-1' has no sample letter",
+    ]
+    loadable = load_workbook(tmp_path / "loadable.xlsx")["IsotopeResults"]
+    assert [c.value for c in loadable[3]] == [None, None, None]
+    assert [c.value for c in loadable[2]] == ["WL-1A", "NMBGMR", -103.4]
+
+
 # ============= EOF =============================================

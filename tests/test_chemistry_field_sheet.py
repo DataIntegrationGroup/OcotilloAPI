@@ -31,6 +31,8 @@ from services.chemistry_field_sheet import (
     read_google_spreadsheet,
     read_local_export,
     read_xlsx_bytes,
+    write_failed_rows_workbook,
+    write_loadable_copy,
 )
 
 SHEET_ID = "1VerJIFpytUZJwyAUa6HeyqUEFZsWdUG1"
@@ -313,6 +315,122 @@ def test_unsupported_drive_mime_type():
 def test_row_number_key_is_not_a_spreadsheet_column():
     """The row number rides along in the record, so it must not clash."""
     assert SheetTable.ROW_NUMBER_KEY.startswith("__")
+
+
+# ------------------------- failed-row reports ----------------------------------
+
+_INFO_HEADER = ["WellPointID", "SamplePointID", "CollectionDate"]
+_PARAMS_HEADER = ["SamplePointID", "Time", "pHf"]
+
+
+def _export(path, info_title="ChemistrySampleInfo"):
+    """A field-sheet export with two sample rows, one reading, and a lab tab."""
+    path.write_bytes(
+        _xlsx_bytes(
+            {
+                info_title: [
+                    _INFO_HEADER,
+                    ["WL-1", "WL-1A", "2025-06-10"],
+                    ["WL-1", "WL-1B", None],
+                ],
+                "FieldParameters": [_PARAMS_HEADER, ["WL-1B", "2025-06-10 10:00", 7.1]],
+                "GenChemResults": [["WellPointID", "Ca"], ["WL-1", 12.5]],
+            }
+        )
+    )
+    return path
+
+
+_FAILED = [
+    {
+        "tab": "ChemistrySampleInfo",
+        "row": 3,
+        "sample_point_id": "WL-1B",
+        "reason": "Missing CollectionDate",
+        "caused_by": None,
+    },
+    {
+        "tab": "FieldParameters",
+        "row": 2,
+        "sample_point_id": "WL-1B",
+        "reason": "its ChemistrySampleInfo row 3 failed: Missing CollectionDate",
+        "caused_by": {"tab": "ChemistrySampleInfo", "row": 3},
+    },
+]
+
+
+def _values(sheet):
+    return [[cell.value for cell in row] for row in sheet.iter_rows()]
+
+
+def test_failed_rows_workbook_lists_each_row_with_why_and_what_it_held(tmp_path):
+    from openpyxl import load_workbook
+
+    info, params, _lab = read_local_export(_export(tmp_path / "sheet.xlsx"))
+    out = write_failed_rows_workbook(
+        {"ChemistrySampleInfo": info, "FieldParameters": params},
+        _FAILED,
+        tmp_path / "failed.xlsx",
+    )
+
+    workbook = load_workbook(out)
+    assert workbook.sheetnames == ["ChemistrySampleInfo", "FieldParameters"]
+    assert _values(workbook["ChemistrySampleInfo"]) == [
+        ["Source row", "Why it failed", *_INFO_HEADER],
+        [3, "Missing CollectionDate", "WL-1", "WL-1B", None],
+    ]
+    assert _values(workbook["FieldParameters"])[1][:3] == [
+        2,
+        "its ChemistrySampleInfo row 3 failed: Missing CollectionDate",
+        "WL-1B",
+    ]
+
+
+@pytest.mark.parametrize("info_title", ["ChemistrySampleInfo", "Sample Info"])
+def test_loadable_copy_blanks_failed_rows_and_keeps_the_rest_in_place(
+    tmp_path, info_title
+):
+    from openpyxl import load_workbook
+
+    source = _export(tmp_path / "sheet.xlsx", info_title)
+    out = write_loadable_copy(
+        source,
+        {"ChemistrySampleInfo": info_title, "FieldParameters": "FieldParameters"},
+        _FAILED,
+        tmp_path / "loadable.xlsx",
+    )
+
+    workbook = load_workbook(out)
+
+    def row(title, number):
+        # By position: a blanked last row isn't stored at all, and reads back
+        # as empty cells, which is what the reader sees too.
+        return [workbook[title].cell(number, c).value for c in range(1, 4)]
+
+    assert row(info_title, 2) == ["WL-1", "WL-1A", "2025-06-10"]
+    assert row(info_title, 3) == [None, None, None]
+    assert row("FieldParameters", 2) == [None, None, None]
+    assert _values(workbook["GenChemResults"]) == [
+        ["WellPointID", "Ca"],
+        ["WL-1", 12.5],
+    ]
+    # Read back, the blank rows drop out and the surviving row keeps its number.
+    reread, _params, _lab = read_local_export(out)
+    assert [r[SheetTable.ROW_NUMBER_KEY] for r in reread.rows] == [2]
+    # The export it came from is untouched.
+    assert _values(load_workbook(source)[info_title])[2] == ["WL-1", "WL-1B", None]
+
+
+def test_loadable_copy_needs_an_xlsx_and_a_new_file(tmp_path):
+    source = _export(tmp_path / "sheet.xlsx")
+    csv_export = tmp_path / "sheet.csv"
+    csv_export.write_text("WellPointID\nWL-1\n")
+    titles = {"ChemistrySampleInfo": "ChemistrySampleInfo"}
+
+    with pytest.raises(FieldSheetError, match="needs an .xlsx"):
+        write_loadable_copy(csv_export, titles, _FAILED, tmp_path / "out.xlsx")
+    with pytest.raises(FieldSheetError, match="must be a new file"):
+        write_loadable_copy(source, titles, _FAILED, source)
 
 
 # ============= EOF =============================================

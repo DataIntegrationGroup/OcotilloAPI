@@ -168,6 +168,16 @@ drops the attribution silently. Well inventory did exactly that until
 importer's staff handling, or before planning the backfill for the samples that
 gap left behind.
 
+### Chemistry isotope results
+
+The `IsotopeResults` tab of the chemistry field spreadsheet loads into
+`NMA_MinorTraceChemistry` through `oco water-chemistry isotope-upload` /
+`isotope-sync-sheet` (`services/chemistry_isotopes.py`), separately from the
+field-sheet and LIMS ingests because the results arrive later and from several
+labs. It never creates a sample, and never writes the sample's single
+`nma_WCLab_ID`, which the LIMS ingest relies on to adopt a sample. Read
+**`docs/chemistry-isotope-ingest.md`** before changing it.
+
 ### Authentication & Authorization
 
 The system uses **Authentik** for OAuth2 authentication with role-based access control:

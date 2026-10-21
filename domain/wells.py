@@ -130,11 +130,13 @@ def elevation_m_from_ft(elevation_ft: float | str | None) -> float:
 
 def release_status(public_availability_acknowledgement: bool | None) -> str:
     """
-    Map the public-availability acknowledgement to a location release status.
+    Map the public-availability acknowledgement to a release status.
+
+    The well inventory importer applies it to both the location and the well.
 
     The acknowledgement is deliberately three-state. An unanswered question is
-    not the same as a refusal, so it holds the location in ``draft`` instead of
-    publishing or hiding it.
+    not the same as a refusal, so it holds the location and well in ``draft``
+    instead of publishing or hiding them.
     """
     if public_availability_acknowledgement is True:
         return RELEASE_STATUS_PUBLIC

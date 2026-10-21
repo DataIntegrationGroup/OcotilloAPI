@@ -726,6 +726,36 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
         assert observation.sample == sample
 
 
+@pytest.mark.parametrize(
+    "acknowledgement, expected",
+    [("True", "public"), ("False", "private"), ("", "draft")],
+)
+def test_public_availability_sets_thing_and_location_release_status(
+    tmp_path, acknowledgement, expected
+):
+    """The acknowledgement must reach the Thing, since most visibility filters key on it."""
+    row = _minimal_valid_well_inventory_row()
+    row["public_availability_acknowledgement"] = acknowledgement
+
+    file_path = tmp_path / "well-inventory-release-status.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        locations = session.query(Location).all()
+
+        assert len(things) == 1
+        assert len(locations) == 1
+        assert things[0].release_status == expected
+        assert locations[0].release_status == expected
+
+
 def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
     """When measuring_point_height_ft is provided it is used for the thing's (MeasuringPointHistory) and observation's measuring_point_height values."""
     row = _minimal_valid_well_inventory_row()

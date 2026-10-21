@@ -258,7 +258,15 @@ def publish_transducer_block(
         }
         for measurement in payload.measurements
     ]
-    session.execute(insert(TransducerObservation), rows)
+    # RETURNING is what makes this fast. A plain executemany goes through
+    # pg8000 one row per round trip -- about 10 ms a row over a 2 ms network, so
+    # a few hundred readings are noticeable and a 47k-row file outlasts the
+    # request timeout -- whereas with RETURNING SQLAlchemy batches the rows into
+    # multi-row INSERT statements (``insertmanyvalues``, 1000 rows a statement).
+    # The ids are not used; do not drop the clause as unused.
+    session.execute(
+        insert(TransducerObservation).returning(TransducerObservation.id), rows
+    )
 
     session.commit()
     session.refresh(block)

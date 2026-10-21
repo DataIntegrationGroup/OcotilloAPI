@@ -355,4 +355,88 @@ def _table_from_values(title: str, values: list[list[Any]]) -> SheetTable:
     return SheetTable(title=title, header=header, rows=rows)
 
 
+# --- reports on a run's failed rows ----------------------------------------------
+
+
+def _failed_by_tab(failed_rows: Iterable[dict]) -> dict[str, dict[int, str]]:
+    """Failed rows as tab -> row number -> reason (reasons for one row joined)."""
+    by_tab: dict[str, dict[int, str]] = {}
+    for failure in failed_rows:
+        rows = by_tab.setdefault(failure["tab"], {})
+        row = failure["row"]
+        rows[row] = (
+            f"{rows[row]}; {failure['reason']}" if row in rows else failure["reason"]
+        )
+    return by_tab
+
+
+def write_failed_rows_workbook(
+    tables_by_tab: dict[str, SheetTable], failed_rows: list[dict], path: Path | str
+) -> Path:
+    """Write the failed row workbook: every failed row, why, and what it held.
+
+    One sheet per tab, named with the ingest's standard tab names, so it reads
+    the same whatever the source called its tabs. Each row keeps its source row
+    number, so it can be found and fixed in the Google Sheet.
+    """
+    from openpyxl import Workbook
+
+    out = Workbook()
+    out.remove(out.active)
+    for tab, rows in _failed_by_tab(failed_rows).items():
+        table = tables_by_tab.get(tab)
+        header = table.header if table else []
+        records = {
+            r[SheetTable.ROW_NUMBER_KEY]: r for r in (table.rows if table else [])
+        }
+        sheet = out.create_sheet(tab)
+        sheet.append(["Source row", "Why it failed", *header])
+        for row, reason in sorted(rows.items(), key=lambda item: item[0] or 0):
+            record = records.get(row, {})
+            sheet.append([row, reason, *(record.get(h) for h in header)])
+        sheet.freeze_panes = "C2"
+        sheet.column_dimensions["B"].width = 70
+    path = Path(path)
+    out.save(path)
+    return path
+
+
+def write_loadable_copy(
+    source: Path | str,
+    tab_titles: dict[str, str],
+    failed_rows: list[dict],
+    path: Path | str,
+) -> Path:
+    """Write a copy of an ``.xlsx`` export with every failed row blanked.
+
+    Blanked rather than deleted, so each row keeps the number it has in the
+    Google Sheet, and the reader skips blank rows. ``tab_titles`` maps the
+    ingest's standard tab names to this workbook's own titles, which may have
+    been renamed. The source is never overwritten.
+    """
+    from openpyxl import load_workbook
+
+    source, path = Path(source), Path(path)
+    if source.suffix.lower() != ".xlsx":
+        raise FieldSheetError(
+            f"A loadable copy needs an .xlsx export; {source.name} isn't one."
+        )
+    if path.resolve() == source.resolve():
+        raise FieldSheetError(
+            "The loadable copy must be a new file, not the export it's made from."
+        )
+    workbook = load_workbook(source)
+    for tab, rows in _failed_by_tab(failed_rows).items():
+        sheet = workbook[tab_titles[tab]]
+        width = max(
+            (cell.column for cell in sheet[1] if cell.value not in (None, "")),
+            default=0,
+        )
+        for row in rows:
+            for column in range(1, width + 1):
+                sheet.cell(row, column).value = None
+    workbook.save(path)
+    return path
+
+
 # ============= EOF =============================================

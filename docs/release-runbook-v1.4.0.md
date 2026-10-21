@@ -1,5 +1,12 @@
 # Release runbook: API v1.4.0 + UI production promotion
 
+> **Historical.** v1.4.0 shipped on 2026-09-23. This is the record of that
+> release, kept for the Authentik rename and the data-migration decisions it
+> documents. The flow it describes has since changed: the staging rc line is
+> gone, the Release PR merges itself, and the smoke checks in section 2 now run
+> from the deploy workflows. See [`release-flow.md`](release-flow.md) for how a
+> release works now.
+
 Operational steps for the next production release. The mechanics of the branch
 flow live in [`docs/release-flow.md`](release-flow.md); this runbook is the
 ordered checklist for *this* release, with the prerequisites and manual steps

@@ -22,16 +22,20 @@ supports research, field operations, and public data delivery for the Bureau of 
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
 - 🧾 Interactive API documentation via OpenAPI and ReDoc
+- 🗺️ OGC API - Features endpoints and documentation via OpenAPI and ReDoc
 
 ---
 
 ## 🗺️ OGC API - Features
 
-The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
-In App Engine deployments, `/ogcapi` is served from the same
-application as the primary API. The service is intended to scale to zero
-outside business hours and be kept warm during the workday with Cloud Scheduler
-hits to `/_ah/warmup`.
+The API serves OGC API - Features endpoints through `pygeoapi` under two paths:
+
+- `/ogcapi` serves publicly available data.
+- `/ogcapi-internal` is for internal use only. It is not filtered by `release_status`, so it serves private and draft records as well, such as wells and observations. It also includes contact details (name, organization, role, phone, email) for well owners and operators.
+
+Access to `/ogcapi-internal` requires an API key or an Authentik account in the `OGC.Internal` group. A Data Services team member can grant access to `OGC. Internal`. `OGC.Internal` members mint their own API keys through the `/api_key` endpoints; keys expire within 365 days. Treat a key as a credential for personal data. See [docs/api-key-management.md](docs/api-key-management.md) and [docs/internal-ogc-desktop-gis.md](docs/internal-ogc-desktop-gis.md) for details.
+
+When the API runs in App Engine, both paths are part of the same application as the main API. The application is meant to shut down outside business hours and stay available during the workday. Cloud Scheduler keeps it awake by sending requests to `/_ah/warmup`.
 
 ### Landing & metadata
 
@@ -139,8 +143,8 @@ pre-commit install
 # Edit `.env` to configure database connection and app settings
 cp .env.example .env
 ```
+
 Notes:
-* Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
 * PostgreSQL uses the default port 5432.
 
 Minimum vars to set in `.env` for local development:
@@ -174,18 +178,27 @@ Optional telemetry vars:
 
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
-#### 5. Database and server
+#### 5. Setup GCS credentials
+Create the file `gcs_credentials.json` in the root directory of the project and obtain its contents from a teammate. Set the
+environment `GOOGLE_APPLICATION_CREDENTIALS` variable in `.env` to the absolute
+path to `gcs_credentials.json`. Set it as the absolute path, not relative, since relative
+only works when if the app is spun up from the project root directory. Docker sets its own path
+so using an absolute path will not adversely effect the app if Docker is used.
+
+#### 6. Database and server
 
 Choose one of the following:
 
 **Option A: Local PostgreSQL + PostGIS**
+
+From the root folder of the project...
 
 ```bash
 # run database migrations
 alembic upgrade head
 
 # start development server
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
 Notes:
@@ -193,6 +206,8 @@ Notes:
 * Use the `POSTGRES_*` settings in `.env` for your local instance.
 
 **Option B: Docker Compose (dev)**
+
+From the root folder of the project...
 
 ```bash
 # include -d flag for silent/detached build
@@ -216,85 +231,10 @@ Notes:
 
 #### Staging Data
 
-To get staging data into the database: `python -m transfers.transfer` from the root directory of the project.
-
-### 🧭 Project Structure
-```text
-app/
-├── .env                    # Environment variables
-├── .pre-commit-config.yaml # pre-commit hook configuration file
-├── constants.py            # Static variables used throughout the code
-├── docker-compose.yml      # Docker compose file to build database and start server
-├── entrypoint.sh           # Used by Docker to run database migrations and start server
-├── main.py                 # FastAPI entry point
-|
-├── alembic/                # Alembic configuration and migration scripts
-├── api/                    # Route declarations
-├── core/                   # Settings, application config, and dependencies
-├── db/                     # Database models, sessions, and engine
-├── docker/                 # Custom Docker files
-├── schemas/                # Pydantic schemas and validations
-├── services/               # Reusable business logic, helpers, and database interactions
-├── tests/                  # Code tests
-└── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
-```
-
-## Model Changes
-
-1. Revise models in the `db/` directory
-2. Revise schemas in the `schemas/` directory
-    1. Add validators for both fields and models as necessary
-      1. Validations on incoming data only should be handled by Pydantic and 422 errors will be raised (default Pydantic)
-      2. Validations against values in the database will be handled at the endpoint with custom checks and 409 errors will be raised
-3. Revise tests
-    1. Revise fixtures in `tests/conftest.py`
-    2. Revise fields in POST test payloads and asserts
-    3. Revise fields in PATCH test payloads and asserts
-    4. Revise fields in GET all and GET by ID test asserts
-    5. Add tests for validations as necessary
-
-Bonus:
-- Update transfer scripts by revising fields and delineating where they come from in `NM_Aquifer`
-
-Notes:
-- All `Create` schema fields are defined as `<type>` if non-nullable and `<type> | None = None` if nullable
-- All `Update` schema fields are optional and default to `None`
-- All `Response` schema fields are defined as `<type>` if non-nullable and `<type> | None` if nullable
-- All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
-- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file---
-
-## 📦 Ocotillo CLI
-
-The `oco` command exposes project automation and bulk data utilities.
-
-```bash
-# Display available commands
-oco --help
-
-# Bulk import water level data from a CSV
-oco water-levels bulk-upload --file water_levels.csv --output json
-```
-
-The bulk upload command parses and validates each row, creates the corresponding field events/samples/observations, and prints a JSON summary (matching the API response shape) so the workflow can be automated or scripted.
-## 🧪 Testing
-
-```bash
-# Run unit tests
-pytest
-
-# Run Behave BDD specs
-behave tests/features
-```
-
-> Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
-
-## 🔄 Data Transfers
-
-Legacy or staging datasets can be imported using the transfer utilities:
-
-```bash
-python -m transfers.transfer
-```
+To get staging data into the database run `uv run python -m transfers.transfer` from the root directory of the project.
+This data can be used for a variety of development purposes, such as OcotilloIU or to test data ingestion. Note: `transfers/transfers.py`
+is no longer maintained and kept only for staging data and backfills. See [transfers/README.md](./transfers/README.md) for more
+information.
 
 Configure the `.env` file with the appropriate credentials before running transfers.
 
@@ -302,8 +242,87 @@ If contact transfers fail with `OwnerKey normalization collisions`, add or updat
 `transfers/data/owners_ownerkey_mapper.json` to map inconsistent `OwnerKey` values
 to a single canonical spelling before re-running the transfer.
 
-To drop the existing schema and rebuild from migrations before transferring data, set:
+To drop the existing schema and rebuild from migrations before transferring data, run:
 
 ```bash
 export DROP_AND_REBUILD_DB=true
 ```
+
+or set `DROP_AND_REBUILD_DB=true` in `.env`.
+
+### 🧭 Project Structure
+```text
+app/
+
+├── .dockerignore           # Files and directories for Docker to ignore
+├── .env                    # Environment variables
+├── .gitignore              # Files and directories for git to ignore
+├── .gcloudignore           # Files and directories for Google Cloud to ignore
+├── .pre-commit-config.yaml # pre-commit hook configuration file
+├── .release-please-manifest.json # Contains the current version. Do not update by hand
+├── ADR{n}.md               # Documents containing architectural decision records
+├── docker-compose.yml      # Docker compose file to build database and start server
+├── entrypoint.sh           # Used by Docker to run database migrations and start server
+├── main.py                 # FastAPI entry point
+|
+├── alembic/                # Alembic configuration and migration scripts
+├── api/                    # Custom route declarations
+├── cli/                    # Custom-built CLI for interacting with the API and DB, such as data ingestion protocols
+├── core/                   # Settings, application config, ogc api config, constants, and dependencies
+├── data_migrations/        # Used to migrate data from one form to another. For data that already exists in DB, not for transferring data to the DB
+├── db/                     # Database models, sessions, and engine
+├── docker/                 # Custom Docker files
+├── docs/                   # Documentation about the app, such as decisions made and how things work
+├── schemas/                # Pydantic schemas and validations
+├── scripts/                # Unique scripts for unique tasks. They do not comprise part of the API
+├── services/               # Reusable business logic, helpers, and database interactions
+├── tests/                  # Code tests
+└── transfers/              # Scripts to transfer data from legacy systems to current db schema, as well as seed staging data
+```
+
+## Model Changes
+
+1. Revise models in the `db/` directory
+2. Run alembic to create upgrade/downgrade scripts
+    1. Make sure data is not lost due to upgrades/downgrades
+3. Revise schemas in the `schemas/` directory
+    1. Add validators for both fields and models as necessary
+      1. Validations on incoming data only should be handled by Pydantic and 422 errors will be raised (default Pydantic)
+      2. Validations against values in the database will be handled at the endpoint with custom checks and 409 errors will be raised
+4. Revise tests
+    1. Revise fixtures and testing data
+    2. Revise tests and/or code so they all pass
+    3. Add new tests as necessary
+5. Revise documentation
+
+Notes:
+- All `Create` schema fields are defined as `<type>` if non-nullable and `<type> | None = None` if nullable
+- All `Update` schema fields are optional and default to `None`
+- All `Response` schema fields are defined as `<type>` if non-nullable and `<type> | None` if nullable
+- All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
+- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file
+
+## 📦 Ocotillo CLI
+
+The `oco` command exposes project automation, database utilities, and data ingestion utilities.
+There are different commands, most of which have and require multiple sub-commands.
+
+```bash
+# Display available commands, some of which have or require sub-commands 
+oco --help
+
+# Display available sub-commands
+oco {command} --help
+```
+
+## 🧪 Testing
+
+```bash
+# Run unit tests
+uv run pytest
+
+# Run Behave BDD specs
+uv run behave tests/features
+```
+
+Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
