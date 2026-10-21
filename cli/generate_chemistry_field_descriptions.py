@@ -203,7 +203,7 @@ def _load_analyte_lists():
     minor = _load_migration(MINOR_MIGRATION, "_ogc_minor_migration")
     return (
         [key for key, _ in major.STATIC_ANALYTE_COLUMNS_MAJOR],
-        [key for key, _ in minor.STATIC_ANALYTE_COLUMNS_MINOR],
+        list(minor.STATIC_ANALYTE_COLUMNS_MINOR),
     )
 
 

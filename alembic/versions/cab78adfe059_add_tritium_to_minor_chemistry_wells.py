@@ -16,7 +16,9 @@ Everything else is carried over unchanged from f4a5b6c7d8e9 (public) and
 2d3c3a268652 (internal): the latest value per well and analyte, the
 release_status filter on the public view, the comments and the unique id
 index. One builder now serves both views, so the public and internal
-definitions can't drift apart in this revision.
+definitions can't drift apart in this revision. The analyte column list is
+now a plain list of names rather than the earlier identical (key, column)
+pairs; the SQL it generates is the same.
 
 Both are materialized views, so they are dropped and rebuilt, which also
 populates them. The downgrade rebuilds them from the two earlier revision
@@ -66,76 +68,79 @@ WHERE lta.effective_end IS NULL
 ORDER BY lta.thing_id, lta.effective_start DESC
 """.strip()
 
-STATIC_ANALYTE_COLUMNS_MINOR: list[tuple[str, str]] = [
-    ("h2r", "h2r"),
-    ("o18r", "o18r"),
-    ("c13r", "c13r"),
-    ("c14", "c14"),
-    ("c14_years", "c14_years"),
-    ("tritium", "tritium"),
-    ("fluoride", "fluoride"),
-    ("barium", "barium"),
-    ("barium_total", "barium_total"),
-    ("copper", "copper"),
-    ("copper_total", "copper_total"),
-    ("zinc", "zinc"),
-    ("zinc_total", "zinc_total"),
-    ("molybdenum", "molybdenum"),
-    ("molybdenum_total", "molybdenum_total"),
-    ("silica", "silica"),
-    ("silicon", "silicon"),
-    ("silicon_total", "silicon_total"),
-    ("manganese", "manganese"),
-    ("manganese_total", "manganese_total"),
-    ("iron", "iron"),
-    ("iron_total", "iron_total"),
-    ("strontium", "strontium"),
-    ("strontium_total", "strontium_total"),
-    ("chromium", "chromium"),
-    ("chromium_total", "chromium_total"),
-    ("boron", "boron"),
-    ("boron_total", "boron_total"),
-    ("uranium", "uranium"),
-    ("uranium_total", "uranium_total"),
-    ("lithium", "lithium"),
-    ("lithium_total", "lithium_total"),
-    ("silver", "silver"),
-    ("silver_total", "silver_total"),
-    ("antimony", "antimony"),
-    ("antimony_total", "antimony_total"),
-    ("beryllium", "beryllium"),
-    ("beryllium_total", "beryllium_total"),
-    ("lead", "lead"),
-    ("lead_total", "lead_total"),
-    ("thallium", "thallium"),
-    ("thallium_total", "thallium_total"),
-    ("bromide", "bromide"),
-    ("selenium", "selenium"),
-    ("selenium_total", "selenium_total"),
-    ("vanadium", "vanadium"),
-    ("vanadium_total", "vanadium_total"),
-    ("aluminum", "aluminum"),
-    ("aluminum_total", "aluminum_total"),
-    ("arsenic", "arsenic"),
-    ("arsenic_total", "arsenic_total"),
-    ("nickel", "nickel"),
-    ("nickel_total", "nickel_total"),
-    ("cadmium", "cadmium"),
-    ("cadmium_total", "cadmium_total"),
-    ("cobalt", "cobalt"),
-    ("cobalt_total", "cobalt_total"),
-    ("phosphate", "phosphate"),
-    ("nitrite", "nitrite"),
-    ("nitrate", "nitrate"),
-    ("nitrate_as_n", "nitrate_as_n"),
-    ("thorium", "thorium"),
-    ("thorium_total", "thorium_total"),
-    ("tin", "tin"),
-    ("tin_total", "tin_total"),
-    ("mercury", "mercury"),
-    ("mercury_total", "mercury_total"),
-    ("titanium", "titanium"),
-    ("titanium_total", "titanium_total"),
+# The mapped_rows CASE already turns each analyte token into its column name,
+# so one string serves as both the analyte_key filter and the column name. The
+# earlier revisions carried it as an identical (key, column) pair.
+STATIC_ANALYTE_COLUMNS_MINOR: list[str] = [
+    "h2r",
+    "o18r",
+    "c13r",
+    "c14",
+    "c14_years",
+    "tritium",
+    "fluoride",
+    "barium",
+    "barium_total",
+    "copper",
+    "copper_total",
+    "zinc",
+    "zinc_total",
+    "molybdenum",
+    "molybdenum_total",
+    "silica",
+    "silicon",
+    "silicon_total",
+    "manganese",
+    "manganese_total",
+    "iron",
+    "iron_total",
+    "strontium",
+    "strontium_total",
+    "chromium",
+    "chromium_total",
+    "boron",
+    "boron_total",
+    "uranium",
+    "uranium_total",
+    "lithium",
+    "lithium_total",
+    "silver",
+    "silver_total",
+    "antimony",
+    "antimony_total",
+    "beryllium",
+    "beryllium_total",
+    "lead",
+    "lead_total",
+    "thallium",
+    "thallium_total",
+    "bromide",
+    "selenium",
+    "selenium_total",
+    "vanadium",
+    "vanadium_total",
+    "aluminum",
+    "aluminum_total",
+    "arsenic",
+    "arsenic_total",
+    "nickel",
+    "nickel_total",
+    "cadmium",
+    "cadmium_total",
+    "cobalt",
+    "cobalt_total",
+    "phosphate",
+    "nitrite",
+    "nitrate",
+    "nitrate_as_n",
+    "thorium",
+    "thorium_total",
+    "tin",
+    "tin_total",
+    "mercury",
+    "mercury_total",
+    "titanium",
+    "titanium_total",
 ]
 
 
@@ -144,9 +149,9 @@ def _minor_chemistry_value_columns() -> str:
         [
             (
                 "            MAX(lr.sample_value) FILTER "
-                f"(WHERE lr.analyte_key = '{analyte_key}') AS {column_name}"
+                f"(WHERE lr.analyte_key = '{column}') AS {column}"
             )
-            for analyte_key, column_name in STATIC_ANALYTE_COLUMNS_MINOR
+            for column in STATIC_ANALYTE_COLUMNS_MINOR
         ]
     )
 
@@ -156,9 +161,9 @@ def _minor_chemistry_unit_columns() -> str:
         [
             (
                 "            MAX(lr.units) FILTER "
-                f"(WHERE lr.analyte_key = '{analyte_key}') AS {column_name}_units"
+                f"(WHERE lr.analyte_key = '{column}') AS {column}_units"
             )
-            for analyte_key, column_name in STATIC_ANALYTE_COLUMNS_MINOR
+            for column in STATIC_ANALYTE_COLUMNS_MINOR
         ]
     )
 
