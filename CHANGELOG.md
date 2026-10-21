@@ -1,5 +1,66 @@
 # Changelog
 
+## [1.5.0](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.4.0...v1.5.0) (2026-10-21)
+
+
+### Features
+
+* **chemistry:** Add legacy unit abbreviations ([7343d59](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7343d5990d2b85be5c5f3485b1ba4ba4307024c5))
+* **chemistry:** Adopt field samples in LIMS ([189aa1d](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/189aa1debe4828afaed60bf3df1ceada53504935))
+* **chemistry:** adopt field-sheet samples in lims ingest (BDMS-1283) ([4be9f90](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/4be9f90e1d5ad0db458eedc4a0cb0300a53f6e0a))
+* **chemistry:** Ingest isotope results ([b3d24ca](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/b3d24ca851bba6335c3438adf2cfb89bc672921d))
+* **chemistry:** ingest isotope results (BDMS-1461) ([a1848d1](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a1848d114ae0cd924de6621c94890c050dcbdde6))
+* **chemistry:** Match lab samples by letter ([b3b946a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/b3b946a031c992ed495e510763f54e386870bdc4))
+* **chemistry:** Report empty isotope rows ([401a881](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/401a8812492f033429293626047d33c6568d898e))
+* **chemistry:** report empty isotope rows in the workbooks (BDMS-1461) ([0518241](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0518241ee7bbee80d8b0d363bed0c8ec9b5de80f))
+* **chemistry:** report every failed field-sheet row in one pass (BDMS-1273) ([f4b4f11](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f4b4f1135437bbab378467ac049c2663b61ebfe6))
+* **chemistry:** Report failed rows in one pass ([340366e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/340366e9f3f0caf7210c1845eb69952028531a8b))
+* **chemistry:** Warn about unread columns ([f9d5316](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f9d531654e17aeeef90edbb90e0b482020182d59))
+* **chemistry:** Write the failed-row reports ([0362223](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/03622238594a0dd82143d7d43ac5b82c0362f155))
+* **cli:** Add --failed-rows and --loadable ([65350b0](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/65350b01acc5b7d730ce5f53de41af7aaf38461b))
+* **cli:** Add db-info command ([7cec01a](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/7cec01ad7b1b8808d0db770b92e9057e062b681a))
+* **cli:** Add the isotope ingest commands ([eb480cc](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/eb480cc1ae3d76c61a9a0efd0a429f354d9cc769))
+* **cli:** List adopted samples in bulk-upload ([3900d93](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/3900d939acd576c600fb236c0a0fe4de08e411fa))
+* **cli:** Name the database in chemistry ingest reports ([126167e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/126167e52acf66cd46a5c3268f146b94cb481d8b))
+* **cli:** show which database the CLI reaches (BDMS-1273) ([2f6c014](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2f6c0146692016916d99ee6d6e017872689f86a2))
+* **lexicon:** add quivira coalition and woodland hills well share association organizations (BDMS-1221) ([86ba376](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/86ba376bb33ebd2b8ff1db11221edde4ec61ac81))
+* **lexicon:** Add two new organization terms ([91b8c5c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/91b8c5c8fd39d2c592e3730944970bd8d03fa804))
+* **README:** add ogcapi-internal to README ([02164de](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/02164de75e1aad85646d9647898ac1127d4e90c6))
+
+
+### Bug Fixes
+
+* **.env.example:** use comment to explain gcs credentials ([81295ca](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/81295ca3efc8fabe2894dd43a67b418ebc9c3e48))
+* **chemistry/result:** update parameter_name generation BDMS-1292 ([dc8b527](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/dc8b52779989bf6f529f52ac2e446c8a1657a975))
+* **chemistry:** keep field-sheet readings on the right sample (BDMS-1273) ([5ee20e0](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/5ee20e03ad38c1721e72b9f4a7ebe2e55c9c780e))
+* **chemistry:** Match field samples by ID only ([73f2f4e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/73f2f4e0fa9934248dc741137a5c69dd9331dab3))
+* **chemistry:** Match lab samples by ID only ([f26ca8f](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f26ca8fd911070dfafea8e34b24c1b958a883338))
+* **chemistry:** Match sheet rows by name first ([51bffca](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/51bffcae8bdf35b86d097f3416991356a0aad79e))
+* **chemistry:** Reject ambiguous sample points ([2a596be](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2a596be3aabfd2b64137bd7b3f96bc16ff96b214))
+* **chemistry:** Reject lab samples that disagree ([d4ae713](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/d4ae713522ee6d1639d0bd5d82db755979ad61d8))
+* **chemistry:** Reject readings from another day ([2d2a3ef](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/2d2a3efd47288966545ffbcff866f67bafa2f3e5))
+* **chemistry:** Reword the empty row reason ([4144ad9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/4144ad9c816e0ea3f393f789b7f12e511af50349))
+* **chemistry:** Stop on a changed LIMS re-load ([ace799d](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ace799df53a39f2e3274b6661ae734cfe6f470f0))
+* **ci:** survive the cold start the smoke step hits after a deploy (BDMS-1352) ([6c8880e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/6c8880e64483948fe6860789452d15e235f1ee22))
+* **ci:** survive the cold start the smoke step hits after a deploy (BDMS-1352) ([ab6a4e2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/ab6a4e2985b4c5bfb0549752ad06dd7208b8c18c))
+* **docker-compose:** default non-secrets ([e6e5c63](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/e6e5c6386bc17bbbffdb70fc62d5699500bdd9aa))
+* **hydrograph:** batch transducer block inserts to stop publish timeouts (BDMS-1445) ([23e0997](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/23e0997309dab5b824ca74f67e67fd651b576500))
+* **hydrograph:** batch transducer block inserts to stop publish timeouts (BDMS-1445) ([f6820f7](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/f6820f7ff1e3b4da55bd5133063d1c92c04b5c63))
+* **README:** amend per PR feedback ([57dde55](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/57dde55810c933b913d63286c0186879234b0e12))
+* **README:** fix typo ([a861d7c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/a861d7cd94196976a8d69e06688bb68b1914cf4e))
+* **README:** fix typo ([0e68a0c](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/0e68a0cc98b459e56924d8d7e336e4deb298df77))
+* **README:** remove artifact from edits ([07ea7a2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/07ea7a2373308aa63ecee15a80bcdf609e96b1aa))
+* **README:** update document for ogc api endpoints ([8863abb](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8863abba50dde25af78eebf2f1752725d5c5084e))
+* **services/chemistry:** patch parameter_name field to only use analyte as source ([bd9e4c2](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bd9e4c27545e801ecdb7c53466b41ce105d7c7ef))
+* **transfers:** move load_env to top of file ([bb2ef96](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/bb2ef9671fba9144ccd4a146d34bb8469ac34424))
+* update README and environment setup files (BDMS-1485) ([32db2c9](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/32db2c9f59566b65a83234f6a2426fd2b21151f5))
+* **well-inventory:** Backfill thing release status ([da8c096](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/da8c096af1d60fd813aea804aba73db16b552a1b))
+* **well-inventory:** backfill thing release status (BDMS-1240) ([fb52e33](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/fb52e335a45261091dd2feea763c37d1a0a0858a))
+* **well-inventory:** Set thing release status ([58f6192](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/58f61922309b69b122ba7e5638465547fc98ad9f))
+* **well-inventory:** set thing release status (BDMS-1233) ([cc8ca7e](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/cc8ca7ea417b04e727d8e3d8ec96ece86a322cc6))
+* **wells:** Correct OLWC depth and MP height ([8a90d12](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/8a90d1252222c9b39e038cf362e1ce7a211a37a0))
+* **wells:** correct OLWC depth and MP height (BDMS-1435) ([42a7ad8](https://github.com/DataIntegrationGroup/OcotilloAPI/commit/42a7ad8f9cb0fd8fde06f4c6a9460ba3938c16e7))
+
 ## [1.4.0](https://github.com/DataIntegrationGroup/OcotilloAPI/compare/v1.3.0...v1.4.0) (2026-09-23)
 
 
