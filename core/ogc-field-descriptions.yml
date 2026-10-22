@@ -1326,6 +1326,21 @@ minor_chemistry_wells:
       Units the carbon-14 age value is reported in, as the laboratory
       recorded them.
 
+  tritium:
+    title: Tritium
+    description: >-
+      Radioactive hydrogen in the water, in tritium units (one tritium
+      atom per 10^18 hydrogen atoms). Most of it came from 1950s and 1960s
+      nuclear testing, so measurable tritium marks water recharged since
+      then. A value near zero marks older water, and can be reported
+      slightly below zero.
+
+  tritium_units:
+    title: Tritium units
+    description: >-
+      Units the tritium value is reported in, as the laboratory recorded
+      them.
+
   fluoride:
     title: Fluoride
     description: >-

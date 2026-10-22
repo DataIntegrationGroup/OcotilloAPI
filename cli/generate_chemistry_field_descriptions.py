@@ -16,14 +16,14 @@
 """Emit the chemistry blocks of ``core/ogc-field-descriptions.yml``.
 
 ``ogc_major_chemistry_results`` and ``ogc_minor_chemistry_wells`` publish one
-column per analyte plus a paired units column -- 190 columns between them.
+column per analyte plus a paired units column -- 192 columns between them.
 Hand-writing that is error-prone, so this script generates it and the output is
 reviewed and committed. Run it again when the analyte lists change:
 
     uv run python -m cli.generate_chemistry_field_descriptions > /tmp/chem.yml
 
-Source of truth is the analyte lists in the migration that builds the two
-views, which are the column names themselves. (``core/parameter.json`` holds
+Source of truth is the analyte lists in the migrations that last built each
+view, which are the column names themselves. (``core/parameter.json`` holds
 only two field parameters, so the lexicon cannot supply this.)
 
 Analytes needing more than a one-line gloss are spelled out in ANALYTE_PROSE;
@@ -36,10 +36,13 @@ import sys
 import textwrap
 from pathlib import Path
 
-MIGRATION = (
-    Path(__file__).resolve().parents[1]
-    / "alembic/versions/f4a5b6c7d8e9_apply_public_release_status_filter_to_ogc_views.py"
+VERSIONS = Path(__file__).resolve().parents[1] / "alembic/versions"
+# The two views were last rebuilt in different revisions. Point each at the
+# newer file when a migration rebuilds that view again.
+MAJOR_MIGRATION = (
+    VERSIONS / "f4a5b6c7d8e9_apply_public_release_status_filter_to_ogc_views.py"
 )
+MINOR_MIGRATION = VERSIONS / "cab78adfe059_add_tritium_to_minor_chemistry_wells.py"
 
 # Analyte key -> (title, description). Everything else gets a generated title
 # and the stock "dissolved concentration" line.
@@ -153,6 +156,13 @@ ANALYTE_PROSE = {
         "Apparent age of the water in years, calculated from its carbon-14 content. "
         "Uncorrected for carbon picked up from rock, so treat it as an upper bound.",
     ),
+    "tritium": (
+        "Tritium",
+        "Radioactive hydrogen in the water, in tritium units (one tritium atom per "
+        "10^18 hydrogen atoms). Most of it came from 1950s and 1960s nuclear "
+        "testing, so measurable tritium marks water recharged since then. A value "
+        "near zero marks older water, and can be reported slightly below zero.",
+    ),
     "bromide": (
         "Bromide",
         "Dissolved bromide concentration. Read against chloride, it distinguishes "
@@ -179,14 +189,21 @@ UNITS_DESCRIPTION = (
 )
 
 
-def _load_analyte_lists():
-    """Import the migration module by path and read its analyte column lists."""
-    spec = importlib.util.spec_from_file_location("_ogc_filter_migration", MIGRATION)
+def _load_migration(path: Path, module_name: str):
+    """Import a migration module by path."""
+    spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def _load_analyte_lists():
+    """Read the analyte column lists out of the view migrations."""
+    major = _load_migration(MAJOR_MIGRATION, "_ogc_major_migration")
+    minor = _load_migration(MINOR_MIGRATION, "_ogc_minor_migration")
     return (
-        [key for key, _ in module.STATIC_ANALYTE_COLUMNS_MAJOR],
-        [key for key, _ in module.STATIC_ANALYTE_COLUMNS_MINOR],
+        [key for key, _ in major.STATIC_ANALYTE_COLUMNS_MAJOR],
+        list(minor.STATIC_ANALYTE_COLUMNS_MINOR),
     )
 
 

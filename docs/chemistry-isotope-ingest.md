@@ -226,8 +226,6 @@ results) succeeds.
   value per well and analyte: the latest by analysis date, falling back to the
   collection date. Where two labs report H2r, only one appears there.
   `/chemistry/results` shows both.
-- **No tritium column on that layer.** `ogc_minor_chemistry_wells` has columns
-  for H2r, O18r, C13r, C14 and C14 age, but not `3H`.
 - **The materialized views need a refresh** before new results show on the OGC
   layers.
 - **Legacy rows without a lab** can't be matched by lab. A sheet result for an
