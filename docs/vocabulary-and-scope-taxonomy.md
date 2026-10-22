@@ -41,16 +41,25 @@ not here.
 
 ## 2. Capabilities
 
-Closed set of four, per ADR5:
+Closed set of five. ADR5 originally proposed four (`read`, `enter`,
+`correct`, `administer`); `create`/`update` replace `enter`/`correct` to
+match standard terminology, and `delete` has been added as its own
+capability:
 
 | Capability | Meaning | Grounded in |
 |---|---|---|
 | `read` | View data | Today's `Viewer` tier |
-| `enter` | Create new records | Today's `Admin` tier's actual meaning — **not the same thing as the group named "Admin."** |
-| `correct` | Edit existing records | Today's `Editor` tier |
-| `administer` | Manage grants themselves (who can grant/revoke access) | **New.** Does not exist under any name today. Must not be confused with the existing "Admin" group, which actually means `enter`. Similar to Azure's `User Access Administrator` role, which treats managing access as its own permission, separate from data actions. |
+| `create` | Create new records | Today's `Admin` tier's actual meaning — **not the same thing as the group named "Admin."** |
+| `update` | Edit existing records | Today's `Editor` tier |
+| `delete` | Remove records | **New, as its own capability.** Today, every DELETE route checked (`api/thing.py`, `api/location.py`, `api/sample.py`, `api/observation.py`, `api/contact.py`, etc.) is gated by the same `admin`/`amp_admin` tier already used for `create` — delete isn't missing a tier, it's merged into the create tier today. |
+| `administer` | Manage grants themselves (who can grant/revoke access) | **New.** Does not exist under any name today. Must not be confused with the existing "Admin" group, which actually means `create`. Similar to Azure's `User Access Administrator` role, which treats managing access as its own permission, separate from data actions. |
 
-**Not chosen:** `view`/`edit` — alternate wording for `read`/`correct`, not
+**How these relate to each other:** `create`, `update`, and `delete` each
+imply `read` — if a principal can create, update, or delete a record, they
+can also view it. `create` and `update` are independent of each other:
+granting one does not grant the other.
+
+**Not chosen:** `view`/`edit` — alternate wording for `read`/`update`, not
 separate capabilities.
 
 **Excluded for a structural reason:** `publish`. Publication is governed
@@ -100,18 +109,20 @@ value is already known to be coming.
 Each grant row holds exactly one `scope_id` — never a list of programs. The
 enforcement engine only ever needs to check "does this principal hold a
 grant for *this* program," never "does this principal hold one grant
-covering multiple programs at once." How a principal ends up covered for
-more than one program (e.g. both AMP and Geothermal) is a separate, still
-open question — see open questions.
+covering multiple programs at once."
+
+**Resolved:** for small numbers of cross-program users, add them to both
+relevant groups; if the pattern grows into a recurring population, create a
+dedicated cross-program group instead.
 
 ## 4. Worked examples
 
-| # | principal_id | principal_type | capability | scope_type | scope_id | data_type | field_group | What this means |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `Viewer` | group | `read` | `global` | — | — | — | Everyone in the generic Viewer group can read everything |
-| 2 | `AMPViewer` | group | `read` | `program` | `AMP` | — | — | AMP's existing group, expressed as a grant row instead of hardcoded Python |
-| 3 | `jane` | user | `correct` | `thing` | `well-4521` | — | — | A genuine one-off: one person, one well — nothing to usefully group |
-| 4 | `field-laptop-01` | api_key | `read` | `global` | — | — | — | Today's actual behavior: a static key (labeled by person/machine, per convention) gets unrestricted read access to everything the internal mount serves — no narrowing by project, thing, or data type exists today. |
+| # | principal_id | principal_type | capability | scope_type | scope_id | data_type | field_group | created_by | created_date | expiry_date | What this means |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `Viewer` | group | `read` | `global` | — | — | — | `jake` | `2026-01-01` | — | Everyone in the generic Viewer group can read everything |
+| 2 | `AMPViewer` | group | `read` | `program` | `AMP` | — | — | `kelsey` | `2026-02-10` | — | AMP's existing group, expressed as a grant row instead of hardcoded Python |
+| 3 | `chase` | user | `update` | `thing` | `well-4521` | — | — | `likitha` | `2026-09-01` | `2026-12-01` | A genuine one-off: one person, one well — nothing to usefully group. Time-bound, unlike the other rows. |
+| 4 | `field-laptop-01` | api_key | `read` | `global` | — | — | — | `tyler` | `2026-03-15` | `2027-03-15` | Today's actual behavior: a static key (labeled by person/machine, per convention) gets unrestricted read access to everything the internal mount serves — no narrowing by project, thing, or data type exists today. Keys currently expire after one year. |
 
 ## 5. Naming convention for Authentik groups
 
@@ -135,39 +146,25 @@ open question — see open questions.
 
 ## Open questions
 
-1. **Should `role` stay `group`, or revert to ADR5's original term?** `group`
-   was chosen because it matches standard terminology. If there's any
-   particular consideration for keeping `role`, we can discuss it and revert.
-2. **Should `enter`/`correct` be standardized to `create`/`update`** to match
-   standard terminology? If `enter`/`correct` were chosen deliberately — e.g.
-   to distinguish *entering a new field observation* from *correcting a
-   previously recorded value*, which may carry real meaning in a
-   scientific-data context — we can proceed with that instead.
-3. **Should `delete` be added as a capability?** The current closed set of
-   four has no equivalent. Out of scope for this draft unless there's a real
-   need for it now.
-4. **Does `scope_type = project` reuse the existing `Group` model**
-   (`db/group.py`), or is it a new concept? Not decided here.
-5. **When AMP's existing hardcoded groups are eventually expressed as
-   `program`-scoped grants**, does that require tagging every
-   observation/chemistry/contact record with a `program`, or does it stay a
-   coarse grant ("AMP members get `read`, `correct` on these resource types,
-   no per-record tagging")? Affects schema design, not vocabulary, but named
-   here so it isn't discovered by surprise later.
-6. **How should someone needing access to more than one program (e.g. both
-   AMP and Geothermal) actually be granted that?** Three options:
-   1. Add them to both existing groups (e.g. `AMPViewer` and a future
-      `Geothermal Viewer`) — no new grant rows, no new groups.
-   2. Grant them directly as an individual `user` — only fits a genuine
-      one-off, not a shared need.
-   3. Create one dedicated combined group for that population and grant it
-      both programs — only worth it if "people who need both" is itself a
-      real, recurring population, not an incidental overlap of a couple of
-      people.
+**Blockers** — need resolution before schema/implementation work begins:
 
-   **Leaning towards Option 1** as the default: it costs nothing (reuses
-   grants that already exist), and it matches the general rule that shared
-   access should go through a group rather than individuals, even for small
-   numbers (see Section 5). Options 2 and 3 remain valid for their specific
-   cases above.
+1. **Final naming for the principal type currently called `group` remains
+   open, pending PR comments and further review.** Options raised in
+   discussion: keep `group`, revert to ADR5's `role`, or use `usergroup`/
+   `principalgroup`.
+2. **Does `scope_type = project` reuse the existing `Group` model**
+   (`db/group.py`), or is it a new concept? Leaning towards reusing the
+   `Group` model, confirmation needed.
+
+**Future** — do not block this draft, flagged for later design work:
+
+3. **How should `delete` actually behave?** Soft delete vs. hard delete (row removal), and whether a
+   confirmation pop up is required in the UI before a delete completes.
+4. **Naming convention for API key principal IDs issued to third parties**
+   (external partners, integrations).
+5. **Policy-engine conflict-resolution rules** for overlapping or
+   conflicting grants (e.g. one grant allows a request, another restricts
+   the same request) — not decided here.
+6. **API key revocation flow** — what should actually happen, end to end,
+   when a key needs to be revoked
 
