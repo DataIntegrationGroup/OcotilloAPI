@@ -5,7 +5,7 @@
 `oco well-inventory-csv` only imports things where `thing_type = "water well"`. The field team has started inventorying springs, streams, meteorological stations and other `thing_type`s. One spreadsheet will be used to ingest data for things of each `thing_type`. That spreadsheet has shared columns plus columns that apply to only one type. Decisions already made:
 - A **`thing_type` column** on each row selects the type, and one CSV may mix types.
 - **Every lexicon `thing_type`** is in scope. The type-specific fields are still being finalized.
-- **Hard rename** of the CLI to `oco thing-inventory-csv`, with no alias.
+- **Hard rename** of the CLI to `oco site-inventory-csv`, with no alias. "Site" is the user-facing name only. Internally the code keeps the `thing` naming: modules, functions, classes and the registry.
 
 What the code looks like today:
 - `Thing` is a single table with no inheritance (`db/thing.py:61`). Type-specific columns are grouped into sections marked by comments (the "Well-related columns" section starts at `db/thing.py:103`, and `spring_type` is at `db/thing.py:156`). New columns follow that pattern: a comment marks the section and the column name has no type prefix.
@@ -19,7 +19,7 @@ What the code looks like today:
 The work lands as **stacked PRs**. Each PR branches from the one before it, so it can be reviewed while the earlier one is still open, and they merge in order. Behaviour stays identical until a type is registered.
 
 ### PR 1: rename only, no behaviour change (breaking)
-- CLI: `cli/cli.py:612` `@cli.command("well-inventory-csv")` becomes `"thing-inventory-csv"`, and the function is renamed to match. Rename `well_inventory_csv` in `cli/service_adapter.py:37` to `thing_inventory_csv`, and `WellInventoryResult` to `ThingInventoryResult`.
+- CLI: `cli/cli.py:612` `@cli.command("well-inventory-csv")` becomes `"site-inventory-csv"`, and the Python function becomes `thing_inventory_csv`, following the internal naming. Rename `well_inventory_csv` in `cli/service_adapter.py:37` to `thing_inventory_csv`, and `WellInventoryResult` to `ThingInventoryResult`.
 - Rename modules with `git mv` so history is kept:
   - `services/well_inventory_csv.py` becomes `services/thing_inventory_csv.py`, and `import_well_inventory_csv` becomes `import_thing_inventory_csv`.
   - `schemas/well_inventory.py` becomes `schemas/thing_inventory.py`.
@@ -31,13 +31,12 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
   Git only detects a rename when the old and new files are similar, so this ensures each move shows as a rename on GitHub, and `git log --follow` and `git blame` still reach the old history.
 - Update the callers in `tests/test_cli_commands.py:551,631`, `tests/features/steps/well-inventory-*.py`, `tests/test_data_migrations.py`, `tests/test_domain_units.py`, `tests/test_water_level_csv_service.py`, and the docstrings in `cli/ingest_report.py` and `services/ingest_result.py`.
 - **Update the docs that name the old command or modules in the same PR:**
-  - the root `README.md`, including its CLI section, which should list `oco thing-inventory-csv`;
+  - the root `README.md`, including its CLI section, which should list `oco site-inventory-csv`;
   - `CLAUDE.md` ("CSV importer field staff" section);
   - `docs/sample-collector-link.md` (L31-60);
   - `docs/data-modeling-new-datasets.md` §6 (L262 cites `well_inventory_csv.py`);
   - anything else under `docs/` that a `grep -rn "well-inventory\|well_inventory" docs README.md CLAUDE.md` turns up, except the release runbooks and `CHANGELOG.md`, which are historical.
 - **Leave the existing data migrations unchanged** (`data_migrations/migrations/20260914_*`, `20261001_*`). They describe history.
-- **BDD caveat:** `run_bdd.sh` syncs `tests/features/` from the external **OcotilloBDD** repo. The feature and step renames must land there too, or the next sync will undo them.
 - Commit as `feat(thing-inventory)!:` with a `BREAKING CHANGE:` footer so release-please flags the rename in `CHANGELOG.md`.
 
 ### PR 2: dispatch framework, with water well as the only registered type
@@ -80,24 +79,87 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
    - `add_type_records(session, model, thing, fe, participants)`: the water-level Sample and Observation block currently at L805-870.
    - `permission_types`: "Datalogger Installation" is well-only.
 
-   There is one registry entry per lexicon term. Hooks can be shared: every well term uses the same well hooks, every stream term the stream hooks. PR 2 registers only `"water well"`. Because every value at registration time is copied from the current code, this PR changes no behaviour.
+   There is one registry entry per lexicon term. Hooks can be shared: every well term uses the same well hooks, every stream term the stream hooks. PR 2 registers only `"water well"`. Every value at registration time is copied from the current code, so the only behaviour change in this PR is the type-specific note wording (step 5).
 4. **Service** (`services/thing_inventory_csv.py`):
    - In `_make_row_models` (L522), check `thing_type` with `require_known_thing_type`, look up the registry entry, then validate the row with that type's `row_model` and run `foreign_columns`. A value that isn't a lexicon term fails the row at the first step, so later steps never see an unrecognized value and nothing needs normalizing.
    - A lexicon term that has no registry entry yet becomes a row error: `f"thing_type {thing_type} not yet supported by inventory import"`.
    - `_add_csv_row` keeps its shared spine: the location and elevation provenance, `add_thing(thing_type=model.thing_type)`, the FieldEvent, `ensure_field_event_participants` (`services/field_event_participant_helper.py:61`), the FieldActivity, the contacts and the permissions. It calls the registry hooks for everything type-specific.
    - Generalize the two lookups, in this order:
      1. `_find_existing_imported_well` (L485, hard-coded "water well" at L499 and L514) becomes `_find_existing_imported_thing(session, model)`, which matches on `model.thing_type`.
-     2. Then `find_water_wells_by_name` (`services/thing_helper.py:88`) becomes `find_things_by_name(session, name, thing_type=None)`.
-   - **Point-id uniqueness is global across thing types**, so a spring cannot share a name with a well.
-   - Rename the user-facing messages ("Well already exists…" becomes "Thing already exists…").
-5. **`thing_type` column is required.** A blank value or a missing column is a row error, never a silent default to water well. Add `thing_type` to every well fixture in `tests/features/data/well-inventory-*.csv`, and rename those fixtures to `thing-inventory-*`.
+     2. Then `find_water_wells_by_name` (`services/thing_helper.py:88`) becomes `find_things_by_name(session, name, thing_types=None)` (see step 5).
+   - **Name check, in the importer only.** `thing.name` is *not* unique in the database: there is no constraint, and `db/thing.py:86` carries a `# TODO: should name be unique?`. Today's importer enforces uniqueness only in code: `_add_csv_row` rejects a row when any *water well* already has that name (L637-641).
+     - Keep that check in code, but make it look across **every** `thing_type`: `find_things_by_name(session, name)` with no type filter. The water-levels import and other code look things up by name, so a spring and a piezometer named `NM-0001` would make those lookups ambiguous.
+     - **No database constraint in this work.** Legacy transfers may already have produced the same name under different types. A unique index would first need an audit of existing duplicates and a cleanup data migration, so it belongs in a separate ticket, not here.
+   - Make the user-facing messages say **site**, not thing, to match the `site-inventory-csv` command: "Well already exists…" becomes `f"Site already exists in database for point_id '{name}'"`. Internal names stay `thing`.
+5. **Remove the hard-coded `water well` from the import path.** First add a well family to `domain/thing_types.py`: a `WELL_THING_TYPES` frozenset (`water well`, `observation well`, `piezometer`, `monitoring well`, `production well`, `injection well`, `exploration well`, `test well`, `abandoned well`, `dry hole`, `artesian well`, `dug well`) and `is_well_thing_type(thing_type) -> bool`. Each import-path site then changes as follows:
+
+   **a. `add_thing`, `services/thing_helper.py`**
+   - *Today:* `if thing_type == WATER_WELL_THING_TYPE:` (L342) gates the measuring point, the well provenance, well purposes, casing materials and **all four status histories** (L342-452). Any other type silently loses them.
+   - *Change:*
+     - Gate on `is_well_thing_type(thing_type)`.
+     - Move the **Monitoring Status** history (L442-452) into the universal section, beside `monitoring_frequencies` (L495), which is already universal. Open, Datalogger Suitability and Well Status stay well-only.
+     - For readability, move their pops (`is_suitable_for_datalogger`, `is_open`, `well_status`, L298-300) out of the "UNIVERSAL THING RELATED TABLES" block and into the "WATER WELL SPECIFIC RELATED TABLES" block (L307-326). The pops still run for every type, because `Thing(**data)` (L329) would reject the extra keys. `monitoring_status` (L301) stays in the universal block, since its history is now universal.
+
+   **b. `_add_csv_row`, the Thing payload, `services/well_inventory_csv.py:710,760`**
+   - *Today:* `CreateWell(...)` and `add_thing(..., thing_type="water well")`.
+   - *Change:* `registry[model.thing_type].build_create_payload(...)` and `add_thing(..., thing_type=model.thing_type)` (steps 3-4).
+
+   **c. `_add_csv_row`, the well-only work around the Thing, `services/well_inventory_csv.py`**
+   - *Today:* these run the same way for every row, whatever its type:
+     - the notes spec, including the historic depth-to-water note (L673-695)
+     - the measuring-point height (L706-708)
+     - the groundwater-level FieldActivity, Sample and Observation, plus the "groundwater level" Parameter lookup (L805-870)
+     - the "well inventory" wording in the FieldEvent and FieldActivity notes (L779, L801, L831)
+     - the "Datalogger Installation" permission (L925)
+   - *Change:*
+     - Read the registry entry for `model.thing_type` and dispatch everything type-specific through its hooks: `notes_spec`, `add_type_records(session, model, thing, fe, participants)` for the related FieldActivities, Samples and Observations, and `permission_types`.
+     - The well hooks take the current code unchanged, and every well kind shares them.
+     - A type with no related records gets a no-op `add_type_records`, so a spring row never creates a groundwater-level activity.
+     - Notes stay specific to the row's `thing_type`:
+       - FieldEvent (L779): `f"Initial field event from {thing_type} inventory import"`
+       - FieldActivity (L801): `f"{thing_type.capitalize()} inventory conducted during field event."`
+       - the well hook's groundwater-level FieldActivity (L831): `f"Groundwater level measurement activity conducted during {thing_type} inventory field event."`
+
+   **d. `_find_existing_imported_well`, `services/well_inventory_csv.py:499,514`**
+   - *Today:* `Thing.thing_type == "water well"`.
+   - *Change:* it becomes `_find_existing_imported_thing`, matching `model.thing_type` (step 4).
+
+   **e. `find_water_wells_by_name`, `services/thing_helper.py:88-105`**
+   - *Today:* `Thing.thing_type == WATER_WELL_THING_TYPE`.
+   - *Change:* it becomes `find_things_by_name(session, name, thing_types=None)`. See step 4 for how the inventory import uses it to check names.
+
+   **f. `oco water-levels` CSV, `services/water_level_csv.py:274,470`**
+   - *Today:* it looks up wells by name, and finds existing samples, only for `"water well"`.
+   - *Change:* call `find_things_by_name(..., thing_types=WELL_THING_TYPES)` and filter `Thing.thing_type.in_(WELL_THING_TYPES)`, so a piezometer imported by site inventory can also receive water levels.
+
+   **g. `Thing.measuring_point_height` / `measuring_point_description`, `db/thing.py:527,548`**
+   - *Today:* they return `None` unless `thing_type == "water well"`.
+   - *Change:* use `is_well_thing_type`. The water-level import reads these, so without the change other well kinds would record a null measuring-point height.
+
+   For `water well`, every change is behaviour-neutral **except the note wording**: new water-well imports say "water well inventory" where they said "well inventory". Rows already in the database keep their old notes. Update the assertion at `tests/test_thing_inventory.py:417`, and add one checking that a spring row's notes name `spring`.
+
+   **Hard-coded on purpose, or off the import path; not changed here:**
+   - `services/scoped_transfer.py:476,1387`: the legacy NM_Aquifer transfer, where every GW site is a water well.
+   - API and read paths: `services/thing_helper.py:141,227` (eager-load options), `add_well_screen` (L535), `services/crud_helper.py:180`, `services/group_helper.py:34,54` (group well counts), `api/asset.py:366`, `api/search.py:105`, the `water_wells` OGC collection (`core/pygeoapi.py:22`) and the well materialized views.
+
+   These belong with the later work on publishing well kinds (see "Well kinds other than `water well`…" below). Until then, an imported piezometer won't show up in group well counts, well search or the OGC layers.
+6. **`thing_type` column is required.** A blank value or a missing column is a row error, never a silent default to water well. Add `thing_type` to every well fixture in `tests/features/data/well-inventory-*.csv`, and rename those fixtures to `thing-inventory-*`.
 
 ### PR 3: one inventory activity type, `"site inventory"`
 Every inventory import gets the same `FieldActivity.activity_type`, whatever the `thing_type`. The thing's own `thing_type`, reached through FieldEvent, already records what was inventoried, so a per-type term would store that fact twice.
-- **Alembic migration:** rename the lexicon term in place: `UPDATE lexicon_term SET term = 'site inventory' WHERE term = 'well inventory'`, plus the definition. `lexicon_term()` FKs are `onupdate=CASCADE` (`db/base.py:75-89`), so existing `field_activity` rows follow automatically, and `field_activity` is not versioned. The downgrade reverses it. Use `b2c3d4e5f6a7_transducer_data_maturity.py` as the lexicon-migration precedent. Before writing it, check that the lexicon category association rows key on the term and also cascade.
-- `core/lexicon.json:1850` becomes `"site inventory"`. Otherwise `oco initialize-lexicon` would recreate the old term.
-- Code: replace the hard-coded `activity_type="well inventory"` (was L800) with a module constant, `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Also update the `_find_existing_imported_thing` filter (was L516) and the test assertions at `tests/test_thing_inventory.py:432,708`.
+**One Alembic migration renames the term in place, so `well inventory` is gone the moment PR 3 deploys.**
+- **The migration:** `UPDATE lexicon_term SET term = 'site inventory', definition = … WHERE term = 'well inventory'`. Downgrade renames it back.
+- **Why one step clears every reference:**
+  - Every `lexicon_term()` FK is `onupdate=CASCADE` (`db/base.py:87`), so Postgres rewrites every `field_activity.activity_type` row inside the same transaction.
+  - The category association keys on `term_id`, not the term text (see the `b2c3d4e5f6a7` SQL), so it needs no change.
+  - `field_activity` is not versioned, so no history table keeps the old text.
+  - Nothing in `alembic/` or `db/` refers to `well inventory` by name.
+- **Why Alembic and not a data migration:** the repo rule (`docs/data-modeling-new-datasets.md` §6) sends row changes to data migrations. But deploys run only `alembic upgrade head` (`.github/workflows/CD_*.yml`), and a data migration waits until someone runs it by hand. If the rename were a data migration, either the new code would deploy before `site inventory` existed, and every import would fail the FK, or both terms would stay live until someone ran it. This is the same exception `b2c3d4e5f6a7_transducer_data_maturity.py` made when it backfilled rows its schema change needed (L100-107). Say so in the migration docstring.
+- **Before writing it,** confirm with `\d+ field_activity` on staging that the activity_type FK really has `ON UPDATE CASCADE`. Models declare it, but older tables may predate the declaration. If it is missing, the migration first runs `UPDATE field_activity SET activity_type = 'site inventory' WHERE activity_type = 'well inventory'` inside the same transaction, with the FK deferred or temporarily dropped.
+- `core/lexicon.json:1850-1851` becomes `"site inventory"`, and so does the category description at L5. Otherwise `oco initialize-lexicon` would recreate the old term on fresh databases.
+- Code: replace the hard-coded `activity_type="well inventory"` (was L800), and the `_find_existing_imported_thing` filter (was L516), with the module constant `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Update the test assertions at `tests/test_thing_inventory.py:432,708`.
 - **Data migrations** `20260914_0001` and `20261001_0001` find imported wells with `WELL_INVENTORY_ACTIVITY_TYPE = "well inventory"`. Change that constant, and the `tests/test_data_migrations.py:1552-1608` helpers, to `"site inventory"`. Otherwise a re-run after the rename silently matches nothing. Their docstrings, which describe history, stay as they are.
+- **Test:** after `alembic upgrade head`, no `lexicon_term` row and no `field_activity` row holds `well inventory`, and a seeded well-inventory `field_activity` row now reads `site inventory`. Then `alembic downgrade -1` restores it.
 
 ### PR 4 to PR n: one PR per thing_type, starting with **spring** (it already has schemas and an API)
 Each type PR follows the same checklist, which will also live in the docs:
@@ -110,8 +172,17 @@ Each type PR follows the same checklist, which will also live in the docs:
 3. **Migration:** use the idempotent template `alembic/versions/f1a2b3c4d5e6_add_nma_formation_zone_to_thing.py`, which adds to **both `thing` and `thing_version`**. Revise the current head (check with `alembic heads`).
 4. **Lexicon:** add new categories and terms to `core/lexicon.json`. If a deployed database needs them before `oco initialize-lexicon` runs, also add an alembic insert, as in `b2c3d4e5f6a7_transducer_data_maturity.py`.
 5. **`add_thing`:** add a branch for any type-specific child tables, alongside the existing `WATER_WELL_THING_TYPE` gate.
-6. **Importer:** add the term's `<Term>InventoryRow`, under a shared base class if sibling terms have the same columns, and register it. The foreign-column check picks up the new fields on its own.
-7. **Tests:** see below.
+6. **Importer:** add the term's `<Term>InventoryRow`, under a shared base class if sibling terms have the same columns. The foreign-column check picks up the new fields on its own.
+7. **Registry entry:** yes, every type needs one, with all four hooks filled in for that type:
+   - **`build_create_payload(model, loc, group) -> dict`** maps the row's CSV columns onto `thing` columns, for example `spring_type`, plus the shared fields every payload carries: `location_id`, `group_id`, `name`, `release_status`, `first_visit_date`, `notes`, `alternate_ids`, `monitoring_frequencies` and `monitoring_status`. Do any unit conversion here, the way the well payload converts casing diameter from feet to inches (`convert_ft_to_in`).
+     - The API schemas are deferred until the UI needs them (see below), so the payload is a **plain dict**, not a `CreateSpring`. The `<Term>InventoryRow` has already validated the values, and `add_thing` accepts a dict.
+     - Use the shared fields straight from `BaseInventoryRow`, through a small helper, so each type's payload adds only its own columns.
+   - **`notes_spec`:** which CSV note columns become which Thing note types.
+   - **`add_type_records`:** any FieldActivities, Samples and Observations for values measured on the visit (from step 1), or the no-op.
+   - **`permission_types`:** which permission columns apply to the type.
+
+   Terms that share a family share hooks. A family's first PR writes them, and its later terms only add a registry entry that points at them. All the well kinds can therefore be registered together in one small PR using the water-well hooks from PR 2.
+8. **Tests:** see below.
 
 **Not in these PRs; done later, when the UI needs them:**
 - The Thing API schemas in `schemas/thing.py`: extending `CreateSpring` / `SpringResponse` / `UpdateSpring`, adding equivalents for other types, and the `ThingResponse` union (L347).
@@ -120,16 +191,20 @@ Each type PR follows the same checklist, which will also live in the docs:
 
 The importer needs none of these: it builds its payload in the registry's `build_create_payload` and passes it to `add_thing`.
 
-**Well kinds other than `water well` are registered but not yet published.** Piezometer, observation well and the rest import through `BaseWellInventoryRow`. However, the `water_wells` OGC layer and the well materialized views (water elevation, depth-to-water trend, well summary, NGWMN) all filter on `thing_type = 'water well'`, so these rows appear on no layer. `docs/thing-inventory-csv.md` must say so. Widening those views is a separate, later piece of work.
+**Well kinds other than `water well` are registered but not yet published.** Piezometer, observation well and the rest import through `BaseWellInventoryRow`. However, the `water_wells` OGC layer and the well materialized views (water elevation, depth-to-water trend, well summary, NGWMN) all filter on `thing_type = 'water well'`, so these rows appear on no layer. The same goes for the API read paths listed in PR 2 step 5 (group well counts, well search). `docs/thing-inventory-csv.md` must say so. Widening those views is a separate, later piece of work.
 
 ## Tests
-- `tests/test_domain_thing_types.py` (new, database-free): `require_known_thing_type` accepts every lexicon term and raises `UnknownThingType` for anything else (including near-misses such as `Water Well`); foreign-column detection.
+- `tests/test_domain_thing_types.py` (new, database-free): `require_known_thing_type` accepts every lexicon term and raises `UnknownThingType` for anything else (including near-misses such as `Water Well`); foreign-column detection; `is_well_thing_type` is true for every well term and false for the rest; every `WELL_THING_TYPES` member is a `thing_type` term in `core/lexicon.json`.
+- `add_thing` (in `tests/test_thing.py` or a new `tests/test_thing_helper.py`):
+  - A `piezometer` gets the measuring point, well provenance, purposes and the Open, Datalogger and Well Status histories, exactly as a `water well` does.
+  - A `spring` given a `monitoring_status` gets a Monitoring Status history.
+- `tests/test_water_level_csv_service.py`: a water-level row for a `piezometer` imports, and a row for a `spring` with the same name is still rejected.
 - `tests/test_thing_inventory.py`:
   - The existing well cases stay **unchanged** (regression). In particular, the database-contents test at L72 must still pass with only the fixture rename.
-  - New cases: a mixed-type CSV imports each row to the right `thing_type`; a spring row with `total_well_depth_ft` filled is a row error; an unregistered type is a row error; a missing `thing_type` column is rejected; a duplicate point id across types is rejected; a legacy `well_name_point_id` header still works.
+  - New cases: a mixed-type CSV imports each row to the right `thing_type`; a spring row with `total_well_depth_ft` filled is a row error; an unregistered type is a row error; a missing `thing_type` column is rejected; a point id already used by a thing of another type is rejected with the "Site already exists…" message; a legacy `well_name_point_id` header still works; a non-well row creates only the inventory FieldActivity, with no groundwater-level FieldActivity, Sample or Observation and no "Datalogger Installation" permission.
   - Per type: one database-contents test, parametrized over the registry where the assertions match.
 - `tests/test_cli_commands.py`: the command name, plus the reporting of validation errors.
-- BDD: `thing-inventory-csv.feature` with mixed-type scenarios, written in **OcotilloBDD** and synced here.
+- BDD: `tests/features/thing-inventory-csv.feature` with mixed-type scenarios, written directly in this repo.
 
 ## Documentation
 1. **New `docs/thing-inventory-csv.md`**, the operator and developer reference:
@@ -146,15 +221,15 @@ The importer needs none of these: it builds its payload in the registry's `build
      - why the CLI was hard-renamed.
    - This doc starts in PR 2 and grows by one section per type PR.
 2. **Later doc updates:** PR 1 handles the renames (see above). PR 2 adds a short *Thing inventory importer* section to `CLAUDE.md` that points to the new doc. Leave historical documents unchanged: ADR4, the release runbooks and `CHANGELOG.md`.
-3. **Release notes:** PR 1's says the old command is gone. PR 2's says spreadsheets now need a `thing_type` column. PR 3's says the activity type `well inventory` is now `site inventory`, so anyone querying on the old term needs to update.
+3. **Release notes:** PR 1's says the old command is gone. PR 2's says spreadsheets now need a `thing_type` column. PR 3's says the activity type `well inventory` is now `site inventory`, so anyone querying on the old term needs to update. Existing rows are renamed automatically on deploy, so there is no manual step.
 4. **CHANGELOG:** generated automatically from conventional commits; use the `thing-inventory` scope.
 
 ## Open item (blocks PR 4 onward, not PRs 1-3)
 The per-type column list for the spreadsheet is still needed. Each field gets classified with the step-1 rules above (thing column, observation, history table or id link) before any migration is written.
 
 ## Verification
-- `uv run pytest tests/test_domain_thing_types.py tests/test_thing_inventory.py tests/test_cli_commands.py`, and then the full `uv run pytest`.
+- `uv run pytest tests/test_domain_thing_types.py tests/test_thing_inventory.py tests/test_cli_commands.py tests/test_thing.py tests/test_water_level_csv_service.py`, and then the full `uv run pytest`.
 - `uv run behave tests/features --tags="@backend and @production"`.
 - `alembic upgrade head`, then `alembic downgrade -1`, then `alembic upgrade head` again for each new migration.
-- Manual run: `oco thing-inventory-csv tests/features/data/thing-inventory-valid-mixed.csv` against a local database. Then check `select thing_type, count(*) from thing group by 1` and confirm the new columns and observations are populated.
-- Regression: after PR 2, importing the old valid well fixture (with the added `thing_type` column) produces exactly the same rows as on `staging`.
+- Manual run: `oco site-inventory-csv tests/features/data/thing-inventory-valid-mixed.csv` against a local database. Then check `select thing_type, count(*) from thing group by 1` and confirm the new columns and observations are populated.
+- Regression: after PR 2, importing the old valid well fixture (with the added `thing_type` column) produces the same rows as on `staging`, apart from the FieldEvent and FieldActivity note text.
