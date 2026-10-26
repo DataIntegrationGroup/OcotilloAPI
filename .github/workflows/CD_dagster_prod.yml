@@ -126,7 +126,7 @@ jobs:
 
       - name: Install uv
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.2
         with:
           version: "latest"
 
@@ -191,7 +191,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Install uv in container
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.2
         with:
           version: "latest"
 
