@@ -81,17 +81,26 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
    - `add_type_records(session, model, thing, fe, participants)`: the water-level Sample and Observation block currently at L805-870.
    - `permission_types`: "Datalogger Installation" is well-only.
 
-   There is one registry entry per lexicon term. Hooks can be shared: every well term uses the same well hooks, every stream term the stream hooks. PR 2 registers only `"water well"`. Every value at registration time is copied from the current code, so the only behaviour change in this PR is the type-specific note wording (step 5).
+   There is one registry entry per lexicon term. Hooks can be shared: every well term uses the same well hooks, every stream term the stream hooks. PR 2 registers only `"water well"`. Every value at registration time is copied from the current code, so this PR changes behaviour in only three ways: the type-specific note wording (step 5), names are checked across every `thing_type` (step 4), and a re-imported row is reported and counted as skipped rather than silently counted as imported (step 4).
 4. **Service** (`services/thing_inventory_csv.py`):
    - In `_make_row_models` (L522), check `thing_type` with `require_known_thing_type`, look up the registry entry, then validate the row with that type's `row_model` and run `foreign_columns`. A value that isn't a lexicon term fails the row at the first step, so later steps never see an unrecognized value and nothing needs normalizing.
    - A lexicon term that has no registry entry yet becomes a row error: `f"thing_type {thing_type} not yet supported by inventory import"`.
    - `_add_csv_row` keeps its shared spine: the location and elevation provenance, `add_thing(thing_type=model.thing_type)`, the FieldEvent, `ensure_field_event_participants` (`services/field_event_participant_helper.py:61`), the FieldActivity, the contacts and the permissions. It calls the registry hooks for everything type-specific.
-   - Generalize the two lookups `_find_existing_imported_well` and `find_water_wells_by_name` to `find_things_by_name` and enforce name uniqueness across all `thing_type`s.
-     - Both of the two lookup functions look inside the existing DB and use `thing.name`, so assuming that `name` uniqueness is how `thing`s are found that'll be how it's run for now. If tests fail we can go back and enforce the previous behavior. 
-     - Add a note to the script that this rule can be relaxed in the future if the desired behavior is `thing.name` uniqueness within a `thing_type`
-   - **Name check, in the importer only.** `thing.name` is *not* unique in the database: there is no constraint, and `db/thing.py:86` carries a `# TODO: should name be unique?`. Today's importer enforces uniqueness only in code: `_add_csv_row` rejects a row when any *water well* already has that name (L637-641).
-     - Keep that check in code, but make it look across **every** `thing_type`: `find_things_by_name(session, name)` with no type filter. The water-levels import and other code look things up by name, so a spring and a piezometer named `NM-0001` would make those lookups ambiguous.
-     - **No database constraint in this work.** Legacy transfers may already have produced the same name under different types. A unique index would first need an audit of existing duplicates and a cleanup data migration, so it belongs in a separate ticket, not here.
+   - **Two checks before a row is written, in this order.** These are decisions made with the team; the behaviour can be relaxed later.
+     - `thing.name` is *not* unique in the database: there is no constraint, and `db/thing.py:86` carries a `# TODO: should name be unique?`. The importer enforces uniqueness in code.
+     - **Check 1, already imported → skip, and say so.**
+       - `_find_existing_imported_well` (L485-519) becomes `_find_existing_imported_thing(session, model)`.
+       - It matches on **name and inventory date**: `Thing.name == point_id`, `FieldEvent.event_date == model.date_time`, and `FieldActivity.activity_type ==` the inventory activity type. The activity type is what makes the match an earlier inventory import, rather than some other visit at the same moment.
+       - Drop its second branch, the water-level sample-name match (L489-506). Every inventory import creates its FieldEvent with `event_date = date_time` (L777-781), so the date match already finds those rows.
+       - Run it in the import loop, **before** the row's savepoint, rather than inside `_add_csv_row`.
+       - On a match the row is **skipped, not imported and not an error**: the loop logs `f"Row {row_number} ('{point_id}', {date_time}) was already imported; skipping."` through `logging.info` and `progress_callback`, and appends it to a new `skipped` list.
+       - Today such a row is returned as the existing well's name and counted as **imported** (L244-248), so the summary overstates imports and the operator is never told. Instead, add `total_rows_skipped` to the result `summary` (L330-336), show it in the CLI summary (`cli/ingest_report.py` `import_summary_rows`), and leave skips out of `total_rows_imported`. A run whose only outcomes are imports and skips exits 0.
+       - If the match's `thing_type` differs from the row's, it is not a re-import of the same row. Fail the row with `f"Site '{point_id}' was already imported as {existing.thing_type}"` instead of skipping it, so a corrected type is never silently ignored.
+     - **Check 2, name already taken → error.** For rows that passed check 1, a single `find_things_by_name(session, name)` call with **no type filter** replaces `find_water_wells_by_name`. Any existing thing with that name, of any `thing_type`, fails the row with `f"Site already exists in database for point_id '{name}'"`.
+     - **What this means for operators:** re-running a CSV after fixing a few rejected rows skips the rows that already imported, with a "Row n was already imported" line for each, and imports the fixed ones. A row whose name matches a different site, or an earlier inventory on another date, is an error.
+     - Update the error-to-field mapping in the import loop. It recognises the old message by its prefix (`"Well already exists in database for well_name_point_id "`, L271-274) to set `field = "well_name_point_id"`. It must match `"Site already exists in database for point_id "` and set `field = "point_id"`, or the error loses its column.
+     - Put a comment at the `find_things_by_name` call in `services/thing_inventory_csv.py` saying that the cross-type rule is deliberate for now and can be relaxed later to uniqueness within a `thing_type`.
+     - **No database constraint in this work.** Legacy transfers may already have produced the same name under different types. A unique index would first need an audit of existing duplicates and a cleanup data migration, so it belongs in a separate ticket, not here. Before PR 2 merges, run `SELECT name, array_agg(DISTINCT thing_type) FROM thing GROUP BY name HAVING count(*) > 1` on staging, so the team knows which existing names will now block an import.
    - Make the user-facing messages say **site**, not thing, to match the `site-inventory-csv` command: "Well already exists…" becomes `f"Site already exists in database for point_id '{name}'"`. Internal names stay `thing`.
 5. **Remove the hard-coded `water well` from the import path.** First add a well family to `domain/thing_types.py`: a `WELL_THING_TYPES` frozenset (`water well`, `observation well`, `piezometer`, `monitoring well`, `production well`, `injection well`, `exploration well`, `test well`, `abandoned well`, `dry hole`, `artesian well`, `dug well`) and `is_well_thing_type(thing_type) -> bool`. Each import-path site then changes as follows:
 
@@ -124,7 +133,7 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
 
    **d. `_find_existing_imported_well`, `services/well_inventory_csv.py:499,514`**
    - *Today:* `Thing.thing_type == "water well"`.
-   - *Change:* it becomes `_find_existing_imported_thing`, matching `model.thing_type` (step 4).
+   - *Change:* it becomes `_find_existing_imported_thing`, matching on name and inventory date across all types (step 4, check 1).
 
    **e. `find_water_wells_by_name`, `services/thing_helper.py:88-105`**
    - *Today:* `Thing.thing_type == WATER_WELL_THING_TYPE`.
@@ -138,7 +147,7 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
    - *Today:* they return `None` unless `thing_type == "water well"`.
    - *Change:* use `is_well_thing_type`. The water-level import reads these, so without the change other well kinds would record a null measuring-point height.
 
-   For `water well`, every change is behaviour-neutral **except the note wording**: new water-well imports say "water well inventory" where they said "well inventory". Rows already in the database keep their old notes. Update the assertion at `tests/test_thing_inventory.py:417`, and add one checking that a spring row's notes name `spring`.
+   For `water well`, every change here is behaviour-neutral **except the note wording**. The name-check changes are covered in step 4. On the notes: new water-well imports say "water well inventory" where they said "well inventory". Rows already in the database keep their old notes. Update the assertion at `tests/test_thing_inventory.py:417`, and add one checking that a spring row's notes name `spring`.
 
    **Hard-coded on purpose, or off the import path; not changed here:**
    - `services/scoped_transfer.py:476,1387`: the legacy NM_Aquifer transfer, where every GW site is a water well.
@@ -186,7 +195,7 @@ def upgrade():
 - **Why Alembic and not a data migration:** the repo rule (`docs/data-modeling-new-datasets.md` §6) sends row changes to data migrations. But deploys run only `alembic upgrade head` (`.github/workflows/CD_*.yml`), and a data migration waits until someone runs it by hand. If the rename were a data migration, either the new code would deploy before `site inventory` existed, and every import would fail the FK, or both terms would stay live until someone ran it. This is the same exception `b2c3d4e5f6a7_transducer_data_maturity.py` made when it backfilled rows its schema change needed (L100-107). Say so in the migration docstring.
 - **Before writing it,** confirm with `\d+ field_activity` on staging that the activity_type FK really has `ON UPDATE CASCADE`. Models declare it, but older tables may predate the declaration. If it is missing, the migration first runs `UPDATE field_activity SET activity_type = 'site inventory' WHERE activity_type = 'well inventory'` inside the same transaction, with the FK deferred or temporarily dropped.
 - `core/lexicon.json:1850-1851` becomes `"site inventory"`, and so does the category description at L5. Otherwise `oco initialize-lexicon` would recreate the old term on fresh databases.
-- Code: replace the hard-coded `activity_type="well inventory"` (was L800), and the `_find_existing_imported_thing` filter (was L516), with the module constant `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Update the test assertions at `tests/test_thing_inventory.py:432,708`.
+- Code: replace the hard-coded `activity_type="well inventory"` (was L800), and the activity-type filter in `_find_existing_imported_thing` (was L516), with the module constant `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Update the test assertions at `tests/test_thing_inventory.py:432,708`.
 - **Data migrations** `20260914_0001` and `20261001_0001` find imported wells with `WELL_INVENTORY_ACTIVITY_TYPE = "well inventory"`. Change that constant, and the `tests/test_data_migrations.py:1552-1608` helpers, to `"site inventory"`. Otherwise a re-run after the rename silently matches nothing. Their docstrings, which describe history, stay as they are.
 - **Test:** after `alembic upgrade head`, no `lexicon_term` row and no `field_activity` row holds `well inventory`, and a seeded well-inventory `field_activity` row now reads `site inventory`. Then `alembic downgrade -1` restores it. Then upgrade again: there is exactly one `site inventory` term, still in the `activity_type` category, and no row holds `well inventory`.
 
@@ -229,7 +238,14 @@ The importer needs none of these: it builds its payload in the registry's `build
   - A `spring` given a `monitoring_status` gets a Monitoring Status history.
 - `tests/test_water_level_csv_service.py`: a water-level row for a `piezometer` imports, and a row for a `spring` with the same name is still rejected.
 - `tests/test_thing_inventory.py`:
-  - The existing well cases stay **unchanged** (regression). In particular, the database-contents test at L72 must still pass with only the fixture rename.
+  - The existing well cases stay **unchanged** (regression). In particular, the database-contents test at L72 must still pass with only the fixture rename. **Two exceptions, both from the re-import change:**
+    - `test_rerunning_same_well_inventory_csv_is_idempotent` (L929) also asserts the new reporting on the second run: every row is in `skipped`, with its "Row n was already imported" message, `total_rows_skipped` equals the row count, `total_rows_imported` is 0, no rows are added, and the exit code is 0.
+    - `test_rerunning_import_keeps_the_original_sample_participant` (L634) keeps its assertion, and also checks that the row is reported as skipped.
+  - New name-check cases:
+    - Same name, different inventory date: fails with "Site already exists".
+    - Same name and date, different `thing_type`: fails with "…was already imported as…".
+    - A file containing both a skipped row and a new row: the new row imports and the summary counts one of each.
+    - The "Site already exists" error carries `field = "point_id"`.
   - New cases: a mixed-type CSV imports each row to the right `thing_type`; a spring row with `total_well_depth_ft` filled is a row error; an unregistered type is a row error; a missing `thing_type` column is rejected; a point id already used by a thing of another type is rejected with the "Site already exists…" message; a legacy `well_name_point_id` header still works; a non-well row creates only the inventory FieldActivity, with no groundwater-level FieldActivity, Sample or Observation and no "Datalogger Installation" permission.
   - Per type: one database-contents test, parametrized over the registry where the assertions match.
 - `tests/test_cli_commands.py`: the command name, plus the reporting of validation errors.
@@ -261,4 +277,4 @@ The per-type column list for the spreadsheet is still needed. Each field gets cl
 - `uv run behave tests/features --tags="@backend and @production"`.
 - `alembic upgrade head`, then `alembic downgrade -1`, then `alembic upgrade head` again for each new migration.
 - Manual run: `oco site-inventory-csv tests/features/data/thing-inventory-valid-mixed.csv` against a local database. Then check `select thing_type, count(*) from thing group by 1` and confirm the new columns and observations are populated.
-- Regression: after PR 2, importing the old valid well fixture (with the added `thing_type` column) produces the same rows as on `staging`, apart from the FieldEvent and FieldActivity note text.
+- Regression: after PR 2, importing the old valid well fixture (with the added `thing_type` column) produces the same rows as on `staging`, apart from the FieldEvent and FieldActivity note text. Importing it a second time skips every row, prints a "Row n was already imported" line for each, writes nothing, and exits 0.
