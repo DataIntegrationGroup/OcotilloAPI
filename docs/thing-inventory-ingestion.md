@@ -20,6 +20,8 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
 
 ### PR 1: rename only, no behaviour change (breaking)
 - CLI: `cli/cli.py:612` `@cli.command("well-inventory-csv")` becomes `"site-inventory-csv"`, and the Python function becomes `thing_inventory_csv`, following the internal naming. Rename `well_inventory_csv` in `cli/service_adapter.py:37` to `thing_inventory_csv`, and `WellInventoryResult` to `ThingInventoryResult`.
+  - Update `[WELL INVENTORY IMPORT]` banner to `[SITE INVENTORY IMPORT]` banner at `cli/cli.py:640-642`.
+- Delete `api/well_inventory.py`. The file is fully commented-out and serves no current purpose. Leaving that file in the codebase will add confusion and muddy repo-wide searches.
 - Rename modules with `git mv` so history is kept:
   - `services/well_inventory_csv.py` becomes `services/thing_inventory_csv.py`, and `import_well_inventory_csv` becomes `import_thing_inventory_csv`.
   - `schemas/well_inventory.py` becomes `schemas/thing_inventory.py`.
@@ -36,7 +38,7 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
   - `docs/sample-collector-link.md` (L31-60);
   - `docs/data-modeling-new-datasets.md` §6 (L262 cites `well_inventory_csv.py`);
   - anything else under `docs/` that a `grep -rn "well-inventory\|well_inventory" docs README.md CLAUDE.md` turns up, except the release runbooks and `CHANGELOG.md`, which are historical.
-- **Leave the existing data migrations unchanged** (`data_migrations/migrations/20260914_*`, `20261001_*`). They describe history.
+- **Update the existing data migrations to reflect inventory lexicon term name change** (`data_migrations/migrations/20260914_*`, `20261001_*`). They describe history. Do _not_ change the name of the scripts.
 - Commit as `feat(thing-inventory)!:` with a `BREAKING CHANGE:` footer so release-please flags the rename in `CHANGELOG.md`.
 
 ### PR 2: dispatch framework, with water well as the only registered type
@@ -84,9 +86,9 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
    - In `_make_row_models` (L522), check `thing_type` with `require_known_thing_type`, look up the registry entry, then validate the row with that type's `row_model` and run `foreign_columns`. A value that isn't a lexicon term fails the row at the first step, so later steps never see an unrecognized value and nothing needs normalizing.
    - A lexicon term that has no registry entry yet becomes a row error: `f"thing_type {thing_type} not yet supported by inventory import"`.
    - `_add_csv_row` keeps its shared spine: the location and elevation provenance, `add_thing(thing_type=model.thing_type)`, the FieldEvent, `ensure_field_event_participants` (`services/field_event_participant_helper.py:61`), the FieldActivity, the contacts and the permissions. It calls the registry hooks for everything type-specific.
-   - Generalize the two lookups, in this order:
-     1. `_find_existing_imported_well` (L485, hard-coded "water well" at L499 and L514) becomes `_find_existing_imported_thing(session, model)`, which matches on `model.thing_type`.
-     2. Then `find_water_wells_by_name` (`services/thing_helper.py:88`) becomes `find_things_by_name(session, name, thing_types=None)` (see step 5).
+   - Generalize the two lookups `_find_existing_imported_well` and `find_water_wells_by_name` to `find_things_by_name` and enforce name uniqueness across all `thing_type`s.
+     - Both of the two lookup functions look inside the existing DB and use `thing.name`, so assuming that `name` uniqueness is how `thing`s are found that'll be how it's run for now. If tests fail we can go back and enforce the previous behavior. 
+     - Add a note to the script that this rule can be relaxed in the future if the desired behavior is `thing.name` uniqueness within a `thing_type`
    - **Name check, in the importer only.** `thing.name` is *not* unique in the database: there is no constraint, and `db/thing.py:86` carries a `# TODO: should name be unique?`. Today's importer enforces uniqueness only in code: `_add_csv_row` rejects a row when any *water well* already has that name (L637-641).
      - Keep that check in code, but make it look across **every** `thing_type`: `find_things_by_name(session, name)` with no type filter. The water-levels import and other code look things up by name, so a spring and a piezometer named `NM-0001` would make those lookups ambiguous.
      - **No database constraint in this work.** Legacy transfers may already have produced the same name under different types. A unique index would first need an audit of existing duplicates and a cleanup data migration, so it belongs in a separate ticket, not here.
@@ -143,12 +145,39 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
    - API and read paths: `services/thing_helper.py:141,227` (eager-load options), `add_well_screen` (L535), `services/crud_helper.py:180`, `services/group_helper.py:34,54` (group well counts), `api/asset.py:366`, `api/search.py:105`, the `water_wells` OGC collection (`core/pygeoapi.py:22`) and the well materialized views.
 
    These belong with the later work on publishing well kinds (see "Well kinds other than `water well`…" below). Until then, an imported piezometer won't show up in group well counts, well search or the OGC layers.
-6. **`thing_type` column is required.** A blank value or a missing column is a row error, never a silent default to water well. Add `thing_type` to every well fixture in `tests/features/data/well-inventory-*.csv`, and rename those fixtures to `thing-inventory-*`.
+6. **`thing_type` column is required.** A blank value or a missing column is a row error, never a silent default to water well. Add `thing_type` to every site fixture in `tests/features/data/site-inventory-*.csv`, and rename those fixtures to `site-inventory-*`.
 
 ### PR 3: one inventory activity type, `"site inventory"`
 Every inventory import gets the same `FieldActivity.activity_type`, whatever the `thing_type`. The thing's own `thing_type`, reached through FieldEvent, already records what was inventoried, so a per-type term would store that fact twice.
 **One Alembic migration renames the term in place, so `well inventory` is gone the moment PR 3 deploys.**
-- **The migration:** `UPDATE lexicon_term SET term = 'site inventory', definition = … WHERE term = 'well inventory'`. Downgrade renames it back.
+- **The migration:** The upgrade renames the `well inventory` lexicon term to `site inventory`, so the `ON UPDATE CASCADE` FKs rewrite every referencing row. The term keeps its id, so its category association carries over.
+  - If `site inventory` already exists (a re-upgrade after a downgrade), the upgrade instead moves `field_activity` rows from `well inventory` to `site inventory`, then deletes `well inventory`.
+  - The downgrade re-inserts `well inventory`, with its definition and `activity_type` category association. It then sets `activity_type = 'well inventory'` on `field_activity` rows whose `activity_type` is `site inventory` and whose FieldEvent's thing is a `water well`. It keeps `site inventory`, because non-well inventories have no earlier value to go back to.
+
+```python
+def upgrade():
+    conn = op.get_bind()
+    site_exists = conn.execute(
+        sa.text("SELECT 1 FROM lexicon_term WHERE term = 'site inventory'")
+    ).scalar()
+
+    if not site_exists:
+        # First upgrade: rename in place. CASCADE rewrites field_activity,
+        # and the category association carries over with the id.
+        conn.execute(sa.text(
+            "UPDATE lexicon_term SET term = 'site inventory', definition = :d "
+            "WHERE term = 'well inventory'"
+        ), {"d": ...})
+    else:
+        # Re-upgrade after a downgrade: both terms exist. Move the rows,
+        # then drop the old term (its category association cascades).
+        conn.execute(sa.text(
+            "UPDATE field_activity SET activity_type = 'site inventory' "
+            "WHERE activity_type = 'well inventory'"
+        ))
+        conn.execute(sa.text("DELETE FROM lexicon_term WHERE term = 'well inventory'"))
+
+```
 - **Why one step clears every reference:**
   - Every `lexicon_term()` FK is `onupdate=CASCADE` (`db/base.py:87`), so Postgres rewrites every `field_activity.activity_type` row inside the same transaction.
   - The category association keys on `term_id`, not the term text (see the `b2c3d4e5f6a7` SQL), so it needs no change.
@@ -159,7 +188,7 @@ Every inventory import gets the same `FieldActivity.activity_type`, whatever the
 - `core/lexicon.json:1850-1851` becomes `"site inventory"`, and so does the category description at L5. Otherwise `oco initialize-lexicon` would recreate the old term on fresh databases.
 - Code: replace the hard-coded `activity_type="well inventory"` (was L800), and the `_find_existing_imported_thing` filter (was L516), with the module constant `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Update the test assertions at `tests/test_thing_inventory.py:432,708`.
 - **Data migrations** `20260914_0001` and `20261001_0001` find imported wells with `WELL_INVENTORY_ACTIVITY_TYPE = "well inventory"`. Change that constant, and the `tests/test_data_migrations.py:1552-1608` helpers, to `"site inventory"`. Otherwise a re-run after the rename silently matches nothing. Their docstrings, which describe history, stay as they are.
-- **Test:** after `alembic upgrade head`, no `lexicon_term` row and no `field_activity` row holds `well inventory`, and a seeded well-inventory `field_activity` row now reads `site inventory`. Then `alembic downgrade -1` restores it.
+- **Test:** after `alembic upgrade head`, no `lexicon_term` row and no `field_activity` row holds `well inventory`, and a seeded well-inventory `field_activity` row now reads `site inventory`. Then `alembic downgrade -1` restores it. Then upgrade again: there is exactly one `site inventory` term, still in the `activity_type` category, and no row holds `well inventory`.
 
 ### PR 4 to PR n: one PR per thing_type, starting with **spring** (it already has schemas and an API)
 Each type PR follows the same checklist, which will also live in the docs:
