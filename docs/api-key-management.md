@@ -66,8 +66,9 @@ so widening later is a value, not a migration. No wildcard value — same reason
 
 ## Storage
 
-New model `db/api_key.py`, table `api_key`. Not in `db/permission.py`: that
-`Permission` is a landowner's site-access consent and shares nothing with this.
+New model `db/api_key.py`, table `api_key`. Not in `db/permission_history.py`:
+that `PermissionHistory` is a landowner's site-access consent and shares
+nothing with this.
 
 | Column | Type | Notes |
 | --- | --- | --- |

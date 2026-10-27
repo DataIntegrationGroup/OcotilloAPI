@@ -1,7 +1,7 @@
 """
-models/permission.py
+db/permission_history.py
 
-This model defines the `Permission` table, a polymorphic table that tracks
+This model defines the `PermissionHistory` table, a polymorphic table that tracks
 all legal and administrative agreements related to site access and activity.
 Its purpose is to track who granted permission, what activities they authorized,
 which entity the permission applies to, and for what period of time.
@@ -77,7 +77,7 @@ class PermissionHistoryMixin:
     """
     Mixin for models that can have permissions (e.g., Thing, Location).
     It automatically creates a polymorphic One-to-Many relationship to the
-    Permission table.
+    PermissionHistory table.
     """
 
     @declared_attr
