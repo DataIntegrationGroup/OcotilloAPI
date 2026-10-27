@@ -80,8 +80,8 @@ chemistry` on one grant):
 | Field | Meaning | Values / source |
 |---|---|---|
 | `scope_type` | The broad category being scoped | `global` (no restriction), `project`, `thing`, `program` |
-| `scope_id` | The specific instance within `scope_type` | `global`: blank — applies everywhere, nothing specific to name.<br>`project`: not yet decided — likely the existing `Group` model (`db/group.py`), but unconfirmed; see open questions.<br>`thing`: the well/spring/stream's own `Thing.id`.<br>`program`: a value like `AMP` or `Geothermal` — see the `scope_type = program` section below. |
-| `data_type` | Which kind of data | Grounded in the real `activity_type` lexicon: `well inventory`, `groundwater level`, `water chemistry`. Nullable (no restriction) when not specified. Extensible — not a hardcoded enum. |
+| `scope_id` | The specific instance within `scope_type` | `global`: blank — applies everywhere, nothing specific to name.<br>`project`: a real foreign key, `Group.id` (`db/group.py`) — `Group` is a full entity (type, spatial area, hierarchy), so a normalized FK fits; `project` reuses the existing `Group` model, resolved.<br>`thing`: the well/spring/stream's own `Thing.id`.<br>`program`: a lexicon-style text value (`"AMP"`, `"Geothermal"`), not a numeric ID — same shape as `thing_type`/`activity_type` already are in this codebase, not a foreign key to an auto-incremented `program.id`. See the `scope_type = program` section below. |
+| `data_type` | Which kind of data |`data_type` needs its own value list, same as `field_group` below, not one borrowed from an unrelated lexicon. **No NULL-as-wildcard** — ADR5 requires every grant to name its data type(s) explicitly, so a data type introduced later is never silently covered by an existing grant. A grant needing broad coverage follows the `scope_id` pattern: one row per data type, not a blank value. Extensible — not a hardcoded enum. |
 | `field_group` | Which subset of fields | **New concept, no existing precedent.** `docs/water-well-field-operations-layer.md` already considered and declined a finer-grained PII split under the old credential model — implementing `field_group` now reopens that question under the new engine. Flag for implementers, not a blocker. |
 
 A single grant row holds exactly one `scope_id`. A principal who needs access
@@ -117,12 +117,18 @@ dedicated cross-program group instead.
 
 ## 4. Worked examples
 
-| # | principal_id | principal_type | capability | scope_type | scope_id | data_type | field_group | created_by | created_date | expiry_date | What this means |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `Viewer` | group | `read` | `global` | — | — | — | `jake` | `2026-01-01` | — | Everyone in the generic Viewer group can read everything |
-| 2 | `AMPViewer` | group | `read` | `program` | `AMP` | — | — | `kelsey` | `2026-02-10` | — | AMP's existing group, expressed as a grant row instead of hardcoded Python |
-| 3 | `chase` | user | `update` | `thing` | `well-4521` | — | — | `likitha` | `2026-09-01` | `2026-12-01` | A genuine one-off: one person, one well — nothing to usefully group. Time-bound, unlike the other rows. |
-| 4 | `field-laptop-01` | api_key | `read` | `global` | — | — | — | `tyler` | `2026-03-15` | `2027-03-15` | Today's actual behavior: a static key (labeled by person/machine, per convention) gets unrestricted read access to everything the internal mount serves — no narrowing by project, thing, or data type exists today. Keys currently expire after one year. |
+Rows 1-3 below show the mechanical consequence of the no-wildcard rule: a
+grant meaning "read everything" is not one row with a blank `data_type`, it is
+one row per data type the principal needs.
+
+| # | principal_id | principal_type | capability | scope_type | scope_id | data_type | field_group | granted_by | granted_at | expiry_date | reason | What this means |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `Viewer` | group | `read` | `global` | — | `well inventory` | — | `jake` | `2026-01-01` | — | General read access for all staff | One of three rows giving the Viewer group read access to every current data type. |
+| 2 | `Viewer` | group | `read` | `global` | — | `groundwater level` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, second data type. |
+| 3 | `Viewer` | group | `read` | `global` | — | `water chemistry` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, third data type. |
+| 4 | `AMPViewer` | group | `read` | `program` | `AMP` | `water chemistry` | — | `kelsey` | `2026-02-10` | — | AMP staff need read access to their own program's data | AMP's existing group, expressed as a grant row instead of hardcoded Python. In practice AMP staff would hold one row per data type (water levels, chemistry, well inventory); only one is shown here for brevity. |
+| 5 | `chase` | user | `update` | `thing` | `well-4521` | `groundwater level` | — | `likitha` | `2026-09-01` | `2026-12-01` | Correcting a specific well's reading, time-bound to the correction window | A genuine one-off: one person, one well, one data type — nothing to usefully group. Time-bound, unlike the other rows. |
+| 6 | `field-laptop-01` | api_key | `read` | `global` | — | `well inventory` | — | `tyler` | `2026-03-15` | `2027-03-15` | Legacy static key, unrestricted by design | Today's actual behavior: a static key gets unrestricted read access to everything the internal mount serves. Modeling that under the no-wildcard rule needs one row per data type, like rows 1-3; only one is shown here for brevity. Keys currently expire after one year. |
 
 ## 5. Naming convention for Authentik groups
 
@@ -152,12 +158,15 @@ dedicated cross-program group instead.
    open, pending PR comments and further review.** Options raised in
    discussion: keep `group`, revert to ADR5's `role`, or use `usergroup`/
    `principalgroup`.
-2. **Does `scope_type = project` reuse the existing `Group` model**
-   (`db/group.py`), or is it a new concept? Leaning towards reusing the
-   `Group` model, confirmation needed.
 
 **Future** — do not block this draft, flagged for later design work:
 
+2. **`data_type` (and `field_group`) will likely need a dedicated mapping
+   table** — e.g. `data_type` → `{table, column}` — so the enforcement engine
+   knows which real tables and columns a value actually covers, rather than
+   that mapping being hardcoded into application logic. Raised by PR review;
+   applies to both concepts now that `data_type` is no longer grounded in
+   `activity_type` and needs its own value list, same as `field_group`.
 3. **How should `delete` actually behave?** Soft delete vs. hard delete (row removal), and whether a
    confirmation pop up is required in the UI before a delete completes.
 4. **Naming convention for API key principal IDs issued to third parties**
