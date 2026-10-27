@@ -31,14 +31,14 @@ The work lands as **stacked PRs**. Each PR branches from the one before it, so i
   2. The renames inside the files: functions, imports, the CLI command name and messages.
 
   Git only detects a rename when the old and new files are similar, so this ensures each move shows as a rename on GitHub, and `git log --follow` and `git blame` still reach the old history.
-- Update the callers in `tests/test_cli_commands.py:551,631`, `tests/features/steps/well-inventory-*.py`, `tests/test_data_migrations.py`, `tests/test_domain_units.py`, `tests/test_water_level_csv_service.py`, and the docstrings in `cli/ingest_report.py` and `services/ingest_result.py`.
+- Update the callers in `tests/test_cli_commands.py:551,631`, `tests/features/steps/well-inventory-*.py`, `tests/test_domain_units.py`, `tests/test_water_level_csv_service.py`, and the docstrings in `cli/ingest_report.py` and `services/ingest_result.py`.
 - **Update the docs that name the old command or modules in the same PR:**
   - the root `README.md`, including its CLI section, which should list `oco site-inventory-csv`;
   - `CLAUDE.md` ("CSV importer field staff" section);
   - `docs/sample-collector-link.md` (L31-60);
   - `docs/data-modeling-new-datasets.md` §6 (L262 cites `well_inventory_csv.py`);
   - anything else under `docs/` that a `grep -rn "well-inventory\|well_inventory" docs README.md CLAUDE.md` turns up, except the release runbooks and `CHANGELOG.md`, which are historical.
-- **Update the existing data migrations to reflect inventory lexicon term name change** (`data_migrations/migrations/20260914_*`, `20261001_*`). They describe history. Do _not_ change the name of the scripts.
+- Do **not** edit the existing data migrations in this PR. PR 3 changes their `WELL_INVENTORY_ACTIVITY_TYPE` constant. Never rename their files or their id values: the runner tracks applied migration by id, so a renamed one would run again.
 - Commit as `feat(thing-inventory)!:` with a `BREAKING CHANGE:` footer so release-please flags the rename in `CHANGELOG.md`.
 
 ### PR 2: dispatch framework, with water well as the only registered type
@@ -196,7 +196,7 @@ def upgrade():
 - **Before writing it,** confirm with `\d+ field_activity` on staging that the activity_type FK really has `ON UPDATE CASCADE`. Models declare it, but older tables may predate the declaration. If it is missing, the migration first runs `UPDATE field_activity SET activity_type = 'site inventory' WHERE activity_type = 'well inventory'` inside the same transaction, with the FK deferred or temporarily dropped.
 - `core/lexicon.json:1850-1851` becomes `"site inventory"`, and so does the category description at L5. Otherwise `oco initialize-lexicon` would recreate the old term on fresh databases.
 - Code: replace the hard-coded `activity_type="well inventory"` (was L800), and the activity-type filter in `_find_existing_imported_thing` (was L516), with the module constant `INVENTORY_ACTIVITY_TYPE = "site inventory"`. It is not a registry field, because it is the same for every type. Update the test assertions at `tests/test_thing_inventory.py:432,708`.
-- **Data migrations** `20260914_0001` and `20261001_0001` find imported wells with `WELL_INVENTORY_ACTIVITY_TYPE = "well inventory"`. Change that constant, and the `tests/test_data_migrations.py:1552-1608` helpers, to `"site inventory"`. Otherwise a re-run after the rename silently matches nothing. Their docstrings, which describe history, stay as they are.
+- **Data migrations** `20260914_0001` and `20261001_0001` find imported wells with `WELL_INVENTORY_ACTIVITY_TYPE = "well inventory"`. Change that constant, and the `tests/test_data_migrations.py:1552-1608` helpers, to `"site inventory"`. Otherwise a re-run after the rename silently matches nothing. Their docstrings, which describe history, stay as they are.  Do _not_ change the name of the scripts.
 - **Test:** after `alembic upgrade head`, no `lexicon_term` row and no `field_activity` row holds `well inventory`, and a seeded well-inventory `field_activity` row now reads `site inventory`. Then `alembic downgrade -1` restores it. Then upgrade again: there is exactly one `site inventory` term, still in the `activity_type` category, and no row holds `well inventory`.
 
 ### PR 4 to PR n: one PR per thing_type, starting with **spring** (it already has schemas and an API)
