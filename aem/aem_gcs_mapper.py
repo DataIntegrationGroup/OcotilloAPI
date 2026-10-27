@@ -981,14 +981,14 @@ def propose(fpath, detected_type, survey_id, survey_folder):
         )
 
     if detected_type == "edi_mt":
-        # MT has its own survey_id alongside the AEM survey it was collected with
+        # MT is a ground dataset inside the survey it was collected with (OQ-45)
         return (
             "minimally_processed",
-            f"surveys/{sid}_mt/aem/raw/leveled_xyz/{fname}",
+            f"surveys/{sid}/mt/processed/{fname}",
             "N",
             "",
             "MOVE",
-            "MT EDI file — separate survey_id from AEM. "
+            "MT EDI file — survey's mt/ dataset folder. "
             "Parse with mt_metadata or mtpy.",
         )
 
