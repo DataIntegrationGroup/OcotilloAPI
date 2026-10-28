@@ -1,6 +1,7 @@
 # Ocotillo Access-Control Vocabulary and Scope Taxonomy
 
 **Status:** First draft
+
 **References:** ADR5, "One Enforcement Engine, Two Grant Tables"
 
 ## Summary
@@ -80,7 +81,7 @@ chemistry` on one grant):
 | Field | Meaning | Values / source |
 |---|---|---|
 | `scope_type` | The broad category being scoped | `global` (no restriction), `project`, `thing`, `program` |
-| `scope_id` | The specific instance within `scope_type` | `global`: blank — applies everywhere, nothing specific to name.<br>`project`: a real foreign key, `Group.id` (`db/group.py`) — `Group` is a full entity (type, spatial area, hierarchy), so a normalized FK fits; `project` reuses the existing `Group` model, resolved.<br>`thing`: the well/spring/stream's own `Thing.id`.<br>`program`: a lexicon-style text value (`"AMP"`, `"Geothermal"`), not a numeric ID — same shape as `thing_type`/`activity_type` already are in this codebase, not a foreign key to an auto-incremented `program.id`. See the `scope_type = program` section below. |
+| `scope_id` | The specific instance within `scope_type` | `global`: the literal `*`, never blank — applies everywhere. Never `NULL`: using an explicit sentinel instead of a blank column lets `scope_id` carry a `NOT NULL` constraint, so an omitted value fails loudly (a constraint violation) instead of silently granting global access.<br>`project`: a real foreign key, `Group.id` (`db/group.py`) — `Group` is a full entity (type, spatial area, hierarchy), so a normalized FK fits; `project` reuses the existing `Group` model, resolved.<br>`thing`: the well/spring/stream's own `Thing.id`.<br>`program`: a lexicon-style text value (`"AMP"`, `"Geothermal"`), not a numeric ID — same shape as `thing_type`/`activity_type` already are in this codebase, not a foreign key to an auto-incremented `program.id`. See the `scope_type = program` section below. |
 | `data_type` | Which kind of data |`data_type` needs its own value list, same as `field_group` below, not one borrowed from an unrelated lexicon. **No NULL-as-wildcard** — ADR5 requires every grant to name its data type(s) explicitly, so a data type introduced later is never silently covered by an existing grant. A grant needing broad coverage follows the `scope_id` pattern: one row per data type, not a blank value. Extensible — not a hardcoded enum. |
 | `field_group` | Which subset of fields | **New concept, no existing precedent.** `docs/water-well-field-operations-layer.md` already considered and declined a finer-grained PII split under the old credential model — implementing `field_group` now reopens that question under the new engine. Flag for implementers, not a blocker. |
 
@@ -123,12 +124,12 @@ one row per data type the principal needs.
 
 | # | principal_id | principal_type | capability | scope_type | scope_id | data_type | field_group | granted_by | granted_at | expiry_date | reason | What this means |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `Viewer` | group | `read` | `global` | — | `well inventory` | — | `jake` | `2026-01-01` | — | General read access for all staff | One of three rows giving the Viewer group read access to every current data type. |
-| 2 | `Viewer` | group | `read` | `global` | — | `groundwater level` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, second data type. |
-| 3 | `Viewer` | group | `read` | `global` | — | `water chemistry` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, third data type. |
+| 1 | `Viewer` | group | `read` | `global` | `*` | `well inventory` | — | `jake` | `2026-01-01` | — | General read access for all staff | One of three rows giving the Viewer group read access to every current data type. |
+| 2 | `Viewer` | group | `read` | `global` | `*` | `groundwater level` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, second data type. |
+| 3 | `Viewer` | group | `read` | `global` | `*` | `water chemistry` | — | `jake` | `2026-01-01` | — | General read access for all staff | Same grant as row 1, third data type. |
 | 4 | `AMPViewer` | group | `read` | `program` | `AMP` | `water chemistry` | — | `kelsey` | `2026-02-10` | — | AMP staff need read access to their own program's data | AMP's existing group, expressed as a grant row instead of hardcoded Python. In practice AMP staff would hold one row per data type (water levels, chemistry, well inventory); only one is shown here for brevity. |
 | 5 | `chase` | user | `update` | `thing` | `well-4521` | `groundwater level` | — | `likitha` | `2026-09-01` | `2026-12-01` | Correcting a specific well's reading, time-bound to the correction window | A genuine one-off: one person, one well, one data type — nothing to usefully group. Time-bound, unlike the other rows. |
-| 6 | `field-laptop-01` | api_key | `read` | `global` | — | `well inventory` | — | `tyler` | `2026-03-15` | `2027-03-15` | Legacy static key, unrestricted by design | Today's actual behavior: a static key gets unrestricted read access to everything the internal mount serves. Modeling that under the no-wildcard rule needs one row per data type, like rows 1-3; only one is shown here for brevity. Keys currently expire after one year. |
+| 6 | `field-laptop-01` | api_key | `read` | `global` | `*` | `well inventory` | — | `tyler` | `2026-03-15` | `2027-03-15` | Legacy static key, unrestricted by design | Today's actual behavior: a static key gets unrestricted read access to everything the internal mount serves. Modeling that under the no-wildcard rule needs one row per data type, like rows 1-3; only one is shown here for brevity. Keys currently expire after one year. |
 
 ## 5. Naming convention for Authentik groups
 
