@@ -56,7 +56,7 @@ conflation.
 
 | Value | Meaning | Access implication |
 |---|---|---|
-| `draft` | Not yet released | Hidden from all public and partner feeds. Visible to staff only, same as today. |
+| `draft` | Not yet released to any audience | Hidden from all public and partner feeds. Visible to staff only, same as today. |
 | `private` | Explicitly withheld | Hidden from all public and partner feeds, same as `draft` in effect today — the two are currently indistinguishable in behavior (see open question 1). |
 | `public` | Released | Visible on public OGC/EDR views and anywhere else the `public` gate is checked today. |
 
@@ -89,10 +89,11 @@ already-finalized data is neither `provisional` (unreviewed) nor `approved`
 client — it's *derived* from `TransducerObservationBlock.review_status`
 (`approved`/`not reviewed`), specifically so the two axes can't be set to
 contradict each other (`services/transducer_helper.py`). That derivation
-pattern is specific to transducer blocks, though — `Sample`, `Observation`,
-and `Thing` have no equivalent `review_status` to derive from, so generalizing
-`data_maturity` to those models likely means it becomes directly settable
-under the `update` capability, not derived. Flagged as an open question below.
+pattern is specific to transducer blocks, though — `Observation` has no
+equivalent block to derive from, so it would need `data_maturity` directly
+settable under the `update` capability instead. See open question 5 for
+which tables get `data_maturity` at all, and why it's a separate mixin
+rather than part of `ReleaseMixin`.
 
 ## 4. Mapping matrix: legacy `release_status` → new two-axis model
 
@@ -104,15 +105,16 @@ under the `update` capability, not derived. Flagged as an open question below.
 | `provisional` | `data_maturity` | `provisional` |
 | `published` | `data_maturity` | `published` |
 | `final` | `data_maturity` *(proposed)* | `approved` *(proposed)* |
-| `archived` | neither axis | not yet decided — likely a separate field, see open question 3 |
+| `archived` | neither axis | not yet decided — likely a separate field, see open question 4 |
 
 The first 3 (`draft`/`public`/`private`) are a straight rename, no decision
-needed. `provisional` and `published` now map cleanly to `data_maturity` too,
-same word either side. What's still open (see open question 2): what
-`release_level` those `provisional`/`published` rows should get, since their
-`data_maturity` side is settled but their visibility isn't; `final` is a
-reasonable guess on both axes, not a confirmed one; `archived` is genuinely
-unresolved.
+needed. `provisional` and `published` map cleanly to `data_maturity` only on
+tables that actually have that column — on any other table, what they even
+meant is a separate open question (see open question 3). What's still open
+for the tables where the mapping does hold (see open question 2): what
+`release_level` those rows should also get, since their `data_maturity` side
+is settled but their visibility isn't; `final` is a reasonable guess on both
+axes, not a confirmed one; `archived` is genuinely unresolved.
 
 ## Open questions
 
@@ -126,23 +128,36 @@ unresolved.
    model? ADR5 itself notes this kind of data migration has no CD path in
    this repo and is run by hand — the audit needs to happen before any rows
    move, not as part of this document.
+3. **What does `release_status='provisional'` even mean on a table with no
+   `data_maturity` column** — e.g. `Contact` or `Phone`? `data_maturity` is
+   scoped to `Observation`/`TransducerObservation`/`TransducerObservationBlock`
+   (open question 5), so a `provisional` row on `Contact`/`Phone` has no
+   `data_maturity` to move to and must become a `release_level` value
+   instead. But "provisional" was likely never a review-state word for a
+   phone number in the first place — there's no review process for one —
+   so it's unclear whether it meant "not yet public" (→ `draft`) or
+   something else entirely. 
 
 **Future** — do not block this draft:
 
-3. **`archived` doesn't get a slot in either axis for now.** Nothing today
+4. **`archived` doesn't get a slot in either axis for now.** Nothing today
    depends on it behaving differently from `draft`/`private`. If a real need
    for a distinct archived/retired state emerges later, it gets its own
    field then — not a value crammed into `release_level`, since an archived
    record can plausibly still be public (e.g. a retired monitoring well's
    historical readings), and squeezing it into a single-valued
    `release_level` would make "public" and "archived" mutually exclusive.
-4. **Should `data_maturity` apply to every record via `ReleaseMixin`**
-   (not just `TransducerObservation`), per ADR5's own suggestion to
-   generalize rather than invent a parallel flag — with exceptions made per
-   table where warranted? And if so, how should each model set it:
-   `TransducerObservation` derives it from a block-level review step, but
-   `Sample`, `Observation`, and `Thing` have no equivalent block to derive
-   from, so they'd likely need it directly settable instead.
+5. **Resolved: `data_maturity` gets its own mixin, not folded into
+   `ReleaseMixin`.** Visibility applies to every record; review state
+   doesn't — "approved" means nothing for a phone number or an aquifer
+   type. Starts on `Observation`, `TransducerObservation`, and
+   `TransducerObservationBlock`, where review already has a defined
+   meaning; other tables get it added only once their own meaning is
+   defined, not universally up front. Cheap to revisit: a mixin composes
+   onto more models later with no refactor needed, so starting narrow
+   forecloses nothing. `TransducerObservation` derives its value from a
+   block-level review step; models without an equivalent block would need
+   it directly settable instead.
 
 ## References
 
