@@ -130,8 +130,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ix_permission_grant_principal", "permission_grant",
-        ["principal_type", "principal_id"], unique=False,
+        "ix_permission_grant_principal",
+        "permission_grant",
+        ["principal_type", "principal_id"],
+        unique=False,
     )
 
 
