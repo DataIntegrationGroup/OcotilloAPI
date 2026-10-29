@@ -8659,7 +8659,7 @@
         "scope_type"
       ],
       "term": "program",
-      "definition": "Scoped to one program, e.g. AMP or Geothermal."
+      "definition": "Scoped to one program, e.g. AMMP or Geothermal."
     }
   ]
 }

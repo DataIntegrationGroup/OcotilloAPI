@@ -47,7 +47,7 @@ SCOPE_TYPE_TERMS = {
     "global": "No restriction -- scope_id is the literal '*'.",
     "project": "Scoped to one Group (db/group.py).",
     "thing": "Scoped to one Thing.",
-    "program": "Scoped to one program, e.g. AMP or Geothermal.",
+    "program": "Scoped to one program, e.g. AMMP or Geothermal.",
 }
 
 
