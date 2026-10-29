@@ -83,4 +83,7 @@ GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale
 Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
 FormationCode: type[Enum] = build_enum_from_lexicon_category("formation_code")
 NoteType: type[Enum] = build_enum_from_lexicon_category("note_type")
+PrincipalType: type[Enum] = build_enum_from_lexicon_category("principal_type")
+Capability: type[Enum] = build_enum_from_lexicon_category("capability")
+ScopeType: type[Enum] = build_enum_from_lexicon_category("scope_type")
 # ============= EOF =============================================
