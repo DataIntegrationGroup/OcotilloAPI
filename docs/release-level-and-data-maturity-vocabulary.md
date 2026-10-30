@@ -52,21 +52,25 @@ conflation.
 
 ## 2. `release_level` (visibility axis)
 
-**Recommended values — the 3 already proven live, not new terms:**
+**Recommended values — resolved (open question 1):**
 
 | Value | Meaning | Access implication |
 |---|---|---|
-| `draft` | Not yet released to any audience | Hidden from all public and partner feeds. Visible to staff only, same as today. |
-| `private` | Explicitly withheld | Hidden from all public and partner feeds, same as `draft` in effect today — the two are currently indistinguishable in behavior (see open question 1). |
+| `pending` | Not yet released to any audience, because no release decision has been made yet | Hidden from all public and partner feeds. Visible to staff only, same as today. |
+| `private` | Explicitly withheld — a decision was made to hide it | Hidden from all public and partner feeds, same as `pending` in effect today — the two are currently indistinguishable in behavior, but the distinction is intentional going forward. |
 | `public` | Released | Visible on public OGC/EDR views and anywhere else the `public` gate is checked today. |
+
+`private` and `public` are a straight reuse of the live `release_status`
+values, same word either side. `draft` is renamed to `pending`: PR review
+(ksmuczynski, Jacob) pointed out "draft" reads like a review-state term, not
+a visibility one, and that "not yet released because undecided" (`pending`)
+is a meaningfully different statement from "explicitly withheld" (`private`)
+even though the two behave identically today. Renaming the live value means
+an actual data migration, not just a label swap — see the mapping matrix.
 
 **Not recommended:** the ticket's example values (`internal`, `restricted`,
 `public`, `embargoed`) have no precedent anywhere in the codebase — adopting
-them would be a genuine new taxonomy, not a rename of what already works. The
-3 values above are what the system already enforces in production today;
-reusing them keeps this a vocabulary cleanup rather than a behavior change.
-Whether the team wants the richer `internal`/`restricted`/`embargoed`
-taxonomy instead is open question 1 below.
+them would be a genuine new taxonomy, not a rename of what already works.
 
 ## 3. `data_maturity` (review-state axis)
 
@@ -99,7 +103,7 @@ rather than part of `ReleaseMixin`.
 
 | Legacy `release_status` value | Belongs to | Becomes |
 |---|---|---|
-| `draft` | `release_level` | `draft` |
+| `draft` | `release_level` | `pending` |
 | `public` | `release_level` | `public` |
 | `private` | `release_level` | `private` |
 | `provisional` | `data_maturity` | `provisional` |
@@ -107,8 +111,11 @@ rather than part of `ReleaseMixin`.
 | `final` | `data_maturity` *(proposed)* | `approved` *(proposed)* |
 | `archived` | neither axis | not yet decided — likely a separate field, see open question 4 |
 
-The first 3 (`draft`/`public`/`private`) are a straight rename, no decision
-needed. `provisional` and `published` map cleanly to `data_maturity` only on
+`public`/`private` are a straight rename, no decision needed. `draft`
+becomes `pending` (open question 1) — same underlying behavior, renamed
+value, which is still a real data migration for every existing `draft` row,
+not just a documentation change. `provisional` and `published` map cleanly
+to `data_maturity` only on
 tables that actually have that column — on any other table, what they even
 meant is a separate open question (see open question 3). What's still open
 for the tables where the mapping does hold (see open question 2): what
@@ -120,9 +127,12 @@ axes, not a confirmed one; `archived` is genuinely unresolved.
 
 **Blockers** — need team sign-off before BDMS-1382 begins:
 
-1. **Confirm `release_level`'s value set.** Reuse the 3 proven live terms
-   (`draft`/`private`/`public`), or adopt the ticket's richer
-   `internal`/`restricted`/`public`/`embargoed` taxonomy?
+1. **Resolved: `release_level`'s value set is `pending`/`private`/`public`.**
+   `private`/`public` are a straight reuse of the live values; `draft` is
+   renamed to `pending`, since it reads as a review-state term rather than a
+   visibility one (PR review, ksmuczynski/Jacob). The ticket's richer
+   `internal`/`restricted`/`embargoed` taxonomy was not adopted — no
+   precedent for it exists anywhere in the codebase.
 2. **Row-level audit of `provisional`, `published`, and `final`.** How many
    existing rows use each value, and what should each become under the new
    model? ADR5 itself notes this kind of data migration has no CD path in
@@ -135,13 +145,14 @@ axes, not a confirmed one; `archived` is genuinely unresolved.
    `data_maturity` to move to and must become a `release_level` value
    instead. But "provisional" was likely never a review-state word for a
    phone number in the first place — there's no review process for one —
-   so it's unclear whether it meant "not yet public" (→ `draft`) or
-   something else entirely. 
+   so it's unclear whether it meant "not yet public" (→ `pending`) or
+   something else entirely. Needs a real decision, not a guess embedded in
+   the mapping matrix.
 
 **Future** — do not block this draft:
 
 4. **`archived` doesn't get a slot in either axis for now.** Nothing today
-   depends on it behaving differently from `draft`/`private`. If a real need
+   depends on it behaving differently from `pending`/`private`. If a real need
    for a distinct archived/retired state emerges later, it gets its own
    field then — not a value crammed into `release_level`, since an archived
    record can plausibly still be public (e.g. a retired monitoring well's
