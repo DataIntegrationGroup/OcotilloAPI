@@ -1,4 +1,4 @@
-# Release Level and Data Maturity Vocabulary
+# Release Level and Review State Vocabulary
 
 **Status:** First draft
 
@@ -9,12 +9,18 @@ one column" section). Blocks BDMS-1382.
 
 `ReleaseMixin` gives every record one `release_status` column that is being
 asked two unrelated questions at once: *who may see this* (visibility) and
-*how far along is this in review* (data maturity). This document proposes
+*how far along is this in review* (review state). This document proposes
 splitting it into two independent fields — `release_level` and
-`data_maturity` — defines their enum values and access implications, and maps
+`review_state` — defines their enum values and access implications, and maps
 the 7 existing `release_status` values onto the new two-axis model. This is a
 vocabulary decision to be confirmed before any schema or
 migration work begins.
+
+This field was renamed from `data_maturity` to `review_state` during
+review. The real column on `TransducerObservation` is still called
+`data_maturity` today — the actual rename hasn't happened yet. So below:
+`data_maturity` means today's real code, `review_state` means the proposed
+name.
 
 ## Why split (ADR5's example)
 
@@ -62,17 +68,17 @@ conflation.
 
 `private` and `public` are a straight reuse of the live `release_status`
 values, same word either side. `draft` is renamed to `pending`: PR review
-(ksmuczynski, Jacob) pointed out "draft" reads like a review-state term, not
-a visibility one, and that "not yet released because undecided" (`pending`)
+pointed out "draft" reads like a review-state term, not a visibility one,
+and that "not yet released because undecided" (`pending`)
 is a meaningfully different statement from "explicitly withheld" (`private`)
-even though the two behave identically today. Renaming the live value means
-an actual data migration, not just a label swap — see the mapping matrix.
+even though the two behave identically today — see the mapping matrix for
+what the rename actually costs.
 
 **Not recommended:** the ticket's example values (`internal`, `restricted`,
 `public`, `embargoed`) have no precedent anywhere in the codebase — adopting
 them would be a genuine new taxonomy, not a rename of what already works.
 
-## 3. `data_maturity` (review-state axis)
+## 3. `review_state`
 
 **Recommended values — generalize the existing lexicon, not a boolean:**
 
@@ -80,23 +86,22 @@ them would be a genuine new taxonomy, not a rename of what already works.
 |---|---|
 | `provisional` | Not yet reviewed, default state |
 | `approved` | Reviewed and confirmed |
-| `published` | Sourced from an already-finalized external dataset — vetted by its source |
+| `unknown` | Review state cannot be determined because its review history is undocumented or it came from a source whose QA/QC the Bureau cannot confirm. Not a default for new data, which still starts as `provisional`. |
 
-**Not recommended:** a plain boolean `is_provisional`, or `in review` —
-nothing produces `in review` today, it's reserved for a review workflow that
-doesn't exist yet. `published` fills a real gap instead: external,
-already-finalized data is neither `provisional` (unreviewed) nor `approved`
-(Ocotillo did its own QA/QC) — it was vetted by its source.
+**Not recommended:** a plain boolean `is_provisional`; `in review` (unused
+today); or `published` — see the mapping matrix for why. Actual source is
+tracked separately via the existing `DataProvenance` table, not here.
 
-**Existing precedent:** `data_maturity` already exists, but only on
-`TransducerObservation` (`db/transducer.py`). It isn't set directly by the
-client — it's *derived* from `TransducerObservationBlock.review_status`
-(`approved`/`not reviewed`), specifically so the two axes can't be set to
-contradict each other (`services/transducer_helper.py`). That derivation
-pattern is specific to transducer blocks, though — `Observation` has no
-equivalent block to derive from, so it would need `data_maturity` directly
-settable under the `update` capability instead. See open question 5 for
-which tables get `data_maturity` at all, and why it's a separate mixin
+**Existing precedent:** this field already exists under the name
+`data_maturity`, but only on `TransducerObservation` (`db/transducer.py`).
+It isn't set directly by the client — it's *derived* from
+`TransducerObservationBlock.review_status` (`approved`/`not reviewed`),
+specifically so the two axes can't be set to contradict each other
+(`services/transducer_helper.py`). That derivation pattern is specific to
+transducer blocks, though — `Observation` has no equivalent block to derive
+from, so it would need `review_state` directly settable under the `update`
+capability instead. See open question 4 for which tables get `review_state`
+at all, and why it's a separate mixin
 rather than part of `ReleaseMixin`.
 
 ## 4. Mapping matrix: legacy `release_status` → new two-axis model
@@ -106,22 +111,24 @@ rather than part of `ReleaseMixin`.
 | `draft` | `release_level` | `pending` |
 | `public` | `release_level` | `public` |
 | `private` | `release_level` | `private` |
-| `provisional` | `data_maturity` | `provisional` |
-| `published` | `data_maturity` | `published` |
-| `final` | `data_maturity` *(proposed)* | `approved` *(proposed)* |
-| `archived` | neither axis | not yet decided — likely a separate field, see open question 4 |
+| `provisional` | `review_state` | `provisional` |
+| `published` | `review_state` | `unknown` |
+| `final` | `review_state` *(proposed)* | `approved` *(proposed)* |
+| `archived` | neither axis | not yet decided — likely a separate field, see open question 3 |
 
 `public`/`private` are a straight rename, no decision needed. `draft`
 becomes `pending` (open question 1) — same underlying behavior, renamed
 value, which is still a real data migration for every existing `draft` row,
-not just a documentation change. `provisional` and `published` map cleanly
-to `data_maturity` only on
-tables that actually have that column — on any other table, what they even
-meant is a separate open question (see open question 3). What's still open
-for the tables where the mapping does hold (see open question 2): what
-`release_level` those rows should also get, since their `data_maturity` side
-is settled but their visibility isn't; `final` is a reasonable guess on both
-axes, not a confirmed one; `archived` is genuinely unresolved.
+not just a documentation change. `provisional` maps cleanly to
+`review_state`, same word either side; `published` becomes `unknown`
+(deliberately not the same word, since the legacy `published` and the old
+`review_state=published` proposal were two unrelated things that happened to
+share a name — `unknown` removes that collision). Both only apply on tables
+that actually have the `review_state` column; on any other table, what these
+legacy values even meant, and what `release_level` those rows should get
+either way, is all one open question (see open question 2). `final` is a
+reasonable guess on both axes, not a confirmed one; `archived` is genuinely
+unresolved.
 
 ## Open questions
 
@@ -130,35 +137,33 @@ axes, not a confirmed one; `archived` is genuinely unresolved.
 1. **Resolved: `release_level`'s value set is `pending`/`private`/`public`.**
    `private`/`public` are a straight reuse of the live values; `draft` is
    renamed to `pending`, since it reads as a review-state term rather than a
-   visibility one (PR review, ksmuczynski/Jacob). The ticket's richer
+   visibility one. The ticket's richer
    `internal`/`restricted`/`embargoed` taxonomy was not adopted — no
    precedent for it exists anywhere in the codebase.
-2. **Row-level audit of `provisional`, `published`, and `final`.** How many
-   existing rows use each value, and what should each become under the new
-   model? ADR5 itself notes this kind of data migration has no CD path in
-   this repo and is run by hand — the audit needs to happen before any rows
-   move, not as part of this document.
-3. **What does `release_status='provisional'` even mean on a table with no
-   `data_maturity` column** — e.g. `Contact` or `Phone`? `data_maturity` is
-   scoped to `Observation`/`TransducerObservation`/`TransducerObservationBlock`
-   (open question 5), so a `provisional` row on `Contact`/`Phone` has no
-   `data_maturity` to move to and must become a `release_level` value
-   instead. But "provisional" was likely never a review-state word for a
-   phone number in the first place — there's no review process for one —
-   so it's unclear whether it meant "not yet public" (→ `pending`) or
-   something else entirely. Needs a real decision, not a guess embedded in
-   the mapping matrix.
 
 **Future** — do not block this draft:
 
-4. **`archived` doesn't get a slot in either axis for now.** Nothing today
+2. **Row-level audit of `provisional`, `published`, and `final`, including
+   what they mean on tables with no `review_state` column** (e.g. `Contact`,
+   `Phone`). How many existing rows use each value, on which tables, and
+   what should each become? For tables with `review_state`
+   (`Observation`/`TransducerObservation`/`TransducerObservationBlock`, open
+   question 4), the value side is already settled
+   (`provisional`/`published`→`unknown`); what's left is each row's
+   `release_level`. For every other table, "provisional" likely never meant
+   a review state in the first place — there's no review process for a
+   phone number — so it's unclear whether it meant "not yet public"
+   (→ `pending`) or something else, and needs a real decision, not a guess
+   embedded in the mapping matrix. ADR5 itself notes this kind of data
+   migration has no CD path in this repo and is run by hand.
+3. **`archived` doesn't get a slot in either axis for now.** Nothing today
    depends on it behaving differently from `pending`/`private`. If a real need
    for a distinct archived/retired state emerges later, it gets its own
    field then — not a value crammed into `release_level`, since an archived
    record can plausibly still be public (e.g. a retired monitoring well's
    historical readings), and squeezing it into a single-valued
    `release_level` would make "public" and "archived" mutually exclusive.
-5. **Resolved: `data_maturity` gets its own mixin, not folded into
+4. **Resolved: `review_state` gets its own mixin, not folded into
    `ReleaseMixin`.** Visibility applies to every record; review state
    doesn't — "approved" means nothing for a phone number or an aquifer
    type. Starts on `Observation`, `TransducerObservation`, and
@@ -166,9 +171,9 @@ axes, not a confirmed one; `archived` is genuinely unresolved.
    meaning; other tables get it added only once their own meaning is
    defined, not universally up front. Cheap to revisit: a mixin composes
    onto more models later with no refactor needed, so starting narrow
-   forecloses nothing. `TransducerObservation` derives its value from a
-   block-level review step; models without an equivalent block would need
-   it directly settable instead.
+   forecloses nothing. See Section 3's "Existing precedent" for how
+   `TransducerObservation` sets its value today, and why `Observation` would
+   need a different mechanism.
 
 ## References
 
@@ -181,3 +186,6 @@ axes, not a confirmed one; `archived` is genuinely unresolved.
   derivation logic itself.
 - [core/lexicon.json](../core/lexicon.json): current `release_status` and
   `data_maturity` term definitions.
+- [db/data_provenance.py](../db/data_provenance.py): where source/origin
+  metadata is tracked separately from `review_state`'s review-state
+  question.
