@@ -190,14 +190,17 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
      - `repeat_measurement_permission`
      - `sampling_permission`
      - `contact_special_requests_notes`
-     - `utm_easting`
-     - `utm_northing`
-     - `utm_zone`
+     - `utm_easting`*
+     - `utm_northing`*
+     - `utm_zone`*
      - `elevation_ft`
      - `elevation_method`
      - `directions_to_site`
      - `specific_location_of_site`
      - `general_site_notes`
+     - `historical_notes`: **unaccounted-for column that will become another "Historical" note for each thing**
+     - `monitoring_frequency`
+     - `monitoring_status`
    - `BaseWellInventoryRow(BaseInventoryRow)` takes the well columns, the water-level block, the `Complete` monitoring_frequency normalizer (L352) and the `depth_to_water_ft` rule (L414). In PR 3, `WaterWellInventoryRow` adds nothing to it. `BaseWellInventoryRow` holds the following well columns:
      - `measuring_point_height_ft`
      - `datalogger_installation_permission`
@@ -207,7 +210,6 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
      - `completion_source`
      - `total_well_depth_ft`
      - `historic_depth_to_water_ft`
-     - `historical_notes`: **unaccounted-for column that will become another "Historical" note**
      - `depth_source`
      - `well_pump_type`
      - `well_pump_depth_ft`
@@ -217,8 +219,6 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
      - `measuring_point_description`
      - `well_purpose`
      - `well_hole_status`
-     - `monitoring_frequency`
-     - `monitoring_status`
      - `sampling_scenario_notes`
      - `well_measuring_notes`
      - `water_notes`
@@ -253,7 +253,7 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
    There is one registry entry per lexicon term. Hooks can be shared: every well term uses the same well hooks, every stream term the stream hooks. PR 3 registers only `"water well"`. Every value at registration time is copied from the current code, so this PR changes behaviour in only three ways: the type-specific note wording (step 5), names are checked across every `thing_type` (step 4), and a re-imported row is reported and counted as skipped rather than silently counted as imported (step 4).
 4. **Service** (`services/thing_inventory_csv.py`):
    - In `_make_row_models` (L522), check `site_type` with `require_known_thing_type`, look up the registry entry, then validate the row with that type's `row_model` and run `foreign_columns`. A value that isn't a lexicon term fails the row at the first step, so later steps never see an unrecognized value and nothing needs normalizing.
-   - A lexicon term that has no registry entry yet becomes a row error: `f"thing_type {thing_type} not yet supported by inventory import"`.
+   - A lexicon term that has no registry entry yet becomes a row error: `f"site_type (thing_type in DB) {site_type} not yet supported by inventory import"`.
    - `_add_csv_row` keeps its shared spine: the location and elevation provenance, `add_thing(thing_type=model.site_type)`, the FieldEvent, `ensure_field_event_participants` (`services/field_event_participant_helper.py:61`), the FieldActivity, the contacts and the permissions. It calls the registry hooks for everything type-specific.
    - **Two checks before a row is written, in this order.** These are decisions made with the team; the behaviour can be relaxed later.
      - `thing.name` is *not* unique in the database: there is no constraint, and `db/thing.py:86` carries a `# TODO: should name be unique?`. The importer enforces uniqueness in code.
@@ -408,13 +408,17 @@ All six classes are empty subclasses of `BaseSurfaceWaterInventoryRow` for now (
 - **`site_name_point_id` is 10 characters at most for surface-water rows.** `PointID` is `String(10)`, but `site_name_point_id` lives on `BaseInventoryRow`, where wells have no such limit. Enforce it with a validator on `BaseSurfaceWaterInventoryRow`, not on the shared field.
 - **Not mapped:** `SiteNotes` and `AqClass`. No spreadsheet column feeds them, so they stay null for new rows. Site notes go to the Thing's notes through `general_site_notes`, as for every type.
 - `surface_id` (`SurfaceID`) and `location_id` (`LocationId`) are legacy NM_Aquifer ids and are left null for new rows.
-
-**`date_measured` time zone.** The spreadsheet gives `date_measured` in local time, America/Denver. Convert it to UTC with the existing `normalize_datetime_to_utc` (`services/util.py:76`). It treats a naive value as America/Denver through `ZoneInfo`, so daylight saving is handled, and the repeated hour at the autumn change resolves to its first occurrence (`fold=0`). `DateMeasured` is a `timestamp without time zone`, so store the UTC value with its tzinfo removed. Legacy rows keep whatever the NM_Aquifer transfer stored, and `SurfaceID IS NULL` tells the two apart (see below).
+- **`date_measured` time zone.** The spreadsheet gives `date_measured` in local time, America/Denver. Because legacy records are stored as timezone-naive with an assumed America/Denver timezone these values will also be stored as timezone-naive. Future refactor/migrations will convert the whole column at once to UTC.
 
 **Migration** (Alembic, plus the model in `db/nma_legacy.py`):
 - **Make `SurfaceID` nullable.** It is the legacy NM_Aquifer UUID and has no meaning for new rows. Update `surface_id` in `db/nma_legacy.py` to `Mapped[Optional[uuid.UUID]]`, `nullable=True`.
   - **This has a second use:** `SurfaceID IS NULL` marks exactly the rows that came from site inventory rather than NM_Aquifer. The later migration of this table, and anyone reading `date_measured`, can then tell the two apart without relying on `data_source`.
-- **Move the `OBJECTID` sequence past the legacy ids.** The NM_Aquifer transfer inserted explicit `OBJECTID`s copied from the legacy database (`transfers/surface_water_data.py:83-99`), so the sequence may never have advanced past them. Transfers are deprecated and no more `NMA_SurfaceWaterData` backfills will run, so there is no overwrite risk. `OBJECTID` is also inconsequential to the new schema. To be safe, set the sequence to `max("OBJECTID") + 100000` with `setval(pg_get_serial_sequence('"NMA_SurfaceWaterData"', 'OBJECTID'), …)`. Before writing it, check on staging that the column has a sequence at all. If it has none, the migration creates one and makes it the column default.
+- **Move the `OBJECTID` sequence past the legacy ids.** The NM_Aquifer transfer inserted explicit `OBJECTID`s copied from the legacy database (`transfers/surface_water_data.py:83-99`), so the sequence may never have advanced past them. To ensure that any transfers, particularly `oco scoped-transfer`, don't cross paths with the newly generated `OBJECTID` this process will set `OBJECTID` for every new record by setting it to be 1+ the existing `OBJECTID` or 1142, whichever is higher. 1142 is chosen as the floor because the highest `OBJECTID` in NM_Aquifer is 1141.
+- To protect the newly created records the transferer's upsert will never update rows where `SurfaceID is NULL`. In `transfers/surface_water_data.py` append the following after L112 for the `on_conflict_do_update` method:
+
+```python
+where=NMA_SurfaceWaterData.surface_id.isnot(None),
+```
 
 **Documentation: CLAUDE.md's legacy section needs an update.** The *Legacy System Migration* section says the `NMA_*` tables are frozen legacy data that live routes only read. After PR 5 that is no longer true for `NMA_SurfaceWaterData`, so add a paragraph covering:
 - `NMA_SurfaceWaterData` is **written** by `oco site-inventory-csv` for surface-water `thing_type`s, a deliberate exception until the table is refactored and migrated to OcotilloDB. Don't "fix" it by moving the writes to Sample and Observation without that migration.
