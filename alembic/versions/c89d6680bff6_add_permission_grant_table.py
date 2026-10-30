@@ -5,14 +5,11 @@ Revises: cab78adfe059
 Create Date: 2026-10-28 23:03:54.547192
 
 ADR5's permission_grant table (docs/vocabulary-and-scope-taxonomy.md).
-`principal_type`, `capability`, and `scope_type` are lexicon-backed, so the
-values this table needs (`user`/`principal_group`/`api_key`,
-`read`/`create`/`update`/`delete`/`administer`,
-`global`/`project`/`thing`/`program`) are inserted here by hand --
-autogenerate only emits the column/FK shape, not the term data a fresh
-deploy's lexicon seed doesn't have yet. `core/lexicon.json` carries the same
-terms for a freshly seeded database; see the terms added there alongside
-this migration.
+`principal_type`, `capability`, `scope_type`, and `data_type` are
+lexicon-backed, so the values are inserted here by hand -- autogenerate only
+emits the column/FK shape. `data_type` reuses the existing `activity_type`
+terms rather than inserting new ones; `core/lexicon.json` carries the same
+terms for a freshly seeded database.
 """
 
 from typing import Sequence, Union
@@ -27,13 +24,21 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 PRINCIPAL_TYPE_CATEGORY = "principal_type"
+PRINCIPAL_TYPE_DESCRIPTION = (
+    "Who can hold a permission_grant: an individual person, a named group, "
+    "or an API key with no person behind it."
+)
 PRINCIPAL_TYPE_TERMS = {
-    "user": "An individual person, identified by audit trail only today.",
+    "user": "An individual person",
     "principal_group": "A named set of people, backed by Authentik group membership.",
     "api_key": "A credential with no person behind it.",
 }
 
 CAPABILITY_CATEGORY = "capability"
+CAPABILITY_DESCRIPTION = (
+    "What a permission_grant lets its principal do: read, create, update, "
+    "delete, or administer other grants."
+)
 CAPABILITY_TERMS = {
     "read": "View data.",
     "create": "Create new records.",
@@ -43,6 +48,10 @@ CAPABILITY_TERMS = {
 }
 
 SCOPE_TYPE_CATEGORY = "scope_type"
+SCOPE_TYPE_DESCRIPTION = (
+    "The broad category a permission_grant is scoped to: global, project, "
+    "thing, or program. See scope_id for the specific instance."
+)
 SCOPE_TYPE_TERMS = {
     "global": "No restriction -- scope_id is the literal '*'.",
     "project": "Scoped to one Group (db/group.py).",
@@ -50,26 +59,28 @@ SCOPE_TYPE_TERMS = {
     "program": "Scoped to one program, e.g. AMMP or Geothermal.",
 }
 
+# Terms already exist, tagged under activity_type -- only the data_type
+# category association is new, not the terms themselves.
+DATA_TYPE_CATEGORY = "data_type"
+DATA_TYPE_DESCRIPTION = (
+    "Which kind of data a permission_grant applies to. Reuses the "
+    "activity_type terms (well inventory, groundwater level, water "
+    "chemistry) rather than inventing a parallel list."
+)
+DATA_TYPE_TERMS = ("well inventory", "groundwater level", "water chemistry")
 
-def _insert_lexicon_category(connection, category: str) -> None:
+
+def _insert_lexicon_category(connection, category: str, description: str) -> None:
     connection.execute(
         sa.text(
-            "INSERT INTO lexicon_category (name) VALUES (:name) "
-            "ON CONFLICT (name) DO NOTHING"
+            "INSERT INTO lexicon_category (name, description) "
+            "VALUES (:name, :description) ON CONFLICT (name) DO NOTHING"
         ),
-        {"name": category},
+        {"name": category, "description": description},
     )
 
 
-def _insert_lexicon_terms(connection, category: str, terms: dict[str, str]) -> None:
-    for term, definition in terms.items():
-        connection.execute(
-            sa.text(
-                "INSERT INTO lexicon_term (term, definition) VALUES (:term, :definition) "
-                "ON CONFLICT (term) DO NOTHING"
-            ),
-            {"term": term, "definition": definition},
-        )
+def _associate_lexicon_terms(connection, category: str, terms) -> None:
     connection.execute(
         sa.text("""
             INSERT INTO lexicon_term_category_association (term_id, category_id)
@@ -82,16 +93,31 @@ def _insert_lexicon_terms(connection, category: str, terms: dict[str, str]) -> N
     )
 
 
+def _insert_lexicon_terms(connection, category: str, terms: dict[str, str]) -> None:
+    for term, definition in terms.items():
+        connection.execute(
+            sa.text(
+                "INSERT INTO lexicon_term (term, definition) VALUES (:term, :definition) "
+                "ON CONFLICT (term) DO NOTHING"
+            ),
+            {"term": term, "definition": definition},
+        )
+    _associate_lexicon_terms(connection, category, terms)
+
+
 def upgrade() -> None:
     connection = op.get_bind()
 
-    for category, terms in (
-        (PRINCIPAL_TYPE_CATEGORY, PRINCIPAL_TYPE_TERMS),
-        (CAPABILITY_CATEGORY, CAPABILITY_TERMS),
-        (SCOPE_TYPE_CATEGORY, SCOPE_TYPE_TERMS),
+    for category, description, terms in (
+        (PRINCIPAL_TYPE_CATEGORY, PRINCIPAL_TYPE_DESCRIPTION, PRINCIPAL_TYPE_TERMS),
+        (CAPABILITY_CATEGORY, CAPABILITY_DESCRIPTION, CAPABILITY_TERMS),
+        (SCOPE_TYPE_CATEGORY, SCOPE_TYPE_DESCRIPTION, SCOPE_TYPE_TERMS),
     ):
-        _insert_lexicon_category(connection, category)
+        _insert_lexicon_category(connection, category, description)
         _insert_lexicon_terms(connection, category, terms)
+
+    _insert_lexicon_category(connection, DATA_TYPE_CATEGORY, DATA_TYPE_DESCRIPTION)
+    _associate_lexicon_terms(connection, DATA_TYPE_CATEGORY, DATA_TYPE_TERMS)
 
     op.create_table(
         "permission_grant",
@@ -126,6 +152,9 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["scope_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["data_type"], ["lexicon_term.term"], onupdate="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
     )

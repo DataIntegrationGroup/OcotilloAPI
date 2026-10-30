@@ -86,4 +86,5 @@ NoteType: type[Enum] = build_enum_from_lexicon_category("note_type")
 PrincipalType: type[Enum] = build_enum_from_lexicon_category("principal_type")
 Capability: type[Enum] = build_enum_from_lexicon_category("capability")
 ScopeType: type[Enum] = build_enum_from_lexicon_category("scope_type")
+DataType: type[Enum] = build_enum_from_lexicon_category("data_type")
 # ============= EOF =============================================

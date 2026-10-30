@@ -259,6 +259,10 @@
     {
       "name": "scope_type",
       "description": "The broad category a permission_grant is scoped to: global, project, thing, or program. See scope_id for the specific instance."
+    },
+    {
+      "name": "data_type",
+      "description": "Which kind of data a permission_grant applies to. Reuses the activity_type terms (well inventory, groundwater level, water chemistry) rather than inventing a parallel list."
     }
   ],
   "terms": [
@@ -953,7 +957,8 @@
     },
     {
       "categories": [
-        "parameter_name"
+        "parameter_name",
+        "data_type"
       ],
       "term": "groundwater level",
       "definition": "groundwater level measurement"
@@ -1857,21 +1862,24 @@
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "well inventory",
       "definition": "well inventory"
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "groundwater level",
       "definition": "groundwater level"
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "water chemistry",
       "definition": "water chemistry"

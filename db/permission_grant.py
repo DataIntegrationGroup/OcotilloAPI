@@ -33,9 +33,12 @@ class PermissionGrant(Base, AutoBaseMixin):
     # omitted value fails this constraint instead of granting global access.
     scope_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Nullable -- no concrete value list exists yet for either; not
-    # hardcoded enums.
-    data_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    # Lexicon-backed: reuses the existing activity_type terms, so a typo
+    # fails loudly instead of silently denying the grant.
+    data_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
+
+    # Nullable, plain string -- no concrete value list exists yet; not a
+    # hardcoded enum.
     field_group: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
