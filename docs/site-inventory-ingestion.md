@@ -201,6 +201,7 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
      - `historical_notes`: **unaccounted-for column that will become another "Historical" note for each thing**
      - `monitoring_frequency`
      - `monitoring_status`
+   - Because `historical_notes` is not yet accounted for in the row model, the update to include it will be in this PR so that it does not interfere with breaking changes from PRs 1 and 2.
    - `BaseWellInventoryRow(BaseInventoryRow)` takes the well columns, the water-level block, the `Complete` monitoring_frequency normalizer (L352) and the `depth_to_water_ft` rule (L414). In PR 3, `WaterWellInventoryRow` adds nothing to it. `BaseWellInventoryRow` holds the following well columns:
      - `measuring_point_height_ft`
      - `datalogger_installation_permission`
@@ -413,7 +414,7 @@ All six classes are empty subclasses of `BaseSurfaceWaterInventoryRow` for now (
 **Migration** (Alembic, plus the model in `db/nma_legacy.py`):
 - **Make `SurfaceID` nullable.** It is the legacy NM_Aquifer UUID and has no meaning for new rows. Update `surface_id` in `db/nma_legacy.py` to `Mapped[Optional[uuid.UUID]]`, `nullable=True`.
   - **This has a second use:** `SurfaceID IS NULL` marks exactly the rows that came from site inventory rather than NM_Aquifer. The later migration of this table, and anyone reading `date_measured`, can then tell the two apart without relying on `data_source`.
-- **Move the `OBJECTID` sequence past the legacy ids.** The NM_Aquifer transfer inserted explicit `OBJECTID`s copied from the legacy database (`transfers/surface_water_data.py:83-99`), so the sequence may never have advanced past them. To ensure that any transfers, particularly `oco scoped-transfer`, don't cross paths with the newly generated `OBJECTID` this process will set `OBJECTID` for every new record by setting it to be 1+ the existing `OBJECTID` or 1142, whichever is higher. 1142 is chosen as the floor because the highest `OBJECTID` in NM_Aquifer is 1141.
+- **Move the `OBJECTID` sequence past the legacy ids.** The NM_Aquifer transfer inserted explicit `OBJECTID`s copied from the legacy database (`transfers/surface_water_data.py:83-99`), so the sequence may never have advanced past them. To ensure that any transfers, particularly `oco scoped-transfer`, don't cross paths with the newly generated `OBJECTID` this process will set `OBJECTID` for every new record by setting it to be 1+ the highest existing `OBJECTID` or 1142, whichever is higher. 1142 is chosen as the floor because the highest `OBJECTID` in NM_Aquifer is 1141.
 - To protect the newly created records the transferer's upsert will never update rows where `SurfaceID is NULL`. In `transfers/surface_water_data.py` append the following after L112 for the `on_conflict_do_update` method:
 
 ```python
