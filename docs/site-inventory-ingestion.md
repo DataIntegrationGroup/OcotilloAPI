@@ -207,7 +207,7 @@ Commit as `feat(well-inventory)!:` with a `BREAKING CHANGE:` footer that names t
      - `completion_source`
      - `total_well_depth_ft`
      - `historic_depth_to_water_ft`
-     - `historical_notes`: **new column; its mapping still needs to be decided.** Today the "Historical" note is built only from `historic_depth_to_water_ft` and `depth_source` (`historic_depth_to_water_note`, L673-675). Decide whether `historical_notes` becomes its own "Historical" note, or is combined with that generated one, before PR 3 is written.
+     - `historical_notes`: **unaccounted-for column that will become another "Historical" note**
      - `depth_source`
      - `well_pump_type`
      - `well_pump_depth_ft`
