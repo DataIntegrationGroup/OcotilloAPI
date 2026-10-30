@@ -82,7 +82,7 @@ chemistry` on one grant):
 |---|---|---|
 | `scope_type` | The broad category being scoped | `global` (no restriction), `project`, `thing`, `program` |
 | `scope_id` | The specific instance within `scope_type` | `global`: the literal `*`, never blank — applies everywhere. Never `NULL`: using an explicit sentinel instead of a blank column lets `scope_id` carry a `NOT NULL` constraint, so an omitted value fails loudly (a constraint violation) instead of silently granting global access.<br>`project`: a real foreign key, `Group.id` (`db/group.py`) — `Group` is a full entity (type, spatial area, hierarchy), so a normalized FK fits; `project` reuses the existing `Group` model, resolved.<br>`thing`: the well/spring/stream's own `Thing.id`.<br>`program`: a lexicon-style text value (`"AMP"`, `"Geothermal"`), not a numeric ID — same shape as `thing_type`/`activity_type` already are in this codebase, not a foreign key to an auto-incremented `program.id`. See the `scope_type = program` section below. |
-| `data_type` | Which kind of data |`data_type` needs its own value list, same as `field_group` below, not one borrowed from an unrelated lexicon. **No NULL-as-wildcard** — ADR5 requires every grant to name its data type(s) explicitly, so a data type introduced later is never silently covered by an existing grant. A grant needing broad coverage follows the `scope_id` pattern: one row per data type, not a blank value. Extensible — not a hardcoded enum. |
+| `data_type` | Which kind of data | Grounded in the real `activity_type` lexicon: `well inventory`, `groundwater level`, `water chemistry` — confirmed live in the current schema, e.g. `field_activity.activity_type = 'water chemistry'` is the actual filter behind `chemistry_sample_count` in `docs/water-well-field-operations-layer.md`. Does not reach the separate legacy `NMA_MajorChemistry`/`NMA_Chemistry_SampleInfo` import tables, which doesn't matter here since `permission_grant` gates the live schema, not legacy staging data. **No NULL-as-wildcard** — ADR5 requires every grant to name its data type(s) explicitly, so a data type introduced later is never silently covered by an existing grant. A grant needing broad coverage follows the `scope_id` pattern: one row per data type, not a blank value. Extensible — not a hardcoded enum. |
 | `field_group` | Which subset of fields | **New concept, no existing precedent.** `docs/water-well-field-operations-layer.md` already considered and declined a finer-grained PII split under the old credential model — implementing `field_group` now reopens that question under the new engine. Flag for implementers, not a blocker. |
 
 A single grant row holds exactly one `scope_id`. A principal who needs access
@@ -162,12 +162,13 @@ one row per data type the principal needs.
 
 **Future** — do not block this draft, flagged for later design work:
 
-2. **`data_type` (and `field_group`) will likely need a dedicated mapping
-   table** — e.g. `data_type` → `{table, column}` — so the enforcement engine
-   knows which real tables and columns a value actually covers, rather than
-   that mapping being hardcoded into application logic. Raised by PR review;
-   applies to both concepts now that `data_type` is no longer grounded in
-   `activity_type` and needs its own value list, same as `field_group`.
+2. **`field_group` will likely need a dedicated mapping table** — e.g.
+   `field_group` → `{table, column}` — so the enforcement engine knows which
+   real fields a value actually covers, rather than that mapping being
+   hardcoded into application logic. `data_type` doesn't need this: it maps
+   directly to `field_activity.activity_type`, a one-to-one correspondence
+   already confirmed live in the current schema, not something requiring a
+   lookup table.
 3. **How should `delete` actually behave?** Soft delete vs. hard delete (row removal), and whether a
    confirmation pop up is required in the UI before a delete completes.
 4. **Naming convention for API key principal IDs issued to third parties**
