@@ -247,6 +247,22 @@
     {
       "name": "data_maturity",
       "description": "How far through review a measurement is, on USGS terms. Orthogonal to release_status, which controls visibility rather than trust."
+    },
+    {
+      "name": "principal_type",
+      "description": "Who can hold a permission_grant: an individual person, a named group, or an API key with no person behind it."
+    },
+    {
+      "name": "capability",
+      "description": "What a permission_grant lets its principal do: read, create, update, delete, or administer other grants."
+    },
+    {
+      "name": "scope_type",
+      "description": "The broad category a permission_grant is scoped to: global, project, thing, or program. See scope_id for the specific instance."
+    },
+    {
+      "name": "data_type",
+      "description": "Which kind of data a permission_grant applies to. Reuses the activity_type terms (well inventory, groundwater level, water chemistry) rather than inventing a parallel list."
     }
   ],
   "terms": [
@@ -941,7 +957,8 @@
     },
     {
       "categories": [
-        "parameter_name"
+        "parameter_name",
+        "data_type"
       ],
       "term": "groundwater level",
       "definition": "groundwater level measurement"
@@ -1845,21 +1862,24 @@
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "well inventory",
       "definition": "well inventory"
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "groundwater level",
       "definition": "groundwater level"
     },
     {
       "categories": [
-        "activity_type"
+        "activity_type",
+        "data_type"
       ],
       "term": "water chemistry",
       "definition": "water chemistry"
@@ -8564,6 +8584,90 @@
       ],
       "term": "in review",
       "definition": "Under review and not yet approved. Intermediate state from the USGS Aquarius approval levels used for continuous records."
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "user",
+      "definition": "An individual person"
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "principal_group",
+      "definition": "A named set of people, backed by Authentik group membership."
+    },
+    {
+      "categories": [
+        "principal_type"
+      ],
+      "term": "api_key",
+      "definition": "A credential with no person behind it."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "read",
+      "definition": "View data."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "create",
+      "definition": "Create new records."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "update",
+      "definition": "Edit existing records."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "delete",
+      "definition": "Remove records."
+    },
+    {
+      "categories": [
+        "capability"
+      ],
+      "term": "administer",
+      "definition": "Manage grants themselves."
+    },
+    {
+      "categories": [
+        "scope_type"
+      ],
+      "term": "global",
+      "definition": "No restriction -- scope_id is the literal '*'."
+    },
+    {
+      "categories": [
+        "scope_type"
+      ],
+      "term": "project",
+      "definition": "Scoped to one Group (db/group.py)."
+    },
+    {
+      "categories": [
+        "scope_type"
+      ],
+      "term": "thing",
+      "definition": "Scoped to one Thing."
+    },
+    {
+      "categories": [
+        "scope_type"
+      ],
+      "term": "program",
+      "definition": "Scoped to one program, e.g. AMMP or Geothermal."
     }
   ]
 }
