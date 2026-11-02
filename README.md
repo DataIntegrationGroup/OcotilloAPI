@@ -114,7 +114,7 @@ cd OcotilloAPI
 ```bash
 uv venv
 source .venv/bin/activate
-uv sync --locked
+uv sync --locked --all-extras --dev --group cli --group ingestion
 ```
     
 </td>
@@ -123,12 +123,32 @@ uv sync --locked
 ```bash
 uv venv
 source .venv/Scripts/activate
-uv sync --locked
+uv sync --locked --all-extras --dev --group cli --group ingestion
 ```
 
 </td>
 </tr>
 </table>
+
+This is the same sync CI runs (`.github/workflows/tests.yml`). What each flag does:
+
+* `--locked`: install exactly what `uv.lock` pins, and fail if the lockfile is
+  out of date with `pyproject.toml`.
+* `--group cli`: openpyxl, the Google API client, dlt, gcsfs and pyarrow, used by
+  the `oco` chemistry ingest and Drive sync commands. Tests import these, so
+  `uv run pytest` fails without them.
+* `--group ingestion`: dagster plus the same dlt/gcsfs/pyarrow stack, for the
+  Dagster+ code location in `automated_ingestion/`.
+* `--dev`: pytest, behave, black, flake8, pre-commit. uv installs this group by
+  default, so the flag is only there to make it explicit.
+* `--all-extras`: does nothing today, because the project defines no
+  `[project.optional-dependencies]`. It is kept to match CI.
+
+`cli` and `ingestion` are separate groups because the API never imports them.
+Keeping them out of `dependencies` keeps them out of the production requirements
+export (`uv export --no-dev`) and the API image. `uv sync` also uninstalls
+packages from groups you don't request, so a bare `uv sync --locked` removes
+them again.
 
 
 #### 3. Setup pre-commit hookes
@@ -325,4 +345,6 @@ uv run pytest
 uv run behave tests/features
 ```
 
-Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
+Tests import the `cli` and `ingestion` dependency groups, so install them first
+(see step 2 of setup). Tests require a local Postgres/PostGIS instance.
+Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.

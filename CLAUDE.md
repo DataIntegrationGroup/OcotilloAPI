@@ -15,7 +15,13 @@ This project is **migrating data from the legacy AMPAPI system** (SQL Server, NM
 # Install dependencies (requires uv package manager)
 uv venv
 source .venv/bin/activate  # On Mac/Linux
-uv sync --locked
+# Same sync CI runs. `cli` and `ingestion` are dependency groups the API never
+# imports (kept out of the production export) but `oco` and the tests need --
+# without them pytest fails on openpyxl/fsspec. `uv sync` uninstalls groups you
+# don't request, so a bare `uv sync --locked` drops them. `--dev` is uv's default
+# and `--all-extras` is a no-op (the project defines no extras); both are kept
+# to match CI. See README "Setup" for the per-flag breakdown.
+uv sync --locked --all-extras --dev --group cli --group ingestion
 
 # Setup pre-commit hooks
 pre-commit install
