@@ -122,7 +122,7 @@ tables, via the mixin:
     ([db/data_provenance.py](../db/data_provenance.py)), keyed by
     `target_table` + `target_id` + `field_name`
   - free text → `Notes` ([db/notes.py](../db/notes.py)), not a `notes` column
-  - who may sample or install → `Permission` ([db/permission.py](../db/permission.py))
+  - who may sample or install → `PermissionHistory` ([db/permission_history.py](../db/permission_history.py))
 
 **9. It is a grouping of features.** → `Group` + `GroupThingAssociation`, with
 `group_type` from the lexicon. `Group.project_area` holds an optional polygon.
