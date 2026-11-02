@@ -341,8 +341,8 @@ oco {command} --help
 # Run unit tests
 uv run pytest
 
-# Run Behave BDD specs
-uv run behave tests/features
+# Run Behave BDD specs - these tags mimic what is run in CI
+uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
 ```
 
 Tests import the `cli` and `ingestion` dependency groups, so install them first
