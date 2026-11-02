@@ -284,8 +284,6 @@ The application supports two database modes (configured via `DB_DRIVER` in `.env
 postgresql+pg8000://{user}:{password}@{host}:{port}/{database}
 ```
 
-**Important**: `db/engine.py` uses `load_dotenv(override=False)` so that environment variables set before import (e.g., by the test framework) are preserved.
-
 ### Spatial Data
 
 - **Coordinate System**: WGS84 (SRID 4326) for all geometries
