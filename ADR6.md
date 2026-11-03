@@ -439,4 +439,32 @@ applicable, and constrained by the acting principal’s effective administrative
 
 ## Sequencing implied by this decision
 
+## Glossary
+
+| Term                | Definition                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Authentication      | Verification of an identity or credential. Managed primarily by Authentik.                                                                             |
+| Authorization       | Determination of what an identified principal is permitted to do. Owned by Ocotillo.                                                                   |
+| Principal           | An identity evaluated for authorization, such as a user, principal group, or API key.                                                                  |
+| Principal Group     | A named administrative collection through which principals receive a reusable set of grants.                                                           |
+| Capability          | An action a principal may perform, such as read, create, update, delete, or administer, subject to final vocabulary alignment.                         |
+| Scope               | The resource boundaries within which a capability applies, such as global, project, thing, or program, with additional data-type or field constraints. |
+| Permission Grant    | An authorization record describing a permitted capability and its applicable recipient and scope.                                                      |
+| Publication Consent | A separately governed record authorizing disclosure of particular data to a publication destination, as defined in ADR5.                               |
+| Visibility Engine   | The shared server-side policy-evaluation mechanism that resolves applicable permissions and publication rules.                                         |
+| Rotation Overlap    | The controlled period during which an existing API key and its replacement are simultaneously valid.                                                   |
+| Activity Log        | The unified, append-only record of selected authorization and operational events.                                                                      |
+| Hash Chain          | An integrity-verification structure in which each event hash incorporates the previous event’s hash and the current event’s canonical content.         |
+| Operator Console    | Ocotillo’s gated administrative interface for managing authorization, credentials, and relevant operational information.                               |
+
 ## References
+
+- Confluence, Ocotillo space: Who May See What, and Who May Do What: A scope-based, attribute-level
+  access control system for Ocotillo.
+- Confluence, Ocotillo space: Ocotillo Needs an Operator Console.
+- ADR5: One Enforcement Engine, Two Grant Tables.
+- Ocotillo Access-Control Vocabulary and Scope Taxonomy.
+- Technical Feasibility Review, October 29, 2026 — operator console, authorization, audit logging,
+  API-key lifecycle, and GIS authentication discussion.
+- Authentik Access-Control Matrix Summary and Role Definitions.
+- services/api_key_auth.py: Database-backed API-key authentication.
