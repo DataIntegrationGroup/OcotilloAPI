@@ -19,17 +19,35 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-# Set test env vars BEFORE loading .env (per BDMS-630)
-os.environ["POSTGRES_PORT"] = "5432"
-# Always use test database, never dev
-os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
-# Load .env file AFTER setting test vars (so they're not stomped)
-load_dotenv()
+def setup_test_environment(optional_env_variables: dict = {}) -> None:
+    """
+    Setup the test environment by configuring environment variables and loading the .env file.
+    Optional environment variables can be passed as a dictionary to override defaults.
 
+    There are multiple testing regimens, such as pytest and BDD step tests, both
+    of which require the test environment to be properly configured before running tests.
+    They often rely on the same environment variables and database setup to function correctly,
+    so they are both configured using this setup function
 
-def _normalize_test_db_host() -> None:
-    """Fallback docker-compose hostnames to localhost for host-run tests."""
+    ---
+    pytest
+    ---
+    pytest runs tests/__init__.py on startup so this function is called immediately below
+    where it is invoked.
+
+    ---
+    BDD step tests
+    ---
+    BDD step tests require some further configuration specific to the BDD framework,
+    which is handled by the BDD test setup code in tests/features/environment.py where
+    this function is invoked.
+    """
+    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+    os.environ["DB_DRIVER"] = "local"
+
+    load_dotenv(override=False)
+
     for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
         host = (os.environ.get(env_name) or "").strip()
         if host != "db":
@@ -39,8 +57,11 @@ def _normalize_test_db_host() -> None:
         except OSError:
             os.environ[env_name] = "localhost"
 
+    for env_name, env_value in optional_env_variables.items():
+        os.environ[env_name] = env_value
 
-_normalize_test_db_host()
+
+setup_test_environment()
 
 from fastapi.testclient import TestClient
 

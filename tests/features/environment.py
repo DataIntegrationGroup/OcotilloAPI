@@ -16,15 +16,10 @@
 import os
 import random
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
-# Default BDD runs to the local test database before any db module imports.
-# Allow explicit CI/local environment configuration to override these values.
-# DROP_AND_REBUILD_DB controls whether the test database is erased and rebuilt before running tests.
-os.environ.setdefault("POSTGRES_DB", "ocotilloapi_test")
-os.environ.setdefault("POSTGRES_PORT", "5432")
-os.environ.setdefault("DROP_AND_REBUILD_DB", "1")
-load_dotenv(override=False)
+from tests import setup_test_environment
+
+setup_test_environment(optional_env_variables={"DROP_AND_REBUILD_DB": "1"})
 
 from alembic import command
 from alembic.config import Config
