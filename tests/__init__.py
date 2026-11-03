@@ -20,15 +20,17 @@ from functools import lru_cache
 from dotenv import load_dotenv
 
 
-def setup_test_environment(optional_env_variables: dict = {}) -> None:
+def setup_test_environment(env_overrides: dict = {}) -> None:
     """
     Setup the test environment by configuring environment variables and loading the .env file.
-    Optional environment variables can be passed as a dictionary to override defaults.
 
     There are multiple testing regimens, such as pytest and BDD step tests, both
     of which require the test environment to be properly configured before running tests.
     They often rely on the same environment variables and database setup to function correctly,
     so they are both configured using this setup function
+
+    Variables in env_overrides are applied last and take precedence over
+    the .env file and any values already set in the environment.
 
     ---
     pytest
@@ -57,7 +59,7 @@ def setup_test_environment(optional_env_variables: dict = {}) -> None:
         except OSError:
             os.environ[env_name] = "localhost"
 
-    for env_name, env_value in optional_env_variables.items():
+    for env_name, env_value in env_overrides.items():
         os.environ[env_name] = env_value
 
 
