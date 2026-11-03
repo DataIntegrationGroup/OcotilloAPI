@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 
 from tests import setup_test_environment
 
+# DROP_AND_REBUILD_DB must be set to 1 so that the database can be appropriately erased and rebuilt with testing
+# data for BDD step tests
 setup_test_environment(optional_env_variables={"DROP_AND_REBUILD_DB": "1"})
 
 from alembic import command

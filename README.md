@@ -342,6 +342,7 @@ oco {command} --help
 uv run pytest
 
 # Run Behave BDD specs - these tags mimic what is run in CI
+# drops and rebuilds ocotilloapi_test db by default
 uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
 ```
 
