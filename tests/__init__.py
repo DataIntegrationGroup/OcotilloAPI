@@ -46,6 +46,7 @@ def setup_test_environment(env_overrides: dict = {}) -> None:
     this function is invoked.
     """
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+    os.environ["PYGEOAPI_POSTGRES_DB"] = "ocotilloapi_test"
     os.environ["POSTGRES_PORT"] = "5432"
 
     # any value except for "cloudsql" will make it connect to a local Postgres instance
