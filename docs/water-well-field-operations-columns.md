@@ -63,10 +63,10 @@ latest revision to rebuild the view. Field prose lives in
 | `monitoring_status` | `status_history.status_value` where `status_type = 'Monitoring Status'`, current record |
 | `open_status` | `status_history.status_value` where `status_type = 'Open Status'`, current record |
 | `datalogger_suitability_status` | `status_history.status_value` where `status_type = 'Datalogger Suitability Status'`, current record |
-| `may_measure_water_level` | `permission_history.permission_allowed` where `permission_type = 'Water Level Sample'`, current record |
-| `may_sample_water_chemistry` | `permission_history.permission_allowed` where `permission_type = 'Water Chemistry Sample'`, current record |
-| `may_install_datalogger` | `permission_history.permission_allowed` where `permission_type = 'Datalogger Installation'`, current record |
-| `permission_granted_by` | `contact.name` via `permission_history.contact_id` on the current water-level grant |
+| `may_measure_water_level` | `site_activity_consent.allowed` where `activity = 'Water Level Sample'`, current record |
+| `may_sample_water_chemistry` | `site_activity_consent.allowed` where `activity = 'Water Chemistry Sample'`, current record |
+| `may_install_datalogger` | `site_activity_consent.allowed` where `activity = 'Datalogger Installation'`, current record |
+| `permission_granted_by` | `contact.name` via `site_activity_consent.contact_id` on the current water-level consent |
 | `monitoring_frequency` | `monitoring_frequency_history.monitoring_frequency`, current record |
 | `group_names` | `group.name` via `group_thing_association`, comma-joined |
 | `group_types` | `group.group_type`, same order as `group_names` |
