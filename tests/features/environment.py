@@ -17,10 +17,9 @@ import os
 import random
 from datetime import datetime, timedelta
 
-# Default BDD runs to the local test database before any db module imports.
-# Allow explicit CI/local environment configuration to override these values.
-os.environ.setdefault("POSTGRES_DB", "ocotilloapi_test")
-os.environ.setdefault("POSTGRES_PORT", "5432")
+# Import before any db.engine or main imports to ensure the test environment is set up correctly.
+from tests import assert_test_database
+
 
 from alembic import command
 from alembic.config import Config
@@ -58,7 +57,6 @@ from db import (
 )
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from services.env import get_bool_env
 
 
 def add_context_object_container(name):
@@ -670,10 +668,10 @@ def _initialize_test_schema() -> None:
 
 
 def before_all(context):
-    context.objects = {}
+    # ensure we are connected to the test database before tearing down or modifying schemas
+    assert_test_database()
 
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
+    context.objects = {}
 
     _initialize_test_schema()
 
@@ -867,8 +865,8 @@ def before_all(context):
 
 
 def after_all(context):
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
+    # ensure we are connected to the test database before tearing down or modifying schemas
+    assert_test_database()
 
     with session_ctx() as session:
         for table in reversed(Base.metadata.sorted_tables):
@@ -897,13 +895,9 @@ def after_scenario(context, scenario):
     if "migration-mutates-schema" in scenario.tags:
         # Runs whether the scenario passed or failed, so a downgrade left
         # mid-scenario never leaks into later scenarios/features sharing
-        # this database. Deliberately not gated on DROP_AND_REBUILD_DB,
-        # since these scenarios mutate schema regardless of that flag.
+        # this database.
         command.upgrade(_alembic_config(), "head")
         reset_pygeoapi_reflection()
-
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
 
     # runs after EVERY scenario
     # e.g. clean up temp files, close db sessions

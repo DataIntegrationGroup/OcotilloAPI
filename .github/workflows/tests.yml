@@ -164,7 +164,6 @@ jobs:
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
       AUTHENTIK_DISABLE_AUTHENTICATION: 1
-      DROP_AND_REBUILD_DB: 1
 
     services:
       postgis:

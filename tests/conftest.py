@@ -1,5 +1,4 @@
 import os
-import socket
 
 import pytest
 from alembic import command
@@ -14,21 +13,7 @@ from db.initialization import (
     recreate_public_schema,
     sync_search_vector_triggers,
 )
-from tests import get_parameter_id
-
-
-def pytest_configure():
-    for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
-        host = (os.environ.get(env_name) or "").strip()
-        if host != "db":
-            continue
-        try:
-            socket.gethostbyname(host)
-        except OSError:
-            os.environ[env_name] = "localhost"
-    os.environ.setdefault("POSTGRES_PORT", "54321")
-    # Always use test database, never dev
-    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+from tests import get_parameter_id, assert_test_database
 
 
 def _alembic_config() -> Config:
@@ -97,6 +82,7 @@ def ogc_app():
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_db():
     """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
+    assert_test_database()
     _reset_schema()
     command.upgrade(_alembic_config(), "head")
     engine.dispose()

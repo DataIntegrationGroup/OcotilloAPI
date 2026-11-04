@@ -55,7 +55,7 @@ def _parse_dt(value):
 
 def _seeded_well_id(context):
     wells = context.objects.get("wells") if hasattr(context, "objects") else None
-    assert wells, "No seeded wells; run with DROP_AND_REBUILD_DB to populate test data."
+    assert wells, "No seeded wells"
     return wells[0].id
 
 

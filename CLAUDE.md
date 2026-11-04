@@ -15,7 +15,13 @@ This project is **migrating data from the legacy AMPAPI system** (SQL Server, NM
 # Install dependencies (requires uv package manager)
 uv venv
 source .venv/bin/activate  # On Mac/Linux
-uv sync --locked
+# Same sync CI runs. `cli` and `ingestion` are dependency groups the API never
+# imports (kept out of the production export) but `oco` and the tests need --
+# without them pytest fails on openpyxl/fsspec. `uv sync` uninstalls groups you
+# don't request, so a bare `uv sync --locked` drops them. `--dev` is uv's default
+# and `--all-extras` is a no-op (the project defines no extras); both are kept
+# to match CI. See README "Setup" for the per-flag breakdown.
+uv sync --locked --all-extras --dev --group cli --group ingestion
 
 # Setup pre-commit hooks
 pre-commit install
@@ -277,8 +283,6 @@ The application supports two database modes (configured via `DB_DRIVER` in `.env
 ```
 postgresql+pg8000://{user}:{password}@{host}:{port}/{database}
 ```
-
-**Important**: `db/engine.py` uses `load_dotenv(override=False)` so that environment variables set before import (e.g., by the test framework) are preserved.
 
 ### Spatial Data
 
