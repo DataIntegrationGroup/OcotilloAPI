@@ -19,6 +19,8 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
+TESTING_DB = "ocotilloapi_test"
+
 
 def setup_test_environment() -> None:
     """
@@ -48,8 +50,8 @@ def setup_test_environment() -> None:
     imports `tests` explicitly, above its `db` imports, to trigger the same call.
     No BDD-specific setup is needed beyond this.
     """
-    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
-    os.environ["PYGEOAPI_POSTGRES_DB"] = "ocotilloapi_test"
+    os.environ["POSTGRES_DB"] = TESTING_DB
+    os.environ["PYGEOAPI_POSTGRES_DB"] = TESTING_DB
     os.environ["POSTGRES_PORT"] = "5432"
 
     # any value except for "cloudsql" will make it connect to a local Postgres instance
