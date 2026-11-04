@@ -439,6 +439,27 @@ applicable, and constrained by the acting principal’s effective administrative
 
 ## Sequencing implied by this decision
 
+1. Establish Ocotillo-managed groups, permission grants, and the necessary backend authorization
+   endpoints for controlling the authorization changes.
+2. Establish the activity-log foundation. Define initial event types, minimum event metadata,
+   append-only protections, and SHA-256 hash-chain construction before enabling administrative
+   mutations through the console.
+3. Implement the gated console interface. Introduce the console within Ocotillo with principal,
+   group, grant, and effective-permission views. Enforce all administrative operations server-side.
+4. Create an email notification system in Ocotillo and attach an active email address to each
+   principal. Then enforce a policy requiring all principals to have an associated email address.
+5. Introduce API-key administration to the operator console. Expose key creation, status,
+   expiration, revocation, and rotation workflows, together with console and email notifications.
+   Validate the existing key implementation against the agreed lifecycle policy.
+6. Support delegated administration. Add scope-limited grant and group management for empowered
+   principles after validating delegation rules and privilege-escalation protections.
+7. Measure performance and refine. Benchmark authorization checks, high-frequency reads, and
+   activity logging under representative workloads. Introduce caching or usage-metadata
+   optimizations only when measurements justify them.
+8. Expand only after the initial console is stable. Consider publication-consent administration,
+   user preferences, saved queries, and other features through separate requirements and design
+   review.
+
 ## Glossary
 
 | Term                | Definition                                                                                                                                             |
