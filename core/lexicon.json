@@ -8534,21 +8534,21 @@
         "site_activity"
       ],
       "term": "Water Level Sample",
-      "definition": "Permissions for taking water level samples"
+      "definition": "Owner consent to measure water levels at the site"
     },
     {
       "categories": [
         "site_activity"
       ],
       "term": "Water Chemistry Sample",
-      "definition": "Permissions for water taking chemistry samples"
+      "definition": "Owner consent to collect water chemistry samples at the site"
     },
     {
       "categories": [
         "site_activity"
       ],
       "term": "Datalogger Installation",
-      "definition": "Permissions for installing dataloggers"
+      "definition": "Owner consent to install a datalogger at the site"
     },
     {
       "categories": [
