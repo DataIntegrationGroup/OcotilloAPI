@@ -50,7 +50,7 @@ from db.notes import *
 from db.observation import *
 from db.parameter import *
 from db.permission_grant import *
-from db.permission_history import *
+from db.site_activity_consent import *
 from db.publication import *
 from db.regulatory_limit import *
 from db.sample import *

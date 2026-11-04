@@ -233,8 +233,8 @@
       "description": "Kind of pump installed in a well: submersible, jet, line shaft, hand, or windmill."
     },
     {
-      "name": "permission_type",
-      "description": "Activity a landowner has consented to at a site: water level sampling, water chemistry sampling, or datalogger installation. Site-access consent, not authorization."
+      "name": "site_activity",
+      "description": "Activity an owner can consent to at their site: water level sampling, water chemistry sampling, or datalogger installation. Owner consent (site_activity_consent), not staff authorization."
     },
     {
       "name": "formation_code",
@@ -8531,21 +8531,21 @@
     },
     {
       "categories": [
-        "permission_type"
+        "site_activity"
       ],
       "term": "Water Level Sample",
       "definition": "Permissions for taking water level samples"
     },
     {
       "categories": [
-        "permission_type"
+        "site_activity"
       ],
       "term": "Water Chemistry Sample",
       "definition": "Permissions for water taking chemistry samples"
     },
     {
       "categories": [
-        "permission_type"
+        "site_activity"
       ],
       "term": "Datalogger Installation",
       "definition": "Permissions for installing dataloggers"
