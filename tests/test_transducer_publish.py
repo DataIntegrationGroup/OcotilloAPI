@@ -269,29 +269,125 @@ def test_overlapping_publish_is_rejected_and_names_the_blocks(published_well):
     assert detail["input"]["overlapping_blocks"][0]["id"] == first_block_id
 
 
-def test_replace_overlapping_supersedes_the_old_block_and_its_readings(
+def _replace(thing_id, hours):
+    return client.post(
+        PUBLISH_URL,
+        params={"replace_overlapping": "true"},
+        json=_payload(thing_id, hours=hours),
+    )
+
+
+def _stored(thing_id):
+    """Every stored reading on the well as {hour offset: value}."""
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
+    readings = [item["observation"] for item in items]
+    return {
+        (datetime.fromisoformat(reading["observation_datetime"]) - T0).total_seconds()
+        / 3600: reading["value"]
+        for reading in readings
+    }
+
+
+def _block_span(block_id):
+    with session_ctx() as session:
+        block = session.get(TransducerObservationBlock, block_id)
+        if block is None:
+            return None
+        return block.start_datetime, block.end_datetime
+
+
+def _at(hours):
+    return T0 + timedelta(hours=hours)
+
+
+def test_replacing_the_end_of_a_block_keeps_the_readings_before_it(
+    published_well,
+):
+    # BDMS-1541: replace used to delete the whole overlapping block, so every
+    # reading outside the corrected stretch was lost.
+    thing_id, _ = published_well
+    old_id = client.post(PUBLISH_URL, json=_payload(thing_id)).json()["block"]["id"]
+
+    response = _replace(thing_id, hours=(6, 18))
+
+    assert response.status_code == 201, response.text
+    new_block = response.json()["block"]
+    assert new_block["id"] != old_id
+    assert _block_span(old_id) == (_at(0), _at(0))
+    # The reading before the span survives with its original value; the ones
+    # inside it carry the replacement's.
+    assert _stored(thing_id) == {0: 42.5, 6: 42.5, 18: 42.51}
+
+
+def test_replacing_the_start_of_a_block_keeps_the_readings_after_it(
     published_well,
 ):
     thing_id, _ = published_well
-    first = client.post(PUBLISH_URL, json=_payload(thing_id))
-    first_block_id = first.json()["block"]["id"]
+    old_id = client.post(
+        PUBLISH_URL, json=_payload(thing_id, hours=(6, 12, 18))
+    ).json()["block"]["id"]
 
-    response = client.post(
-        PUBLISH_URL,
-        params={"replace_overlapping": "true"},
-        json=_payload(thing_id, hours=(6, 18)),
-    )
+    response = _replace(thing_id, hours=(0, 6))
 
     assert response.status_code == 201, response.text
-    assert response.json()["block"]["id"] != first_block_id
+    assert _block_span(old_id) == (_at(12), _at(18))
+    assert _stored(thing_id) == {0: 42.5, 6: 42.51, 12: 42.51, 18: 42.52}
 
+
+def test_replacing_a_span_covering_the_whole_block_removes_it(published_well):
+    thing_id, _ = published_well
+    old_id = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(6, 12))).json()[
+        "block"
+    ]["id"]
+
+    response = _replace(thing_id, hours=(0, 6, 12, 18))
+
+    assert response.status_code == 201, response.text
+    assert _block_span(old_id) is None
+    assert _stored(thing_id) == {0: 42.5, 6: 42.51, 12: 42.52, 18: 42.53}
+
+
+def test_replacing_across_two_blocks_narrows_both(published_well):
+    thing_id, _ = published_well
+    first_id = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(0, 6))).json()[
+        "block"
+    ]["id"]
+    second_id = client.post(
+        PUBLISH_URL, json=_payload(thing_id, hours=(12, 18))
+    ).json()["block"]["id"]
+
+    response = _replace(thing_id, hours=(6, 12))
+
+    assert response.status_code == 201, response.text
+    assert _block_span(first_id) == (_at(0), _at(0))
+    assert _block_span(second_id) == (_at(18), _at(18))
+    assert _stored(thing_id) == {0: 42.5, 6: 42.5, 12: 42.51, 18: 42.51}
+
+
+def test_replacing_inside_a_block_is_refused_and_changes_nothing(published_well):
+    thing_id, _ = published_well
+    old_id = client.post(
+        PUBLISH_URL, json=_payload(thing_id, hours=(0, 6, 12, 18, 24))
+    ).json()["block"]["id"]
+    before = _stored(thing_id)
+
+    response = _replace(thing_id, hours=(6, 12))
+
+    assert response.status_code == 409, response.text
+    detail = response.json()["detail"][0]
+    assert "split" in detail["msg"]
+    assert detail["input"]["overlapping_blocks"][0]["id"] == old_id
+    assert _block_span(old_id) == (_at(0), _at(24))
+    assert _stored(thing_id) == before
     with session_ctx() as session:
-        assert session.get(TransducerObservationBlock, first_block_id) is None
-
-    # Only the replacing series survives -- the superseded readings went with
-    # their block rather than being left where no block covers them.
-    items = client.get(READ_URL, params={"thing_id": thing_id}).json()["items"]
-    assert len(items) == 2
+        blocks = session.scalars(
+            select(TransducerObservationBlock).where(
+                TransducerObservationBlock.thing_id == thing_id
+            )
+        ).all()
+        assert [block.id for block in blocks] == [old_id]
 
 
 def test_publish_is_atomic_when_a_reading_collides(published_well):

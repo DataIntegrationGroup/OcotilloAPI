@@ -137,8 +137,11 @@ def publish_transducer_groundwater_level_block(
 
     The block's time span is derived from the measurements; the client does not
     send it. Overlapping an existing block is a 409 listing the collisions --
-    pass `replace_overlapping=true` to supersede them, which deletes those
-    blocks and their readings in the same transaction.
+    pass `replace_overlapping=true` to replace the stored readings inside the
+    new span, in the same transaction. Readings outside the span are kept: a
+    block wholly inside the span is deleted, one overlapping an end is narrowed
+    to what is left. A block reaching past the span on both sides would be
+    split, which is a 409 instead.
 
     Written by the hydrograph corrector in OcotilloUI. See
     `docs/hydrograph-correction-publish.md`.
