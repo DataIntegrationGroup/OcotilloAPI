@@ -16,6 +16,7 @@
 import os
 import socket
 from functools import lru_cache
+from sqlalchemy import text
 
 from dotenv import load_dotenv
 
@@ -80,6 +81,20 @@ from db.engine import session_ctx
 from main import app
 
 client = TestClient(app)
+
+
+def assert_test_database() -> None:
+    """Refuse to touch any database except the test one.
+
+    This is used in before_all and after_all in BDD tests to ensure that the test database is being used.
+    This is used in _setup_test_db in conftest.py to ensure that the test database is being used before performing any setup operations.
+    """
+    with session_ctx() as session:
+        name = session.execute(text("SELECT current_database()")).scalar_one()
+    if name != TESTING_DB:
+        raise RuntimeError(
+            f"Connected to the the wrong database: {name!r}, not {TESTING_DB!r}. Refusing to proceed."
+        )
 
 
 @lru_cache(maxsize=None)

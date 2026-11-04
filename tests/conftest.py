@@ -13,7 +13,7 @@ from db.initialization import (
     recreate_public_schema,
     sync_search_vector_triggers,
 )
-from tests import get_parameter_id
+from tests import get_parameter_id, assert_test_database
 
 
 def _alembic_config() -> Config:
@@ -82,6 +82,7 @@ def ogc_app():
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_db():
     """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
+    assert_test_database()
     _reset_schema()
     command.upgrade(_alembic_config(), "head")
     engine.dispose()

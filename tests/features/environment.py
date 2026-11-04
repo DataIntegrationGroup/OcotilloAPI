@@ -18,12 +18,12 @@ import random
 from datetime import datetime, timedelta
 
 # Import before any db.engine or main imports to ensure the test environment is set up correctly.
-from tests import TESTING_DB
+from tests import assert_test_database
 
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from core.initializers import init_lexicon, init_parameter
 from db import (
@@ -57,22 +57,6 @@ from db import (
 )
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-
-
-def assert_test_database() -> None:
-    """Refuse to touch any database except the test one.
-
-    before_all drops the public schema and after_all deletes table rows, both
-    unconditionally. The engine only points at ocotilloapi_test if `tests` was
-    imported before `db.engine`, so verify the live connection, not os.environ.
-    """
-    with session_ctx() as session:
-        name = session.execute(text("SELECT current_database()")).scalar_one()
-    if name != TESTING_DB:
-        raise RuntimeError(
-            f"BDD setup/teardown is connected to {name!r}, not {TESTING_DB!r}; "
-            "refusing to drop or delete. Check that `import tests` runs before any db import."
-        )
 
 
 def add_context_object_container(name):
