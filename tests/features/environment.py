@@ -17,11 +17,11 @@ import os
 import random
 from datetime import datetime, timedelta
 
-from tests import setup_test_environment
+# Importing `tests` runs setup_test_environment() (tests/__init__.py) before
+# db.engine and main are imported, so the engine is correctly configured.
+# It must stay above the db/core imports below.
+import tests  # noqa: F401
 
-# DROP_AND_REBUILD_DB must be set to 1 so that the database can be appropriately erased and rebuilt with testing
-# data for BDD step tests
-setup_test_environment(env_overrides={"DROP_AND_REBUILD_DB": "1"})
 
 from alembic import command
 from alembic.config import Config
@@ -59,7 +59,6 @@ from db import (
 )
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from services.env import get_bool_env
 
 
 def add_context_object_container(name):
@@ -673,9 +672,6 @@ def _initialize_test_schema() -> None:
 def before_all(context):
     context.objects = {}
 
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
-
     _initialize_test_schema()
 
     with session_ctx() as session:
@@ -868,9 +864,6 @@ def before_all(context):
 
 
 def after_all(context):
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
-
     with session_ctx() as session:
         for table in reversed(Base.metadata.sorted_tables):
             if table.name in ("alembic_version", "parameter"):
@@ -898,13 +891,9 @@ def after_scenario(context, scenario):
     if "migration-mutates-schema" in scenario.tags:
         # Runs whether the scenario passed or failed, so a downgrade left
         # mid-scenario never leaks into later scenarios/features sharing
-        # this database. Deliberately not gated on DROP_AND_REBUILD_DB,
-        # since these scenarios mutate schema regardless of that flag.
+        # this database.
         command.upgrade(_alembic_config(), "head")
         reset_pygeoapi_reflection()
-
-    if not get_bool_env("DROP_AND_REBUILD_DB"):
-        return
 
     # runs after EVERY scenario
     # e.g. clean up temp files, close db sessions

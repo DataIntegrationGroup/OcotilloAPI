@@ -20,30 +20,33 @@ from functools import lru_cache
 from dotenv import load_dotenv
 
 
-def setup_test_environment(env_overrides: dict = {}) -> None:
+def setup_test_environment() -> None:
     """
     Setup the test environment by configuring environment variables and loading the .env file.
+    POSTGRES_DB, PYGEOAPI_POSTGRES_DB, POSTGRES_PORT and DB_DRIVER are forced
+    and win over .env; host, user and password come from the shell or .env.
 
     There are multiple testing regimens, such as pytest and BDD step tests, both
     of which require the test environment to be properly configured before running tests.
     They often rely on the same environment variables and database setup to function correctly,
     so they are both configured using this setup function
 
-    Variables in env_overrides are applied last and take precedence over
-    the .env file and any values already set in the environment.
-
-    ---
+     ---
     pytest
     ---
-    pytest runs tests/__init__.py on startup so this function is called immediately below
-    where it is invoked.
+    pytest imports tests/conftest.py and the test modules as submodules of the
+    `tests` package (default `prepend` import mode), so Python runs this file
+    `first -- before any `db` or `main` import in them (which require environment
+    variables to be correctly set). That is why this function is called at module
+    level below, ahead of this file's own app imports. It does not run for suites
+    outside tests/ (e.g. automated_ingestion/tests).
 
     ---
     BDD step tests
     ---
-    BDD step tests require some further configuration specific to the BDD framework,
-    which is handled by the BDD test setup code in tests/features/environment.py where
-    this function is invoked.
+    behave does not treat tests/ as a package, so tests/features/environment.py
+    imports `tests` explicitly, above its `db` imports, to trigger the same call.
+    No BDD-specific setup is needed beyond this.
     """
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
     os.environ["PYGEOAPI_POSTGRES_DB"] = "ocotilloapi_test"
@@ -62,9 +65,6 @@ def setup_test_environment(env_overrides: dict = {}) -> None:
             socket.gethostbyname(host)
         except OSError:
             os.environ[env_name] = "localhost"
-
-    for env_name, env_value in env_overrides.items():
-        os.environ[env_name] = env_value
 
 
 # invoke the test environment setup before importing the database and app modules so that
