@@ -46,7 +46,9 @@ def setup_test_environment(env_overrides: dict = {}) -> None:
     this function is invoked.
     """
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
-    os.environ["DB_DRIVER"] = "local"
+
+    # any value except for "cloudsql" will make it connect to a local Postgres instance
+    os.environ["DB_DRIVER"] = "postgres"
 
     load_dotenv(override=False)
 
