@@ -1,5 +1,4 @@
 import os
-import socket
 
 import pytest
 from alembic import command
@@ -15,20 +14,6 @@ from db.initialization import (
     sync_search_vector_triggers,
 )
 from tests import get_parameter_id
-
-
-def pytest_configure():
-    for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
-        host = (os.environ.get(env_name) or "").strip()
-        if host != "db":
-            continue
-        try:
-            socket.gethostbyname(host)
-        except OSError:
-            os.environ[env_name] = "localhost"
-    os.environ.setdefault("POSTGRES_PORT", "54321")
-    # Always use test database, never dev
-    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 
 def _alembic_config() -> Config:

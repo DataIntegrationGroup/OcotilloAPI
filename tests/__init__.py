@@ -46,6 +46,7 @@ def setup_test_environment(env_overrides: dict = {}) -> None:
     this function is invoked.
     """
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+    os.environ["POSTGRES_PORT"] = "5432"
 
     # any value except for "cloudsql" will make it connect to a local Postgres instance
     os.environ["DB_DRIVER"] = "postgres"
@@ -65,6 +66,8 @@ def setup_test_environment(env_overrides: dict = {}) -> None:
         os.environ[env_name] = env_value
 
 
+# invoke the test environment setup before importing the database and app modules so that
+# the environment variables are correctly set and the database engine is configured properly.
 setup_test_environment()
 
 from fastapi.testclient import TestClient
