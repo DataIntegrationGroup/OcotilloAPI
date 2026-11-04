@@ -1440,15 +1440,15 @@
 <text xml:space="preserve" text-anchor="start" x="163.5" y="-5504.7" font-family="Helvetica,sans-Serif" font-size="14.00">end_transaction_id: BIGINT (nullable)</text>
 <text xml:space="preserve" text-anchor="start" x="163.5" y="-5489.7" font-family="Helvetica,sans-Serif" font-size="14.00">operation_type: SMALLINT (not null)</text>
 </g>
-<!-- permission_history -->
+<!-- site_activity_consent -->
 <g id="node43" class="node">
-<title>permission_history</title>
+<title>site_activity_consent</title>
 <polygon fill="none" stroke="black" points="1993.88,-4658 1993.88,-4891 2568.12,-4891 2568.12,-4658 1993.88,-4658"/>
-<text xml:space="preserve" text-anchor="middle" x="2058.5" y="-4768.7" font-family="Helvetica,sans-Serif" font-size="14.00">permission_history</text>
+<text xml:space="preserve" text-anchor="middle" x="2058.5" y="-4768.7" font-family="Helvetica,sans-Serif" font-size="14.00">site_activity_consent</text>
 <polyline fill="none" stroke="black" points="2123.12,-4658 2123.12,-4891"/>
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4873.7" font-family="Helvetica,sans-Serif" font-size="14.00">+ contact_id: INTEGER (not null)</text>
-<text xml:space="preserve" text-anchor="start" x="2131.12" y="-4858.7" font-family="Helvetica,sans-Serif" font-size="14.00">+ permission_type: VARCHAR(100) (not null)</text>
-<text xml:space="preserve" text-anchor="start" x="2131.12" y="-4843.7" font-family="Helvetica,sans-Serif" font-size="14.00">permission_allowed: BOOLEAN (not null)</text>
+<text xml:space="preserve" text-anchor="start" x="2131.12" y="-4858.7" font-family="Helvetica,sans-Serif" font-size="14.00">+ activity: VARCHAR(100) (not null)</text>
+<text xml:space="preserve" text-anchor="start" x="2131.12" y="-4843.7" font-family="Helvetica,sans-Serif" font-size="14.00">allowed: BOOLEAN (not null)</text>
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4828.7" font-family="Helvetica,sans-Serif" font-size="14.00">start_date: DATE (not null)</text>
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4813.7" font-family="Helvetica,sans-Serif" font-size="14.00">end_date: DATE (nullable)</text>
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4798.7" font-family="Helvetica,sans-Serif" font-size="14.00">notes: VARCHAR (nullable)</text>
@@ -1462,23 +1462,23 @@
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4678.7" font-family="Helvetica,sans-Serif" font-size="14.00">updated_by_id: VARCHAR(255) (nullable)</text>
 <text xml:space="preserve" text-anchor="start" x="2131.12" y="-4663.7" font-family="Helvetica,sans-Serif" font-size="14.00">+ release_status: VARCHAR(100) (nullable)</text>
 </g>
-<!-- permission_history&#45;&gt;contact -->
+<!-- site_activity_consent&#45;&gt;contact -->
 <g id="edge77" class="edge">
-<title>permission_history&#45;&gt;contact</title>
+<title>site_activity_consent&#45;&gt;contact</title>
 <path fill="none" stroke="black" d="M2568.43,-4688.5C2614.56,-4688.5 2647.5,-4688.5 2647.5,-4688.5 2647.5,-4688.5 2647.5,-3480.14 2647.5,-3480.14 2647.5,-3480.14 2732.88,-3480.14 2732.88,-3480.14"/>
 <polygon fill="black" stroke="black" points="2732.88,-3483.64 2742.88,-3480.14 2732.88,-3476.64 2732.88,-3483.64"/>
 <text xml:space="preserve" text-anchor="middle" x="2601.38" y="-4067.87" font-family="Helvetica,sans-Serif" font-size="14.00">contact_id &#45;&gt; id</text>
 </g>
-<!-- permission_history&#45;&gt;lexicon_term -->
+<!-- site_activity_consent&#45;&gt;lexicon_term -->
 <g id="edge78" class="edge">
-<title>permission_history&#45;&gt;lexicon_term</title>
+<title>site_activity_consent&#45;&gt;lexicon_term</title>
 <path fill="none" stroke="black" d="M2568.31,-4725.5C2995.53,-4725.5 3748.5,-4725.5 3748.5,-4725.5 3748.5,-4725.5 3748.5,-3074.3 3748.5,-3074.3"/>
 <polygon fill="black" stroke="black" points="3752,-3074.3 3748.5,-3064.3 3745,-3074.3 3752,-3074.3"/>
-<text xml:space="preserve" text-anchor="middle" x="3675" y="-4476.7" font-family="Helvetica,sans-Serif" font-size="14.00">permission_type &#45;&gt; term</text>
+<text xml:space="preserve" text-anchor="middle" x="3675" y="-4476.7" font-family="Helvetica,sans-Serif" font-size="14.00">activity &#45;&gt; term</text>
 </g>
-<!-- permission_history&#45;&gt;lexicon_term -->
+<!-- site_activity_consent&#45;&gt;lexicon_term -->
 <g id="edge79" class="edge">
-<title>permission_history&#45;&gt;lexicon_term</title>
+<title>site_activity_consent&#45;&gt;lexicon_term</title>
 <path fill="none" stroke="black" d="M2568.21,-4731.5C2998.75,-4731.5 3761.5,-4731.5 3761.5,-4731.5 3761.5,-4731.5 3761.5,-3074.27 3761.5,-3074.27"/>
 <polygon fill="black" stroke="black" points="3765,-3074.27 3761.5,-3064.27 3758,-3074.27 3765,-3074.27"/>
 <text xml:space="preserve" text-anchor="middle" x="3829.38" y="-4486.23" font-family="Helvetica,sans-Serif" font-size="14.00">release_status &#45;&gt; term</text>
