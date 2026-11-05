@@ -1,7 +1,7 @@
 """
 Transfer script for stratigraphy (lithology log) data.
 
-This creates ThingGeologicFormationAssociation records from the Stratigraphy CSV, which contains depth-specific
+This creates StratigraphicInterval records from the Stratigraphy CSV, which contains depth-specific
 formation information for wells. It also updates the GeologicFormation.lithology field based on the
 Stratigraphy.Lithology data.
 """
@@ -10,7 +10,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from db import Thing, GeologicFormation, ThingGeologicFormationAssociation
+from db import Thing, GeologicFormation, StratigraphicInterval
 from transfers.util import (
     read_csv,
     replace_nans,
@@ -252,9 +252,9 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 except Exception as e:
                     logger.warning(f"Error mapping lithology '{row.Lithology}': {e}")
 
-            # 9. Create ThingGeologicFormationAssociation record
+            # 9. Create StratigraphicInterval record
             try:
-                formation_assoc = ThingGeologicFormationAssociation(
+                formation_assoc = StratigraphicInterval(
                     thing=thing,
                     geologic_formation=formation,
                     top_depth=top_depth,
