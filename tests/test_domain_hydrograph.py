@@ -24,7 +24,8 @@ from domain.hydrograph import (
     derive_block_span,
     first_out_of_order_index,
     narrowed_block_span,
-    replace_would_split_block,
+    readings_by_owning_block,
+    split_around_span,
     resolve_deployment_id,
     spans_overlap,
     validate_delete_range,
@@ -162,30 +163,66 @@ def test_a_block_down_to_one_reading_becomes_zero_width():
 
 
 # --------------------------------------------------------------------------
-# replace_would_split_block
+# readings_by_owning_block
+# --------------------------------------------------------------------------
+def test_a_reading_goes_to_the_latest_starting_covering_block():
+    blocks = [
+        (1, T0, T0 + timedelta(hours=24)),
+        (2, T0 + timedelta(hours=6), T0 + timedelta(hours=24)),
+    ]
+    assert readings_by_owning_block(_times(0, 3, 6, 18, 24), blocks) == {
+        1: _times(0, 3),
+        2: _times(6, 18, 24),
+    }
+
+
+def test_a_tie_on_start_goes_to_the_later_written_block():
+    blocks = [(1, T0, T0 + timedelta(hours=12)), (2, T0, T0 + timedelta(hours=6))]
+    assert readings_by_owning_block(_times(0, 6, 12), blocks) == {
+        1: _times(12),
+        2: _times(0, 6),
+    }
+
+
+def test_a_reading_no_block_covers_is_left_out():
+    blocks = [(1, T0, T0 + timedelta(hours=6))]
+    assert readings_by_owning_block(_times(0, 12), blocks) == {1: _times(0)}
+
+
+# --------------------------------------------------------------------------
+# split_around_span
 # --------------------------------------------------------------------------
 def _hours(h):
     return T0 + timedelta(hours=h)
 
 
-def test_a_span_strictly_inside_a_block_would_split_it():
-    assert replace_would_split_block(_hours(0), _hours(24), _hours(6), _hours(12))
+def test_survivors_on_both_sides_split_the_block():
+    assert split_around_span(_times(0, 6, 18, 24), _hours(12), _hours(12)) == (
+        (_hours(0), _hours(6)),
+        (_hours(18), _hours(24)),
+    )
 
 
-def test_a_span_covering_the_whole_block_does_not_split_it():
-    assert not replace_would_split_block(_hours(6), _hours(12), _hours(0), _hours(24))
+def test_survivors_on_one_side_narrow_the_block():
+    assert split_around_span(_times(0, 6), _hours(12), _hours(24)) == (
+        (_hours(0), _hours(6)),
+        None,
+    )
+    assert split_around_span(_times(18, 24), _hours(0), _hours(12)) == (
+        None,
+        (_hours(18), _hours(24)),
+    )
 
 
-def test_a_span_over_one_end_of_the_block_does_not_split_it():
-    assert not replace_would_split_block(_hours(0), _hours(12), _hours(6), _hours(24))
-    assert not replace_would_split_block(_hours(6), _hours(24), _hours(0), _hours(12))
+def test_no_survivors_drop_the_block():
+    assert split_around_span([], _hours(0), _hours(12)) == (None, None)
 
 
-def test_a_span_sharing_an_endpoint_with_the_block_does_not_split_it():
-    # Inclusive bounds: the shared reading is replaced, nothing survives on
-    # that side.
-    assert not replace_would_split_block(_hours(0), _hours(24), _hours(0), _hours(12))
-    assert not replace_would_split_block(_hours(0), _hours(24), _hours(12), _hours(24))
+def test_a_reading_on_a_span_bound_belongs_to_the_replacement():
+    assert split_around_span(_times(0, 12, 24), _hours(0), _hours(24)) == (
+        None,
+        None,
+    )
 
 
 # --------------------------------------------------------------------------

@@ -39,8 +39,9 @@ from domain.hydrograph import (
     HydrographError,
     derive_block_span,
     narrowed_block_span,
-    replace_would_split_block,
+    readings_by_owning_block,
     resolve_deployment_id,
+    split_around_span,
     validate_delete_range,
 )
 from schemas.transducer import (
@@ -357,27 +358,19 @@ def _replace_within_span(
     new span, and fit each overlapping block to what it has left.
 
     Only the new span is cleared. A block is one earlier logger file, often
-    months long, and the replacement is usually a corrected stretch of it --
-    deleting whole blocks dropped every reading outside that stretch
-    (BDMS-1541). A block wholly inside the span is deleted; one overlapping an
-    end is narrowed to its survivors, the same reconciliation a range delete
-    does.
+    months or years long, and the replacement is usually a corrected stretch
+    of it -- deleting whole blocks dropped every reading outside that stretch
+    (BDMS-1541). Per block, by what survives on each side of the span
+    (``domain.hydrograph.split_around_span``):
 
-    A block reaching past the span on both sides is refused rather than split
-    (see ``domain.hydrograph.replace_would_split_block``). Checked before
-    anything is deleted, so the refusal leaves the series untouched.
+    - nothing: the block is deleted;
+    - one side: the block is narrowed to it;
+    - both sides: the block is split. It keeps the part before the span, and a
+      copy carrying the same review status, provenance, and author takes the
+      part after, so neither part's span reaches over the new block.
     """
-    splitting = [
-        block
-        for block in blocks
-        if replace_would_split_block(
-            block.start_datetime, block.end_datetime, span_start, span_end
-        )
-    ]
-    if splitting:
-        raise _split_conflict(splitting, span_start, span_end)
-
     deployment_ids = _deployment_ids_for_thing(session, thing_id)
+
     if deployment_ids:
         for block in blocks:
             session.execute(
@@ -391,41 +384,83 @@ def _replace_within_span(
                 )
             )
 
-    _reconcile_blocks(session, deployment_ids, parameter_id, blocks)
+    # Blocks can overlap (the legacy transfer wrote an approved and a
+    # not-reviewed block per well over interleaved readings), so each survivor
+    # is fitted only to the block the reader shows it under. Every block
+    # touching the affected range takes part in that choice, including ones
+    # the new span does not reach, but only the overlapping ones change.
+    range_start = min(block.start_datetime for block in blocks)
+    range_end = max(block.end_datetime for block in blocks)
+    surviving = (
+        list(
+            session.scalars(
+                select(TransducerObservation.observation_datetime).where(
+                    TransducerObservation.deployment_id.in_(deployment_ids),
+                    TransducerObservation.parameter_id == parameter_id,
+                    TransducerObservation.observation_datetime >= range_start,
+                    TransducerObservation.observation_datetime <= range_end,
+                )
+            ).all()
+        )
+        if deployment_ids
+        else []
+    )
+    candidates = session.execute(
+        select(
+            TransducerObservationBlock.id,
+            TransducerObservationBlock.start_datetime,
+            TransducerObservationBlock.end_datetime,
+        ).where(
+            TransducerObservationBlock.thing_id == thing_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+            TransducerObservationBlock.start_datetime <= range_end,
+            TransducerObservationBlock.end_datetime >= range_start,
+        )
+    ).all()
+    owned = readings_by_owning_block(surviving, [tuple(row) for row in candidates])
+
+    for block in blocks:
+        head, tail = split_around_span(owned.get(block.id, []), span_start, span_end)
+
+        if head is None and tail is None:
+            session.delete(block)
+            continue
+
+        if head is not None and tail is not None:
+            session.add(_block_part(block, tail))
+
+        block.start_datetime, block.end_datetime = head or tail
+
     session.flush()
 
 
-def _split_conflict(
-    blocks: list[TransducerObservationBlock],
-    span_start: datetime,
-    span_end: datetime,
-):
-    overlapping = [
-        OverlappingBlock.model_validate(block, from_attributes=True).model_dump(
-            mode="json"
-        )
-        for block in blocks
-    ]
-    described = "; ".join(
-        f"block {block.id} ({block.start_datetime.isoformat()} to "
-        f"{block.end_datetime.isoformat()})"
-        for block in blocks
-    )
-    return PydanticStyleException(
-        status_code=HTTP_409_CONFLICT,
-        detail=[
-            {
-                "loc": ["body", "measurements"],
-                "msg": (
-                    f"The corrected series ({span_start.isoformat()} to "
-                    f"{span_end.isoformat()}) falls inside {described}, so "
-                    "overwriting would split it. Nothing was changed. Re-upload "
-                    "a series that covers the start or the end of the block."
-                ),
-                "type": "value_error",
-                "input": {"overlapping_blocks": overlapping},
-            }
-        ],
+def _block_part(
+    block: TransducerObservationBlock, span: tuple[datetime, datetime]
+) -> TransducerObservationBlock:
+    """
+    A copy of ``block`` over ``span``: the part of a split block after the
+    replacing series. It is the same published data, so it keeps the original's
+    review status, provenance, author, and reviewer rather than the replacer's.
+    """
+    start, end = span
+    return TransducerObservationBlock(
+        thing_id=block.thing_id,
+        parameter_id=block.parameter_id,
+        review_status=block.review_status,
+        release_status=block.release_status,
+        start_datetime=start,
+        end_datetime=end,
+        comment=block.comment,
+        source_file=block.source_file,
+        source_kind=block.source_kind,
+        corrections=block.corrections,
+        reviewer_id=block.reviewer_id,
+        created_by_id=block.created_by_id,
+        created_by_name=block.created_by_name,
+        # A review records the reviewer here (``review_transducer_block``), so
+        # without these the approved tail would lose who approved it.
+        updated_by_id=block.updated_by_id,
+        updated_by_name=block.updated_by_name,
     )
 
 

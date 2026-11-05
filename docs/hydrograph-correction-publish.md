@@ -81,22 +81,41 @@ stored readings **inside the new span** and then publishes, in the same
 transaction:
 
 - readings inside the span, on the well's deployments, are deleted;
-- an overlapping block left with no readings is deleted;
-- one left with readings on one side of the span is narrowed to them, by the
-  same reconciliation a range delete uses.
+- each overlapping block is then fitted to the readings it has left on either
+  side of the span (`domain.hydrograph.split_around_span`):
+  - none left: the block is deleted;
+  - readings on one side: the block is narrowed to them;
+  - readings on both sides: the block is **split**. It keeps the part before
+    the span, and a new block takes the part after.
 
 Readings outside the span stay. Replace used to delete every overlapping block
 whole, with all of its readings. A block is one earlier logger file, often
-months long, so overwriting a corrected stretch of it dropped everything else
-the file held (BDMS-1541).
+months or years long, so overwriting a corrected stretch of it dropped
+everything else the file held (BDMS-1541).
 
-**A block reaching past the span on both sides is refused**, as a 409 naming it
-in `detail[0].input.overlapping_blocks`. Nothing is deleted. Narrowing it to
-its survivors would stretch it back over the new block, and splitting a block
-in two is deliberately not supported: a correction is applied by re-uploading
-the whole period between manual measurements and overwriting it, which covers
-at least one end of each block it touches. A span sharing an endpoint with the
-block is not a split, because the reading at that instant is replaced.
+**Blocks can overlap.** The legacy transfer wrote an approved and a
+not-reviewed block per well over interleaved readings, and the reader shows
+each reading under the latest-starting block that covers it. So each surviving
+reading is given to that block first (`readings_by_owning_block`; a tie on
+start goes to the higher id), and a block is fitted only to the readings it
+owns. Fitting every block to every reading inside its span would let two
+overlapping blocks narrow to the same span -- a unique-constraint violation
+when their statuses match -- or tie on start, so unchanged readings could show
+up under a different block's review status. Every block touching the affected
+range takes part in that choice; only those the new span overlaps change.
+
+The split is needed because a block is only its span. Narrowing a block with
+readings on both sides to their extent would stretch it back over the new
+block, and the inclusive reader would then see two blocks claiming the same
+instants. The new block after the span copies the original's review status,
+release status, provenance, comment, reviewer, author, and last updater (a
+review records the reviewer as the updater): it holds the same
+published data, so it has to read exactly as it did before the replace. Each
+part is fitted to its own readings, so an older block whose span was wider
+than its readings ends up with parts that are not.
+
+Bounds are inclusive, as for overlap: a stored reading exactly on the first or
+last instant of the new series is replaced, and belongs to neither part.
 
 The readings inside the span have to go. Keeping them would leave rows that
 still occupy the deployment/parameter/instant the new series is about to claim,

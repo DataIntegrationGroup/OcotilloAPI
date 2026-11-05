@@ -147,27 +147,56 @@ def narrowed_block_span(
     return min(surviving_datetimes), max(surviving_datetimes)
 
 
-def replace_would_split_block(
-    block_start: datetime,
-    block_end: datetime,
+def readings_by_owning_block(
+    reading_datetimes: list[datetime],
+    blocks: list[tuple[int, datetime, datetime]],
+) -> dict[int, list[datetime]]:
+    """
+    Give each reading to the block the reader shows it under.
+
+    ``blocks`` are ``(id, start, end)``. Blocks for one series can overlap --
+    the legacy transfer wrote an approved and a not-reviewed block per well,
+    over interleaved readings -- and the reader resolves that by taking the
+    latest-starting block covering a reading, inclusive on both bounds. Ties
+    go to the higher id, the later-written block, so the result is
+    deterministic. A reading no block covers is left out.
+
+    Fitting a block to every reading inside its span would let two
+    overlapping blocks claim the same readings, so their narrowed parts could
+    coincide (a unique-constraint violation) or tie on start (so the reader
+    could show unchanged readings under different review metadata).
+    """
+    ordered = sorted(blocks, key=lambda block: (block[1], block[0]), reverse=True)
+    owned: dict[int, list[datetime]] = {block_id: [] for block_id, _, _ in blocks}
+    for reading in reading_datetimes:
+        for block_id, start, end in ordered:
+            if start <= reading <= end:
+                owned[block_id].append(reading)
+                break
+    return owned
+
+
+def split_around_span(
+    surviving_datetimes: list[datetime],
     span_start: datetime,
     span_end: datetime,
-) -> bool:
+) -> tuple[tuple[datetime, datetime] | None, tuple[datetime, datetime] | None]:
     """
-    Whether replacing ``[span_start, span_end]`` would leave a block in two parts.
+    What an overlapping block becomes once a replacing publish clears
+    ``[span_start, span_end]``: a part before the span and a part after it.
 
-    A replacing publish deletes only the stored readings inside the new span
-    and narrows each overlapping block to what is left. A block that extends
-    past the span on *both* sides would keep readings either side of the new
-    series, and narrowing it to their extent would stretch it back over the new
-    block -- the overlap the publish check exists to prevent. Splitting it is
-    not supported: replacing means re-uploading the whole period between
-    manual measurements, which covers at least one end of the block.
+    ``surviving_datetimes`` are the readings the block still owns after the
+    span was cleared (see ``readings_by_owning_block``). Each part is the extent of the survivors on its side, or ``None``
+    when that side has none. Both ``None`` means the block goes; one part means
+    it is narrowed to it; two mean it is split, so the new series can sit in
+    the gap without either part's span reaching over it.
 
-    Bounds are inclusive, as for overlap. A block ending exactly where the span
-    ends loses that reading to the replacement and has nothing left after it.
+    Bounds are inclusive, as for overlap: a reading exactly on ``span_start`` or
+    ``span_end`` belongs to the replacement, never to a part.
     """
-    return block_start < span_start and block_end > span_end
+    head = narrowed_block_span([t for t in surviving_datetimes if t < span_start])
+    tail = narrowed_block_span([t for t in surviving_datetimes if t > span_end])
+    return head, tail
 
 
 def validate_delete_range(start_time: datetime, end_time: datetime) -> None:

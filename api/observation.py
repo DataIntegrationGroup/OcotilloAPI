@@ -140,8 +140,8 @@ def publish_transducer_groundwater_level_block(
     pass `replace_overlapping=true` to replace the stored readings inside the
     new span, in the same transaction. Readings outside the span are kept: a
     block wholly inside the span is deleted, one overlapping an end is narrowed
-    to what is left. A block reaching past the span on both sides would be
-    split, which is a 409 instead.
+    to what is left, and one reaching past the span on both sides is split
+    into a part before it and a part after it.
 
     Written by the hydrograph corrector in OcotilloUI. See
     `docs/hydrograph-correction-publish.md`.
