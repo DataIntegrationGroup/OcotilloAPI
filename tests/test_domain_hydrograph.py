@@ -24,7 +24,7 @@ from domain.hydrograph import (
     derive_block_span,
     first_out_of_order_index,
     narrowed_block_span,
-    replace_would_split_block,
+    split_around_span,
     resolve_deployment_id,
     spans_overlap,
     validate_delete_range,
@@ -162,30 +162,39 @@ def test_a_block_down_to_one_reading_becomes_zero_width():
 
 
 # --------------------------------------------------------------------------
-# replace_would_split_block
+# split_around_span
 # --------------------------------------------------------------------------
 def _hours(h):
     return T0 + timedelta(hours=h)
 
 
-def test_a_span_strictly_inside_a_block_would_split_it():
-    assert replace_would_split_block(_hours(0), _hours(24), _hours(6), _hours(12))
+def test_survivors_on_both_sides_split_the_block():
+    assert split_around_span(_times(0, 6, 18, 24), _hours(12), _hours(12)) == (
+        (_hours(0), _hours(6)),
+        (_hours(18), _hours(24)),
+    )
 
 
-def test_a_span_covering_the_whole_block_does_not_split_it():
-    assert not replace_would_split_block(_hours(6), _hours(12), _hours(0), _hours(24))
+def test_survivors_on_one_side_narrow_the_block():
+    assert split_around_span(_times(0, 6), _hours(12), _hours(24)) == (
+        (_hours(0), _hours(6)),
+        None,
+    )
+    assert split_around_span(_times(18, 24), _hours(0), _hours(12)) == (
+        None,
+        (_hours(18), _hours(24)),
+    )
 
 
-def test_a_span_over_one_end_of_the_block_does_not_split_it():
-    assert not replace_would_split_block(_hours(0), _hours(12), _hours(6), _hours(24))
-    assert not replace_would_split_block(_hours(6), _hours(24), _hours(0), _hours(12))
+def test_no_survivors_drop_the_block():
+    assert split_around_span([], _hours(0), _hours(12)) == (None, None)
 
 
-def test_a_span_sharing_an_endpoint_with_the_block_does_not_split_it():
-    # Inclusive bounds: the shared reading is replaced, nothing survives on
-    # that side.
-    assert not replace_would_split_block(_hours(0), _hours(24), _hours(0), _hours(12))
-    assert not replace_would_split_block(_hours(0), _hours(24), _hours(12), _hours(24))
+def test_a_reading_on_a_span_bound_belongs_to_the_replacement():
+    assert split_around_span(_times(0, 12, 24), _hours(0), _hours(24)) == (
+        None,
+        None,
+    )
 
 
 # --------------------------------------------------------------------------
