@@ -13,7 +13,7 @@ dependencies = [
   "alembic==1.20.1",
   "annotated-types==0.8.0",
   "anyio==4.15.1",
-  "apitally[fastapi]==0.25.1",
+  "apitally[fastapi]==1.0.0",
   "asgiref==3.13.0",
   "asn1crypto==1.5.1",
   "asyncpg==0.32.0",
