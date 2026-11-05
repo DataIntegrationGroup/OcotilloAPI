@@ -1,7 +1,7 @@
 # Purpose
 The purpose of this document is to determine and record the shape of the `/manual_waterlevels` OGC EDR API endpoints. These endpoints will be used by external sources and so the schemas defined herein will act as the source of truth for how it will be shaped by OcotilloAPI and how it will be consumed by others (e.g. WeaverAPI).
 
-# /manual-waterlevels Data
+# /manual_waterlevels Data
 The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
 
 # Shape
