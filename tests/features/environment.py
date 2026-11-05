@@ -49,7 +49,7 @@ from db import (
     AquiferType,
     ThingAquiferAssociation,
     GeologicFormation,
-    ThingGeologicFormationAssociation,
+    StratigraphicInterval,
     Asset,
     Contact,
     Sample,
@@ -496,7 +496,7 @@ def add_geologic_formation(context, session, formation_code, well):
     session.commit()
     session.refresh(formation)
 
-    association = ThingGeologicFormationAssociation(
+    association = StratigraphicInterval(
         top_depth=1, bottom_depth=10, thing=well, geologic_formation=formation
     )
     session.add(association)

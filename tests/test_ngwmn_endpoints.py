@@ -16,7 +16,7 @@
 """
 Tests for the /ngwmn endpoints backed by the NGWMN_* views, which are
 sourced from the new Ocotillo data model (thing/well_screen/observation/
-thing_geologic_formation_association) rather than the legacy NMA_view_NGWMN_*
+stratigraphic_interval) rather than the legacy NMA_view_NGWMN_*
 copy tables.
 """
 
@@ -34,7 +34,7 @@ from db import (
     Sample,
     Sensor,
     Thing,
-    ThingGeologicFormationAssociation,
+    StratigraphicInterval,
     TransducerObservation,
     WellCasingMaterial,
     WellScreen,
@@ -88,7 +88,7 @@ def ngwmn_well():
         session.add(formation)
         session.flush()
         session.add(
-            ThingGeologicFormationAssociation(
+            StratigraphicInterval(
                 thing_id=thing.id,
                 geologic_formation_id=formation.id,
                 top_depth=0.0,
@@ -425,7 +425,7 @@ def ngwmn_private_well():
         session.add(formation)
         session.flush()
         session.add(
-            ThingGeologicFormationAssociation(
+            StratigraphicInterval(
                 thing_id=thing.id,
                 geologic_formation_id=formation.id,
                 top_depth=0.0,
