@@ -120,6 +120,7 @@ The time series data will be returned as CoverageCollection of Coverages as foll
 
 - The the current `ogc_waterlevels` view, which as of 11/4/2026 is a union of manual and transducer waterlevels. The view is initially constructed in `alembic/versions/z9a0b1c2d3e4_add_edr_water_views.py`. The views are then reconstructed in `alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py` to gate on `public_release`. The internal views are constructed in `alembic/versions/2d3c3a268652_create_internal_ogc_views.py`. The views are repaired in `alembic/versions/b7c8d9e0f1a2_repair_missing_edr_water_views.py`.
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
+- Transducer and manual water level measurements should be split up into different views. If not, then the parameter names need to different between transducer and manual so that they can be queried independently.
 
 **IMPORTANT** `docs/measuring-point-height-null-handling.md` says that Cris Morton and Ethan Mamer want `null` measuring point heights to be `0`. This must be documented for the EDR endpoints.
 
@@ -155,3 +156,4 @@ This all boils down to: without pagination there is never a guarantee that memor
 - Should we pivot from EDR to Features? If we do this it'd be more difficult to bundle/relate the sites and observations if they live in different collections (one for observations with `null` geometry and one for wells). We'd need to document this somewhere, and where that documentation would go isn't too obvious. We could, conversely, serve the data with `geometry` for every observation where the `geometry` corresponds with the well, but then we'd miss metadata needed from wells such as `well_depth`.
   - We could also put well metadata with the observation data, but then we'd be mixing data in the response which is not a good idea.
 - is `/manual_waterlevels` the correct id for the collection?
+- Should this stay `/waterlevels` and transducer and manual measurements have different parameter names, or should they be split into different views and collections?
