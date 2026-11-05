@@ -39,6 +39,7 @@ from domain.hydrograph import (
     HydrographError,
     derive_block_span,
     narrowed_block_span,
+    replace_would_split_block,
     resolve_deployment_id,
     validate_delete_range,
 )
@@ -212,7 +213,14 @@ def publish_transducer_block(
         raise _overlap_conflict(existing)
 
     if existing:
-        _delete_superseded(session, payload.thing_id, payload.parameter_id, existing)
+        _replace_within_span(
+            session,
+            payload.thing_id,
+            payload.parameter_id,
+            existing,
+            span_start,
+            span_end,
+        )
 
     # Readings can outlive the block that covered them -- nothing links the two
     # tables, so a block deleted by hand leaves its observations behind, where
@@ -326,7 +334,8 @@ def _overlap_conflict(blocks: list[TransducerObservationBlock]):
                 "loc": ["body", "measurements"],
                 "msg": (
                     f"Time span overlaps existing block(s) {ids}. Retry with "
-                    "?replace_overlapping=true to supersede them."
+                    "?replace_overlapping=true to replace the stored readings "
+                    "in this span."
                 ),
                 "type": "value_error",
                 "input": {"overlapping_blocks": overlapping},
@@ -335,20 +344,39 @@ def _overlap_conflict(blocks: list[TransducerObservationBlock]):
     )
 
 
-def _delete_superseded(
+def _replace_within_span(
     session: Session,
     thing_id: int,
     parameter_id: int,
     blocks: list[TransducerObservationBlock],
+    span_start: datetime,
+    span_end: datetime,
 ) -> None:
     """
-    Drop the blocks a replacing publish supersedes, and their readings.
+    Make room for a replacing publish: delete the stored readings inside the
+    new span, and fit each overlapping block to what it has left.
 
-    The readings go too. Keeping them would leave rows the reader cannot show
-    (no block covers them) that still occupy the deployment/parameter/instant
-    the new series is about to claim -- so "replace" that kept them would fail
-    on the very insert it was asked to make room for.
+    Only the new span is cleared. A block is one earlier logger file, often
+    months long, and the replacement is usually a corrected stretch of it --
+    deleting whole blocks dropped every reading outside that stretch
+    (BDMS-1541). A block wholly inside the span is deleted; one overlapping an
+    end is narrowed to its survivors, the same reconciliation a range delete
+    does.
+
+    A block reaching past the span on both sides is refused rather than split
+    (see ``domain.hydrograph.replace_would_split_block``). Checked before
+    anything is deleted, so the refusal leaves the series untouched.
     """
+    splitting = [
+        block
+        for block in blocks
+        if replace_would_split_block(
+            block.start_datetime, block.end_datetime, span_start, span_end
+        )
+    ]
+    if splitting:
+        raise _split_conflict(splitting, span_start, span_end)
+
     deployment_ids = _deployment_ids_for_thing(session, thing_id)
     if deployment_ids:
         for block in blocks:
@@ -356,17 +384,49 @@ def _delete_superseded(
                 delete(TransducerObservation).where(
                     TransducerObservation.deployment_id.in_(deployment_ids),
                     TransducerObservation.parameter_id == parameter_id,
-                    TransducerObservation.observation_datetime >= block.start_datetime,
-                    TransducerObservation.observation_datetime <= block.end_datetime,
+                    TransducerObservation.observation_datetime
+                    >= max(block.start_datetime, span_start),
+                    TransducerObservation.observation_datetime
+                    <= min(block.end_datetime, span_end),
                 )
             )
 
-    session.execute(
-        delete(TransducerObservationBlock).where(
-            TransducerObservationBlock.id.in_([block.id for block in blocks])
-        )
-    )
+    _reconcile_blocks(session, deployment_ids, parameter_id, blocks)
     session.flush()
+
+
+def _split_conflict(
+    blocks: list[TransducerObservationBlock],
+    span_start: datetime,
+    span_end: datetime,
+):
+    overlapping = [
+        OverlappingBlock.model_validate(block, from_attributes=True).model_dump(
+            mode="json"
+        )
+        for block in blocks
+    ]
+    described = "; ".join(
+        f"block {block.id} ({block.start_datetime.isoformat()} to "
+        f"{block.end_datetime.isoformat()})"
+        for block in blocks
+    )
+    return PydanticStyleException(
+        status_code=HTTP_409_CONFLICT,
+        detail=[
+            {
+                "loc": ["body", "measurements"],
+                "msg": (
+                    f"The corrected series ({span_start.isoformat()} to "
+                    f"{span_end.isoformat()}) falls inside {described}, so "
+                    "overwriting would split it. Nothing was changed. Re-upload "
+                    "a series that covers the start or the end of the block."
+                ),
+                "type": "value_error",
+                "input": {"overlapping_blocks": overlapping},
+            }
+        ],
+    )
 
 
 def _reject_colliding_observations(

@@ -24,6 +24,7 @@ from domain.hydrograph import (
     derive_block_span,
     first_out_of_order_index,
     narrowed_block_span,
+    replace_would_split_block,
     resolve_deployment_id,
     spans_overlap,
     validate_delete_range,
@@ -158,6 +159,33 @@ def test_a_block_down_to_one_reading_becomes_zero_width():
         T0 + timedelta(hours=6),
         T0 + timedelta(hours=6),
     )
+
+
+# --------------------------------------------------------------------------
+# replace_would_split_block
+# --------------------------------------------------------------------------
+def _hours(h):
+    return T0 + timedelta(hours=h)
+
+
+def test_a_span_strictly_inside_a_block_would_split_it():
+    assert replace_would_split_block(_hours(0), _hours(24), _hours(6), _hours(12))
+
+
+def test_a_span_covering_the_whole_block_does_not_split_it():
+    assert not replace_would_split_block(_hours(6), _hours(12), _hours(0), _hours(24))
+
+
+def test_a_span_over_one_end_of_the_block_does_not_split_it():
+    assert not replace_would_split_block(_hours(0), _hours(12), _hours(6), _hours(24))
+    assert not replace_would_split_block(_hours(6), _hours(24), _hours(0), _hours(12))
+
+
+def test_a_span_sharing_an_endpoint_with_the_block_does_not_split_it():
+    # Inclusive bounds: the shared reading is replaced, nothing survives on
+    # that side.
+    assert not replace_would_split_block(_hours(0), _hours(24), _hours(0), _hours(12))
+    assert not replace_would_split_block(_hours(0), _hours(24), _hours(12), _hours(24))
 
 
 # --------------------------------------------------------------------------

@@ -147,6 +147,29 @@ def narrowed_block_span(
     return min(surviving_datetimes), max(surviving_datetimes)
 
 
+def replace_would_split_block(
+    block_start: datetime,
+    block_end: datetime,
+    span_start: datetime,
+    span_end: datetime,
+) -> bool:
+    """
+    Whether replacing ``[span_start, span_end]`` would leave a block in two parts.
+
+    A replacing publish deletes only the stored readings inside the new span
+    and narrows each overlapping block to what is left. A block that extends
+    past the span on *both* sides would keep readings either side of the new
+    series, and narrowing it to their extent would stretch it back over the new
+    block -- the overlap the publish check exists to prevent. Splitting it is
+    not supported: replacing means re-uploading the whole period between
+    manual measurements, which covers at least one end of the block.
+
+    Bounds are inclusive, as for overlap. A block ending exactly where the span
+    ends loses that reading to the replacement and has nothing left after it.
+    """
+    return block_start < span_start and block_end > span_end
+
+
 def validate_delete_range(start_time: datetime, end_time: datetime) -> None:
     """
     Reject a delete range that cannot be meant.

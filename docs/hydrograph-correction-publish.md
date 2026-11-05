@@ -76,13 +76,32 @@ serialize against each other and cannot deadlock against one another.
 
 An existing block for the same well and parameter whose span shares any instant
 with the new one is a **409** listing the collisions in
-`detail[0].input.overlapping_blocks`. `?replace_overlapping=true` deletes those
-blocks **and their readings** in the same transaction and then publishes.
+`detail[0].input.overlapping_blocks`. `?replace_overlapping=true` replaces the
+stored readings **inside the new span** and then publishes, in the same
+transaction:
 
-The readings have to go with the block. Keeping them would leave rows the reader
-cannot show — no block covers them — that still occupy the
-deployment/parameter/instant the new series is about to claim, so a "replace"
-that kept them would fail on the very insert it was asked to make room for.
+- readings inside the span, on the well's deployments, are deleted;
+- an overlapping block left with no readings is deleted;
+- one left with readings on one side of the span is narrowed to them, by the
+  same reconciliation a range delete uses.
+
+Readings outside the span stay. Replace used to delete every overlapping block
+whole, with all of its readings. A block is one earlier logger file, often
+months long, so overwriting a corrected stretch of it dropped everything else
+the file held (BDMS-1541).
+
+**A block reaching past the span on both sides is refused**, as a 409 naming it
+in `detail[0].input.overlapping_blocks`. Nothing is deleted. Narrowing it to
+its survivors would stretch it back over the new block, and splitting a block
+in two is deliberately not supported: a correction is applied by re-uploading
+the whole period between manual measurements and overwriting it, which covers
+at least one end of each block it touches. A span sharing an endpoint with the
+block is not a split, because the reading at that instant is replaced.
+
+The readings inside the span have to go. Keeping them would leave rows that
+still occupy the deployment/parameter/instant the new series is about to claim,
+so a "replace" that kept them would fail on the very insert it was asked to
+make room for.
 
 Overlap here is **inclusive on both bounds**, unlike
 `TransducerObservationBlock.overlaps` on the model, which is half-open. The
