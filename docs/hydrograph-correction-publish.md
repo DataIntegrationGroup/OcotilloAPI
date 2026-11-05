@@ -93,11 +93,23 @@ whole, with all of its readings. A block is one earlier logger file, often
 months or years long, so overwriting a corrected stretch of it dropped
 everything else the file held (BDMS-1541).
 
+**Blocks can overlap.** The legacy transfer wrote an approved and a
+not-reviewed block per well over interleaved readings, and the reader shows
+each reading under the latest-starting block that covers it. So each surviving
+reading is given to that block first (`readings_by_owning_block`; a tie on
+start goes to the higher id), and a block is fitted only to the readings it
+owns. Fitting every block to every reading inside its span would let two
+overlapping blocks narrow to the same span -- a unique-constraint violation
+when their statuses match -- or tie on start, so unchanged readings could show
+up under a different block's review status. Every block touching the affected
+range takes part in that choice; only those the new span overlaps change.
+
 The split is needed because a block is only its span. Narrowing a block with
 readings on both sides to their extent would stretch it back over the new
 block, and the inclusive reader would then see two blocks claiming the same
 instants. The new block after the span copies the original's review status,
-release status, provenance, comment, reviewer, and author: it holds the same
+release status, provenance, comment, reviewer, author, and last updater (a
+review records the reviewer as the updater): it holds the same
 published data, so it has to read exactly as it did before the replace. Each
 part is fitted to its own readings, so an older block whose span was wider
 than its readings ends up with parts that are not.

@@ -24,6 +24,7 @@ from domain.hydrograph import (
     derive_block_span,
     first_out_of_order_index,
     narrowed_block_span,
+    readings_by_owning_block,
     split_around_span,
     resolve_deployment_id,
     spans_overlap,
@@ -159,6 +160,33 @@ def test_a_block_down_to_one_reading_becomes_zero_width():
         T0 + timedelta(hours=6),
         T0 + timedelta(hours=6),
     )
+
+
+# --------------------------------------------------------------------------
+# readings_by_owning_block
+# --------------------------------------------------------------------------
+def test_a_reading_goes_to_the_latest_starting_covering_block():
+    blocks = [
+        (1, T0, T0 + timedelta(hours=24)),
+        (2, T0 + timedelta(hours=6), T0 + timedelta(hours=24)),
+    ]
+    assert readings_by_owning_block(_times(0, 3, 6, 18, 24), blocks) == {
+        1: _times(0, 3),
+        2: _times(6, 18, 24),
+    }
+
+
+def test_a_tie_on_start_goes_to_the_later_written_block():
+    blocks = [(1, T0, T0 + timedelta(hours=12)), (2, T0, T0 + timedelta(hours=6))]
+    assert readings_by_owning_block(_times(0, 6, 12), blocks) == {
+        1: _times(12),
+        2: _times(0, 6),
+    }
+
+
+def test_a_reading_no_block_covers_is_left_out():
+    blocks = [(1, T0, T0 + timedelta(hours=6))]
+    assert readings_by_owning_block(_times(0, 12), blocks) == {1: _times(0)}
 
 
 # --------------------------------------------------------------------------

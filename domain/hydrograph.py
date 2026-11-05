@@ -147,6 +147,35 @@ def narrowed_block_span(
     return min(surviving_datetimes), max(surviving_datetimes)
 
 
+def readings_by_owning_block(
+    reading_datetimes: list[datetime],
+    blocks: list[tuple[int, datetime, datetime]],
+) -> dict[int, list[datetime]]:
+    """
+    Give each reading to the block the reader shows it under.
+
+    ``blocks`` are ``(id, start, end)``. Blocks for one series can overlap --
+    the legacy transfer wrote an approved and a not-reviewed block per well,
+    over interleaved readings -- and the reader resolves that by taking the
+    latest-starting block covering a reading, inclusive on both bounds. Ties
+    go to the higher id, the later-written block, so the result is
+    deterministic. A reading no block covers is left out.
+
+    Fitting a block to every reading inside its span would let two
+    overlapping blocks claim the same readings, so their narrowed parts could
+    coincide (a unique-constraint violation) or tie on start (so the reader
+    could show unchanged readings under different review metadata).
+    """
+    ordered = sorted(blocks, key=lambda block: (block[1], block[0]), reverse=True)
+    owned: dict[int, list[datetime]] = {block_id: [] for block_id, _, _ in blocks}
+    for reading in reading_datetimes:
+        for block_id, start, end in ordered:
+            if start <= reading <= end:
+                owned[block_id].append(reading)
+                break
+    return owned
+
+
 def split_around_span(
     surviving_datetimes: list[datetime],
     span_start: datetime,
@@ -156,8 +185,8 @@ def split_around_span(
     What an overlapping block becomes once a replacing publish clears
     ``[span_start, span_end]``: a part before the span and a part after it.
 
-    ``surviving_datetimes`` are the block's readings left after the span was
-    cleared. Each part is the extent of the survivors on its side, or ``None``
+    ``surviving_datetimes`` are the readings the block still owns after the
+    span was cleared (see ``readings_by_owning_block``). Each part is the extent of the survivors on its side, or ``None``
     when that side has none. Both ``None`` means the block goes; one part means
     it is narrowed to it; two mean it is split, so the new series can sit in
     the gap without either part's span reaching over it.

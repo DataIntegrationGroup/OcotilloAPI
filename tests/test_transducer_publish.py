@@ -461,6 +461,109 @@ def test_a_split_block_wider_than_its_readings_fits_each_part_to_them(
     ]
 
 
+def _overlapping_legacy_blocks(thing_id, first_status, second_status):
+    """
+    Two overlapping blocks, as the legacy transfer writes them: the first
+    claims [0, 24] but holds only the readings at 0 and 3; the second starts
+    later, at 6, so the reader shows everything from 6 on under it.
+    """
+    first_id = client.post(PUBLISH_URL, json=_payload(thing_id, hours=(0, 3))).json()[
+        "block"
+    ]["id"]
+    second_id = client.post(
+        PUBLISH_URL, json=_payload(thing_id, hours=(6, 12, 18, 24))
+    ).json()["block"]["id"]
+    with session_ctx() as session:
+        first = session.get(TransducerObservationBlock, first_id)
+        first.end_datetime = _at(24)
+        first.review_status = first_status
+        session.get(TransducerObservationBlock, second_id).review_status = second_status
+        session.commit()
+    return first_id, second_id
+
+
+def _shown_status(thing_id):
+    """{hour offset: review status of the block the reader shows it under}."""
+    items = client.get(READ_URL, params={"thing_id": thing_id, "order": "asc"}).json()[
+        "items"
+    ]
+    return {
+        (
+            datetime.fromisoformat(item["observation"]["observation_datetime"]) - T0
+        ).total_seconds()
+        / 3600: item["block"]["review_status"]
+        for item in items
+    }
+
+
+def test_splitting_overlapping_blocks_does_not_give_both_the_same_tail(
+    published_well,
+):
+    # Fitted to every reading in its span, the first block's tail would be
+    # [18, 24] -- the same as the second's -- and with matching statuses the
+    # unique constraint would roll the whole overwrite back.
+    thing_id, _ = published_well
+    first_id, second_id = _overlapping_legacy_blocks(
+        thing_id, "not reviewed", "not reviewed"
+    )
+
+    response = _replace(thing_id, hours=(9, 15))
+
+    assert response.status_code == 201, response.text
+    assert [(b.start_datetime, b.end_datetime) for b in _blocks(thing_id)] == [
+        (_at(0), _at(3)),
+        (_at(6), _at(6)),
+        (_at(9), _at(15)),
+        (_at(18), _at(24)),
+    ]
+    assert _block_span(first_id) == (_at(0), _at(3))
+    assert _block_span(second_id) == (_at(6), _at(6))
+
+
+def test_splitting_overlapping_blocks_keeps_what_the_reader_shows(published_well):
+    thing_id, _ = published_well
+    _overlapping_legacy_blocks(thing_id, "approved", "not reviewed")
+    before = _shown_status(thing_id)
+    assert before == {
+        0: "approved",
+        3: "approved",
+        6: "not reviewed",
+        12: "not reviewed",
+        18: "not reviewed",
+        24: "not reviewed",
+    }
+
+    response = _replace(thing_id, hours=(9, 15))
+
+    assert response.status_code == 201, response.text
+    after = _shown_status(thing_id)
+    # Unchanged readings read exactly as before; only the replaced span moved.
+    assert {h: after[h] for h in (0, 3, 6, 18, 24)} == {
+        h: before[h] for h in (0, 3, 6, 18, 24)
+    }
+
+
+def test_the_tail_of_a_split_reviewed_block_keeps_its_reviewer(published_well):
+    thing_id, _ = published_well
+    old_id = client.post(
+        PUBLISH_URL, json=_payload(thing_id, hours=(0, 6, 12, 18, 24))
+    ).json()["block"]["id"]
+    review = client.patch(_review_url(old_id), json={"review_status": "approved"})
+    assert review.status_code == 200, review.text
+
+    response = _replace(thing_id, hours=(9, 15))
+
+    assert response.status_code == 201, response.text
+    head, _, tail = _blocks(thing_id)
+    assert head.id == old_id
+    assert tail.review_status == "approved"
+    assert (tail.updated_by_id, tail.updated_by_name) == (
+        head.updated_by_id,
+        head.updated_by_name,
+    )
+    assert tail.updated_by_name == "foobar"
+
+
 def test_publish_is_atomic_when_a_reading_collides(published_well):
     thing_id, _ = published_well
     client.post(PUBLISH_URL, json=_payload(thing_id))

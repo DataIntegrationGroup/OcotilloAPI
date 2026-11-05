@@ -39,6 +39,7 @@ from domain.hydrograph import (
     HydrographError,
     derive_block_span,
     narrowed_block_span,
+    readings_by_owning_block,
     resolve_deployment_id,
     split_around_span,
     validate_delete_range,
@@ -370,8 +371,8 @@ def _replace_within_span(
     """
     deployment_ids = _deployment_ids_for_thing(session, thing_id)
 
-    for block in blocks:
-        if deployment_ids:
+    if deployment_ids:
+        for block in blocks:
             session.execute(
                 delete(TransducerObservation).where(
                     TransducerObservation.deployment_id.in_(deployment_ids),
@@ -382,22 +383,44 @@ def _replace_within_span(
                     <= min(block.end_datetime, span_end),
                 )
             )
-            surviving = list(
-                session.scalars(
-                    select(TransducerObservation.observation_datetime).where(
-                        TransducerObservation.deployment_id.in_(deployment_ids),
-                        TransducerObservation.parameter_id == parameter_id,
-                        TransducerObservation.observation_datetime
-                        >= block.start_datetime,
-                        TransducerObservation.observation_datetime
-                        <= block.end_datetime,
-                    )
-                ).all()
-            )
-        else:
-            surviving = []
 
-        head, tail = split_around_span(surviving, span_start, span_end)
+    # Blocks can overlap (the legacy transfer wrote an approved and a
+    # not-reviewed block per well over interleaved readings), so each survivor
+    # is fitted only to the block the reader shows it under. Every block
+    # touching the affected range takes part in that choice, including ones
+    # the new span does not reach, but only the overlapping ones change.
+    range_start = min(block.start_datetime for block in blocks)
+    range_end = max(block.end_datetime for block in blocks)
+    surviving = (
+        list(
+            session.scalars(
+                select(TransducerObservation.observation_datetime).where(
+                    TransducerObservation.deployment_id.in_(deployment_ids),
+                    TransducerObservation.parameter_id == parameter_id,
+                    TransducerObservation.observation_datetime >= range_start,
+                    TransducerObservation.observation_datetime <= range_end,
+                )
+            ).all()
+        )
+        if deployment_ids
+        else []
+    )
+    candidates = session.execute(
+        select(
+            TransducerObservationBlock.id,
+            TransducerObservationBlock.start_datetime,
+            TransducerObservationBlock.end_datetime,
+        ).where(
+            TransducerObservationBlock.thing_id == thing_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+            TransducerObservationBlock.start_datetime <= range_end,
+            TransducerObservationBlock.end_datetime >= range_start,
+        )
+    ).all()
+    owned = readings_by_owning_block(surviving, [tuple(row) for row in candidates])
+
+    for block in blocks:
+        head, tail = split_around_span(owned.get(block.id, []), span_start, span_end)
 
         if head is None and tail is None:
             session.delete(block)
@@ -417,7 +440,7 @@ def _block_part(
     """
     A copy of ``block`` over ``span``: the part of a split block after the
     replacing series. It is the same published data, so it keeps the original's
-    review status, provenance, and author rather than the replacer's.
+    review status, provenance, author, and reviewer rather than the replacer's.
     """
     start, end = span
     return TransducerObservationBlock(
@@ -434,6 +457,10 @@ def _block_part(
         reviewer_id=block.reviewer_id,
         created_by_id=block.created_by_id,
         created_by_name=block.created_by_name,
+        # A review records the reviewer here (``review_transducer_block``), so
+        # without these the approved tail would lose who approved it.
+        updated_by_id=block.updated_by_id,
+        updated_by_name=block.updated_by_name,
     )
 
 
