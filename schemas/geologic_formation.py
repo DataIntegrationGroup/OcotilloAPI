@@ -41,6 +41,7 @@ class CreateThingGeologicFormationAssociation(DepthIntervalMixin):
     geologic_formation_id: int
     top_depth: float = Field(ge=0)
     bottom_depth: float = Field(ge=0)
+    lithology: Lithology | None = None
 
 
 # ------ RESPONSE ----------
@@ -86,3 +87,4 @@ class ThingGeologicFormationAssociationResponse(BaseResponseModel):
     top_depth_unit: str = "ft"
     bottom_depth: float
     bottom_depth_unit: str = "ft"
+    lithology: str | None = None
