@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.thing import Thing
@@ -46,6 +46,15 @@ class ThingGeologicFormationAssociation(Base, AutoBaseMixin, ReleaseMixin):
     bottom_depth: Mapped[float] = mapped_column(
         nullable=False,
         comment="The depth (in feet) to the bottom of the geologic formation, as measured from ground surface.",
+    )
+
+    # Lithology of this interval. Formations span many rock types, so the
+    # interval carries its own; NGWMN_Lithology falls back to
+    # geologic_formation.lithology only when this is null (BDMS-1554).
+    lithology: Mapped[str | None] = lexicon_term(
+        nullable=True,
+        comment="The lithology of this interval, from the lithology lexicon. "
+        "Falls back to the formation's lithology in NGWMN_Lithology when null.",
     )
 
     # --- Relationship Definitions ---
