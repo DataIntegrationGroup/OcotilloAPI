@@ -22,8 +22,9 @@ phases:
 2. **Phase 2** moves work into PostgreSQL. A new station view and SQL
    aggregation make the queries faster and the responses smaller. Phase 2 also
    adds the EDR `limit` parameter and `next` links for lists of wells.
-3. **Phase 3** adds a default time window and optional decimation. These items
-   change the behavior of the API, so they need a decision first.
+3. **Phase 3** gives options for a default time window, decimation, and a
+   Features collection of the readings (Section 2.2). These items change the
+   behavior of the API, so they need a decision first.
 
 This paper proposes these decisions for discussion:
 
