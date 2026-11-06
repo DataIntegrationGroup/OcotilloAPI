@@ -83,7 +83,15 @@ env:
 
 jobs:
   dagster-prod-deploy:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest. dagster-cloud-action runs a vendored
+    # dagster-cloud-x86_64.pex on the runner's own interpreters, and that pex
+    # carries no native wheels (cffi, pydantic-core, grpcio, sqlalchemy, ...)
+    # for ubuntu-26.04's Python 3.14 / manylinux_2_43. When ubuntu-latest moved
+    # to 26.04 every deploy died with "Failed to find compatible interpreter",
+    # reported as "Could not determine branch deployment". Move off 24.04 only
+    # after a dagster-cloud-action release ships a pex that runs on the newer
+    # image.
+    runs-on: ubuntu-24.04
     # Deliberately not bound to the `production` GitHub environment. This job
     # reads only repository-level DAGSTER_CLOUD_API_TOKEN and
     # DAGSTER_CLOUD_ORGANIZATION_ID -- none of that environment's secrets -- so
@@ -176,7 +184,8 @@ jobs:
   # dagster_cloud_post_install.sh that the PEX path replaces with its own
   # `uv pip install --no-deps .` of the repository.
   dagster-prod-docker-deploy:
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-24.04 for the same reason as the job above.
+    runs-on: ubuntu-24.04
     needs: dagster-prod-deploy
     if: needs.dagster-prod-deploy.outputs.build_info
     strategy:
