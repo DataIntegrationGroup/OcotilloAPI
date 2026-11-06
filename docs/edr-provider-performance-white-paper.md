@@ -3,6 +3,7 @@ generated-by: claude-opus-5-5
 generated-on: 2026-11-06
 prompted-by: jakeross
 language-standard: ASD-STE100 (Simplified Technical English)
+status: draft for discussion
 ---
 
 # White Paper: Memory Use and Performance of the EDR Provider
@@ -23,7 +24,7 @@ phases:
 3. **Phase 3** adds a default time window and optional decimation. These items
    change the behavior of the API, so they need a decision first.
 
-The team accepted these decisions:
+This paper proposes these decisions for discussion:
 
 - A request that is larger than the row limit gets an HTTP 400 response. The
   provider does not send a truncated response.
@@ -267,10 +268,10 @@ them.
 
 | Decision | Status |
 |---|---|
-| A request that is larger than the limit gets HTTP 400, not a truncated response. | Accepted |
-| The row limit is 250,000 rows after Phase 1b. | Accepted |
-| The row limit is 50,000 rows before Phase 1b. | Recommended in this paper (Section 4) |
-| The phase order is 1a, then 1b to 1d, then 2, then 3. | Accepted |
+| A request that is larger than the limit gets HTTP 400, not a truncated response. | Proposed |
+| The row limit is 250,000 rows after Phase 1b. | Proposed |
+| The row limit is 50,000 rows before Phase 1b. | Proposed (Section 4) |
+| The phase order is 1a, then 1b to 1d, then 2, then 3. | Proposed |
 | Phase 3 items need a separate decision. | Open |
 
 ## 7. Tests and Measurement
