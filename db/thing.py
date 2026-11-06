@@ -44,9 +44,7 @@ if TYPE_CHECKING:
     from db.aquifer_system import AquiferSystem
     from db.thing_aquifer_association import ThingAquiferAssociation
     from db.geologic_formation import GeologicFormation
-    from db.thing_geologic_formation_association import (
-        ThingGeologicFormationAssociation,
-    )
+    from db.stratigraphic_interval import StratigraphicInterval
     from db.nma_legacy import (
         NMA_AssociatedData,
         NMA_Chemistry_SampleInfo,
@@ -144,7 +142,7 @@ class Thing(
         nullable=True,
         comment="The geologic formation in which the well was completed (from WellData.FormationZone). "
         "This indicates the target formation for the well, not the full stratigraphic column. "
-        "For detailed depth-interval stratigraphy, see formation_associations.",
+        "For detailed depth-interval stratigraphy, see stratigraphic_intervals.",
     )
     nma_formation_zone: Mapped[str] = mapped_column(
         String(25),
@@ -301,14 +299,12 @@ class Thing(
         passive_deletes=True,
     )
 
-    # Many-To-Many: A Thing can penetrate many GeologicFormations.
-    formation_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
-        relationship(
-            "ThingGeologicFormationAssociation",
-            back_populates="thing",
-            cascade="all, delete-orphan",
-            passive_deletes=True,
-        )
+    # One-To-Many: A Thing's stratigraphic log, one row per depth interval.
+    stratigraphic_intervals: Mapped[List["StratigraphicInterval"]] = relationship(
+        "StratigraphicInterval",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # One-To-Many: A Thing can have many NMA_Chemistry_SampleInfo records (legacy NMA data).
@@ -396,7 +392,7 @@ class Thing(
 
     # Proxy to directly access the GeologicFormations penetrated by this Thing.
     geologic_formations: AssociationProxy[List["GeologicFormation"]] = (
-        association_proxy("formation_associations", "geologic_formation")
+        association_proxy("stratigraphic_intervals", "geologic_formation")
     )
 
     # Full-text search vector
