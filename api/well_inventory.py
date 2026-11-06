@@ -45,7 +45,7 @@
 #     FieldEventParticipant,
 #     FieldActivity,
 #     Contact,
-#     PermissionHistory,
+#     SiteActivityConsent,
 #     Thing,
 # )
 # from schemas.thing import CreateWell

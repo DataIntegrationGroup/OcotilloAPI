@@ -160,7 +160,7 @@ human-readable display name).
 
 ## Current-record semantics
 
-Layers that read a history table (`status_history`, `permission_history`,
+Layers that read a history table (`status_history`, `site_activity_consent`,
 `measuring_point_history`, `monitoring_frequency_history`) disagree about what
 "current" means, and the disagreement is deliberate.
 

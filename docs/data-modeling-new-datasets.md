@@ -114,7 +114,7 @@ before touching that path.
 
 **7. It is an attribute of a feature that changes over time.** → a history
 table (`StatusHistory`, `MeasuringPointHistory`, `MonitoringFrequencyHistory`,
-`PermissionHistory`), not a column.
+`SiteActivityConsent`), not a column.
 
 **8. It is metadata *about* a value or record.** → one of the polymorphic
 tables, via the mixin:
@@ -122,7 +122,7 @@ tables, via the mixin:
     ([db/data_provenance.py](../db/data_provenance.py)), keyed by
     `target_table` + `target_id` + `field_name`
   - free text → `Notes` ([db/notes.py](../db/notes.py)), not a `notes` column
-  - who may sample or install → `PermissionHistory` ([db/permission_history.py](../db/permission_history.py))
+  - what the owner allows: sampling, datalogger installation → `SiteActivityConsent` ([db/site_activity_consent.py](../db/site_activity_consent.py))
 
 **9. It is a grouping of features.** → `Group` + `GroupThingAssociation`, with
 `group_type` from the lexicon. `Group.project_area` holds an optional polygon.

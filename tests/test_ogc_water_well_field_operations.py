@@ -45,7 +45,7 @@ from db import (
     Deployment,
     LexiconTerm,
     Notes,
-    PermissionHistory,
+    SiteActivityConsent,
     Sensor,
     StatusHistory,
     Thing,
@@ -349,20 +349,20 @@ def test_permission_distinguishes_granted_from_refused(
     water_well_thing, contact, last_year
 ):
     with session_ctx() as session:
-        granted = PermissionHistory(
+        granted = SiteActivityConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",
-            permission_type="Water Level Sample",
-            permission_allowed=True,
+            activity="Water Level Sample",
+            allowed=True,
             start_date=last_year,
         )
-        refused = PermissionHistory(
+        refused = SiteActivityConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",
-            permission_type="Datalogger Installation",
-            permission_allowed=False,
+            activity="Datalogger Installation",
+            allowed=False,
             start_date=last_year,
         )
         session.add_all([granted, refused])
@@ -390,12 +390,12 @@ def test_expired_permission_is_not_current(
     water_well_thing, contact, last_year, yesterday
 ):
     with session_ctx() as session:
-        expired = PermissionHistory(
+        expired = SiteActivityConsent(
             contact_id=contact.id,
             target_id=water_well_thing.id,
             target_table="thing",
-            permission_type="Water Level Sample",
-            permission_allowed=True,
+            activity="Water Level Sample",
+            allowed=True,
             start_date=last_year,
             end_date=yesterday,
         )

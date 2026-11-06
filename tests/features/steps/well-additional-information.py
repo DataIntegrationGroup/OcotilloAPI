@@ -14,7 +14,7 @@ def step_step_step(context):
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "site_activity_consent", permission_type
     )
 
     water_well_data_permissions = [
@@ -22,13 +22,9 @@ def step_step_step(context):
         for p in context.water_well_data["permissions"]
         if p["permission_type"] == permission_type
     ][0]
+    assert water_well_data_permissions["permission_type"] == permission_record.activity
     assert (
-        water_well_data_permissions["permission_type"]
-        == permission_record.permission_type
-    )
-    assert (
-        water_well_data_permissions["permission_allowed"]
-        == permission_record.permission_allowed
+        water_well_data_permissions["permission_allowed"] == permission_record.allowed
     )
     assert water_well_data_permissions[
         "start_date"
@@ -49,7 +45,7 @@ def step_then_the_response_should_include_whether_sampling_permission_is_granted
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "site_activity_consent", permission_type
     )
 
     water_well_data_permissions = [
@@ -57,13 +53,9 @@ def step_then_the_response_should_include_whether_sampling_permission_is_granted
         for p in context.water_well_data["permissions"]
         if p["permission_type"] == permission_type
     ][0]
+    assert water_well_data_permissions["permission_type"] == permission_record.activity
     assert (
-        water_well_data_permissions["permission_type"]
-        == permission_record.permission_type
-    )
-    assert (
-        water_well_data_permissions["permission_allowed"]
-        == permission_record.permission_allowed
+        water_well_data_permissions["permission_allowed"] == permission_record.allowed
     )
     assert water_well_data_permissions[
         "start_date"
@@ -84,7 +76,7 @@ def step_step_step_2(context):
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", permission_type
+        context.objects["wells"][0], "site_activity_consent", permission_type
     )
 
     water_well_data_permissions = [
@@ -92,13 +84,9 @@ def step_step_step_2(context):
         for p in context.water_well_data["permissions"]
         if p["permission_type"] == permission_type
     ][0]
+    assert water_well_data_permissions["permission_type"] == permission_record.activity
     assert (
-        water_well_data_permissions["permission_type"]
-        == permission_record.permission_type
-    )
-    assert (
-        water_well_data_permissions["permission_allowed"]
-        == permission_record.permission_allowed
+        water_well_data_permissions["permission_allowed"] == permission_record.allowed
     )
     assert water_well_data_permissions[
         "start_date"

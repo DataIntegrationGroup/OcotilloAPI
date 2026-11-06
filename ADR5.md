@@ -7,6 +7,16 @@ whitepaper *Who May See What, and Who May Do What* (Confluence, Ocotillo space).
 Nothing is built yet. This record exists so the grant table and the visibility
 layer are not designed twice.
 
+**Amended 2026-11-02 (BDMS-1381):** the consent table is `site_activity_consent`
+/ `SiteActivityConsent`, not the `field_access_consent` / `FieldAccessConsent`
+this record first proposed. "Field" already means a column here (field
+allowlist, field projection, `field_group`). "Access" is too narrow, because
+installing a datalogger is more than access, and it collides with the lexicon's
+`Access Status`. The columns follow the table: `permission_type` became
+`activity` and `permission_allowed` became `allowed`, and the lexicon category
+became `site_activity`. The well API still publishes `permissions`,
+`permission_type` and `permission_allowed`, so OcotilloUI is unchanged.
+
 ## Summary
 
 Ocotillo needs to answer one question everywhere: *may this principal exercise
@@ -63,16 +73,16 @@ represented at all.
 
 ### The grant shape already exists twice
 
-`db/permission.py`'s `Permission` is landowner field-access consent —
+`db/permission.py`'s `Permission` is landowner site activity consent —
 `contact_id`, `allow_sampling`, `allow_installation`, an optional date range, a
 polymorphic target (`permissible_id` / `permissible_type`). It is also dead:
 unregistered in `db/__init__.py`, with no table in any migration and no caller.
 It should be deleted, along with `PermissionMixin`. `PermissionHistory`
 generalizes the same idea into a typed, lexicon-controlled `permission_type`
 with `permission_allowed`, a required `start_date`, an optional `end_date`, and
-`target_id` / `target_table`; it should be renamed `FieldAccessConsent`, table
-`field_access_consent`, to say what it is. Neither decides what an API caller
-may see.
+`target_id` / `target_table`; it should be renamed `SiteActivityConsent`, table
+`site_activity_consent`, to say what it is (see the amendment under Status).
+Neither decides what an API caller may see.
 
 Both are consent about physical site access. Neither is authorization. The shape
 recurring independently is evidence the shape is right; it is not an argument
@@ -242,7 +252,7 @@ told.
 ## Sequencing implied by this decision
 
 1. This record (here).
-2. Rename `permission_history` to `field_access_consent`, delete the dead
+2. Rename `permission_history` to `site_activity_consent`, delete the dead
    `Permission` and `PermissionMixin`, and give `ReleaseMixin` `data_maturity`
    (review state) alongside `release_status` (level).
 3. `permission_grant`, `publication_consent`, destination registry, and the
@@ -260,8 +270,8 @@ told.
   Ocotillo Permissions Interview with Ethan Mamer*
 - [ADR3](ADR3.md): OGC API - EDR collections backed by publication-filtered views
 - [ADR4](ADR4.md): the `domain/` layer the grant-evaluation rules belong in
-- [db/permission_history.py](db/permission_history.py): landowner
-  field-access consent, and the in-house precedent for the grant shape
+- [db/site_activity_consent.py](db/site_activity_consent.py): landowner
+  site activity consent, and the in-house precedent for the grant shape
 - [db/base.py](db/base.py): `ReleaseMixin`, `AuditMixin`, versioning wiring
 - [alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py](alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py):
   the drift this decision is meant to make impossible

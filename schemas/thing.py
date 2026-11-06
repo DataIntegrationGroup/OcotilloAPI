@@ -35,7 +35,7 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-from schemas.permission_history import PermissionHistoryResponse
+from schemas.site_activity_consent import SiteActivityConsentResponse
 
 # -------- VALIDATE ----------
 
@@ -274,7 +274,7 @@ class WellResponse(BaseThingResponse):
     water_notes: list[NoteResponse] = []
     construction_notes: list[NoteResponse] = []
     contacts: list[WellContactSummaryResponse] = []
-    permissions: list[PermissionHistoryResponse]
+    permissions: list[SiteActivityConsentResponse]
     formation_completion_code: FormationCode | None
     nma_formation_zone: str | None
     well_location_note: list[str] = []
@@ -299,24 +299,24 @@ class WellResponse(BaseThingResponse):
         return materials
 
     @field_validator("permissions", mode="before")
-    def populate_permission_history_with_latest_records(cls, permissions):
+    def populate_site_activity_consent_with_latest_records(cls, permissions):
         """
-        Populate the permission history with the latest records for each
-        type of permission. If multiple records exist for the same permission type
-        only the most recent one is included. If there are no records
-        the permission_allowed will be None
+        Populate the site activity consents with the latest record for each
+        activity. If multiple records exist for the same activity only the
+        most recent one is included. If there are no records, allowed will
+        be None.
         """
         permissions_to_return = []
-        for permission_type in [
+        for activity in [
             "Water Level Sample",
             "Water Chemistry Sample",
             "Datalogger Installation",
         ]:
-            # Filter records for the current permission type
+            # Filter records for the current activity
             filtered_records = [
                 record
                 for record in permissions
-                if record.permission_type == permission_type and record.end_date is None
+                if record.activity == activity and record.end_date is None
             ]
             if filtered_records:
                 # Get the most recent record based on start_date
@@ -326,9 +326,9 @@ class WellResponse(BaseThingResponse):
                 permissions_to_return.append(latest_record)
             else:
                 permissions_to_return.append(
-                    PermissionHistoryResponse(
-                        permission_type=permission_type,
-                        permission_allowed=None,
+                    SiteActivityConsentResponse(
+                        activity=activity,
+                        allowed=None,
                         start_date=None,
                         end_date=None,
                     )

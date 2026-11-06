@@ -11,9 +11,11 @@ table, this document finalizes three things: who can hold a grant
 (**principal types**), what a grant lets them do (**capabilities**), and
 what data a grant applies to (**scope**). It does not cover
 `publication_consent`'s destination registry (public, NGWMN, partner
-agencies) — that is a separate vocabulary. Legacy `PermissionHistory`
-records are unrelated: they represent landowner/field-site access consent
-(renamed `FieldAccessConsent` per ADR5), not `permission_grant` authorization.
+agencies) — that is a separate vocabulary. `SiteActivityConsent` records
+(formerly `PermissionHistory`) are unrelated: they record what an owner allows
+at their site, not `permission_grant` authorization. In this vocabulary,
+"permission" is what staff are allowed to do and "consent" is the owner's
+decision.
 
 ## How this relates to Authentik
 

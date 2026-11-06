@@ -38,7 +38,7 @@ from db import (
     Deployment,
     TransducerObservationBlock,
     WellCasingMaterial,
-    PermissionHistory,
+    SiteActivityConsent,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
@@ -244,35 +244,35 @@ def add_contact(context, session):
     return contact
 
 
-@add_context_object_container("permission_histories")
-def add_permission_history(
+@add_context_object_container("site_activity_consents")
+def add_site_activity_consent(
     context,
     session,
     contact_id,
-    permission_type,
-    permission_allowed,
+    activity,
+    allowed,
     start_date,
     end_date,
     notes,
     target_id,
     target_table,
 ):
-    permission_history = PermissionHistory(
+    site_activity_consent = SiteActivityConsent(
         contact_id=contact_id,
-        permission_type=permission_type,
-        permission_allowed=permission_allowed,
+        activity=activity,
+        allowed=allowed,
         start_date=start_date,
         end_date=end_date,
         notes=notes,
         target_id=target_id,
         target_table=target_table,
     )
-    session.add(permission_history)
+    session.add(site_activity_consent)
     session.commit()
-    session.refresh(permission_history)
+    session.refresh(site_activity_consent)
 
-    context.objects["permission_histories"].append(permission_history)
-    return permission_history
+    context.objects["site_activity_consents"].append(site_activity_consent)
+    return site_activity_consent
 
 
 @add_context_object_container("sensors")
@@ -700,12 +700,12 @@ def before_all(context):
             "Water Level Sample",
             "Water Chemistry Sample",
         ]:
-            add_permission_history(
+            add_site_activity_consent(
                 context,
                 session,
                 contact_id=context.objects["contacts"][0].id,
-                permission_type=permission,
-                permission_allowed=True,
+                activity=permission,
+                allowed=True,
                 start_date=datetime(2025, 1, 1).date(),
                 end_date=None,
                 notes=f"Permission granted for {permission.lower()}.",
