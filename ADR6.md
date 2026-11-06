@@ -165,11 +165,11 @@ and verification procedures are therefore necessary parts of the design.
 
 ### 4. API-key management, GIS compatibility, and performance
 
-Ocotillo’s internal OGC services support conventional Authentik JWTs and static API-key credentials,
+Ocotillo’s internal OGC services support conventional Authentik JWTs and API-key credentials,
 including query-parameter transport used by desktop GIS clients.
 
-Database-backed API keys already support expiration and revocation, while environment-configured
-static keys have a different lifecycle and require configuration changes for revocation.
+Database-backed API keys already support expiration and revocation. Static API-key configuration
+will be deprecated. This record covers database-backed API-key management.
 
 Currently, API Key management is done in the user’s settings page. Move it out of that page and into
 the console, which should provide a consistent administrative interface to issue, review, rotate,
@@ -387,8 +387,6 @@ and revocation. The risk may be reassessed later.
   and before-and-after capture requirements need further review.
 - **Audit integrity infrastructure**. Hash-chain checkpoints, database-level protections,
   verification schedules, and protection against privileged tampering require implementation design.
-- **Historical API-key migration**. The migration strategy for non-expiring environment-configured
-  keys is not specified here.
 - **Performance optimization**. No authorization-cache architecture or TTL is selected until
   baseline measurements identify a bottleneck.
 
