@@ -20,14 +20,16 @@ phases:
    in one response and reads the rows as a stream. This stops the memory
    failures. No database migration is necessary.
 2. **Phase 2** moves work into PostgreSQL. A new station view and SQL
-   aggregation make the queries faster and the responses smaller.
+   aggregation make the queries faster and the responses smaller. Phase 2 also
+   adds the EDR `limit` parameter and `next` links for lists of wells.
 3. **Phase 3** adds a default time window and optional decimation. These items
    change the behavior of the API, so they need a decision first.
 
 This paper proposes these decisions for discussion:
 
-- A request that is larger than the row limit gets an HTTP 400 response. The
-  provider does not send a truncated response.
+- A request that is larger than the row limit gets an HTTP 413 response. The
+  provider does not send a truncated response. The EDR standard gives HTTP 413
+  for this condition (Section 2.1).
 - The row limit is 250,000 rows after Phase 1b is complete.
 
 This paper adds one condition to the second decision. Until Phase 1b is
@@ -57,6 +59,50 @@ approximately 350,000 readings.
 
 ADR3 identified this risk in its open questions ("Transducer volume and
 cadence"). ADR3 did not set a response limit.
+
+### 2.1 What the EDR Standard Says About Response Size and Paging
+
+The EDR standard gives three tools for large responses. None of them divides
+the readings of one time series into pages.
+
+**The `limit` parameter.** EDR 1.2 adds an optional `limit` parameter to the
+position, radius, area, locations, and items queries. The cube query does not
+get this parameter. The requirements are:
+
+- "The response SHALL not contain more features than specified by the optional
+  `limit` parameter."
+- The value is an integer from 1 to 10,000. The default value is 10.
+- If the value is more than the server maximum, the server uses its maximum.
+  This "SHALL NOT result in an error".
+- "Only items are counted that are on the first level of the collection." The
+  server does not count nested objects.
+
+In a CoverageJSON `CoverageCollection`, the first level is the coverages. This
+provider makes one coverage for each well. Thus, `limit` counts wells, not
+readings. A request for one well with 350,000 readings is one item, and
+`limit` has no effect on it.
+
+**`next` links.** EDR 1.2 also adds paging to the `/locations` list and to the
+position, radius, and area queries. Paging works as in OGC API - Features: the
+server adds a link to the next set of results. The standard tells clients that
+paging is not safe when the data changes during the iteration, and that a
+client must be ready for HTTP 404.
+
+**HTTP 413.** The table of HTTP status codes in the standard includes 413,
+"Request entity too large". It applies when "the query would involve returning
+more data than the server is capable of processing". The implementation
+"should return a message explaining the query limits imposed by the server
+implementation".
+
+Thus, the standard gives this division of work:
+
+- `limit` and `next` links control the number of wells in a response.
+- HTTP 413 controls a response that is too large for other reasons, for
+  example one well with a very long time series.
+
+The text above comes from the master branch of the EDR standard repository on
+GitHub, which contains the EDR 1.2 changes. When this paper was written, it was
+not possible to confirm that EDR 1.2 is formally published.
 
 ## 3. Causes of the Problem
 
@@ -141,17 +187,29 @@ with measured values.
 ### 5.1 Phase 1: Stop the Memory Failures (Provider Only)
 
 Phase 1 changes only `core/edr_provider.py` and its tests. It does not change
-the API contract, except for the new HTTP 400 response.
+the API contract, except for the new HTTP 413 response.
 
 #### Phase 1a: Add a row limit
 
 1. Add a `max_rows` setting. Read it from the provider definition. Let an
    environment variable override it. Set the default to 50,000.
 2. In each data query, request `max_rows + 1` rows (`LIMIT max_rows + 1`).
-3. If the query returns more than `max_rows` rows, raise
-   `ProviderQueryError`. pygeoapi then sends HTTP 400.
+3. If the query returns more than `max_rows` rows, send HTTP 413.
 4. Put a clear message in the error. Tell the user to use a shorter `datetime`
-   interval or a smaller area. Include the limit value in the message.
+   interval or a smaller area. Include the limit value in the message. The EDR
+   standard recommends this message (Section 2.1).
+
+pygeoapi sends HTTP 400 for `ProviderQueryError`. pygeoapi 0.24 possibly has
+no provider error that gives HTTP 413 (Section 10). In that condition, do these
+steps:
+
+1. Add a provider exception for a response that is too large, for example
+   `ProviderResponseTooLarge`.
+2. Add a wrapper in `core/pygeoapi.py` that changes this exception to HTTP 413.
+   The wrapper over the pygeoapi queryables handler shows the pattern.
+
+If the wrapper causes a delay, release Phase 1a with HTTP 400 first. Then
+change to HTTP 413. The message is the same for both codes.
 
 Do not send a truncated response. A truncated hydrograph looks complete but
 is not. The user cannot see that data is missing.
@@ -253,6 +311,23 @@ Add an index only if the plan shows that it is necessary.
 Change `get_fields()` to read from `parameter`. Do not use `SELECT DISTINCT` on
 the readings view.
 
+#### Phase 2e: Add the `limit` parameter and `next` links (EDR 1.2)
+
+1. Support `limit` on the `/locations` list and on the position and area
+   queries. Count wells (coverages or features), not readings.
+2. If `limit` is more than the server maximum, use the maximum. Do not send an
+   error. The EDR standard requires this.
+3. When more wells are available, add a `next` link to the response.
+4. Use the station view from Phase 2a to select the wells for each page. Sort
+   by `thing_id`. Then read the readings only for the wells on that page.
+5. Do not use 10 as the default for the `/locations` list. Clients that read
+   the full list now would get only 10 wells. Set a larger server default, and
+   write it in the OpenAPI document. The value is an open decision (Section 6).
+6. Keep the row limit from Phase 1. `limit` does not make one long time series
+   smaller.
+
+Do Phase 2e after Phase 2a, because it uses the station view.
+
 ### 5.3 Phase 3: Optional Items That Need a Decision
 
 These items change the behavior of the API. Get a decision before you start
@@ -262,15 +337,16 @@ them.
 |---|---|---|
 | Default time window | If `/area` or `/cube` has no `datetime`, refuse the request or use the last N years. | Yes. This changes the API for clients. |
 | Decimation | Return daily mean values for long intervals. Use an optional parameter, for example `resolution=daily`. | Yes. This is not in the EDR standard. Amend ADR3. |
-| Paging | If pygeoapi 0.24 sends `limit` and `offset` to EDR providers, return pages of coverages. | Verify pygeoapi first. |
 
 ## 6. Decisions
 
 | Decision | Status |
 |---|---|
-| A request that is larger than the limit gets HTTP 400, not a truncated response. | Proposed |
+| A request that is larger than the row limit gets HTTP 413, not a truncated response. | Proposed |
 | The row limit is 250,000 rows after Phase 1b. | Proposed |
 | The row limit is 50,000 rows before Phase 1b. | Proposed (Section 4) |
+| `limit` counts wells, not readings. A value more than the server maximum uses the maximum. | Proposed (Section 5.2, Phase 2e) |
+| The default `limit` for the `/locations` list is larger than 10. | Open: the value is not set |
 | The phase order is 1a, then 1b to 1d, then 2, then 3. | Proposed |
 | Phase 3 items need a separate decision. | Open |
 
@@ -280,12 +356,16 @@ them.
 
 Add these tests to `tests/test_edr_provider.py`:
 
-1. A query with more rows than `max_rows` gives HTTP 400, not HTTP 500.
+1. A query with more rows than `max_rows` gives HTTP 413, not HTTP 500. The
+   message includes the limit value.
 2. The streamed output is the same as the current output. Use more than one
    station and more than one parameter.
 3. A second provider object uses the cached metadata. It does not run the
    metadata queries again.
 4. `instance(id)` runs one `EXISTS` query.
+5. After Phase 2e: a response has no more wells than `limit`. A `limit` more
+   than the maximum gives the maximum, not an error. The last page has no
+   `next` link.
 
 ### 7.2 Memory measurement
 
@@ -312,29 +392,39 @@ Migration `2d3c3a268652` shows the pattern.
 | 2 | Phase 1b to 1d: stream, cache, pool; limit to 250,000 rows | One | No |
 | 3 | Phase 2a: station view and two-step spatial query | One | Yes |
 | 4 | Phase 2b to 2d: SQL aggregation, indexes, fields | One or more | Possible |
-| 5 | Phase 3 | After a decision | Possible |
+| 5 | Phase 2e: `limit` and `next` links | One | No |
+| 6 | Phase 3 | After a decision | Possible |
 
 ## 9. Risks
 
 | Risk | Effect | Mitigation |
 |---|---|---|
-| A long-term transducer well has more readings than the limit. | `/locations/{id}` without `datetime` gives HTTP 400 for that well. | The error message tells the user to use a `datetime` interval. Phase 3 decimation gives a full-period view. The limit is a setting, so the team can change it. |
+| A long-term transducer well has more readings than the limit. | `/locations/{id}` without `datetime` gives HTTP 413 for that well. | The error message tells the user to use a `datetime` interval. Phase 3 decimation gives a full-period view. The limit is a setting, so the team can change it. |
 | The cache keeps old metadata. | A new parameter or deployment does not show for up to one TTL. | Keep the TTL short (approximately 10 minutes). |
 | A named cursor keeps a transaction open. | A slow client keeps a database connection busy. | Set a statement timeout on the provider connection. |
 | The streamed output is different from the old output. | Clients get changed CoverageJSON. | The comparison test in Section 7.1 prevents this. |
 | A materialized station view is not current. | A new well does not show until the next refresh. | Use a plain view first (Section 5.2). |
+| A client reads the full `/locations` list in one request. | With a default `limit` of 10, the client gets only 10 wells. | Set a larger server default (Phase 2e). |
+| A client does not recognize HTTP 413. | The client shows a general error. | The message in the response tells the user what to change. |
 
 ## 10. Items to Verify
 
 pygeoapi is not installed in the environment where this paper was written.
-Verify these items in pygeoapi 0.24.0 before Phase 1c and Phase 2b:
+Verify these items in pygeoapi 0.24.0 before Phase 1a, Phase 1c, Phase 2b, and
+Phase 2e:
 
 1. Does pygeoapi call `load_plugin()` for each EDR request? If yes, Phase 1c is
    necessary.
 2. Can an EDR provider return a JSON string, not a dictionary? If yes, Phase 2b
    can build the full response in SQL.
-3. Does pygeoapi send `limit` and `offset` to EDR query methods? If yes, paging
-   is possible in Phase 3.
+3. Does pygeoapi send `limit` to EDR query methods, and does it make `next`
+   links for EDR responses? If no, Phase 2e needs a wrapper, as Phase 1a does.
+4. Can a provider cause HTTP 413? If no, Phase 1a needs the wrapper in
+   Section 5.1. pygeoapi RFC 5 proposes a setting that sends HTTP 413 when a
+   limit is exceeded. Find its status.
+5. Which EDR conformance classes does pygeoapi 0.24 declare? If it declares
+   EDR 1.0 or 1.1 only, Phase 2e adds behavior that the declared version does
+   not include.
 
 ## 11. References
 
@@ -350,3 +440,16 @@ Verify these items in pygeoapi 0.24.0 before Phase 1c and Phase 2b:
 - `docs/app-engine-oom-instance-churn.md`: instance class and worker count in
   production
 - `docs/pg_cron-nightly-refresh.md`: refresh of materialized views
+- OGC API - EDR, Part 1: Core, 19-086r6:
+  <https://docs.ogc.org/is/19-086r6/19-086r6.html>
+- EDR requirement `/req/edr/rc-limit-definition`:
+  <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/blob/master/core/standard/requirements/edr/REQ_rc-limit-definition.adoc>
+- EDR requirement `/req/edr/rc-limit-response`:
+  <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/blob/master/core/standard/requirements/edr/REQ_rc-limit-response.adoc>
+- EDR clause 9, paging and HTTP status codes:
+  <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/blob/master/core/standard/sections/clause_9_general.adoc>
+- EDR issue 455, `limit` on data queries:
+  <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/455>
+- EDR issue 529, paging of `/locations`:
+  <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/529>
+- pygeoapi RFC 5, data limit handling: <https://pygeoapi.io/development/rfc/5>
