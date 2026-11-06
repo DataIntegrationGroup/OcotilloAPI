@@ -104,6 +104,53 @@ The text above comes from the master branch of the EDR standard repository on
 GitHub, which contains the EDR 1.2 changes. When this paper was written, it was
 not possible to confirm that EDR 1.2 is formally published.
 
+### 2.2 How USGS Serves Groundwater Levels
+
+The USGS water data APIs at `api.waterdata.usgs.gov/ogcapi/v0` use OGC API -
+Features, not EDR. The `field-measurements` collection supplies groundwater
+levels. This collection replaced the legacy NWIS `gwlevels` service. USGS
+started to remove `gwlevels` on 1 November 2025. The same collection also
+contains discharge and gage height field measurements. A separate metadata
+collection gives the first and the last observation and the unit for each site
+and parameter. Continuous values and daily values are also Features
+collections (`continuous` and `daily`).
+
+The service operates as follows:
+
+- Each reading is one feature.
+- A client requests `/items` with filters, for example site, parameter,
+  `datetime`, and `bbox`.
+- `limit` sets the page size. The client follows `next` links to get all
+  pages.
+- The USGS Python client, `dataretrieval`, follows all `next` links. It added
+  a `max_rows` option after a query without filters for all of the country ran
+  for more than two minutes.
+
+USGS does not give its reasons in the documents that were available for this
+paper. These are probable reasons:
+
+1. Most clients use R or Python and put the data into a table. One feature for
+   each reading is one row for each reading.
+2. Paging operates on all sizes of result. `limit` and `next` links can divide
+   a long time series. EDR cannot divide one time series (Section 2.1).
+3. All USGS collections use the same standard. A client uses one query
+   pattern for sites, metadata, field measurements, and sensor values.
+4. More GIS tools and client libraries support Features than EDR. CQL2
+   filters are also available.
+5. One collection holds groundwater levels, discharge, and gage height. In
+   Features, the parameter is an attribute.
+
+This has two results for Ocotillo:
+
+- Clients that use USGS data expect groundwater levels in the Features form.
+- Features does not have the problem of one series that is too large.
+
+EDR still has advantages for water levels. A CoverageJSON response is smaller
+than one GeoJSON feature for each reading. It gives the unit with each
+parameter, and it shows transducer deployments as instances. Thus, this paper
+does not recommend that Ocotillo stops EDR. Section 5.3 gives an option to
+serve the readings in both forms.
+
 ## 3. Causes of the Problem
 
 ### 3.1 The provider keeps all rows in memory, more than one time
@@ -337,6 +384,17 @@ them.
 |---|---|---|
 | Default time window | If `/area` or `/cube` has no `datetime`, refuse the request or use the last N years. | Yes. This changes the API for clients. |
 | Decimation | Return daily mean values for long intervals. Use an optional parameter, for example `resolution=daily`. | Yes. This is not in the EDR standard. Amend ADR3. |
+| Features collection of readings | Add an OGC API - Features collection with one feature for each water-level reading. Use the same view as EDR. Use a form similar to the USGS `field-measurements` collection (Section 2.2). | Yes. This adds a second public form of the same data. Amend ADR3. |
+
+The Features collection of readings has these uses and conditions:
+
+- Use it for bulk download, R and Python clients, and GIS tools.
+- It uses normal `limit` and `next` paging. Thus, it does not need the row
+  limit.
+- Keep EDR for hydrograph clients and coverage clients.
+- Add the same collection to the internal mount, as for the other views.
+- Sort and page by a stable key, for example `thing_id` and `datetime`. A
+  large `offset` is slow on a view of this size.
 
 ## 6. Decisions
 
@@ -349,6 +407,7 @@ them.
 | The default `limit` for the `/locations` list is larger than 10. | Open: the value is not set |
 | The phase order is 1a, then 1b to 1d, then 2, then 3. | Proposed |
 | Phase 3 items need a separate decision. | Open |
+| Serve the water-level readings also as an OGC API - Features collection (Section 5.3). | Open: for discussion |
 
 ## 7. Tests and Measurement
 
@@ -406,6 +465,7 @@ Migration `2d3c3a268652` shows the pattern.
 | A materialized station view is not current. | A new well does not show until the next refresh. | Use a plain view first (Section 5.2). |
 | A client reads the full `/locations` list in one request. | With a default `limit` of 10, the client gets only 10 wells. | Set a larger server default (Phase 2e). |
 | A client does not recognize HTTP 413. | The client shows a general error. | The message in the response tells the user what to change. |
+| Ocotillo serves the same readings as EDR and as Features. | The two forms can show different data. | Use the same view for both. Add a test that compares the counts. |
 
 ## 10. Items to Verify
 
@@ -453,3 +513,11 @@ Phase 2e:
 - EDR issue 529, paging of `/locations`:
   <https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/529>
 - pygeoapi RFC 5, data limit handling: <https://pygeoapi.io/development/rfc/5>
+- USGS Water Data APIs: <https://api.waterdata.usgs.gov/>
+- USGS OGC API documentation: <https://api.waterdata.usgs.gov/docs/ogcapi>
+- USGS, migration to the modernized APIs:
+  <https://api.waterdata.usgs.gov/docs/ogcapi/migration/>
+- USGS blog, removal of legacy APIs:
+  <https://waterdata.usgs.gov/blog/api-decom-fall-2025/>
+- `dataretrieval-python` pull request 340, `max_rows`:
+  <https://github.com/DOI-USGS/dataretrieval-python/pull/340>
