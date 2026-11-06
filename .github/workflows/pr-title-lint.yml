@@ -2,11 +2,14 @@ name: pr-title-lint
 
 # Enforces Conventional Commits on PR titles so squash-merged commits drive
 # release-please correctly. See Data Services Versioning Standard §7.
-# Also requires a BDMS Jira key in the title (BDMS-1278).
+# Also requires a BDMS Jira key in the title (BDMS-1278), unless the PR carries
+# the `skip-bdms-check` label -- the same label OcotilloUI's PR Title check uses.
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    # labeled/unlabeled re-run the check when `skip-bdms-check` is added or
+    # removed, so the label takes effect without pushing a commit.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions:
   pull-requests: read
@@ -41,10 +44,15 @@ jobs:
   # Requires a Jira key so every squash-merged commit traces back to a ticket.
   # The key goes at the end: the subject must start lowercase (above), so a
   # leading `BDMS-123` would fail the Conventional Commits check.
+  #
+  # A PR with no ticket (a CI fix, a one-off chore) can opt out with the
+  # `skip-bdms-check` label. The step is skipped rather than the job, so the
+  # `jira-key` check still reports success and a required status check passes.
   jira-key:
     runs-on: ubuntu-latest
     steps:
       - name: Require a BDMS ticket key
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-bdms-check') }}
         env:
           # Passed through env, never interpolated into the script, so a
           # crafted title cannot inject shell.
@@ -70,5 +78,5 @@ jobs:
             exit 0
           fi
 
-          echo "::error title=Missing Jira key::PR title must reference a Jira ticket as BDMS-<number> (uppercase, hyphenated). Example: feat(ogc): publish elevation in feet (BDMS-1256)"
+          echo "::error title=Missing Jira key::PR title must reference a Jira ticket as BDMS-<number> (uppercase, hyphenated). Example: feat(ogc): publish elevation in feet (BDMS-1256). Add the 'skip-bdms-check' label for PRs with no ticket."
           exit 1
