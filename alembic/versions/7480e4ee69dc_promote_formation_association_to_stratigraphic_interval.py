@@ -82,8 +82,8 @@ INTERVAL_VIEW_SQL = """
     SELECT
         si.id AS "OBJECTID",
         t.name AS "PointID",
-        COALESCE(si.lithology, gf.lithology) AS "Lithology",
-        COALESCE(si.lithology, gf.lithology) AS "TERM",
+        si.lithology AS "Lithology",
+        si.lithology AS "TERM",
         si.source::character varying AS "StratSource",
         si.top_depth AS "StratTop",
         CASE WHEN si.top_depth IS NOT NULL THEN 'ft bgs' END AS "StratTopUnit",
@@ -92,8 +92,7 @@ INTERVAL_VIEW_SQL = """
             AS "StratBottomUnit"
     FROM stratigraphic_interval AS si
     JOIN thing AS t ON t.id = si.thing_id
-    LEFT JOIN geologic_formation AS gf ON gf.id = si.geologic_formation_id
-    WHERE COALESCE(si.lithology, gf.lithology) IS NOT NULL
+    WHERE si.lithology IS NOT NULL
       AND t.release_status = 'public'
 """
 

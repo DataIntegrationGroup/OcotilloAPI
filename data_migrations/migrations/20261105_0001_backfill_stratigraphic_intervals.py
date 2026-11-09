@@ -60,8 +60,8 @@ Field mapping:
 * ``StratNotes`` -> a ``General`` note on the interval, unless the interval
   already has a note with the same text.
 
-``geologic_formation.lithology`` is left as it is; the view falls back to it
-only for intervals without their own lithology. ``NMA_Stratigraphy`` is not
+``geologic_formation.lithology`` is left as it is. The view does not read it:
+an interval with no logged code is not exported. ``NMA_Stratigraphy`` is not
 changed and stays the record of the original values.
 
 New intervals take the model default release status, matching the transferred

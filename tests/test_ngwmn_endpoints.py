@@ -93,6 +93,8 @@ def ngwmn_well():
                 geologic_formation_id=formation.id,
                 top_depth=0.0,
                 bottom_depth=60.0,
+                # NGWMN_Lithology reads only the interval's own lithology.
+                lithology="Sandstone",
                 release_status="draft",
             )
         )
@@ -430,6 +432,7 @@ def ngwmn_private_well():
                 geologic_formation_id=formation.id,
                 top_depth=0.0,
                 bottom_depth=50.0,
+                lithology="Sandstone",
                 release_status="public",
             )
         )

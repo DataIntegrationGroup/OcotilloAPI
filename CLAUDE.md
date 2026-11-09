@@ -189,7 +189,7 @@ labs. It never creates a sample, and never writes the sample's single
 `stratigraphic_interval` (formerly `thing_geologic_formation_association`) is a
 well's stratigraphic log: one row per depth interval, with an optional
 formation, its own lithology, modifier, contributing-unit flag and source.
-`NGWMN_Lithology` reads the interval's lithology and falls back to the
+`NGWMN_Lithology` publishes only the interval's own logged lithology, never the
 formation's. Read **`docs/stratigraphic-intervals.md`** before changing the
 table, the view, or the `NMA_Stratigraphy` backfill.
 
