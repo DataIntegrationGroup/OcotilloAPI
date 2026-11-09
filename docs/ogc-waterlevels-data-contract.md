@@ -91,8 +91,157 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 "id": "groundwater level reason",
                 "label": {
                     "en": "Groundwater level reason"
-                }
-            },
+                },
+                "categories": [
+                    {
+                        "id": "Water level affected by atmospheric pressure",
+                        "label": {
+                            "en": "Water level affected by atmospheric pressure"
+                        }
+                    },
+                    {
+                        "id": "Water level was frozen (no level recorded).",
+                        "label": {
+                            "en": "Water level was frozen (no level recorded)."
+                        }
+                    },
+                    {
+                        "id": "Site was dry",
+                        "label": {
+                            "en": "Site was dry"
+                        }
+                    },
+                    {
+                        "id": "Site was flowing recently.",
+                        "label": {
+                            "en": "Site was flowing recently."
+                        }
+                    },
+                    {
+                        "id": "Site was flowing. Water level or head couldn't be measured w/out additional equipment.",
+                        "label": {
+                            "en": "Site was flowing. Water level or head couldn't be measured w/out additional equipment."
+                        }
+                    },
+                    {
+                        "id": "Nearby site that taps the same aquifer was flowing.",
+                        "label": {
+                            "en": "Nearby site that taps the same aquifer was flowing."
+                        }
+                    },
+                    {
+                        "id": "Nearby site that taps the same aquifer had been flowing recently.",
+                        "label": {
+                            "en": "Nearby site that taps the same aquifer had been flowing recently."
+                        }
+                    },
+                    {
+                        "id": "Recharge water was being injected into the aquifer at this site.",
+                        "label": {
+                            "en": "Recharge water was being injected into the aquifer at this site."
+                        }
+                    },
+                    {
+                        "id": "Recharge water was being injected into nearby site that taps the same aquifer.",
+                        "label": {
+                            "en": "Recharge water was being injected into nearby site that taps the same aquifer."
+                        }
+                    },
+                    {
+                        "id": "Water was cascading down the inside of the well.",
+                        "label": {
+                            "en": "Water was cascading down the inside of the well."
+                        }
+                    },
+                    {
+                        "id": "Water level was affected by brackish or saline water.",
+                        "label": {
+                            "en": "Water level was affected by brackish or saline water."
+                        }
+                    },
+                    {
+                        "id": "Well was not in hydraulic contact w/formation (from source other than defined in USGS C714 or C93).",
+                        "label": {
+                            "en": "Well was not in hydraulic contact w/formation (from source other than defined in USGS C714 or C93)."
+                        }
+                    },
+                    {
+                        "id": "Measurement was discontinued (no level recorded).",
+                        "label": {
+                            "en": "Measurement was discontinued (no level recorded)."
+                        }
+                    },
+                    {
+                        "id": "Obstruction was encountered in the well (no level recorded)",
+                        "label": {
+                            "en": "Obstruction was encountered in the well (no level recorded)"
+                        }
+                    },
+                    {
+                        "id": "Site was being pumped",
+                        "label": {
+                            "en": "Site was being pumped"
+                        }
+                    },
+                    {
+                        "id": "Site was pumped recently",
+                        "label": {
+                            "en": "Site was pumped recently"
+                        }
+                    },
+                    {
+                        "id": "Nearby site that taps the same aquifer was being pumped",
+                        "label": {
+                            "en": "Nearby site that taps the same aquifer was being pumped"
+                        }
+                    },
+                    {
+                        "id": "Nearby site that taps the same aquifer was pumped recently",
+                        "label": {
+                            "en": "Nearby site that taps the same aquifer was pumped recently"
+                        }
+                    },
+                    {
+                        "id": "Foreign substance present on the water surface",
+                        "label": {
+                            "en": "Foreign substance present on the water surface"
+                        }
+                    },
+                    {
+                        "id": "Well was destroyed (no subsequent water levels should be recorded)",
+                        "label": {
+                            "en": "Well was destroyed (no subsequent water levels should be recorded)"
+                        }
+                    },
+                    {
+                        "id": "Water level affected by stage in nearby surface-water site",
+                        "label": {
+                            "en": "Water level affected by stage in nearby surface-water site"
+                        }
+                    },
+                    {
+                        "id": "Other conditions exist that would affect the level (remarks)",
+                        "label": {
+                            "en": "Other conditions exist that would affect the level (remarks)"
+                        }
+                    },
+                    {
+                        "id": "Water level not affected",
+                        "label": {
+                            "en": "Water level not affected"
+                        }
+                    },
+                    {
+                        "id": "Site was unsafe to measure (no level recorded)",
+                        "label": {
+                            "en": "Site was unsafe to measure (no level recorded)"
+                        },
+                        "description": {
+                            "en": "Site conditions made measurement hazardous, so no water level was recorded."
+                        }
+                    }
+                ]
+            }
         }
     },
     "coverages": [
