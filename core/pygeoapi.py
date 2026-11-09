@@ -500,7 +500,21 @@ def _edr_collections_block(
                 },
                 "temporal": {"begin": None, "end": None},
             },
-            "providers": [provider],
+            "providers": [
+                provider,
+                {
+                    "type": "feature",
+                    "name": "core.feature_provider.DescribedPostgreSQLProvider",
+                    "data": {**provider["data"], "search_path": ["public"]},
+                    "id_field": "id",
+                    "table": table_name,
+                    # These views expose coordinates, not a geometry column.
+                    "geom_field": None,
+                    "x_field": "longitude",
+                    "y_field": "latitude",
+                    "time_field": "datetime",
+                },
+            ],
         }
 
     block = yaml.safe_dump(
