@@ -18,9 +18,8 @@ This revision:
   ``Stratigraphy.GlobalID``);
 * re-points polymorphic rows (notes, data provenance, status and permission
   history) that name the old table;
-* rebuilds ``NGWMN_Lithology`` to read the interval's lithology, falling back
-  to the formation's, with a LEFT JOIN so an interval with a lithology but no
-  formation is exported, and ``StratSource`` from ``source``.
+* rebuilds ``NGWMN_Lithology`` on ``stratigraphic_interval`` alone, with
+  ``StratSource`` from ``source``.
 
 The data is filled by the data migration
 ``20261105_0001_backfill_stratigraphic_intervals``.
