@@ -8,7 +8,7 @@
 | Consumers | WeaverAPI, public users |
 | Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946) |
 | Base path | `/ogcapi/collections/manual_waterlevels` |
-| Authentication | None, public data only for `/ogcapi/...`. Required, public and private data for `/ogcapi-internal/...` |
+| Authentication | None, public data only for `/ogcapi/...`. |
 
 # Purpose
 The purpose of this document is to determine and record the shape of the `/manual_waterlevels` OGC EDR API endpoints. These endpoints will be used by external sources and so the schemas defined herein will act as the source of truth for how it will be shaped by OcotilloAPI and how it will be consumed by others (e.g. WeaverAPI).
@@ -19,7 +19,7 @@ The purpose of this document is to determine and record the shape of the `/manua
 The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of
 
 - Well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
-- Public data for `/ogcapi/manual_waterlevels/` endpoints and public and private data for `/ogcapi-internal/manual_waterlevels` endpoints.
+- Public data for `/ogcapi/manual_waterlevels/` endpoints.
 - Both real and `null` values, both of which contain corresponding reasons for their state.
 
 ### Shape
@@ -302,7 +302,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 
 ## Endpoints
 
-Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels` (or `/ogcapi-internal/collections/manual_waterlevels`). Required parameters are in **bold**.
+Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. Required parameters are in **bold**.
 
 | **Method** | **Path** | **Query parameters** | **Response type** | **Use** |
 | --- | --- | --- | --- | --- |
@@ -380,3 +380,7 @@ If a `413` error is encountered then we'll need to add query parameters to eithe
   - **Original question**: is `/manual_waterlevels` the correct id for the collection?
 - **DECIDED**: This should become `/manual_waterlevels` and transducer and manual measurements should be split into different views and collections. `/continuous_waterlevels` will be developed at a later date.
   - **Original question**: Should this stay `/waterlevels` and transducer and manual measurements have different parameter names, or should they be split into different views and collections?
+
+# Future Work
+
+While this will support public data access for WeaverAPI and other consumers this will also serve as contract for `/ogcapi-internal/manual_waterlevels`. That collection will serve both public and private data. It will not, however, be defined and mounted for the effort to connect OcotilloAPI to WeaverAPI. That work will need to be done in the future when it is warranted.
