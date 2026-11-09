@@ -184,6 +184,15 @@ labs. It never creates a sample, and never writes the sample's single
 `nma_WCLab_ID`, which the LIMS ingest relies on to adopt a sample. Read
 **`docs/chemistry-isotope-ingest.md`** before changing it.
 
+### Stratigraphic intervals
+
+`stratigraphic_interval` (formerly `thing_geologic_formation_association`) is a
+well's stratigraphic log: one row per depth interval, with an optional
+formation, its own lithology, modifier, contributing-unit flag and source.
+`NGWMN_Lithology` publishes only the interval's own logged lithology, never the
+formation's. Read **`docs/stratigraphic-intervals.md`** before changing the
+table, the view, or the `NMA_Stratigraphy` backfill.
+
 ### Authentication & Authorization
 
 The system uses **Authentik** for OAuth2 authentication with role-based access control:
