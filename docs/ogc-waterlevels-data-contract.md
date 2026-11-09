@@ -361,17 +361,20 @@ Responses:
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
 
-**IMPORTANT** `docs/measuring-point-height-null-handling.md` says that Cris Morton and Ethan Mamer want `null` measuring point heights to be `0`. This must be documented for the EDR endpoints.
+**IMPORTANT**
+
+`docs/measuring-point-height-null-handling.md` says that Cris Morton and Ethan Mamer want `null` measuring point heights to be `0`. This must be documented for the EDR endpoints.
 
 ## EDR Formations/Construction
 
 The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`).
 
 **IMPORTANT**
+
 The following is a non-exhaustive list of updates that need to occur. Others are likely needed but not everything is enumerated herein since the codebase and standards were not exhaustively reviewed for where development needs to occur.
 
 - The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
-- 'dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
+- `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 - `parameter-name` should be added as a query parameter to `/locations` since that is part of the standard. This doesn't appear in the current version of `pygeoapi` OpenAPI specs. We'd need to document this in the `OpenAPI` specs or document it elsewhere so users know it's a valid query parameter.
 - `bbox` should be removed from `/locations` as a query parameter since it is not part of the standard.
 - A `413: request too large` error needs to be raised if too much data is queried at once.
