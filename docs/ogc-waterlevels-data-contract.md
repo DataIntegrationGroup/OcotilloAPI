@@ -8,7 +8,7 @@ The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of w
 
 ## Sites
 
-The sites will be returned as a FeatureCollection of GeoJSONs as follows
+The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.org/) as follows
 
 ```json
 {
@@ -39,7 +39,7 @@ The sites will be returned as a FeatureCollection of GeoJSONs as follows
 
 ## Time series
 
-The time series data will be returned as CoverageCollection of Coverages as follows
+The time series data will be returned as [CoverageCollection](https://docs.ogc.org/cs/21-069r2/21-069r2.html) of CoverageJSONs as follows
 
 ```json
 {
