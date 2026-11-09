@@ -47,13 +47,31 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
-                "alternate_id": alternate_site_id,
-                "alternate_id_descriptor": alternate_id_descriptor
+                "alternate_ids": [
+                    {
+                        "id": id,
+                        "relation": relation,
+                        "organization": organization
+                    }
+                ]
             }
         }
     ]
 }
 ```
+
+where
+
+| **Field** | **Type** | **Description** |
+| --- | --- | --- |
+| `id` | `str` | Internal id of the well |
+| `elevation` | `float` or `null` | Elevation of the well, in meters |
+| `elevation_units` | `str` | Always `"m"` |
+| `horizontal_datum` | `str` | Always `"WGS84"` |
+| `vertical_datum` | `str` | Always `"NAVD88"` |
+| `well_depth` | `float` or `null` | Depth of the well, in feet |
+| `well_depth_units` | `str` | Always `"ft"` |
+| `alternate_ids` | `list` | Alternate ids for the well. Each element is an object with `id`, `relation`, and `organization` |
 
 #### Time series
 
