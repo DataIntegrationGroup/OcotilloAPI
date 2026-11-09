@@ -43,6 +43,15 @@ intervals now report "Sandstone and shale".
 Both `Lithology` and `TERM` carry the lexicon term. The legacy view put the
 `LU_Lithology` abbreviation in `Lithology`. The endpoint reads only `TERM`.
 
+`/ngwmn/lithology` and `/ngwmn/wellconstruction` publish the same element names,
+in the same order, as the legacy AMPAPI feed that NGWMN harvests
+(`LithologyCode`, `TERM`, `StratSource`, `StratTop`, ...; `ScreenBottomUnits`,
+`ScreenIntervalMaterial`, `CasingIntervalMaterial`). The new model stores no
+abbreviation, so `LithologyCode` is recovered from the term through
+`domain/lithology.py`. That table is the backfill's `LU_LITHOLOGY`, and
+`tests/test_domain_lithology.py` keeps the two identical. Nulls are written as
+empty elements; AMPAPI wrote the text `None` for null numbers.
+
 ## Backfill
 
 The data migration `20261105_0001_backfill_stratigraphic_intervals` loads

@@ -16,6 +16,7 @@
 from xml.etree import ElementTree as etree
 
 from db import Thing
+from domain.lithology import lithology_code
 from db.ngwmn_views import (
     NGWMNLithology,
     NGWMNWaterLevels,
@@ -35,11 +36,15 @@ def make_lithology_response(point_id, db):
     records = (
         db.query(
             NGWMNLithology.point_id,
-            NGWMNLithology.strat_top,
-            NGWMNLithology.strat_bottom,
             NGWMNLithology.term,
+            NGWMNLithology.strat_source,
+            NGWMNLithology.strat_top,
+            NGWMNLithology.strat_top_unit,
+            NGWMNLithology.strat_bottom,
+            NGWMNLithology.strat_bottom_unit,
         )
         .filter(NGWMNLithology.point_id == point_id)
+        .order_by(NGWMNLithology.strat_top, NGWMNLithology.object_id)
         .all()
     )
     return lithology_xml(records)
@@ -228,50 +233,50 @@ def make_well_construction(root, r):
     """
     0        1         2             3          4          5            6               7                  8
     pointid, castop, casbottom, cadepthunits, screentop, screenbottom, screenbottomunit, screen description, casing description
-    :param root:
-    :param r:
-    :return:
+
+    Element names and order follow the legacy AMPAPI feed that NGWMN
+    harvests (AMPAPI routers/ngwmn/ngwmn_xml.py).
     """
     elem = etree.SubElement(root, "Casing")
     make_point_id(elem, r, idx=0)
 
-    e = etree.SubElement(elem, "CasingTop")
-    e.text = _as_text(r[1])
-
-    e = etree.SubElement(elem, "CasingBottom")
-    e.text = _as_text(r[2])
-
-    e = etree.SubElement(elem, "CasingDepthUnits")
-    e.text = _as_text(r[3])
-
-    e = etree.SubElement(elem, "ScreenTop")
-    e.text = _as_text(r[4])
-
-    e = etree.SubElement(elem, "ScreenBottom")
-    e.text = _as_text(r[5])
-
-    e = etree.SubElement(elem, "ScreenDescription")
-    e.text = _as_text(r[7])
-
-    e = etree.SubElement(elem, "ScreenMaterial")
-    e.text = "steel"
+    for tag, val in (
+        ("CasingTop", r[1]),
+        ("CasingBottom", r[2]),
+        ("CasingDepthUnits", r[3]),
+        ("ScreenTop", r[4]),
+        ("ScreenBottom", r[5]),
+        ("ScreenBottomUnits", r[6]),
+        ("ScreenIntervalMaterial", r[7] or "Unknown"),
+        ("CasingIntervalMaterial", r[8] or "Unknown"),
+    ):
+        e = etree.SubElement(elem, tag)
+        e.text = _as_text(val)
 
 
 def make_lithology(root, r):
+    """
+    0        1     2             3         4             5            6
+    pointid, term, strat source, strattop, strattopunit, stratbottom, stratbottomunit
+
+    Element names and order follow the legacy AMPAPI feed that NGWMN
+    harvests. LithologyCode is the legacy LU_Lithology abbreviation, which
+    the new model does not store, so it is recovered from the term.
+    """
     elem = etree.SubElement(root, "Lithology")
     make_point_id(elem, r, idx=0)
 
-    e = etree.SubElement(elem, "TopDepth")
-    e.text = _as_text(r[1])
-
-    e = etree.SubElement(elem, "BottomDepth")
-    e.text = _as_text(r[2])
-
-    e = etree.SubElement(elem, "Units")
-    e.text = "feet"
-
-    e = etree.SubElement(elem, "Description")
-    e.text = _as_text(r[3])
+    for tag, val in (
+        ("LithologyCode", lithology_code(r[1])),
+        ("TERM", r[1]),
+        ("StratSource", r[2]),
+        ("StratTop", r[3]),
+        ("StratTopUnit", r[4]),
+        ("StratBottom", r[5]),
+        ("StratBottomUnit", r[6]),
+    ):
+        e = etree.SubElement(elem, tag)
+        e.text = _as_text(val)
 
 
 def make_point_id(elem, r, idx=0):
