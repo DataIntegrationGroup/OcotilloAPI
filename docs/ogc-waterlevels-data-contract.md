@@ -1,3 +1,15 @@
+# Contract Details
+
+| **Item** | **Value** |
+| --- | --- |
+| Contract Version | 1.0.0 |
+| Status | Accepted |
+| Provider | OcotilloAPI |
+| Consumers | WeaverAPI, public users |
+| Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946) |
+| Base path | `/ogcapi/collections/manual_waterlevels` |
+| Authentication | None, public data only for `/ogcapi/...`. Required, public and private data for `/ogcapi-internal/...` |
+
 # Purpose
 The purpose of this document is to determine and record the shape of the `/manual_waterlevels` OGC EDR API endpoints. These endpoints will be used by external sources and so the schemas defined herein will act as the source of truth for how it will be shaped by OcotilloAPI and how it will be consumed by others (e.g. WeaverAPI).
 
@@ -140,6 +152,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 - The current `ogc_waterlevels` view, which as of 11/4/2026 is a union of manual and transducer waterlevels. The view is initially constructed in `alembic/versions/z9a0b1c2d3e4_add_edr_water_views.py`. The views are then reconstructed in `alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py` to gate on `public_release`. The internal views are constructed in `alembic/versions/2d3c3a268652_create_internal_ogc_views.py`. The views are repaired in `alembic/versions/b7c8d9e0f1a2_repair_missing_edr_water_views.py`.
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
+- Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
 
 **IMPORTANT** `docs/measuring-point-height-null-handling.md` says that Cris Morton and Ethan Mamer want `null` measuring point heights to be `0`. This must be documented for the EDR endpoints.
 
@@ -157,7 +170,7 @@ The following steps will be taken to integrate this collection with WeaverAPI:
 
 1. Query `/locations` to get a FeatureCollection of all locations that report manual groundwater levels
 2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
-   - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data colleciton, and harmonization are no longer done live via the CLI.
+   - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
 
 If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In step 1 we can use the `bbox` query parameter to tile New Mexico to get fewer points at a time. In step 2 we can use the `datetime` query parameter to get fewer observations at a time; in this case we need to make sure that we *always* get data up to the present day.
 
