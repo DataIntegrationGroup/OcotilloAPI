@@ -12,3 +12,12 @@
 
 # Purpose
 The purpose of this document is to determine and record the shape of the `/water_chemistryt` OGC EDR API endpoints. These endpoints will be used by external sources and so the schemas defined herein will act as the source of truth for how it will be shaped by OcotilloAPI and how it will be consumed by others (e.g. WeaverAPI).
+
+# /water_chemistry
+
+## Data
+The data served by the `/water_chemistry` OGC EDR endpoints will consist of
+
+- Well information and water chemistry observations.
+- Public data for `/ogcapi/water_chemistry/` endpoints.
+- Both real and `null` values, both of which contain corresponding reasons for their state.
