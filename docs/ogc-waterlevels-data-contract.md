@@ -39,7 +39,7 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
 
 ## Time series
 
-The time series data will be returned as [CoverageCollection](https://docs.ogc.org/cs/21-069r2/21-069r2.html) of CoverageJSONs as follows
+The time series data will be returned as CoverageCollection of [CoverageJSONs]((https://docs.ogc.org/cs/21-069r2/21-069r2.html) as follows
 
 ```json
 {
