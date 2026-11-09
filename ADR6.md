@@ -96,7 +96,7 @@ determines what that user is allowed to do.
 Treat groups as administrative conveniences for assigning sets of grants, not as hardcoded
 application roles with implicit permissions.
 
-A group such as `AMP Viewer` should have an inspectable collection of grants. Administrators should
+A group such as `AMMP Viewer` should have an inspectable collection of grants. Administrators should
 be able to determine exactly what access the group confers before assigning a principal to it.
 
 The existing `Group` model used to organize domain resources should not be confused with principal
@@ -110,7 +110,7 @@ management bottleneck as Ocotillo grows.
 The console should support authorized program managers and other delegated operators managing access
 within their responsibilities.
 
-For example, an AMP program manager may need to add a student to an AMP permission group or revoke
+For example, an AMMP program manager may need to add a student to an AMMP permission group or revoke
 that student’s access when their work ends.
 
 Such delegation must not allow the manager to grant access outside their authorized scope.
