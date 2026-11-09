@@ -153,23 +153,14 @@ The EDR endpoints that we make are bespoke, after a fashion. Updates to create t
 
 # Integration with WeaverAPI
 
-The use of EDRs makes integration with WeaverAPI both easy and difficult. What a conundrum!
+The following steps will be taken to integrate this collection with WeaverAPI:
 
-## Easy
+1. Query `/locations` to get a FeatureCollection of all locations that report manual groundwater levels
+2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
+   - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data colleciton, and harmonization are no longer done live via the CLI.
 
-The workflow is, in theory, quite simple. WeaverAPI would query `/locations` to get all wells and their metadata that report manual water levels. WeaverAPI would then query `/area` or `/cube`, with the bbox or coords encompassing all of the locations, and get all water levels. The two tables of data would then be joined using `id` since they correspond for each `coverage` and `feature` (the `id` in `coverage` is the `id` of the feature that reports the observations).
+If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In step 1 we can use the `bbox` query parameter to tile New Mexico to get fewer points at a time. In step 2 we can use the `datetime` query parameter to get fewer observations at a time; in this case we need to make sure that we *always* get data up to the present day.
 
-## Difficult
-
-EDR APIs do not paginate the data on either the database or the endpoint sides. When it fetches data from the database it holds *all* data in-memory. It then serves all of that data via the EDR API endpoint. If too many records are retrieved at once this causes an error to occur. (Ideally a 413 error is raised that tells the user to set parameters to decrease the amount of data retrieved and sent. This still needs to be developed.). What's difficult about this is:
-
-> How do we determine appropriate bounds to ensure that there are no memory issues?
-
-- There's no guarantee that using datetime blocks or geographic boundaries will sufficiently limit the amount of data being queried and returned.
-- We could query `/locations/{locId}` to get observations for one location at a time, but there's no guarantee the number of observations at a particular location won't exceed the memory that the application can handle.
-  - Another potential issue with this is that it'll be slow. With WeaverAPI running on a schedule (at night?), the speed of data retrieval doesn't seem be all that important (?)
-
-This all boils down to: without pagination there is never a guarantee that memory issues won't occur.
 
 # Outstanding Questions
 
