@@ -25,13 +25,15 @@ a formation. Revision `7480e4ee69dc` renamed it and kept its rows and ids.
 ## Where `NGWMN_Lithology` gets its lithology
 
 ```
-COALESCE(stratigraphic_interval.lithology, geologic_formation.lithology)
+stratigraphic_interval.lithology
 ```
 
-The interval's own lithology comes first. The formation's lithology is a
-fallback for intervals that have none. Rows where both are null are not
-exported. An interval with no formation is still exported when it has a
-lithology, as it was in the legacy view.
+The view publishes only the lithology logged for the interval. It does not
+fall back to `geologic_formation.lithology`: an interval with no logged code
+is not exported, even when its formation has a lithology. The formation
+values were set by the transfer from the first code it saw, so they do not
+represent the formation's uncoded intervals. An interval with no formation is
+still exported when it has a lithology, as it was in the legacy view.
 
 Before this change the view read only `geologic_formation.lithology`, which
 allows one rock type per formation. Eight formations on staging carry more
@@ -88,12 +90,12 @@ These are the known differences:
   top at or below its bottom (unless both are zero), is not migrated. These
   are the transfer's own rules.
 - **Some lithology codes don't map.** When a code is not in `LU_Lithology`, or
-  its term is not in `lexicon_term`, the interval gets no lithology. It is
-  exported only if its formation has one.
-- **Uncoded intervals use the formation's lithology.** An interval with a
-  formation but no code is exported when the formation has a lithology. Today
-  that is only `110ALVM` (Gravel) and `120SRVB` (Basalt), both set by the
-  original transfer.
+  its term is not in `lexicon_term`, the interval gets no lithology and is not
+  exported.
+- **Uncoded intervals are not exported.** An interval with no logged code is
+  left out, whatever its formation's lithology. On staging this excludes 808
+  uncoded `110ALVM` intervals on public wells, which a fallback would have
+  published as Gravel, and one `120SRVB` interval (Basalt).
 - **Only public wells are exported.** The view is gated on
   `thing.release_status = 'public'`.
 

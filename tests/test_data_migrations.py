@@ -2498,7 +2498,7 @@ def test_olwc_corrections_refuse_unexpected_history(tmp_path, monkeypatch):
 # Real formation codes, because geologic_formation.formation_code is a foreign
 # key to lexicon_term.
 STRAT_MIXED = "211DKOT"  # SNDS and SDSL intervals
-STRAT_KEPT = "110ALVM"  # formation lithology set; the view's fallback
+STRAT_KEPT = "110ALVM"  # formation lithology set; the view ignores it
 STRAT_NOCODE = "310GLOR"  # intervals but no lithology code
 
 
@@ -2629,7 +2629,7 @@ def _strat_fixture(session):
     _legacy(session, a, "NOTAFORMATION", 50, 60, "SHLE")  # unknown unit
     _legacy(session, a, None, 60, 70, "BSLT")  # no UnitIdentifier
     _legacy(session, a, None, 70, 80, contributing_unit="?")  # bare interval
-    _legacy(session, a, STRAT_KEPT, 80, 90)  # no code: view falls back
+    _legacy(session, a, STRAT_KEPT, 80, 90)  # no code: not exported
     _legacy(session, b, STRAT_MIXED, 0, 5, "SNDS")
     _legacy(session, b, STRAT_MIXED, 9, 4, "SNDS")  # top below bottom: skipped
     _legacy(session, b, STRAT_MIXED, 0, 0, "XXXX")  # both zero: kept; bad code
@@ -2714,8 +2714,8 @@ def test_backfill_stratigraphic_intervals_feeds_ngwmn_lithology_view():
                 # 40-50 and 70-80 have no lithology anywhere: not exported.
                 (50.0, 60.0, "Shale", "Shale", None),
                 (60.0, 70.0, "Basalt", "Basalt", None),
-                # No interval lithology: falls back to the formation's.
-                (80.0, 90.0, "Gravel", "Gravel", None),
+                # 80-90 has no logged code. Its formation's lithology
+                # (Gravel) is not substituted, so it is not exported.
             ]
         finally:
             _strat_restore(session, formations, created, originals, [a, b])
