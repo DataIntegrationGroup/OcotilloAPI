@@ -63,6 +63,18 @@ The time series data will be returned as CoverageCollection of Coverages as foll
                     "en": "ft"
                 }
             } 
+        },
+        "groundwater level reason": {
+            "type": "Parameter",
+            "description": {
+                "en": "USGS-style condition codes explaining why a water level reads as it does or could not be measured."
+            },
+            "observedProperty": {
+                "id": "groundwater level reason",
+                "label": {
+                    "en": "Groundwater level reason"
+                }
+            },
         }
     },
     "coverages": [
@@ -107,6 +119,13 @@ The time series data will be returned as CoverageCollection of Coverages as foll
                     "axisNames": ["t"],
                     "shape": [n],
                     "values": [value 1, value 2, ..., value n]
+                },
+                "groundwater level reason": {
+                    "type": "NdArray",
+                    "dataType": "string",
+                    "axisNames": ["t"],
+                    "shape": [n],
+                    "values": [value 1 reason, value 2 reason, ..., value n reason]
                 }
             }
         }
@@ -118,17 +137,19 @@ The time series data will be returned as CoverageCollection of Coverages as foll
 
 ## ogc_waterlevels as of 11/4/2026
 
-- The the current `ogc_waterlevels` view, which as of 11/4/2026 is a union of manual and transducer waterlevels. The view is initially constructed in `alembic/versions/z9a0b1c2d3e4_add_edr_water_views.py`. The views are then reconstructed in `alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py` to gate on `public_release`. The internal views are constructed in `alembic/versions/2d3c3a268652_create_internal_ogc_views.py`. The views are repaired in `alembic/versions/b7c8d9e0f1a2_repair_missing_edr_water_views.py`.
+- The current `ogc_waterlevels` view, which as of 11/4/2026 is a union of manual and transducer waterlevels. The view is initially constructed in `alembic/versions/z9a0b1c2d3e4_add_edr_water_views.py`. The views are then reconstructed in `alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py` to gate on `public_release`. The internal views are constructed in `alembic/versions/2d3c3a268652_create_internal_ogc_views.py`. The views are repaired in `alembic/versions/b7c8d9e0f1a2_repair_missing_edr_water_views.py`.
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
-- Transducer and manual water level measurements should be split up into different views. If not, then the parameter names need to different between transducer and manual so that they can be queried independently.
+- Transducer and manual water level measurements should be split up into different views.
 
 **IMPORTANT** `docs/measuring-point-height-null-handling.md` says that Cris Morton and Ethan Mamer want `null` measuring point heights to be `0`. This must be documented for the EDR endpoints.
 
 ## EDR Formations/Construction
 
-The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProver::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`). Updates in other places are likely needed, but are not listed here.
+The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`). Updates in other places are likely needed, but are not listed here.
 
-**IMPORTANT** The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
+**IMPORTANT**
+- The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
+- 'dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 
 # Integration with WeaverAPI
 
