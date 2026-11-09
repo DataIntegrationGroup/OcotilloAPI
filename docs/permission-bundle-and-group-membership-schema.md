@@ -5,8 +5,8 @@
 **References:** ADR5, "One Enforcement Engine, Two Grant Tables"; ADR6,
 "Operator Console"; `docs/vocabulary-and-scope-taxonomy.md`
 
-**Note:** Some table and column name in this document is a proposal, not a
-decision. Each one has a matching entry in Open Questions below.
+**Note:** Some table and column names in this document are proposals, not
+decisions. Each one has a matching entry in Open Questions below.
 
 ## Summary
 
@@ -188,10 +188,29 @@ and a custom role there is exactly this: a user-defined permission bundle.
 8. Can a principal hold more than one `custom_role` assignment, or mix a
    direct grant with a role assignment, at the same time?
 
-## Out of scope
+   - **Option 1 -- allow both, unrestricted** *(proposed)*. A principal can
+     hold multiple `custom_role` assignments at once, and can mix a direct
+     grant with a role assignment. This matches GCP IAM, where a principal
+     commonly holds several simultaneous role bindings (e.g. a user bound to
+     both a predefined role and a custom one) -- there's no "one role per
+     principal" restriction there.
 
-- API key lifecycle management (already addressed elsewhere in ADR6).
-- The unified, hash-chained activity log (already addressed elsewhere in
-  ADR6).
-- Delegation/administrative-scope enforcement, unless Open Question 7 is
-  resolved as in-scope for this document.
+     Example of mixing a role assignment with a direct grant: AMMP Viewer is
+     assigned the "AMMP Viewer Base Permissions" `custom_role` for its
+     baseline read access. One AMMP Viewer member separately needs `update`
+     access to a single well's reading, just for a short correction window --
+     one person, one well, time-bound, not worth building a whole
+     `custom_role` for. That's a direct `permission_grant` row on top of the
+     same principal's existing role assignment, not a replacement for it.
+
+     Example of a `principal_group` holding more than one `custom_role`:
+     AMMP Viewer could hold both "AMMP Viewer Base Permissions" and a
+     separate "Geothermal Viewer Base Permissions" `custom_role`, if AMMP
+     staff also need baseline read access to Geothermal program data. Each
+     role's `custom_role_item` rows contribute independently; the group's
+     effective access is the union of both.
+
+   - **Option 2 -- restrict a principal to exactly one assignment type at a
+     time.** Would force every one-off exception into its own `custom_role`,
+     adding overhead with no clear benefit, and has no GCP precedent to
+     point to.
