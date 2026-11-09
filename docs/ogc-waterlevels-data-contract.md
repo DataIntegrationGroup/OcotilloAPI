@@ -65,7 +65,7 @@ where
 | **Field** | **Type** | **Description** |
 | --- | --- | --- |
 | `id` | `str` | Internal id of the well |
-| `elevation` | `float` or `null` | Elevation of the well, in meters |
+| `elevation` | `float` | Elevation of the well, in meters |
 | `elevation_units` | `str` | Always `"m"` |
 | `horizontal_datum` | `str` | Always `"WGS84"` |
 | `vertical_datum` | `str` | Always `"NAVD88"` |
@@ -375,8 +375,6 @@ The following is a non-exhaustive list of updates that need to occur. Others are
 
 - The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
 - `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
-- `parameter-name` should be added as a query parameter to `/locations` since that is part of the standard. This doesn't appear in the current version of `pygeoapi` OpenAPI specs. We'd need to document this in the `OpenAPI` specs or document it elsewhere so users know it's a valid query parameter.
-- `bbox` should be removed from `/locations` as a query parameter since it is not part of the standard.
 - A `413: request too large` error needs to be raised if too much data is queried at once.
 
 # Integration with WeaverAPI
@@ -401,6 +399,8 @@ If a `413` error is encountered then we'll need to add query parameters to eithe
   - **Original question**: is `/manual_waterlevels` the correct id for the collection?
 - **DECIDED**: This should become `/manual_waterlevels` and transducer and manual measurements should be split into different views and collections. `/continuous_waterlevels` will be developed at a later date.
   - **Original question**: Should this stay `/waterlevels` and transducer and manual measurements have different parameter names, or should they be split into different views and collections?
+- The EDR standard's written requirements for [`/locations`](https://docs.ogc.org/is/19-086r6/19-086r6.html#_60c4d31c-62f2-4dc7-9a3e-6a1a9127d29e) (Table 13, Req. A.33) list `parameter-name` as a query parameter, but the standard's official OpenAPI definition ([locations.yaml](https://schemas.opengis.net/ogcapi/edr/1.1/openapi/paths/queries/locations.yaml)) omits it. `pygeoapi` follows the OpenAPI definition, so it accepts `?parameter-name` on `/locations` (and our provider filters on it) but does not list it in the generated OpenAPI document. It will be especially useful for the future `/water_chemistry` collection. Should we include it in this contract? If so, should we document it only here, or also add it to the generated OpenAPI document (we generate that file in `core/pygeoapi.py::_generate_openapi`, so it can be amended there without patching `pygeoapi`)?
+- Conversely, the standard's written requirements for `/locations` do not list `bbox`, but its official OpenAPI definition does, and `pygeoapi` both accepts and documents it. Should we keep `bbox` in the contract, marked as supported-but-not-in-the-written-requirements, or remove it?
 
 # Future Work
 
