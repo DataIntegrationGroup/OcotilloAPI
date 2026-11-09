@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from db.field import FieldEventParticipant, FieldEvent
     from db.thing import Thing
     from db.publication import Author, AuthorContactAssociation
-    from db.permission_history import PermissionHistory
+    from db.site_activity_consent import SiteActivityConsent
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -74,9 +74,9 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
         "IncompleteNMAPhone", back_populates="contact", cascade="all, delete-orphan"
     )
 
-    # One-To-Many: A Contact can grant many Permissions.
-    permissions: Mapped[List["PermissionHistory"]] = relationship(
-        "PermissionHistory",
+    # One-To-Many: A Contact can give many site activity consents.
+    site_activity_consents: Mapped[List["SiteActivityConsent"]] = relationship(
+        "SiteActivityConsent",
         back_populates="contact",
         cascade="all, delete, delete-orphan",
     )

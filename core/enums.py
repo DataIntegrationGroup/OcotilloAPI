@@ -73,7 +73,7 @@ Vertical_datum: type[Enum] = build_enum_from_lexicon_category("vertical_datum")
 ScreenType: type[Enum] = build_enum_from_lexicon_category("screen_type")
 SensorType: type[Enum] = build_enum_from_lexicon_category("sensor_type")
 WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
-PermissionType: type[Enum] = build_enum_from_lexicon_category("permission_type")
+SiteActivity: type[Enum] = build_enum_from_lexicon_category("site_activity")
 GroupType: type[Enum] = build_enum_from_lexicon_category("group_type")
 MonitoringFrequency: type[Enum] = build_enum_from_lexicon_category(
     "monitoring_frequency"

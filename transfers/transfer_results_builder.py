@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from sqlalchemy import select, func
 
-from db import Deployment, PermissionHistory, Sensor, Thing, ThingContactAssociation
+from db import Deployment, SiteActivityConsent, Sensor, Thing, ThingContactAssociation
 from db.engine import session_ctx
 from transfers.sensor_transfer import (
     EQUIPMENT_TO_SENSOR_TYPE_MAP,
@@ -210,14 +210,14 @@ def _permissions_destination_series(session) -> pd.Series:
     sql = (
         select(
             Thing.name.label("point_id"),
-            PermissionHistory.permission_type.label("permission_type"),
-            PermissionHistory.permission_allowed.label("permission_allowed"),
+            SiteActivityConsent.activity.label("permission_type"),
+            SiteActivityConsent.allowed.label("permission_allowed"),
         )
-        .select_from(PermissionHistory)
-        .join(Thing, Thing.id == PermissionHistory.target_id)
-        .where(PermissionHistory.target_table == "thing")
+        .select_from(SiteActivityConsent)
+        .join(Thing, Thing.id == SiteActivityConsent.target_id)
+        .where(SiteActivityConsent.target_table == "thing")
         .where(
-            PermissionHistory.permission_type.in_(
+            SiteActivityConsent.activity.in_(
                 ("Water Chemistry Sample", "Water Level Sample")
             )
         )
@@ -370,10 +370,10 @@ class TransferResultsBuilder:
             destination_row_count = int(
                 session.execute(
                     select(func.count())
-                    .select_from(PermissionHistory)
-                    .where(PermissionHistory.target_table == "thing")
+                    .select_from(SiteActivityConsent)
+                    .where(SiteActivityConsent.target_table == "thing")
                     .where(
-                        PermissionHistory.permission_type.in_(
+                        SiteActivityConsent.activity.in_(
                             ("Water Chemistry Sample", "Water Level Sample")
                         )
                     )
@@ -402,7 +402,7 @@ class TransferResultsBuilder:
             transfer_name=spec.transfer_name,
             source_csv=spec.source_csv,
             source_key_column=spec.source_key_column,
-            destination_model="PermissionHistory",
+            destination_model="SiteActivityConsent",
             destination_key_column=spec.destination_key_column,
             source_row_count=source_row_count,
             agreed_transfer_row_count=agreed_transfer_row_count,

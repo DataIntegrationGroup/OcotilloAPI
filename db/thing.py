@@ -30,7 +30,7 @@ from db.base import (
 )
 from db.data_provenance import DataProvenanceMixin
 from db.measuring_point_history import MeasuringPointHistory
-from db.permission_history import PermissionHistoryMixin
+from db.site_activity_consent import SiteActivityConsentMixin
 from db.status_history import StatusHistoryMixin
 from services.util import retrieve_latest_polymorphic_history_table_record
 
@@ -63,7 +63,7 @@ class Thing(
     AutoBaseMixin,
     ReleaseMixin,
     StatusHistoryMixin,
-    PermissionHistoryMixin,
+    SiteActivityConsentMixin,
     DataProvenanceMixin,
     NotesMixin,
 ):
@@ -594,12 +594,13 @@ class Thing(
     @property
     def permissions(self) -> list:
         """
-        Returns the associated permissions or an empty list. If there are no
-        associated permissions, an empty list is returned instead of None to
-        allow the API to serialize correctly (see schemas/thing.py).
+        Returns the associated site activity consents or an empty list. If
+        there are none, an empty list is returned instead of None to allow
+        the API to serialize correctly (see schemas/thing.py). Keeps the name
+        `permissions` because that is the well response's field name.
         """
-        if self.permission_history:
-            return self.permission_history
+        if self.site_activity_consent:
+            return self.site_activity_consent
         else:
             return []
 

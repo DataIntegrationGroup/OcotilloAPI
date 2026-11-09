@@ -207,11 +207,7 @@ def test_well_inventory_db_contents_no_waterlevels():
                 "Datalogger Installation",
             ]:
                 permission = next(
-                    (
-                        p
-                        for p in thing.permissions
-                        if p.permission_type == permission_type
-                    ),
+                    (p for p in thing.permissions if p.activity == permission_type),
                     None,
                 )
                 assert (
@@ -219,15 +215,15 @@ def test_well_inventory_db_contents_no_waterlevels():
                 ), f"Expected permission type {permission_type} for thing {point_id}."
 
                 if permission_type == "Water Level Sample":
-                    assert permission.permission_allowed is bool(
+                    assert permission.allowed is bool(
                         file_content["repeat_measurement_permission"].lower() == "true"
                     )
                 elif permission_type == "Water Chemistry Sample":
-                    assert permission.permission_allowed is bool(
+                    assert permission.allowed is bool(
                         file_content["sampling_permission"].lower() == "true"
                     )
                 else:
-                    assert permission.permission_allowed is bool(
+                    assert permission.allowed is bool(
                         file_content["datalogger_installation_permission"].lower()
                         == "true"
                     )
@@ -1464,8 +1460,8 @@ class TestWellInventoryHelpers:
         assert permission is not None
         assert permission.target_table == "thing"
         assert permission.target_id == 1
-        assert permission.permission_type == "Water Level Sample"
-        assert permission.permission_allowed is True
+        assert permission.activity == "Water Level Sample"
+        assert permission.allowed is True
 
     def test_make_well_permission_no_contact_raises(self):
         """Test that permission creation without contact raises error."""

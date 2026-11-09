@@ -157,7 +157,7 @@ ogc_internal_water_well_field_operations_stats   MATERIALIZED VIEW, keyed thing_
     transducer_observation. Expensive. Refreshed nightly.
 
 ogc_internal_water_well_field_operations         VIEW  <- pygeoapi points here
-    live join of thing, location, status_history, permission_history,
+    live join of thing, location, status_history, site_activity_consent,
     deployment, sensor, contact, notes
     LEFT JOIN the stats matview
 ```
@@ -167,7 +167,7 @@ Reasons for the split:
 1. **Staleness is dangerous on exactly the cheap columns.** "May we sample this
    well" and "is access currently granted" must not be up to 24 hours old. A
    revoked permission that still reads `true` until the next nightly refresh
-   sends a crew onto land they are no longer welcome on. `permission_history`
+   sends a crew onto land they are no longer welcome on. `site_activity_consent`
    and `status_history` are small and indexed by `(target_id, target_table)`;
    reading them live costs nothing.
 2. **`CURRENT_DATE` freezes in a matview.** The current-record rule in §7 is
@@ -320,12 +320,12 @@ plus `monitoring_status_reason` (`status_history.reason`, where "landowner
 asked us to stop" is written down). All six were dropped in the
 consolidation; the current value is kept, the history around it is not.
 
-### Permission (current grants)
+### Site activity consent (current records)
 
-From `permission_history`, whose `permission_type` lexicon is exactly the three
-things a crew does:
+From `site_activity_consent`, whose `activity` lexicon (category
+`site_activity`) is exactly the three things a crew does:
 
-| Column | `permission_type` |
+| Column | `activity` |
 | --- | --- |
 | `may_measure_water_level` | Water Level Sample |
 | `may_sample_water_chemistry` | Water Chemistry Sample |
@@ -511,7 +511,7 @@ or a phone number ends up in free text. See open question 4.
 
 ## 7. The "current record" rule
 
-Four histories feed this layer — `status_history`, `permission_history`,
+Four histories feed this layer — `status_history`, `site_activity_consent`,
 `measuring_point_history`, `monitoring_frequency_history` — and all four have
 the same `(start_date, end_date)` shape. One rule for all of them:
 
@@ -592,6 +592,14 @@ The three permission booleans need their NULL meaning spelled out in the
    gain the PII notice from §4; `docs/ogc_conventions.md` gains the §7
    divergence.
 
+**Rebuilding the view after `652b0abb3241`.** That revision renamed
+`permission_history` to `site_activity_consent`, and its columns
+`permission_type` and `permission_allowed` to `activity` and `allowed`. The
+live view followed the rename by OID and was not rebuilt, so the latest copy of
+its SQL in source (`a3b4c5d6e7f8`) still uses the old names. A migration that
+rebuilds the view from that copy must switch to the new names, or it fails on
+upgrade with "relation does not exist".
+
 Description text has to clear
 `tests/test_pygeoapi_mount.py::test_every_collection_description_explains_the_layer`:
 at least 200 characters, ends in a full stop, no placeholder words, no
@@ -605,7 +613,9 @@ not index foreign keys on its own. Check each before creating it — `b8c9d0e1f2
 already added four on the observation chain.
 
 - `status_history (target_table, target_id, status_type, start_date DESC)`
-- `permission_history (target_table, target_id, permission_type, start_date DESC)`
+- `site_activity_consent (target_table, target_id, activity, start_date DESC)`
+  (created as `permission_history (..., permission_type, ...)`; renamed with
+  the table by `652b0abb3241`)
 - `measuring_point_history (thing_id, start_date DESC)`
 - `monitoring_frequency_history (thing_id, start_date DESC)`
 - `notes (target_id, target_table)` — already exists as `ix_notes_polymorphic_link`

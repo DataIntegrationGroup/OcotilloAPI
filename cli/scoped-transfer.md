@@ -144,7 +144,7 @@ Not every `PointID` has data in every family. That is why many families may show
 | `outfall-wastewater-return-flow` | Outfall or wastewater return flow site records. |
 | `screens` | Well screen records linked to wells. |
 | `contacts` | Owner or related contact records linked to a site. |
-| `permissions` | Permission history such as monitoring or sampling permission. |
+| `permissions` | Site activity consent: whether the owner allows monitoring or sampling. |
 | `waterlevels` | Manual groundwater level measurements. |
 | `link-ids` | Alternate IDs linked to a site, such as OSE or PLSS-style identifiers. |
 | `groups` | Project or grouping records that associate sites together. |

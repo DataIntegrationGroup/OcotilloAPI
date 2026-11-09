@@ -1,10 +1,14 @@
 """
-db/permission_history.py
+db/site_activity_consent.py
 
-This model defines the `PermissionHistory` table, a polymorphic table that tracks
-all legal and administrative agreements related to site access and activity.
-Its purpose is to track who granted permission, what activities they authorized,
-which entity the permission applies to, and for what period of time.
+This model defines the `SiteActivityConsent` table, a polymorphic table that
+records what an owner allows the Bureau to do at their site: measure water
+levels, sample water chemistry, install a datalogger. Each record says who
+consented, to which activity, whether it is allowed, which entity it applies
+to, and for what period of time.
+
+This is the owner's decision, not staff authorization. What staff may do is
+`PermissionGrant` (db/permission_grant.py). See ADR5.
 """
 
 from datetime import date
@@ -21,9 +25,9 @@ if TYPE_CHECKING:
     from db.location import Location
 
 
-class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
+class SiteActivityConsent(Base, AutoBaseMixin, ReleaseMixin):
     """
-    Represents a specific grant of permission from a Contact for a
+    Represents one owner's consent, or refusal, for one activity at a
     specific entity (e.g., a Thing or Location).
     """
 
@@ -33,8 +37,8 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Columns ---
-    permission_type: Mapped[str] = lexicon_term(nullable=False)
-    permission_allowed: Mapped[bool] = mapped_column(nullable=False, default=False)
+    activity: Mapped[str] = lexicon_term(nullable=False)
+    allowed: Mapped[bool] = mapped_column(nullable=False, default=False)
     start_date: Mapped[date] = mapped_column(nullable=False)
     end_date: Mapped[date] = mapped_column(nullable=True)
     notes: Mapped[str] = mapped_column(nullable=True)
@@ -44,22 +48,24 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
     target_table: Mapped[str] = mapped_column(String(50), nullable=False)
 
     # --- Relationships ---
-    # Many-To-One: A Permission is granted by one Contact.
-    contact: Mapped["Contact"] = relationship("Contact", back_populates="permissions")
+    # Many-To-One: A consent is given by one Contact.
+    contact: Mapped["Contact"] = relationship(
+        "Contact", back_populates="site_activity_consents"
+    )
 
     # --- Polymorphic Parent Relationships (Internal) ---
     # These are view-only relationships used by the 'target' property below.
     # They tell SQLAlchemy exactly how to find the specific parent record for a given child.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == Thing.id, "
-        "PermissionHistory.target_table == 'thing')",
+        primaryjoin="and_(foreign(SiteActivityConsent.target_id) == Thing.id, "
+        "SiteActivityConsent.target_table == 'thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == Location.id, "
-        "PermissionHistory.target_table == 'location')",
+        primaryjoin="and_(foreign(SiteActivityConsent.target_id) == Location.id, "
+        "SiteActivityConsent.target_table == 'location')",
         viewonly=True,
     )
 
@@ -73,22 +79,24 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
         return getattr(self, f"_{self.target_table}_target")
 
 
-class PermissionHistoryMixin:
+class SiteActivityConsentMixin:
     """
-    Mixin for models that can have permissions (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    PermissionHistory table.
+    Mixin for models that can have site activity consents (e.g., Thing,
+    Location). It automatically creates a polymorphic One-to-Many relationship
+    to the SiteActivityConsent table.
     """
 
     @declared_attr
-    def permission_history(cls):
-        # One-to-Many polymorphic relationship
+    def site_activity_consent(cls):
+        # One-to-Many polymorphic relationship. Named after the table, like
+        # status_history, because services/util.py looks the type column up
+        # by relationship name.
         return relationship(
-            "PermissionHistory",
+            "SiteActivityConsent",
             primaryjoin=(
                 and_(
-                    cls.id == foreign(PermissionHistory.target_id),
-                    PermissionHistory.target_table == cls.__tablename__,
+                    cls.id == foreign(SiteActivityConsent.target_id),
+                    SiteActivityConsent.target_table == cls.__tablename__,
                 )
             ),
             lazy="selectin",
