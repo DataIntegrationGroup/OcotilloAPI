@@ -149,6 +149,18 @@ def ngwmn_well():
                 "nma_data_quality": None,
                 "release_status": "private",
             },
+            # A public attempt with no depth (dry well, obstruction) has a
+            # null value. It has no depth to report, so it is left out
+            # rather than crashing the formatter (SA-0034 returned 500).
+            {
+                "sample_name": f"{POINT_ID}-wl-4",
+                "sample_method": "Steel-tape measurement",
+                "observation_datetime": "2024-06-01T00:00:00Z",
+                "value": None,
+                "measuring_point_height": None,
+                "nma_data_quality": None,
+                "release_status": "public",
+            },
         ]
         for obs in observations:
             sample = Sample(

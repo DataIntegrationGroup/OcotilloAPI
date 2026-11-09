@@ -75,7 +75,12 @@ def make_waterlevels_response(point_id, db):
             NGWMNWaterLevels.wl_accuracy,
             NGWMNWaterLevels.public_release,
         )
-        .filter(NGWMNWaterLevels.point_id == point_id)
+        .filter(
+            NGWMNWaterLevels.point_id == point_id,
+            # A null depth is a recorded attempt (dry well, obstruction) with
+            # no level to report; NGWMN has nothing to harvest from it.
+            NGWMNWaterLevels.depth_to_water_bgs.isnot(None),
+        )
         .order_by(NGWMNWaterLevels.date_measured)
         .all()
     )
@@ -94,6 +99,7 @@ def make_waterlevels_response(point_id, db):
             TransducerDailyData.point_id == point_id,
             TransducerDailyData.qced.is_(True),
             TransducerDailyData.parameter_name == "groundwater level",
+            TransducerDailyData.depth_to_water_bgs_min.isnot(None),
             Thing.release_status == "public",
         )
         .order_by(TransducerDailyData.date_measured)
