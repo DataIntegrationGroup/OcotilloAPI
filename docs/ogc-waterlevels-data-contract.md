@@ -13,12 +13,18 @@
 # Purpose
 The purpose of this document is to determine and record the shape of the `/manual_waterlevels` OGC EDR API endpoints. These endpoints will be used by external sources and so the schemas defined herein will act as the source of truth for how it will be shaped by OcotilloAPI and how it will be consumed by others (e.g. WeaverAPI).
 
-# /manual_waterlevels Data
-The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
+# /manual_waterlevels
 
-# Shape
+## Data
+The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of
 
-## Sites
+- Well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
+- Public data for `/ogcapi/manual_waterlevels/` endpoints and public and private data for `/ogcapi-internal/manual_waterlevels` endpoints.
+- Both real and `null` values, both of which contain corresponding reasons for their state.
+
+### Shape
+
+#### Sites
 
 The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.org/) as follows
 
@@ -49,7 +55,7 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
 }
 ```
 
-## Time series
+#### Time series
 
 The time series data will be returned as CoverageCollection of [CoverageJSONs](https://docs.ogc.org/cs/21-069r2/21-069r2.html) as follows
 
@@ -145,6 +151,40 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 }
 ```
 
+## Endpoints
+
+Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels` (or `/ogcapi-internal/collections/manual_waterlevels`). Required parameters are in **bold**.
+
+| **Method** | **Path** | **Query parameters** | **Response type** | **Use** |
+| --- | --- | --- | --- | --- |
+| GET | `/` | `f` | JSON (collection metadata) | Describe the collection: title, description, spatial/temporal extent, the parameters it serves (`parameter_names`), and the query types it supports (`data_queries`). |
+| GET | `/locations` | `datetime`, `parameter-name`, `f` | GeoJSON `FeatureCollection` (see [Sites](#sites)) | List every well that has at least one reading matching the filters. With no parameters, returns every well in the collection. |
+| GET | `/locations/{locId}` | `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` (see [Time series](#time-series)) | Get the time series for one well. `locId` is the feature `id` from `/locations`. With no `datetime`, returns the well's entire record. |
+| GET | `/position` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for wells whose location intersects the `coords` WKT geometry. A `Point` must match a well's coordinates exactly, so prefer `/locations/{locId}` for a single well. |
+| GET | `/area` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for every well inside the `coords` WKT `Polygon`. `coords` is a required query parameter.|
+| GET | `/cube` | **`bbox`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for every well inside the `bbox`. `bbox` is a required query parameter. |
+
+Parameter behaviour:
+
+- `datetime`: an ISO 8601 instant or interval; `..` leaves an end open (e.g. `2020-01-01/..`). Applies to the reading timestamps.
+- `parameter-name`: comma-separated. `groundwater level below ground surface` and `groundwater level reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
+- `bbox` is a comma-separated list of the following values: `minx`, `miny`, `maxx`, `maxy`. They are defined via longitude and latitude in WGS84 (EPSG:4326).
+- `coords` is a WKT Polygon that uses longitude latitude pairs, defined using WGS84 (EPS:4326).
+- `f`: `json` (default for clients) or `html`.
+
+Not supported:
+
+- `/radius`, `/trajectory`, `/corridor` and `/items` return `400 Unsupported query type`.
+- `/instances` returns an empty list. Manual readings have no transducer deployments.
+- `z` and `crs` are accepted, and so is `limit` on `/locations`, but they are ignored. There is no pagination.
+
+Responses:
+
+- `200`: data found.
+- `204 No Content`: the coverage queries (`/locations/{locId}`, `/position`, `/area`, `/cube`) matched no readings.
+- `400`: invalid parameter, e.g. missing `coords` or `bbox`, malformed WKT.
+- `413`: request too large (planned; see [Integration with WeaverAPI](#integration-with-weaverapi)).
+
 # Notes
 
 ## ogc_waterlevels as of 11/4/2026
@@ -158,11 +198,16 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 
 ## EDR Formations/Construction
 
-The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`). Updates in other places are likely needed, but are not listed here.
+The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`).
 
 **IMPORTANT**
+The following is a non-exhaustive list of updates that need to occur. Others are likely needed but not everything is enumerated herein since the codebase and standards were not exhaustively reviewed for where development needs to occur.
+
 - The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
 - 'dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
+- `parameter-name` should be added as a query parameter to `/locations` since that is part of the standard. This doesn't appear in the current version of `pygeoapi` OpenAPI specs. We'd need to document this in the `OpenAPI` specs or document it elsewhere so users know it's a valid query parameter.
+- `bbox` should be removed from `/locations` as a query parameter since it is not part of the standard.
+- A `413: request too large` error needs to be raised if too much data is queried at once.
 
 # Integration with WeaverAPI
 
@@ -172,7 +217,7 @@ The following steps will be taken to integrate this collection with WeaverAPI:
 2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
    - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
 
-If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In step 1 we can use the `bbox` query parameter to tile New Mexico to get fewer points at a time. In step 2 we can use the `datetime` query parameter to get fewer observations at a time; in this case we need to make sure that we *always* get data up to the present day.
+If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day.
 
 
 # Outstanding Questions
