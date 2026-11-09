@@ -149,6 +149,18 @@ def ngwmn_well():
                 "nma_data_quality": None,
                 "release_status": "private",
             },
+            # A public attempt with no depth (dry well, obstruction) has a
+            # null value. It has no depth to report, so it is left out
+            # rather than crashing the formatter (SA-0034 returned 500).
+            {
+                "sample_name": f"{POINT_ID}-wl-4",
+                "sample_method": "Steel-tape measurement",
+                "observation_datetime": "2024-06-01T00:00:00Z",
+                "value": None,
+                "measuring_point_height": None,
+                "nma_data_quality": None,
+                "release_status": "public",
+            },
         ]
         for obs in observations:
             sample = Sample(
@@ -344,7 +356,21 @@ def test_ngwmn_wellconstruction(ngwmn_well):
     assert casing.findtext("CasingDepthUnits") == "ft bgs"
     assert float(casing.findtext("ScreenTop")) == 80.0
     assert float(casing.findtext("ScreenBottom")) == 120.0
-    assert casing.findtext("ScreenDescription") == "4in slotted"
+    # Element names and order follow the legacy AMPAPI feed NGWMN harvests.
+    assert casing.findtext("ScreenBottomUnits") == "ft bgs"
+    assert casing.findtext("ScreenIntervalMaterial") == "4in slotted"
+    assert casing.findtext("CasingIntervalMaterial") == "Steel"
+    assert [c.tag for c in casing] == [
+        "PointID",
+        "CasingTop",
+        "CasingBottom",
+        "CasingDepthUnits",
+        "ScreenTop",
+        "ScreenBottom",
+        "ScreenBottomUnits",
+        "ScreenIntervalMaterial",
+        "CasingIntervalMaterial",
+    ]
 
 
 def test_ngwmn_lithology(ngwmn_well):
@@ -358,10 +384,23 @@ def test_ngwmn_lithology(ngwmn_well):
 
     lithology = lithologies[0]
     assert lithology.findtext("PointID") == ngwmn_well
-    assert float(lithology.findtext("TopDepth")) == 0.0
-    assert float(lithology.findtext("BottomDepth")) == 60.0
-    assert lithology.findtext("Units") == "feet"
-    assert lithology.findtext("Description") == "Sandstone"
+    # Element names and order follow the legacy AMPAPI feed NGWMN harvests.
+    assert [c.tag for c in lithology] == [
+        "PointID",
+        "LithologyCode",
+        "TERM",
+        "StratSource",
+        "StratTop",
+        "StratTopUnit",
+        "StratBottom",
+        "StratBottomUnit",
+    ]
+    assert lithology.findtext("LithologyCode") == "SNDS"
+    assert lithology.findtext("TERM") == "Sandstone"
+    assert float(lithology.findtext("StratTop")) == 0.0
+    assert lithology.findtext("StratTopUnit") == "ft bgs"
+    assert float(lithology.findtext("StratBottom")) == 60.0
+    assert lithology.findtext("StratBottomUnit") == "ft bgs"
 
 
 def test_ngwmn_waterlevels_merges_manual_and_transducer(ngwmn_merged_well):
