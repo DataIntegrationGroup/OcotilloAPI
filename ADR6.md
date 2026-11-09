@@ -308,7 +308,7 @@ Database-backed API keys will use the following defaults:
 - Maximum lifetime: 365 days.
 - Rotation overlap: Up to 30 days before expiration.
 - Expiration notifications: 45, 30, 14, 7, and 1 day before expiration.
-- Notification channels: Operator Console and email.
+- Notification channels: Operator Console, Notification Bell Icon button, and email.
 - Revocation: Available to authorized administrators and, where permitted, the key owner.
 - Compromised credentials: Immediately revocable without waiting for the rotation window.
 
