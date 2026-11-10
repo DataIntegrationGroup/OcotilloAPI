@@ -19,7 +19,7 @@ The purpose of this document is to determine and record the shape of the `/manua
 The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of
 
 - Well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
-- Public data for `/ogcapi/manual_waterlevels/` endpoints.
+- Public data for `/ogcapi/collections/manual_waterlevels/` endpoints.
 - Both real and `null` values, both of which contain corresponding reasons for their state.
 
 ### Shape
