@@ -43,7 +43,6 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
                 "name": name,
                 "elevation": elevation,
                 "elevation_units": "m",
-                "horizontal_datum": "WGS84",
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
@@ -73,6 +72,8 @@ where
 | `well_depth` | `float` or `null` | Depth of the well, in feet |
 | `well_depth_units` | `str` | Always `"ft"` |
 | `alternate_ids` | `list` | Alternate ids for the well. Each element is an object with `id`, `relation`, and `organization` |
+
+According to the standard [RFC 7946](https://www.rfc-editor.org/info/rfc7946/#section-4) the CRS must be "a geographic coordinate reference system, using the World Geodetic System 1984 (WGS 84) datum, with longitude and latitude units of decimal degrees."
 
 #### Time series
 
