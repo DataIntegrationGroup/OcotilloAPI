@@ -59,7 +59,7 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
 }
 ```
 
-where
+where, for the following, `id` is at `features[].id` and all other fields are under `features[].properties`
 
 | **Field** | **Type** | **Description** |
 | --- | --- | --- |
@@ -322,12 +322,16 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 
 where
 
-- Each coverage's `id` is a `str` that relates it back to the feature's (well's) `id` where it is measured. Note that `id` is a `str` for coverages but an `int` for features.
-- `longitude` and `latitude` are non-nullable `float`.
-- `n` is an `int`
-- `value 1, value 2, ..., value n` are nullable `float`
-- `value 1 reason, value 2 reason, ..., value n reason` are nullable `str`
-- `value 1 datetime, value 2 datetime, ..., value n datetime` are non-nullable ISO 8601 `datetime` in UTC. 
+| **Field** | **Type** | **Description** |
+| --- | --- | --- |
+| `coverages[].id` | `str` | Relates the coverage back to the feature's (well's) `id` where it is measured. Note that `id` is a `str` for coverages but an `int` for features |
+| `coverages[].domain.axes.x.values` | `list[float]` | Longitude of the well. There is only one item in the list. |
+| `coverages[].domain.axes.y.values` | `list[float]` | Latitude of the well. There is only one item in the list. |
+| `coverages[].domain.axes.t.values` | `list[str]` | ISO 8601 datetime strings for each element in each range |
+| `coverages[].ranges["groundwater level below ground surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | Groundwater level below ground surface observations |
+| `coverages[].ranges["groundwater level reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | Groundwater level reason for each observation |
 
 ## Endpoints
 
