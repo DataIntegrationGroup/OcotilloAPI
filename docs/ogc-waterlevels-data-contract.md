@@ -327,7 +327,7 @@ Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. R
 | **Method** | **Path** | **Query parameters** | **Response type** | **Use** |
 | --- | --- | --- | --- | --- |
 | GET | `/` | `f` | JSON (collection metadata) | Describe the collection: title, description, spatial/temporal extent, the parameters it serves (`parameter_names`), and the query types it supports (`data_queries`). |
-| GET | `/locations` | `datetime`, `parameter-name`, `f` | GeoJSON `FeatureCollection` (see [Sites](#sites)) | List every well that has at least one reading matching the filters. With no parameters, returns every well in the collection. |
+| GET | `/locations` | `datetime`, `parameter-name`, `bbox`, `f` | GeoJSON `FeatureCollection` (see [Sites](#sites)) | List every well that has at least one reading matching the filters. With no parameters, returns every well in the collection. |
 | GET | `/locations/{locId}` | `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` (see [Time series](#time-series)) | Get the time series for one well. `locId` is the feature `id` from `/locations`. With no `datetime`, returns the well's entire record. |
 | GET | `/position` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for wells whose location intersects the `coords` WKT geometry. A `Point` must match a well's coordinates exactly, so prefer `/locations/{locId}` for a single well. |
 | GET | `/area` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for every well inside the `coords` WKT `Polygon`. `coords` is a required query parameter.|
@@ -378,6 +378,8 @@ The following is a non-exhaustive list of updates that need to occur. Others are
 - The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
 - `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 - A `413: request too large` error needs to be raised if too much data is queried at once.
+- `/locations` should have a `parameter-name` query parameter. Document that it is part of the standard though not in the OpenAPI spec from OGC. Ensure it shows up in the OpenAPI spec/documentation for Ocotillo. Pin the amendment with a test so that a `pygeoapi` upgrade that adds it natively does not create a duplicate entry.
+- `/locations` should document that `bbox` is not in the OGC standard but is in the OpenAPI spec so is included here.
 
 # How to use API
 
@@ -401,8 +403,10 @@ If a `413` error is encountered then WeaverAPI will need to add query parameters
   - **Original question**: is `/manual_waterlevels` the correct id for the collection?
 - **DECIDED**: This should become `/manual_waterlevels` and transducer and manual measurements should be split into different views and collections. `/continuous_waterlevels` will be developed at a later date.
   - **Original question**: Should this stay `/waterlevels` and transducer and manual measurements have different parameter names, or should they be split into different views and collections?
-- The EDR standard's written requirements for [`/locations`](https://docs.ogc.org/is/19-086r6/19-086r6.html#_60c4d31c-62f2-4dc7-9a3e-6a1a9127d29e) (Table 13, Req. A.33) list `parameter-name` as a query parameter, but the standard's official OpenAPI definition ([locations.yaml](https://schemas.opengis.net/ogcapi/edr/1.1/openapi/paths/queries/locations.yaml)) omits it. `pygeoapi` follows the OpenAPI definition, so it accepts `?parameter-name` on `/locations` (and our provider filters on it) but does not list it in the generated OpenAPI document. It will be especially useful for the future `/water_chemistry` collection. Should we include it in this contract? If so, should we document it only here, or also add it to the generated OpenAPI document (we generate that file in `core/pygeoapi.py::_generate_openapi`, so it can be amended there without patching `pygeoapi`)?
-- Conversely, the standard's written requirements for `/locations` do not list `bbox`, but its official OpenAPI definition does, and `pygeoapi` both accepts and documents it. Should we keep `bbox` in the contract, marked as supported-but-not-in-the-written-requirements, or remove it?
+- **DECIDED**: `/locations` will have a `parameter-name` query parameter.
+  - **Original question**: The EDR standard's written requirements for [`/locations`](https://docs.ogc.org/is/19-086r6/19-086r6.html#_60c4d31c-62f2-4dc7-9a3e-6a1a9127d29e) (Table 13, Req. A.33) list `parameter-name` as a query parameter, but the standard's official OpenAPI definition ([locations.yaml](https://schemas.opengis.net/ogcapi/edr/1.1/openapi/paths/queries/locations.yaml)) omits it. `pygeoapi` follows the OpenAPI definition, so it accepts `?parameter-name` on `/locations` (and our provider filters on it) but does not list it in the generated OpenAPI document. It will be especially useful for the future `/water_chemistry` collection. Should we include it in this contract? If so, should we document it only here, or also add it to the generated OpenAPI document (we generate that file in `core/pygeoapi.py::_generate_openapi`, so it can be amended there without patching `pygeoapi`)?
+- **DECIDED**: `/locations` will have a `bbox` query parameter.
+  - **Original question**: Conversely, the standard's written requirements for `/locations` do not list `bbox`, but its official OpenAPI definition does, and `pygeoapi` both accepts and documents it. Should we keep `bbox` in the contract, marked as supported-but-not-in-the-written-requirements, or remove it?
 
 # Future Work
 
