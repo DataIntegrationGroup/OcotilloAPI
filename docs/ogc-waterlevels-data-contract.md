@@ -379,15 +379,15 @@ The following is a non-exhaustive list of updates that need to occur. Others are
 - `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 - A `413: request too large` error needs to be raised if too much data is queried at once.
 
-# Integration with WeaverAPI
+# How to use API
 
-The following steps will be taken to integrate this collection with WeaverAPI:
+The following steps will be taken to integrate this collection with WeaverAPI. These steps can be used by other consumers, too. If other consumers need the information live they may want to follow other strategies than retrieving time series data one-well-at-a-time. That is, however, up to the different consumers:
 
 1. Query `/locations` to get a FeatureCollection of all locations that report manual groundwater levels
 2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
-   - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
+   - WeaverAPI is not concerned about timing it works on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
 
-If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day.
+If a `413` error is encountered then WeaverAPI will need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day. Instead of a `datetime` query parameter for step 1, though, WeaverAPI can tile New Mexico to retrieve all of the locations using the `bbox` query parameter.
 
 
 # Outstanding Questions
