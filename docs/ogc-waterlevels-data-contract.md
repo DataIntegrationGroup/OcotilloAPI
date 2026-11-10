@@ -375,6 +375,7 @@ Responses:
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
+- Ensure that each `null` observation has a corresponding `groundwater level reason`, otherwise omit it from the view.
 
 **IMPORTANT**
 
