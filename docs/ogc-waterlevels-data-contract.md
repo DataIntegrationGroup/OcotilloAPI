@@ -65,6 +65,7 @@ where
 | **Field** | **Type** | **Description** |
 | --- | --- | --- |
 | `id` | `str` | Internal id of the well |
+| `name` | `str` | The name of the well (e.g. the PointID) |
 | `elevation` | `float` | Elevation of the well, in meters |
 | `elevation_units` | `str` | Always `"m"` |
 | `horizontal_datum` | `str` | Always `"WGS84"` |
