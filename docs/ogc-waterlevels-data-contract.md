@@ -41,8 +41,8 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
             },
             "properties": {
                 "name": name,
-                "elevation": elevation,
-                "elevation_units": "m",
+                "ground_surface_elevation": elevation,
+                "ground_surface_elevation_units": "m",
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
@@ -65,8 +65,8 @@ where
 | --- | --- | --- |
 | `id` | `str` | Internal id of the well |
 | `name` | `str` | The name of the well (e.g. the PointID) |
-| `elevation` | `float` | Elevation of the well, in meters |
-| `elevation_units` | `str` | Always `"m"` |
+| `ground_surface_elevation` | `float` | Elevation of the ground surface where the well is located, in meters |
+| `ground_surface_elevation_units` | `str` | Always `"m"` |
 | `horizontal_datum` | `str` | Always `"WGS84"` |
 | `vertical_datum` | `str` | Always `"NAVD88"` |
 | `well_depth` | `float` or `null` | Depth of the well, in feet |
