@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import uuid
 import importlib
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta, timezone
@@ -51,7 +52,13 @@ seed_epa_limits = importlib.import_module(
 olwc_corrections = importlib.import_module(
     "data_migrations.migrations." "20261002_0001_correct_olwc_well_depth_and_mp_height"
 )
+backfill_stratigraphic_intervals = importlib.import_module(
+    "data_migrations.migrations." "20261105_0001_backfill_stratigraphic_intervals"
+)
+from db.geologic_formation import GeologicFormation
 from db.lexicon import LexiconCategory
+from db.ngwmn_views import NGWMNLithology
+from db.nma_legacy import NMA_Stratigraphy
 from db.location import Location, LocationThingAssociation
 from db.notes import Notes
 from db.parameter import Parameter
@@ -62,6 +69,7 @@ from db.measuring_point_history import MeasuringPointHistory
 from db.observation import Observation
 from db.sample import Sample
 from db.thing import Thing
+from db.stratigraphic_interval import StratigraphicInterval
 from db.engine import session_ctx
 from db.transducer import TransducerObservation
 from tests import get_parameter_id
@@ -2484,3 +2492,266 @@ def test_olwc_corrections_refuse_unexpected_history(tmp_path, monkeypatch):
             )
         finally:
             _cleanup_wells(session, list(wells.values()))
+
+
+# --- backfill stratigraphic intervals --------------------------------------
+# Real formation codes, because geologic_formation.formation_code is a foreign
+# key to lexicon_term.
+STRAT_MIXED = "211DKOT"  # SNDS and SDSL intervals
+STRAT_KEPT = "110ALVM"  # formation lithology set; the view ignores it
+STRAT_NOCODE = "310GLOR"  # intervals but no lithology code
+
+
+def _strat_formations(session):
+    """Get or create the test formations; return them and the ones created."""
+    formations, created = {}, []
+    for code in (STRAT_MIXED, STRAT_KEPT, STRAT_NOCODE):
+        formation = session.scalars(
+            select(GeologicFormation).where(GeologicFormation.formation_code == code)
+        ).first()
+        if formation is None:
+            formation = GeologicFormation(formation_code=code)
+            session.add(formation)
+            created.append(code)
+        formations[code] = formation
+    session.flush()
+    originals = {code: f.lithology for code, f in formations.items()}
+    formations[STRAT_MIXED].lithology = None
+    formations[STRAT_NOCODE].lithology = None
+    formations[STRAT_KEPT].lithology = "Gravel"
+    session.commit()
+    return formations, created, originals
+
+
+def _strat_restore(session, formations, created, originals, things):
+    session.execute(
+        delete(Notes).where(
+            Notes.target_table == "stratigraphic_interval",
+            Notes.target_id.in_(
+                select(StratigraphicInterval.id).where(
+                    StratigraphicInterval.thing_id.in_([t.id for t in things])
+                )
+            ),
+        )
+    )
+    _cleanup_wells(session, things)
+    for code, formation in formations.items():
+        if code in created:
+            session.delete(formation)
+        else:
+            formation.lithology = originals[code]
+    session.commit()
+
+
+def _legacy(session, thing, unit, top, bottom, code=None, guid=True, **kw):
+    session.add(
+        NMA_Stratigraphy(
+            thing_id=thing.id,
+            nma_point_id=thing.name[:10],
+            nma_global_id=uuid.uuid4() if guid else None,
+            unit_identifier=unit,
+            strat_top=top,
+            strat_bottom=bottom,
+            lithology=code,
+            **kw,
+        )
+    )
+
+
+def _intervals(session, thing):
+    """(formation code, top, bottom, lithology) per interval, in depth order."""
+    return sorted(
+        session.execute(
+            select(
+                GeologicFormation.formation_code,
+                StratigraphicInterval.top_depth,
+                StratigraphicInterval.bottom_depth,
+                StratigraphicInterval.lithology,
+            )
+            .outerjoin(
+                GeologicFormation,
+                GeologicFormation.id == StratigraphicInterval.geologic_formation_id,
+            )
+            .where(StratigraphicInterval.thing_id == thing.id)
+        ).all(),
+        key=lambda r: (r[1], r[2], r[0] or "", r[3] or ""),
+    )
+
+
+def _interval(session, thing, top, bottom):
+    return session.scalars(
+        select(StratigraphicInterval).where(
+            StratigraphicInterval.thing_id == thing.id,
+            StratigraphicInterval.top_depth == top,
+            StratigraphicInterval.bottom_depth == bottom,
+        )
+    ).all()
+
+
+def _strat_fixture(session):
+    formations, created, originals = _strat_formations(session)
+    a = _make_thing(session, "STRAT-A")
+    b = _make_thing(session, "STRAT-B")
+    # Transferred rows: no legacy id, so the migration adopts them.
+    session.add(
+        StratigraphicInterval(
+            thing_id=a.id,
+            geologic_formation_id=formations[STRAT_MIXED].id,
+            top_depth=0.0,
+            bottom_depth=10.0,
+        )
+    )
+    session.add(
+        StratigraphicInterval(
+            thing_id=b.id,
+            geologic_formation_id=formations[STRAT_MIXED].id,
+            top_depth=0.0,
+            bottom_depth=5.0,
+            lithology="Shale",  # set by someone: kept
+        )
+    )
+    _legacy(
+        session,
+        a,
+        STRAT_MIXED,
+        0,
+        10,
+        "SNDS",
+        lithologic_modifier=" red ",
+        contributing_unit="Y",
+        strat_source="Driller log",
+        strat_notes="Cuttings only",
+    )
+    _legacy(session, a, " 211DKOT ", 10, 20, "snds")  # padded, lower case
+    _legacy(session, a, STRAT_MIXED, 20, 30, "SDSL", contributing_unit="n")
+    _legacy(session, a, STRAT_KEPT, 30, 40, "ALVM")
+    _legacy(session, a, STRAT_NOCODE, 40, 50)
+    _legacy(session, a, "NOTAFORMATION", 50, 60, "SHLE")  # unknown unit
+    _legacy(session, a, None, 60, 70, "BSLT")  # no UnitIdentifier
+    _legacy(session, a, None, 70, 80, contributing_unit="?")  # bare interval
+    _legacy(session, a, STRAT_KEPT, 80, 90)  # no code: not exported
+    _legacy(session, b, STRAT_MIXED, 0, 5, "SNDS")
+    _legacy(session, b, STRAT_MIXED, 9, 4, "SNDS")  # top below bottom: skipped
+    _legacy(session, b, STRAT_MIXED, 0, 0, "XXXX")  # both zero: kept; bad code
+    _legacy(session, b, STRAT_MIXED, 5, 9, "SDSL")
+    _legacy(session, b, STRAT_MIXED, 5, 9, "SNDS", guid=False)  # legacy repeat
+    session.commit()
+    return formations, created, originals, [a, b]
+
+
+def test_backfill_stratigraphic_intervals_inserts_and_adopts():
+    mod = backfill_stratigraphic_intervals
+    with session_ctx() as session:
+        formations, created, originals, (a, b) = _strat_fixture(session)
+        try:
+            mod.run(session)
+            session.commit()
+            session.expire_all()
+
+            assert _intervals(session, a) == [
+                (STRAT_MIXED, 0.0, 10.0, "Sandstone"),
+                (STRAT_MIXED, 10.0, 20.0, "Sandstone"),
+                (STRAT_MIXED, 20.0, 30.0, "Sandstone and shale"),
+                (STRAT_KEPT, 30.0, 40.0, "Alluvium"),
+                (STRAT_NOCODE, 40.0, 50.0, None),
+                (None, 50.0, 60.0, "Shale"),
+                (None, 60.0, 70.0, "Basalt"),
+                (None, 70.0, 80.0, None),
+                (STRAT_KEPT, 80.0, 90.0, None),
+            ]
+            assert _intervals(session, b) == [
+                (STRAT_MIXED, 0.0, 0.0, None),
+                (STRAT_MIXED, 0.0, 5.0, "Shale"),  # kept, not overwritten
+                (STRAT_MIXED, 5.0, 9.0, "Sandstone"),
+                (STRAT_MIXED, 5.0, 9.0, "Sandstone and shale"),
+            ]
+
+            (adopted,) = _interval(session, a, 0.0, 10.0)
+            assert adopted.nma_pk_stratigraphy is not None
+            assert adopted.lithologic_modifier == "red"
+            assert adopted.contributing_unit is True
+            assert adopted.source == "Driller log"
+            assert [(n.note_type, n.content) for n in adopted.notes] == [
+                ("General", "Cuttings only")
+            ]
+            assert _interval(session, a, 20.0, 30.0)[0].contributing_unit is False
+            assert _interval(session, a, 70.0, 80.0)[0].contributing_unit is None
+            assert _interval(session, b, 0.0, 5.0)[0].nma_pk_stratigraphy
+
+            # Formation lithology is not touched.
+            assert formations[STRAT_MIXED].lithology is None
+            assert formations[STRAT_KEPT].lithology == "Gravel"
+            assert formations[STRAT_NOCODE].lithology is None
+        finally:
+            _strat_restore(session, formations, created, originals, [a, b])
+
+
+def test_backfill_stratigraphic_intervals_feeds_ngwmn_lithology_view():
+    mod = backfill_stratigraphic_intervals
+    with session_ctx() as session:
+        formations, created, originals, (a, b) = _strat_fixture(session)
+        try:
+            mod.run(session)
+            session.commit()
+
+            rows = session.execute(
+                select(
+                    NGWMNLithology.strat_top,
+                    NGWMNLithology.strat_bottom,
+                    NGWMNLithology.lithology,
+                    NGWMNLithology.term,
+                    NGWMNLithology.strat_source,
+                )
+                .where(NGWMNLithology.point_id == a.name)
+                .order_by(NGWMNLithology.strat_top)
+            ).all()
+            assert rows == [
+                (0.0, 10.0, "Sandstone", "Sandstone", "Driller log"),
+                (10.0, 20.0, "Sandstone", "Sandstone", None),
+                # The interval's own code, not one value per formation.
+                (20.0, 30.0, "Sandstone and shale", "Sandstone and shale", None),
+                (30.0, 40.0, "Alluvium", "Alluvium", None),
+                # 40-50 and 70-80 have no lithology anywhere: not exported.
+                (50.0, 60.0, "Shale", "Shale", None),
+                (60.0, 70.0, "Basalt", "Basalt", None),
+                # 80-90 has no logged code. Its formation's lithology
+                # (Gravel) is not substituted, so it is not exported.
+            ]
+        finally:
+            _strat_restore(session, formations, created, originals, [a, b])
+
+
+def test_backfill_stratigraphic_intervals_is_idempotent_and_dry_run_writes_nothing():
+    mod = backfill_stratigraphic_intervals
+    with session_ctx() as session:
+        formations, created, originals, (a, b) = _strat_fixture(session)
+        try:
+            plan = mod.dry_run(session)
+            session.commit()
+            session.expire_all()
+            assert plan["inserted"] == 11
+            assert plan["updated"] == 2
+            assert plan["notes"] == 1
+            assert plan["stats"]["adopted"] == 2
+            assert plan["stats"]["skipped_depths"] == 1
+            assert plan["stats"]["inserted_without_formation"] == 3
+            assert plan["unmapped_lithology"] == {"XXXX": 1}
+            assert plan["unmapped_contributing_unit"] == {"?": 1}
+            assert plan["unknown_units"] == {"NOTAFORMATION": 1}
+            assert _intervals(session, a) == [(STRAT_MIXED, 0.0, 10.0, None)]
+
+            mod.run(session)
+            session.commit()
+            first = (_intervals(session, a), _intervals(session, b))
+
+            again = mod.dry_run(session)
+            assert again["inserted"] == 0
+            assert again["updated"] == 0
+            mod.run(session)
+            session.commit()
+            session.expire_all()
+            assert (_intervals(session, a), _intervals(session, b)) == first
+            (adopted,) = _interval(session, a, 0.0, 10.0)
+            assert len(adopted.notes) == 1
+        finally:
+            _strat_restore(session, formations, created, originals, [a, b])

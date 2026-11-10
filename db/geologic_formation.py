@@ -18,9 +18,7 @@ from db.lexicon import lexicon_term
 
 if TYPE_CHECKING:
     from db.thing import Thing, WellScreen
-    from db.thing_geologic_formation_association import (
-        ThingGeologicFormationAssociation,
-    )
+    from db.stratigraphic_interval import StratigraphicInterval
 
 
 class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
@@ -58,15 +56,13 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Relationships ---
-    # One-To-Many (Association Object): A GeologicFormation can be associated with many Things (e.g., wells) via the
-    # ThingGeologicFormationAssociation join table.
-    thing_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
-        relationship(
-            "ThingGeologicFormationAssociation",
-            back_populates="geologic_formation",
-            cascade="all, delete-orphan",
-            passive_deletes=True,
-        )
+    # One-To-Many: the stratigraphic intervals (in any well) that fall in this
+    # formation. Deleting a formation keeps the intervals; the database sets
+    # their geologic_formation_id to NULL.
+    stratigraphic_intervals: Mapped[List["StratigraphicInterval"]] = relationship(
+        "StratigraphicInterval",
+        back_populates="geologic_formation",
+        passive_deletes=True,
     )
     # One-To-Many: A GeologicFormation can have many physical WellScreens installed in it.
     well_screens: Mapped[List["WellScreen"]] = relationship(
@@ -75,7 +71,9 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Association Proxies ---
     # Provides direct access to Things (wells) that penetrate this formation.
-    things: AssociationProxy["Thing"] = association_proxy("thing_associations", "thing")
+    things: AssociationProxy["Thing"] = association_proxy(
+        "stratigraphic_intervals", "thing"
+    )
 
     # --- Table Arguments ---
     __table_args__ = (Index("ix_geologicformation_formation_code", "formation_code"),)

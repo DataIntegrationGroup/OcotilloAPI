@@ -83,7 +83,15 @@ env:
 
 jobs:
   dagster-prod-deploy:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest. dagster-cloud-action runs a vendored
+    # dagster-cloud-x86_64.pex on the runner's own interpreters, and that pex
+    # carries no native wheels (cffi, pydantic-core, grpcio, sqlalchemy, ...)
+    # for ubuntu-26.04's Python 3.14 / manylinux_2_43. When ubuntu-latest moved
+    # to 26.04 every deploy died with "Failed to find compatible interpreter",
+    # reported as "Could not determine branch deployment". Move off 24.04 only
+    # after a dagster-cloud-action release ships a pex that runs on the newer
+    # image.
+    runs-on: ubuntu-24.04
     # Deliberately not bound to the `production` GitHub environment. This job
     # reads only repository-level DAGSTER_CLOUD_API_TOKEN and
     # DAGSTER_CLOUD_ORGANIZATION_ID -- none of that environment's secrets -- so
@@ -101,7 +109,7 @@ jobs:
       # working tree either path sets up below.
       - name: Prerun checks
         id: prerun
-        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.26
+        uses: dagster-io/dagster-cloud-action/actions/utils/prerun@v1.13.29
 
       # parse_workspace performs its own `actions/checkout`, which cleans the
       # working tree -- fine here because the Docker path runs in a separate job
@@ -109,7 +117,7 @@ jobs:
       - name: Parse dagster_cloud.yaml
         if: steps.prerun.outputs.result == 'docker-deploy'
         id: parse
-        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.26
+        uses: dagster-io/dagster-cloud-action/actions/utils/parse_workspace@v1.13.29
         with:
           dagster_cloud_file: ${{ env.DAGSTER_CLOUD_FILE }}
 
@@ -126,7 +134,7 @@ jobs:
 
       - name: Install uv
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: astral-sh/setup-uv@v10.3.2
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "latest"
 
@@ -162,7 +170,7 @@ jobs:
       # spins up when the dependency hash changes.
       - name: Deploy to Dagster+ prod
         if: steps.prerun.outputs.result == 'pex-deploy'
-        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.26
+        uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.29
         with:
           dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
           build_output_dir: "$GITHUB_WORKSPACE/build"
@@ -176,7 +184,8 @@ jobs:
   # dagster_cloud_post_install.sh that the PEX path replaces with its own
   # `uv pip install --no-deps .` of the repository.
   dagster-prod-docker-deploy:
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-24.04 for the same reason as the job above.
+    runs-on: ubuntu-24.04
     needs: dagster-prod-deploy
     if: needs.dagster-prod-deploy.outputs.build_info
     strategy:
@@ -191,7 +200,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Install uv in container
-        uses: astral-sh/setup-uv@v10.3.2
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "latest"
 
@@ -210,7 +219,7 @@ jobs:
       # checkout_repo is false because requirements.txt is generated above and
       # a second checkout would discard it.
       - name: Deploy to Dagster+ prod
-        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.26
+        uses: dagster-io/dagster-cloud-action/actions/serverless_prod_deploy@v1.13.29
         with:
           organization_id: ${{ vars.DAGSTER_CLOUD_ORGANIZATION_ID }}
           dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}

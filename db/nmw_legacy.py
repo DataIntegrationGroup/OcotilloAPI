@@ -270,7 +270,7 @@ class NMW_WellHeaders(Base):
 
     Transform target: ``thing`` (name/type/well_depth/completion_date),
     ``status_history``, ``contact`` (operator + owner), ``publication``,
-    ``thing_geologic_formation_association``, ``thing_id_link.alternate_id``,
+    ``stratigraphic_interval``, ``thing_id_link.alternate_id``,
     plus new ``well_detail`` and ``well_purpose`` tables.
     """
 
@@ -296,7 +296,7 @@ class NMW_WellHeaders(Base):
     cur_owner = mapped_column("CurOwner", String)  # -> contact.name (type=owner)
     total_depth = mapped_column("TotalDepth", Float)  # -> thing.well_depth
     well_tvd = mapped_column("Well_TVD", Float)  # Drop
-    fm_td = mapped_column("Fm_TD", String)  # -> thing_geologic_formation_association.id
+    fm_td = mapped_column("Fm_TD", String)  # -> stratigraphic_interval.id
     age_td = mapped_column("Age_TD", String)  # Drop
     spud_date = mapped_column("SpudDate", DateTime)  # Drop
     compl_date = mapped_column("ComplDate", DateTime)  # -> thing.well_completion_date

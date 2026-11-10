@@ -35,7 +35,7 @@ from db import (
     Group,
     Asset,
     PermissionHistory,
-    ThingGeologicFormationAssociation,
+    StratigraphicInterval,
     NMA_Stratigraphy,
     NMA_FieldParameters,
     NMA_Chemistry_SampleInfo,
@@ -174,7 +174,7 @@ class Metrics:
         self._handle_metrics(PermissionHistory, *args, **kw)
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
-        self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+        self._handle_metrics(StratigraphicInterval, *args, **kw)
 
     def nma_stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMA_Stratigraphy, name="NMA_Stratigraphy", *args, **kw)

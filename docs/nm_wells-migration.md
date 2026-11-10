@@ -19,7 +19,7 @@ workbook, not in repo).
 2. **Phase 2 — transform** *(later)*. Map mirror rows into the Ocotillo data
    model (`Location → Thing → FieldEvent → FieldActivity → Sample →
    Observation`, plus `status_history`, `measuring_point_history`, `contact`,
-   `publication`, `thing_geologic_formation_association`, `thing_id_link`) using
+   `publication`, `stratigraphic_interval`, `thing_id_link`) using
    the existing CSV→Pandas→ORM transfer pattern in `transfers/`. Per-column
    targets are recorded inline in `db/nmw_legacy.py` and summarized below.
 
@@ -154,7 +154,7 @@ Key relationship re-routing: legacy `WellDataID` ties header/location/records;
 | `tbl_well_headers` CurStatus        | `status_history.status` |
 | `tbl_well_headers` CurOperatr/CurOwner | `contact.name` (type = operator / owner) |
 | `tbl_well_headers` API              | `thing_id_link.alternate_id` |
-| `tbl_well_headers` Fm_TD            | `thing_geologic_formation_association` |
+| `tbl_well_headers` Fm_TD            | `stratigraphic_interval` |
 | `tbl_well_headers` WellType/WellOrient/CurWellNum/Comments | **new** `well_purpose.purpose` / **new** `well_detail` (well_orient, well_number, comments) |
 | `tbl_well_records` RecrdSetID/ActionDate/Comments | `field_event` (id/event_date/notes) |
 | `tbl_well_records` RecrdClass       | `field_activity.activity_type` |

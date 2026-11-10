@@ -58,7 +58,7 @@ from db.sensor import *
 from db.status_history import *
 from db.thing import *
 from db.thing_aquifer_association import *
-from db.thing_geologic_formation_association import *
+from db.stratigraphic_interval import *
 from db.aquifer_type import *
 from db.nma_legacy import *
 from db.nmw_legacy import *

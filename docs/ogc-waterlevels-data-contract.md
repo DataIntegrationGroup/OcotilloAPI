@@ -6,7 +6,7 @@
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
-| Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946) |
+| Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946), datetime (ISO 8601) |
 | Base path | `/ogcapi/collections/manual_waterlevels` |
 | Authentication | None, public data only for `/ogcapi/...`. |
 
@@ -18,8 +18,8 @@ The purpose of this document is to determine and record the shape of the `/manua
 ## Data
 The data served by the `/manual_waterlevels` OGC EDR endpoints will consist of
 
-- Well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer, e-probe).
-- Public data for `/ogcapi/manual_waterlevels/` endpoints.
+- Well information and hand-measured waterlevels only. They will not contain any "continuous" observations (e.g. acoustic transducer).
+- Public data for `/ogcapi/collections/manual_waterlevels/` endpoints.
 - Both real and `null` values, both of which contain corresponding reasons for their state.
 
 ### Shape
@@ -41,9 +41,8 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
             },
             "properties": {
                 "name": name,
-                "elevation": elevation,
-                "elevation_units": "m",
-                "horizontal_datum": "WGS84",
+                "ground_surface_elevation": elevation,
+                "ground_surface_elevation_units": "m",
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
@@ -60,18 +59,21 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
 }
 ```
 
-where
+where, for the following, `id` is at `features[].id` and all other fields are under `features[].properties`
 
 | **Field** | **Type** | **Description** |
 | --- | --- | --- |
-| `id` | `str` | Internal id of the well |
-| `elevation` | `float` | Elevation of the well, in meters |
-| `elevation_units` | `str` | Always `"m"` |
+| `id` | `int` | Internal id of the well |
+| `name` | `str` | The name of the well (e.g. the PointID) |
+| `ground_surface_elevation` | `float` | Elevation of the ground surface where the well is located, in meters |
+| `ground_surface_elevation_units` | `str` | Always `"m"` |
 | `horizontal_datum` | `str` | Always `"WGS84"` |
 | `vertical_datum` | `str` | Always `"NAVD88"` |
 | `well_depth` | `float` or `null` | Depth of the well, in feet |
 | `well_depth_units` | `str` | Always `"ft"` |
 | `alternate_ids` | `list` | Alternate ids for the well. Each element is an object with `id`, `relation`, and `organization` |
+
+According to the standard [RFC 7946](https://www.rfc-editor.org/info/rfc7946/#section-4) the CRS must be "a geographic coordinate reference system, using the World Geodetic System 1984 (WGS 84) datum, with longitude and latitude units of decimal degrees."
 
 #### Time series
 
@@ -318,6 +320,19 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 }
 ```
 
+where
+
+| **Field** | **Type** | **Description** |
+| --- | --- | --- |
+| `coverages[].id` | `str` | Relates the coverage back to the feature's (well's) `id` where it is measured. Note that `id` is a `str` for coverages but an `int` for features |
+| `coverages[].domain.axes.x.values` | `list[float]` | Longitude of the well. There is only one item in the list. |
+| `coverages[].domain.axes.y.values` | `list[float]` | Latitude of the well. There is only one item in the list. |
+| `coverages[].domain.axes.t.values` | `list[str]` | ISO 8601 datetime strings for each element in each range |
+| `coverages[].ranges["groundwater level below ground surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | Groundwater level below ground surface observations |
+| `coverages[].ranges["groundwater level reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | Groundwater level reason for each observation |
+
 ## Endpoints
 
 Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. Required parameters are in **bold**.
@@ -325,7 +340,7 @@ Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. R
 | **Method** | **Path** | **Query parameters** | **Response type** | **Use** |
 | --- | --- | --- | --- | --- |
 | GET | `/` | `f` | JSON (collection metadata) | Describe the collection: title, description, spatial/temporal extent, the parameters it serves (`parameter_names`), and the query types it supports (`data_queries`). |
-| GET | `/locations` | `datetime`, `parameter-name`, `f` | GeoJSON `FeatureCollection` (see [Sites](#sites)) | List every well that has at least one reading matching the filters. With no parameters, returns every well in the collection. |
+| GET | `/locations` | `datetime`, `parameter-name`, `bbox`, `f` | GeoJSON `FeatureCollection` (see [Sites](#sites)) | List every well that has at least one reading matching the filters. With no parameters, returns every well in the collection. |
 | GET | `/locations/{locId}` | `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` (see [Time series](#time-series)) | Get the time series for one well. `locId` is the feature `id` from `/locations`. With no `datetime`, returns the well's entire record. |
 | GET | `/position` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for wells whose location intersects the `coords` WKT geometry. A `Point` must match a well's coordinates exactly, so prefer `/locations/{locId}` for a single well. |
 | GET | `/area` | **`coords`**, `datetime`, `parameter-name`, `f` | CoverageJSON `CoverageCollection` | Get time series for every well inside the `coords` WKT `Polygon`. `coords` is a required query parameter.|
@@ -360,6 +375,7 @@ Responses:
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
+- Ensure that each `null` observation has a corresponding `groundwater level reason`, otherwise omit it from the view.
 
 **IMPORTANT**
 
@@ -373,20 +389,21 @@ The EDR endpoints that we make are bespoke, after a fashion. Updates to create t
 
 The following is a non-exhaustive list of updates that need to occur. Others are likely needed but not everything is enumerated herein since the codebase and standards were not exhaustively reviewed for where development needs to occur.
 
-- The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
 - `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 - A `413: request too large` error needs to be raised if too much data is queried at once.
+- `/locations` should have a `parameter-name` query parameter. Document that it is part of the standard though not in the OpenAPI spec from OGC. Ensure it shows up in the OpenAPI spec/documentation for Ocotillo. Pin the amendment with a test so that a `pygeoapi` upgrade that adds it natively does not create a duplicate entry.
+- `/locations` should document that `bbox` is not in the OGC standard but is in the OpenAPI spec so is included here.
 
-# Integration with WeaverAPI
+# How to use API
 
-The following steps will be taken to integrate this collection with WeaverAPI:
+The following steps will be taken to integrate this collection with WeaverAPI. These steps can be used by other consumers, too. If other consumers need the information live they may want to follow other strategies than retrieving time series data one-well-at-a-time. That is, however, up to the different consumers:
 
 1. Query `/locations` to get a FeatureCollection of all locations that report manual groundwater levels
-2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
-   - We are not concerned about timing since this work is done on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
+2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageCollection.
+    - To conform with other FeatureCollections the `id` for every feature is an `int`, but to conform with [CoverageJSON standards](https://schemas.opengis.net/covjson/1.0/coveragejson.json) `locId` will need to be passed as a `str`. 
+    - WeaverAPI is not concerned about timing it works on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
 
-If a `413` error is encountered then we'll need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day.
-
+If a `413` error is encountered then WeaverAPI will need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day. Instead of a `datetime` query parameter for step 1, though, WeaverAPI can tile New Mexico to retrieve all of the locations using the `bbox` query parameter.
 
 # Outstanding Questions
 
@@ -399,8 +416,10 @@ If a `413` error is encountered then we'll need to add query parameters to eithe
   - **Original question**: is `/manual_waterlevels` the correct id for the collection?
 - **DECIDED**: This should become `/manual_waterlevels` and transducer and manual measurements should be split into different views and collections. `/continuous_waterlevels` will be developed at a later date.
   - **Original question**: Should this stay `/waterlevels` and transducer and manual measurements have different parameter names, or should they be split into different views and collections?
-- The EDR standard's written requirements for [`/locations`](https://docs.ogc.org/is/19-086r6/19-086r6.html#_60c4d31c-62f2-4dc7-9a3e-6a1a9127d29e) (Table 13, Req. A.33) list `parameter-name` as a query parameter, but the standard's official OpenAPI definition ([locations.yaml](https://schemas.opengis.net/ogcapi/edr/1.1/openapi/paths/queries/locations.yaml)) omits it. `pygeoapi` follows the OpenAPI definition, so it accepts `?parameter-name` on `/locations` (and our provider filters on it) but does not list it in the generated OpenAPI document. It will be especially useful for the future `/water_chemistry` collection. Should we include it in this contract? If so, should we document it only here, or also add it to the generated OpenAPI document (we generate that file in `core/pygeoapi.py::_generate_openapi`, so it can be amended there without patching `pygeoapi`)?
-- Conversely, the standard's written requirements for `/locations` do not list `bbox`, but its official OpenAPI definition does, and `pygeoapi` both accepts and documents it. Should we keep `bbox` in the contract, marked as supported-but-not-in-the-written-requirements, or remove it?
+- **DECIDED**: `/locations` will have a `parameter-name` query parameter.
+  - **Original question**: The EDR standard's written requirements for [`/locations`](https://docs.ogc.org/is/19-086r6/19-086r6.html#_60c4d31c-62f2-4dc7-9a3e-6a1a9127d29e) (Table 13, Req. A.33) list `parameter-name` as a query parameter, but the standard's official OpenAPI definition ([locations.yaml](https://schemas.opengis.net/ogcapi/edr/1.1/openapi/paths/queries/locations.yaml)) omits it. `pygeoapi` follows the OpenAPI definition, so it accepts `?parameter-name` on `/locations` (and our provider filters on it) but does not list it in the generated OpenAPI document. It will be especially useful for the future `/water_chemistry` collection. Should we include it in this contract? If so, should we document it only here, or also add it to the generated OpenAPI document (we generate that file in `core/pygeoapi.py::_generate_openapi`, so it can be amended there without patching `pygeoapi`)?
+- **DECIDED**: `/locations` will have a `bbox` query parameter.
+  - **Original question**: Conversely, the standard's written requirements for `/locations` do not list `bbox`, but its official OpenAPI definition does, and `pygeoapi` both accepts and documents it. Should we keep `bbox` in the contract, marked as supported-but-not-in-the-written-requirements, or remove it?
 
 # Future Work
 

@@ -39,7 +39,9 @@ from domain.hydrograph import (
     HydrographError,
     derive_block_span,
     narrowed_block_span,
+    readings_by_owning_block,
     resolve_deployment_id,
+    split_around_span,
     validate_delete_range,
 )
 from schemas.transducer import (
@@ -212,7 +214,14 @@ def publish_transducer_block(
         raise _overlap_conflict(existing)
 
     if existing:
-        _delete_superseded(session, payload.thing_id, payload.parameter_id, existing)
+        _replace_within_span(
+            session,
+            payload.thing_id,
+            payload.parameter_id,
+            existing,
+            span_start,
+            span_end,
+        )
 
     # Readings can outlive the block that covered them -- nothing links the two
     # tables, so a block deleted by hand leaves its observations behind, where
@@ -326,7 +335,8 @@ def _overlap_conflict(blocks: list[TransducerObservationBlock]):
                 "loc": ["body", "measurements"],
                 "msg": (
                     f"Time span overlaps existing block(s) {ids}. Retry with "
-                    "?replace_overlapping=true to supersede them."
+                    "?replace_overlapping=true to replace the stored readings "
+                    "in this span."
                 ),
                 "type": "value_error",
                 "input": {"overlapping_blocks": overlapping},
@@ -335,38 +345,123 @@ def _overlap_conflict(blocks: list[TransducerObservationBlock]):
     )
 
 
-def _delete_superseded(
+def _replace_within_span(
     session: Session,
     thing_id: int,
     parameter_id: int,
     blocks: list[TransducerObservationBlock],
+    span_start: datetime,
+    span_end: datetime,
 ) -> None:
     """
-    Drop the blocks a replacing publish supersedes, and their readings.
+    Make room for a replacing publish: delete the stored readings inside the
+    new span, and fit each overlapping block to what it has left.
 
-    The readings go too. Keeping them would leave rows the reader cannot show
-    (no block covers them) that still occupy the deployment/parameter/instant
-    the new series is about to claim -- so "replace" that kept them would fail
-    on the very insert it was asked to make room for.
+    Only the new span is cleared. A block is one earlier logger file, often
+    months or years long, and the replacement is usually a corrected stretch
+    of it -- deleting whole blocks dropped every reading outside that stretch
+    (BDMS-1541). Per block, by what survives on each side of the span
+    (``domain.hydrograph.split_around_span``):
+
+    - nothing: the block is deleted;
+    - one side: the block is narrowed to it;
+    - both sides: the block is split. It keeps the part before the span, and a
+      copy carrying the same review status, provenance, and author takes the
+      part after, so neither part's span reaches over the new block.
     """
     deployment_ids = _deployment_ids_for_thing(session, thing_id)
+
     if deployment_ids:
         for block in blocks:
             session.execute(
                 delete(TransducerObservation).where(
                     TransducerObservation.deployment_id.in_(deployment_ids),
                     TransducerObservation.parameter_id == parameter_id,
-                    TransducerObservation.observation_datetime >= block.start_datetime,
-                    TransducerObservation.observation_datetime <= block.end_datetime,
+                    TransducerObservation.observation_datetime
+                    >= max(block.start_datetime, span_start),
+                    TransducerObservation.observation_datetime
+                    <= min(block.end_datetime, span_end),
                 )
             )
 
-    session.execute(
-        delete(TransducerObservationBlock).where(
-            TransducerObservationBlock.id.in_([block.id for block in blocks])
+    # Blocks can overlap (the legacy transfer wrote an approved and a
+    # not-reviewed block per well over interleaved readings), so each survivor
+    # is fitted only to the block the reader shows it under. Every block
+    # touching the affected range takes part in that choice, including ones
+    # the new span does not reach, but only the overlapping ones change.
+    range_start = min(block.start_datetime for block in blocks)
+    range_end = max(block.end_datetime for block in blocks)
+    surviving = (
+        list(
+            session.scalars(
+                select(TransducerObservation.observation_datetime).where(
+                    TransducerObservation.deployment_id.in_(deployment_ids),
+                    TransducerObservation.parameter_id == parameter_id,
+                    TransducerObservation.observation_datetime >= range_start,
+                    TransducerObservation.observation_datetime <= range_end,
+                )
+            ).all()
         )
+        if deployment_ids
+        else []
     )
+    candidates = session.execute(
+        select(
+            TransducerObservationBlock.id,
+            TransducerObservationBlock.start_datetime,
+            TransducerObservationBlock.end_datetime,
+        ).where(
+            TransducerObservationBlock.thing_id == thing_id,
+            TransducerObservationBlock.parameter_id == parameter_id,
+            TransducerObservationBlock.start_datetime <= range_end,
+            TransducerObservationBlock.end_datetime >= range_start,
+        )
+    ).all()
+    owned = readings_by_owning_block(surviving, [tuple(row) for row in candidates])
+
+    for block in blocks:
+        head, tail = split_around_span(owned.get(block.id, []), span_start, span_end)
+
+        if head is None and tail is None:
+            session.delete(block)
+            continue
+
+        if head is not None and tail is not None:
+            session.add(_block_part(block, tail))
+
+        block.start_datetime, block.end_datetime = head or tail
+
     session.flush()
+
+
+def _block_part(
+    block: TransducerObservationBlock, span: tuple[datetime, datetime]
+) -> TransducerObservationBlock:
+    """
+    A copy of ``block`` over ``span``: the part of a split block after the
+    replacing series. It is the same published data, so it keeps the original's
+    review status, provenance, author, and reviewer rather than the replacer's.
+    """
+    start, end = span
+    return TransducerObservationBlock(
+        thing_id=block.thing_id,
+        parameter_id=block.parameter_id,
+        review_status=block.review_status,
+        release_status=block.release_status,
+        start_datetime=start,
+        end_datetime=end,
+        comment=block.comment,
+        source_file=block.source_file,
+        source_kind=block.source_kind,
+        corrections=block.corrections,
+        reviewer_id=block.reviewer_id,
+        created_by_id=block.created_by_id,
+        created_by_name=block.created_by_name,
+        # A review records the reviewer here (``review_transducer_block``), so
+        # without these the approved tail would lose who approved it.
+        updated_by_id=block.updated_by_id,
+        updated_by_name=block.updated_by_name,
+    )
 
 
 def _reject_colliding_observations(

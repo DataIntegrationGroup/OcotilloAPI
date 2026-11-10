@@ -1,10 +1,10 @@
 from typing import List
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator
 
 from core.enums import FormationCode, Lithology
 from schemas import BaseResponseModel
-from schemas.validators import DepthIntervalMixin, GeometryMixin
+from schemas.validators import GeometryMixin
 
 
 # ------ CREATE ----------
@@ -29,18 +29,6 @@ class CreateGeologicFormation(GeometryMixin):
         if isinstance(v, str):
             return v.upper()
         return v
-
-
-class CreateThingGeologicFormationAssociation(DepthIntervalMixin):
-    """
-    Schema for linking a Thing (Well) to a GeologicFormation.
-    Uses DepthIntervalMixin to enforce bottom_depth > top_depth.
-    """
-
-    thing_id: int
-    geologic_formation_id: int
-    top_depth: float = Field(ge=0)
-    bottom_depth: float = Field(ge=0)
 
 
 # ------ RESPONSE ----------
@@ -71,18 +59,3 @@ class GeologicFormationGeoJSONResponse(BaseModel):
     type: str = "Feature"
     geometry: GeoJSONGeometry
     properties: GeoJSONProperties
-
-
-class ThingGeologicFormationAssociationResponse(BaseResponseModel):
-    """
-    Response schema for the association between a Thing and a GeologicFormation.
-    Includes depth interval information.
-    """
-
-    thing_id: int
-    geologic_formation_id: int | None = None
-    geologic_formation: GeologicFormationGeoJSONResponse | None = None
-    top_depth: float
-    top_depth_unit: str = "ft"
-    bottom_depth: float
-    bottom_depth_unit: str = "ft"
