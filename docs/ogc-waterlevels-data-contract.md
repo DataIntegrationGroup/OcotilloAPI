@@ -6,7 +6,7 @@
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
-| Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946) |
+| Standards | OGC API - EDR 1.1 (OGC 19-086r6), CoverageJSON (OGC 21-069r2), GeoJSON (RFC 7946), datetime (ISO 8601) |
 | Base path | `/ogcapi/collections/manual_waterlevels` |
 | Authentication | None, public data only for `/ogcapi/...`. |
 
@@ -63,7 +63,7 @@ where
 
 | **Field** | **Type** | **Description** |
 | --- | --- | --- |
-| `id` | `str` | Internal id of the well |
+| `id` | `int` | Internal id of the well |
 | `name` | `str` | The name of the well (e.g. the PointID) |
 | `ground_surface_elevation` | `float` | Elevation of the ground surface where the well is located, in meters |
 | `ground_surface_elevation_units` | `str` | Always `"m"` |
@@ -320,6 +320,15 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
 }
 ```
 
+where
+
+- Each coverage's `id` is a `str` that relates it back to the feature's (well's) `id` where it is measured. Note that `id` is a `str` for coverages but an `int` for features.
+- `longitude` and `latitude` are non-nullable `float`.
+- `n` is an `int`
+- `value 1, value 2, ..., value n` are nullable `float`
+- `value 1 reason, value 2 reason, ..., value n reason` are nullable `str`
+- `value 1 datetime, value 2 datetime, ..., value n datetime` are non-nullable ISO 8601 `datetime` in UTC. 
+
 ## Endpoints
 
 Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. Required parameters are in **bold**.
@@ -375,7 +384,6 @@ The EDR endpoints that we make are bespoke, after a fashion. Updates to create t
 
 The following is a non-exhaustive list of updates that need to occur. Others are likely needed but not everything is enumerated herein since the codebase and standards were not exhaustively reviewed for where development needs to occur.
 
-- The `id` field is an integer for the `FeatureCollection` but converted to a string for the `CoverageCollection`. These should be the same data types to enable joins between sites and observations.
 - `dataType` is hardcoded to `float` for each `range`. It should allow `integer` and `string` values too (`core/edr_provider.py::WaterEDRProvider::_coverageCollection`, line 417).
 - A `413: request too large` error needs to be raised if too much data is queried at once.
 - `/locations` should have a `parameter-name` query parameter. Document that it is part of the standard though not in the OpenAPI spec from OGC. Ensure it shows up in the OpenAPI spec/documentation for Ocotillo. Pin the amendment with a test so that a `pygeoapi` upgrade that adds it natively does not create a duplicate entry.
@@ -386,11 +394,11 @@ The following is a non-exhaustive list of updates that need to occur. Others are
 The following steps will be taken to integrate this collection with WeaverAPI. These steps can be used by other consumers, too. If other consumers need the information live they may want to follow other strategies than retrieving time series data one-well-at-a-time. That is, however, up to the different consumers:
 
 1. Query `/locations` to get a FeatureCollection of all locations that report manual groundwater levels
-2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageColltion.
-   - WeaverAPI is not concerned about timing it works on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
+2. Query `/locations/{locId}`, one at a time, to get the associated manual groundwater levels as a CoverageCollection.
+    - To conform with other FeatureCollections the `id` for every feature is an `int`, but to conform with [CoverageJSON standards](https://schemas.opengis.net/covjson/1.0/coveragejson.json) `locId` will need to be passed as a `str`. 
+    - WeaverAPI is not concerned about timing it works on a schedule during off-hours (i.e. at night). The queries, data collection, and harmonization are no longer done live via the CLI.
 
 If a `413` error is encountered then WeaverAPI will need to add query parameters to either step 1 or 2 to decrease the amount of data being returned. In either step we can use the `datetime` query parameter to get fewer records at once; in this case we need to make sure that we *always* get data from the beginning of records up to the present day. Instead of a `datetime` query parameter for step 1, though, WeaverAPI can tile New Mexico to retrieve all of the locations using the `bbox` query parameter.
-
 
 # Outstanding Questions
 
