@@ -472,7 +472,7 @@ def _edr_collections_block(
         # "ogc_" so table_prefix (here, "ogc_internal_" for the internal
         # mount) still applies, the same way _thing_collections_block does.
         table_name = table_prefix + collection["table"].removeprefix("ogc_")
-        provider = {
+        water_edr_provider = {
             "type": "edr",
             "name": "core.edr_provider.WaterEDRProvider",
             "data": {
@@ -486,7 +486,23 @@ def _edr_collections_block(
             "table": table_name,
         }
         if collection["instance_field"]:
-            provider["instance_field"] = collection["instance_field"]
+            water_edr_provider["instance_field"] = collection["instance_field"]
+
+        described_postgresql_provider = {
+            "type": "feature",
+            "name": "core.feature_provider.DescribedPostgreSQLProvider",
+            "data": {
+                **water_edr_provider["data"],
+                "search_path": ["public"],
+            },
+            "id_field": "id",
+            "table": table_name,
+            # These views expose coordinates, not a geometry column.
+            "geom_field": None,
+            "x_field": "longitude",
+            "y_field": "latitude",
+            "time_field": "datetime",
+        }
 
         resources[collection["id"]] = {
             "type": "collection",
@@ -500,21 +516,7 @@ def _edr_collections_block(
                 },
                 "temporal": {"begin": None, "end": None},
             },
-            "providers": [
-                provider,
-                {
-                    "type": "feature",
-                    "name": "core.feature_provider.DescribedPostgreSQLProvider",
-                    "data": {**provider["data"], "search_path": ["public"]},
-                    "id_field": "id",
-                    "table": table_name,
-                    # These views expose coordinates, not a geometry column.
-                    "geom_field": None,
-                    "x_field": "longitude",
-                    "y_field": "latitude",
-                    "time_field": "datetime",
-                },
-            ],
+            "providers": [water_edr_provider, described_postgresql_provider],
         }
 
     block = yaml.safe_dump(
