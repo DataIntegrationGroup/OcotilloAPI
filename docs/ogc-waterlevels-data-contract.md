@@ -46,6 +46,10 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
+                "geologic_formation": {
+                    "code": code,
+                    "description": description
+                }
                 "alternate_ids": [
                     {
                         "id": id,
@@ -71,6 +75,7 @@ where, for the following, `id` is at `features[].id` and all other fields are un
 | `vertical_datum` | `str` | Always `"NAVD88"` |
 | `well_depth` | `float` or `null` | Depth of the well, in feet |
 | `well_depth_units` | `str` | Always `"ft"` |
+| `geologic_formation` | `dict` | The geologic formation completion code and description |
 | `alternate_ids` | `list` | Alternate ids for the well. Each element is an object with `id`, `relation`, and `organization` |
 
 According to the standard [RFC 7946](https://www.rfc-editor.org/info/rfc7946/#section-4) the CRS must be "a geographic coordinate reference system, using the World Geodetic System 1984 (WGS 84) datum, with longitude and latitude units of decimal degrees."
