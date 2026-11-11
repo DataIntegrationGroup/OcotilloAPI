@@ -188,7 +188,11 @@ def _batches(ids: list[int]):
 
 
 def _candidates(session: Session):
-    """Read-only. Draft groundwater level readings not transferred from NM_Aquifer."""
+    """Read-only.
+
+    Groundwater level observations with a release_status of "draft" that were
+    not transferred from NM_Aquifer.
+    """
     event_activity = aliased(FieldActivity)
     event_has_inventory = exists().where(
         event_activity.field_event_id == FieldEvent.id,
@@ -399,7 +403,9 @@ def _write_change_report(readings: list[PlannedReading], mode: str) -> Path:
     own file behind, hence the timestamp in the name.
     """
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H_%M_%S")
+    # The Z marks the stamp as UTC, so a reader in Mountain time doesn't take
+    # it as local and place the run hours off.
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H_%M_%SZ")
     path = REPORT_DIR / f"backfill_water_level_release_status_{stamp}.csv"
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(
@@ -491,13 +497,20 @@ def _log_plan(readings: list[PlannedReading], report: Path, mode: str) -> None:
 
     by_source_action = Counter((r.source, r.action) for r in readings)
     for source in SOURCES:
-        actions = {a: n for (s, a), n in by_source_action.items() if s == source}
-        if actions:
+        count_by_action = {
+            action: count
+            for (row_source, action), count in by_source_action.items()
+            if row_source == source
+        }
+        if count_by_action:
             logger.info(
                 "%s summary %s: %s",
                 LOG_PREFIX,
                 source,
-                ", ".join(f"{n} {a}" for a, n in sorted(actions.items())),
+                ", ".join(
+                    f"{count} {action}"
+                    for action, count in sorted(count_by_action.items())
+                ),
             )
 
     changes = [r for r in readings if r.action == CHANGE]
@@ -586,6 +599,10 @@ def run(session: Session) -> None:
     for observation in observations:
         observation.release_status = changes[observation.id].after
 
+    # No commit or rollback here: the data migration runner owns the
+    # transaction. run_migration commits these changes together with the
+    # data_migration_history row, and session_ctx rolls both back if this
+    # function raises.
     session.flush()
 
     # Read back from the database, not the in-memory objects, so this checks
