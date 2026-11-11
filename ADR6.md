@@ -179,7 +179,11 @@ API keys should have a default and maximum lifetime of 365 days. A 30-day rotati
 existing key and a replacement key to remain valid simultaneously while desktop GIS connections are
 migrated.
 
-Expiration warnings should appear in the console and be delivered by email.
+Ocotillo does not currently have a user-facing email-notification system. Existing Slack edit
+notifications are an operational integration for selected data edits; they do not notify API-key
+owners by email and do not satisfy this requirement. Console warnings can be delivered within
+Ocotillo, but email notices require a notification capability and a verified active email address
+for each principal before they can be enabled.
 
 Desktop GIS clients such as ArcGIS Pro and QGIS may have limitations or differences in how they
 configure authorization headers for OGC connections. Query-parameter authentication therefore
@@ -300,7 +304,23 @@ activity log is not intended to replace those mechanisms.
 The exact event schema, retention requirements, chain verification process, and trusted checkpoint
 storage remain implementation decisions.
 
-### 3. Define API-key lifecycle and defer premature optimization
+### 3. Establish email notification as an API-key lifecycle prerequisite
+
+Email notification is a current gap in Ocotillo functionality. Ocotillo must establish a user-facing
+email-notification capability before it enables email notices for API-key expiration or rotation.
+
+The initial scope of that capability under this record is API-key lifecycle notifications only. It
+does not make email the delivery mechanism for edit notifications, ingestion failures, service
+alerts, or other future operational events.
+
+Until the capability is implemented, API-key expiration warnings must remain visible in the Operator
+Console, but email delivery must be described as planned rather than available.
+
+Before enabling email notices, Ocotillo must associate each principal eligible to own an API key
+with an active email address. The email provider, sending architecture, retry behavior, templates,
+and deliverability controls require a separate implementation design.
+
+### 4. Define API-key lifecycle and defer premature optimization
 
 Database-backed API keys will use the following defaults:
 
@@ -363,6 +383,12 @@ measured performance problem exists.
 Direct database validation provides a simpler starting point and makes revocation behavior easier to
 reason about.
 
+### Console-only API-key expiration warnings.
+
+Console warnings alone are insufficient because a key owner may not visit Ocotillo before a
+credential expires. Email lifecycle notices are therefore required, although Ocotillo must first
+build the missing delivery capability.
+
 ### A custom desktop GIS authentication proxy.
 
 A local proxy could remove reusable credentials from GIS connection URLs, but would require
@@ -387,6 +413,10 @@ and revocation. The risk may be reassessed later.
   and before-and-after capture requirements need further review.
 - **Audit integrity infrastructure**. Hash-chain checkpoints, database-level protections,
   verification schedules, and protection against privileged tampering require implementation design.
+- **Email-notification implementation**. The provider, sending architecture, retries, templates,
+  email-address verification, and deliverability controls for API-key lifecycle notices require a
+  separate implementation design. This ADR decides that the capability is required, not how it is
+  built.
 - **Performance optimization**. No authorization-cache architecture or TTL is selected until
   baseline measurements identify a bottleneck.
 
@@ -419,7 +449,9 @@ principal-group membership, and delegated access-management operations.
 
 The activity log introduces storage, integrity-verification, and access-control responsibilities.
 
-Email notifications and API-key rotation require supporting lifecycle processes.
+Email notification is a current product gap. Supporting API-key lifecycle notices requires a
+user-facing delivery capability, active principal email addresses, and lifecycle processes; until
+then, only the console-based warnings are available.
 
 The shared authorization engine introduces database reads into protected request paths. Monitor
 performance, and optimization may become necessary as usage increases.
@@ -487,4 +519,8 @@ applicable, and constrained by the acting principal’s effective administrative
 - Technical Feasibility Review, October 29, 2026 — operator console, authorization, audit logging,
   API-key lifecycle, and GIS authentication discussion.
 - Authentik Access-Control Matrix Summary and Role Definitions.
+- docs/api-key-management.md: Current API-key expiry behavior and the absence of email notification
+  infrastructure.
+- docs/edit-notifications-and-activity-log.md: Existing Slack edit notifications, which are not
+  API-key-owner email notifications.
 - services/api_key_auth.py: Database-backed API-key authentication.
