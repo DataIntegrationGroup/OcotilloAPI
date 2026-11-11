@@ -19,7 +19,7 @@ new table and no change to that table's existing columns or constraints --
 reusable permission bundle is not part of this proposal: nothing today needs
 the same set of permissions shared across more than one group, user, or API
 key, so there is nothing yet to justify the extra schema, validation, and
-audit surface that would come with one. See Open Question 5 for how to add
+audit surface that would come with one. See Open Question 6 for how to add
 that if it ever becomes necessary.
 
 ## Background
@@ -38,22 +38,25 @@ assigned to them. This was confirmed in team discussion following the
 
 **`principal_group`** -- the group's identity:
 
-| Column | Meaning |
-|---|---|
-| `id` | Primary key |
-| `name` | e.g. "AMMP Viewer" |
-| `description` | What the group is for |
-| `created_by` | Who created it |
-| `created_at` | When |
+| Column | Type | Nullable | Meaning |
+|---|---|---|---|
+| `id` | `Integer` | No | Primary key, auto-increment |
+| `name` | `String(255)` | No | e.g. "AMMP Viewer" |
+| `description` | `String(500)` | Yes | What the group is for |
+| `created_by` | `String(255)` | No | Who created it |
+| `created_at` | `DateTime(timezone=True)` | No | When |
 
-**`principal_group_member`** -- its membership, one row per person:
+**`principal_group_member`** -- a many-to-many association between
+`principal_group` and the principals that belong to it. One group has many
+members; one principal can belong to many groups:
 
-| Column | Meaning |
-|---|---|
-| `principal_group_id` | FK to `principal_group.id` |
-| `member_id` | The Authentik-issued `sub` identifying the person |
-| `added_by` | Who added them |
-| `added_at` | When |
+| Column | Type | Nullable | Meaning |
+|---|---|---|---|
+| `id` | `Integer` | No | Primary key, auto-increment |
+| `principal_group_id` | `Integer` | No | FK to `principal_group.id` |
+| `member_id` | `String(255)` | No | The Authentik-issued `sub` identifying the person |
+| `added_by` | `String(255)` | No | Who added them |
+| `added_at` | `DateTime(timezone=True)` | No | When |
 
 ## How a principal group gets permissions
 
@@ -88,11 +91,11 @@ from being only partly filled in.
 
 `principal_group_member`:
 
-| principal_group_id | member_id | added_by | added_at |
-|---|---|---|---|
-| 1 | auth0\|sub-kelsey | jake | 2026-02-10 |
-| 1 | auth0\|sub-tyler | jake | 2026-02-10 |
-| 1 | auth0\|sub-chase | jake | 2026-02-10 |
+| id | principal_group_id | member_id | added_by | added_at |
+|---|---|---|---|---|
+| 1 | 1 | auth0\|sub-kelsey | jake | 2026-02-10 |
+| 2 | 1 | auth0\|sub-tyler | jake | 2026-02-10 |
+| 3 | 1 | auth0\|sub-chase | jake | 2026-02-10 |
 
 `permission_grant` -- these rows are AMMP Viewer's permission set, no second
 table involved:
@@ -120,30 +123,28 @@ live-reference result, and the new row is itself a fully audited grant, with
 
 **Blockers** -- need resolution before schema/implementation work begins:
 
-1. Confirm `principal_group` as the table name for group identity.
-2. Confirm `principal_group_member` as the table/column names for
-   membership, and whether `member_id` needs to be more than a bare
-   Authentik `sub` -- e.g. whether the Operator Console needs a local
-   display name/email per member, which would mean a separate `user` table
-   rather than a bare string.
-3. Does group assignment need delegation boundaries now (ADR6 section 2's
-   program-manager scenario), or does that stay a named open question here
-   and get its own design doc once this schema is settled?
-4. How do changes to `principal_group`/`principal_group_member` get logged?
-   Two options: rely on ADR6's planned append-only, hash-chained activity
-   log (an event per change, nothing extra stored on these two tables), or
-   give them their own history mechanism, closer to the existing
-   `StatusHistory` pattern (`db/status_history.py`) -- effective-dated rows
-   that can answer "who was in this group as of a past date," which an event
-   log alone cannot. Separately: do these tables need `updated_by`, and does
-   either need `updated_at`? `updated_by` would match the `created_by`/
-   `added_by` columns already proposed above; `updated_at` would be new --
-   today's `AutoBaseMixin` (`db/base.py`) tracks who last updated a row, but
-   not when.
+1. **Resolved:** `principal_group` confirmed as the table name for group
+   identity.
+2. **Resolved:** `principal_group_member` confirmed as the table name for
+   membership, with `id` as its own primary key rather than
+   `principal_group_id` doubling as one. `member_id` stays a bare `sub` for
+   now, no separate `user` table for a display name/email -- revisit if
+   feedback shows a real need.
+3. **Resolved:** group assignment delegation boundaries can be figured out
+   later, as their own design doc once this schema is settled, not solved
+   here.
+4. **Resolved:** rely on ADR6's planned append-only, hash-chained activity
+   log rather than a `StatusHistory`-style dedicated history table --
+   querying the log can still answer "who was in this group as of a past
+   date" by replaying add/remove events up to that date, just as a
+   filter/aggregation query rather than a single-row lookup. No
+   `updated_by`/`updated_at` added for now either, for the same reason --
+   revisit with something more detailed only if a real need shows up.
+5. Can an `api_key` belong to a `principal_group`, or only a `user`?.
 
 **Future** -- do not block this draft, flagged for later design work:
 
-5. No mechanism here lets multiple groups/users/API keys share one reusable
+6. No mechanism here lets multiple groups/users/API keys share one reusable
    permission set without duplicating rows. If that need becomes real:
    either make `custom_role` a principal type (permissions stay as ordinary
    `permission_grant` rows; a small `custom_role_assignment` table tracks
