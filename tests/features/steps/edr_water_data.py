@@ -89,14 +89,14 @@ def step_edr_configured(context):
     configured = False
     if resp.status_code == 200:
         try:
-            configured = {"waterlevels", "water_chemistry"} <= _collection_ids(
+            configured = {"manual_waterlevels", "water_chemistry"} <= _collection_ids(
                 resp.json()
             )
         except ValueError:
             configured = False
     if not configured:
         context.scenario.skip(
-            "EDR collections (waterlevels, water_chemistry) not yet implemented "
+            "EDR collections (manual_waterlevels, water_chemistry) not yet implemented "
             "on the /ogcapi mount — ADR3 proposal, @wip."
         )
 
@@ -123,7 +123,7 @@ def step_request_collection_metadata(context, cid):
 # data-setup givens (resolve the seeded well; EDR-not-built scenarios are
 # already skipped in Background, so these stay intentionally light)
 # ---------------------------------------------------------------------------
-@given("a well with water-level observations")
+@given("a well with manual water-level observations")
 @given("a well with both manual and transducer water-level data")
 @given("a well with a transducer deployment")
 @given("a well that has non-public water-level and chemistry records")
@@ -260,18 +260,6 @@ def step_datetimes_within(context, interval):
         assert start <= dt <= end, f"Observation {s} outside {interval}."
 
 
-@then("the coverage contains both manual and transducer readings")
-def step_both_sources(context):
-    # Manual (Observation) and transducer (TransducerObservation) rows are merged
-    # onto one series (ADR3 decision). We assert the merged axis is non-trivial;
-    # provenance-per-point is carried in a parameter/annotation once implemented.
-    stamps = _coverage_datetimes(context.response.json())
-    assert len(stamps) >= 2, (
-        "Merged manual + transducer series should expose multiple readings; "
-        f"got {len(stamps)}."
-    )
-
-
 @then('every returned value is for the parameter "{param}"')
 def step_area_values_parameter(context, param):
     params = context.response.json().get("parameters", {})
@@ -284,16 +272,16 @@ def step_area_values_parameter(context, param):
 # ---------------------------------------------------------------------------
 # instance assertions
 # ---------------------------------------------------------------------------
-@then("at least one EDR instance is listed")
-def step_instances_listed(context):
-    instances = context.response.json().get("instances", [])
-    assert instances, "No EDR instances (transducer deployments) returned."
+# @then("at least one EDR instance is listed")
+# def step_instances_listed(context):
+#     instances = context.response.json().get("instances", [])
+#     assert instances, "No EDR instances (transducer deployments) returned."
 
 
-@then("each EDR instance has an identifier")
-def step_instances_have_id(context):
-    for inst in context.response.json().get("instances", []):
-        assert inst.get("id"), f"EDR instance missing id: {inst}"
+# @then("each EDR instance has an identifier")
+# def step_instances_have_id(context):
+#     for inst in context.response.json().get("instances", []):
+#         assert inst.get("id"), f"EDR instance missing id: {inst}"
 
 
 # ---------------------------------------------------------------------------

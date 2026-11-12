@@ -32,6 +32,7 @@ from core.dependencies import (
     viewer_function,
 )
 from core.ogc_field_metadata import table_entries
+from core.pygeoapi import EDR_COLLECTIONS
 from tests import override_authentication
 
 GEOMETRY_PROPERTY = "geometry"
@@ -267,21 +268,53 @@ def test_pygeoapi_still_passes_provider_fields_through_to_schema():
 
 # ----------------------------------------------------------------------- EDR
 
+"""
+Developer's note:
+This test ensures that the EDR schema for manual water levels correctly documents its parameters.
+It relies on the presence of water well things and groundwater level observations in the test database
+since parameters are ready from the data themselves.
+"""
 
-def test_edr_schema_documents_its_parameter(ogc_client):
-    response = ogc_client.get("/ogcapi/collections/waterlevels/schema")
+
+def test_edr_schema_documents_its_parameters(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    from db.engine import session_ctx
+    from sqlalchemy import text
+
+    # set release_status to public for the view
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels/schema")
 
     assert response.status_code == 200
     properties = response.json()["properties"]
-    if "groundwater level" not in properties:
-        # EDR fields are read out of the data, not reflected from columns, so
-        # this assertion only has something to bite on when the suite has left
-        # water-level rows behind. The CoverageJSON test below covers the same
-        # lookup without needing any.
-        pytest.skip("no water-level rows in ogc_waterlevels for this database state")
-    parameter = properties["groundwater level"]
-    assert parameter["title"] == "Groundwater level"
-    assert parameter["description"].startswith("Depth from the measuring point")
+    for parameter_name in [
+        "groundwater level below ground surface",
+        "groundwater level reason",
+    ]:
+        parameter = properties[parameter_name]
+        assert parameter["title"] == parameter_name.capitalize()
+
+        if parameter_name == "groundwater level below ground surface":
+            assert parameter["description"].startswith("Depth from the ground surface")
+        else:
+            assert parameter["description"].startswith(
+                "Reason for the groundwater level"
+            )
+
+    # reset the release_status to its original value
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'draft' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
 
 
 def test_edr_coveragejson_carries_the_parameter_description():
@@ -289,10 +322,13 @@ def test_edr_coveragejson_carries_the_parameter_description():
     # provider's __init__ opens a connection, which this does not need.
     from datetime import datetime
 
-    from core.edr_provider import WaterEDRProvider
+    from core.edr_provider import PointSeriesEDRProvider
 
-    provider = object.__new__(WaterEDRProvider)
-    provider.table = "ogc_waterlevels"
+    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+
+    provider = object.__new__(PointSeriesEDRProvider)
+    provider.table = collection["table"]
+    provider.parameter_columns = collection["parameter_columns"]
 
     coverage = provider._coverage_collection(
         [
@@ -302,25 +338,48 @@ def test_edr_coveragejson_carries_the_parameter_description():
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
-                "value": 42.0,
-                "unit": "ft",
-                "parameter_name": "groundwater level",
+                "observation_value": 42.0,
+                "observation_unit": "ft",
+                "observation_parameter_name": "groundwater level below ground surface",
+                "qualifier_value": "test qualifier",
+                "qualifier_parameter_name": "groundwater level reason",
             }
         ]
     )
 
-    parameter = coverage["parameters"]["groundwater level"]
-    assert parameter["observedProperty"]["label"]["en"] == "Groundwater level"
-    assert parameter["description"]["en"].startswith("Depth from the measuring point")
+    for p in ["groundwater level below ground surface", "groundwater level reason"]:
+        parameter = coverage["parameters"][p]
+        try:
+            if p == "groundwater level below ground surface":
+                assert (
+                    parameter["observedProperty"]["label"]["en"]
+                    == "Groundwater level below ground surface"
+                )
+                assert parameter["description"]["en"].startswith(
+                    "Depth from the ground surface"
+                )
+            else:
+                assert (
+                    parameter["observedProperty"]["label"]["en"]
+                    == "Groundwater level reason"
+                )
+                assert parameter["description"]["en"].startswith(
+                    "Reason for the groundwater level"
+                )
+        except AssertionError:
+            raise AssertionError(f"Parameter {p} failed validation")
 
 
 def test_edr_falls_back_for_an_undocumented_analyte():
     from datetime import datetime
 
-    from core.edr_provider import WaterEDRProvider
+    from core.edr_provider import PointSeriesEDRProvider
 
-    provider = object.__new__(WaterEDRProvider)
-    provider.table = "ogc_water_chemistry"
+    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "water_chemistry")
+
+    provider = object.__new__(PointSeriesEDRProvider)
+    provider.table = collection["table"]
+    provider.parameter_columns = collection["parameter_columns"]
 
     coverage = provider._coverage_collection(
         [
@@ -330,16 +389,19 @@ def test_edr_falls_back_for_an_undocumented_analyte():
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
-                "value": 1.0,
-                "unit": "mg/L",
-                "parameter_name": "Some Unmapped Analyte",
+                "observation_value": 1.0,
+                "observation_unit": "mg/L",
+                "observation_parameter_name": "Some Unmapped Analyte",
+                "qualifier_value": "test qualifier",
+                "qualifier_parameter_name": "Some Unmapped Analyte qualifier",
             }
         ]
     )
 
-    parameter = coverage["parameters"]["Some Unmapped Analyte"]
-    assert parameter["observedProperty"]["label"]["en"] == "Some Unmapped Analyte"
-    assert parameter["description"]["en"] == "Some Unmapped Analyte"
+    for p in ["Some Unmapped Analyte", "Some Unmapped Analyte qualifier"]:
+        parameter = coverage["parameters"][p]
+        assert parameter["observedProperty"]["label"]["en"] == p
+        assert parameter["description"]["en"] == p
 
 
 # ---------------------------------------------------------- enumerated values
