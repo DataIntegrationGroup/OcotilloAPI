@@ -13,12 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import csv
 import uuid
 import importlib
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 
+import pytest
 from sqlalchemy import delete, select, update
+from sqlalchemy_continuum import version_class
 
 move_notes = importlib.import_module(
     "data_migrations.migrations.20260205_0001_move_nma_location_notes"
@@ -42,6 +46,10 @@ convert_casing_diameter = importlib.import_module(
 backfill_thing_release_status = importlib.import_module(
     "data_migrations.migrations."
     "20261001_0001_backfill_well_inventory_thing_release_status"
+)
+backfill_water_level_release_status = importlib.import_module(
+    "data_migrations.migrations."
+    "20261110_0001_backfill_imported_water_level_release_status"
 )
 parity_groups = importlib.import_module(
     "data_migrations.migrations." "20260905_0003_group_table_parity_with_staging"
@@ -72,6 +80,7 @@ from db.thing import Thing
 from db.stratigraphic_interval import StratigraphicInterval
 from db.engine import session_ctx
 from db.transducer import TransducerObservation
+from services.water_level_csv import bulk_upload_water_levels
 from tests import get_parameter_id
 
 
@@ -1728,6 +1737,658 @@ def test_backfill_thing_release_status_dry_run_writes_nothing(tmp_path, monkeypa
         assert list(tmp_path.glob("backfill_thing_release_status_*.csv"))
 
         _cleanup_things_at_locations(session, [imported])
+
+
+# ==============================================================================
+# Imported water level reading release status (20261110_0001)
+# ==============================================================================
+
+
+@dataclass
+class _ImportedReading:
+    thing: Thing
+    location: Location | None
+    observation: Observation
+
+
+def _add_reading(
+    session,
+    thing,
+    *,
+    sample_name=None,
+    well_inventory=True,
+    observation_status="draft",
+    nma_pk_waterlevels=None,
+    activity_type="groundwater level",
+    measured_at=None,
+):
+    """A groundwater level reading on thing, shaped like an importer's.
+
+    well_inventory adds the 'well inventory' activity that importer stamps on
+    the same field event; without it the reading looks like a water level CSV
+    import. sample_name None gives the importers' "<well>-WL-<YYYYMMDDHHMM>".
+    """
+    measured_at = measured_at or datetime.now(timezone.utc)
+    event = FieldEvent(thing_id=thing.id, event_date=measured_at)
+    session.add(event)
+    session.commit()
+
+    if well_inventory:
+        session.add(
+            FieldActivity(field_event_id=event.id, activity_type="well inventory")
+        )
+    activity = FieldActivity(field_event_id=event.id, activity_type=activity_type)
+    session.add(activity)
+    session.commit()
+
+    sample = Sample(
+        field_activity_id=activity.id,
+        sample_date=measured_at,
+        sample_name=sample_name or f"{thing.name}-WL-{measured_at:%Y%m%d%H%M}",
+        sample_matrix="water",
+        sample_method="Steel-tape measurement",
+    )
+    session.add(sample)
+    session.commit()
+
+    # The importers never set release_status, so a draft reading here relies
+    # on the column default too; that is what Continuum's first version row
+    # records, and what the history check reads.
+    status = (
+        {} if observation_status == "draft" else {"release_status": observation_status}
+    )
+    observation = Observation(
+        sample_id=sample.id,
+        parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+        observation_datetime=measured_at,
+        value=10.0,
+        unit="ft",
+        nma_pk_waterlevels=nma_pk_waterlevels,
+        **status,
+    )
+    session.add(observation)
+    session.commit()
+    return observation
+
+
+def _add_inventory_event(session, thing):
+    """A well inventory visit that recorded no water level."""
+    event = FieldEvent(thing_id=thing.id, event_date=datetime.now(timezone.utc))
+    session.add(event)
+    session.commit()
+    session.add(FieldActivity(field_event_id=event.id, activity_type="well inventory"))
+    session.commit()
+
+
+def _make_imported_reading(
+    session,
+    well_name,
+    well_status,
+    *,
+    location_status=None,
+    with_location=True,
+    thing_type="water well",
+    **reading,
+):
+    """A well, its current Location, and one reading from _add_reading."""
+    thing = Thing(name=well_name, thing_type=thing_type, release_status=well_status)
+    location = None
+    if with_location:
+        location = Location(
+            point="POINT(-106.9 34.06)",
+            elevation=1400.0,
+            release_status=location_status or well_status,
+        )
+        session.add(location)
+    session.add(thing)
+    session.commit()
+
+    if location is not None:
+        session.add(
+            LocationThingAssociation(location_id=location.id, thing_id=thing.id)
+        )
+        session.commit()
+
+    observation = _add_reading(session, thing, **reading)
+    session.refresh(thing)
+    return _ImportedReading(thing, location, observation)
+
+
+def _cleanup_imported_readings(session, readings):
+    # Deleting the Thing cascades through field event, activity, sample and
+    # observation; the Location has no cascade from the Thing.
+    session.rollback()
+    for reading in readings:
+        session.execute(delete(Thing).where(Thing.id == reading.thing.id))
+        if reading.location is not None:
+            session.execute(delete(Location).where(Location.id == reading.location.id))
+    session.commit()
+
+
+def _status_of(session, observation):
+    return session.scalar(
+        select(Observation.release_status).where(Observation.id == observation.id)
+    )
+
+
+def _reading_status(session, reading):
+    return _status_of(session, reading.observation)
+
+
+def _plan_of(planned, observation):
+    matches = [p for p in planned if p.observation_id == observation.id]
+    return matches[0] if matches else None
+
+
+def _planned_for(planned, reading):
+    return _plan_of(planned, reading.observation)
+
+
+def _observation_versions(session, observation):
+    ObservationVersion = version_class(Observation)
+    return session.scalars(
+        select(ObservationVersion.release_status)
+        .where(ObservationVersion.id == observation.id)
+        .order_by(ObservationVersion.transaction_id.asc())
+    ).all()
+
+
+@pytest.fixture
+def water_level_release_status(tmp_path, monkeypatch):
+    monkeypatch.setattr(backfill_water_level_release_status, "REPORT_DIR", tmp_path)
+    return backfill_water_level_release_status
+
+
+def test_water_level_release_status_copies_well_inventory_well_status(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        public = _make_imported_reading(session, "WLRS Inventory Public", "public")
+        private = _make_imported_reading(session, "WLRS Inventory Private", "private")
+        unanswered = _make_imported_reading(session, "WLRS Inventory Draft", "draft")
+        readings = [public, private, unanswered]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _reading_status(session, public) == "public"
+            assert _reading_status(session, private) == "private"
+            assert _reading_status(session, unanswered) == "draft"
+            assert {_planned_for(planned, r).source for r in readings} == {
+                "well_inventory"
+            }
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_copies_csv_well_status(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        current = _make_imported_reading(
+            session, "WLRS CSV Current", "public", well_inventory=False
+        )
+        legacy_name = _make_imported_reading(
+            session,
+            "WLRS CSV UUID",
+            "public",
+            sample_name=f"wl-{uuid.uuid4()}",
+            well_inventory=False,
+        )
+        on_private = _make_imported_reading(
+            session, "WLRS CSV Private", "private", well_inventory=False
+        )
+        on_draft = _make_imported_reading(
+            session, "WLRS CSV Draft", "draft", well_inventory=False
+        )
+        readings = [current, legacy_name, on_private, on_draft]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _reading_status(session, current) == "public"
+            assert _reading_status(session, legacy_name) == "public"
+            # Same rule as well inventory: a private well's readings go
+            # private, and only a draft well leaves them at draft.
+            assert _reading_status(session, on_private) == "private"
+            assert _reading_status(session, on_draft) == "draft"
+            assert _planned_for(planned, on_draft).action == "skip_well_not_released"
+            assert {_planned_for(planned, r).source for r in readings} == {
+                "water_level_csv"
+            }
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_publishes_a_real_csv_import(
+    water_level_release_status, water_well_thing
+):
+    """End to end through the importer, so the footprint is the real one."""
+    header = (
+        "field_staff,well_name_point_id,field_event_date_time,"
+        "measurement_date_time,sampler,sample_method,mp_height,level_status,"
+        "depth_to_water_ft,data_quality,water_level_notes"
+    )
+    row = (
+        f"A Lopez,{water_well_thing.name},2025-02-15T08:00:00-07:00,"
+        "2025-02-15T10:30:00-07:00,A Lopez,electric tape,1.5,"
+        "Water level not affected,7.0,"
+        "Water level accurate to within two hundreths of a foot,Backfill test"
+    )
+    result = bulk_upload_water_levels(f"{header}\n{row}".encode("utf-8"))
+    assert result.exit_code == 0, result.payload
+    observation_id = result.payload["water_levels"][0]["observation_id"]
+
+    with session_ctx() as session:
+        observation = session.get(Observation, observation_id)
+        assert observation.release_status == "draft"
+
+        planned = water_level_release_status.dry_run(session)
+        water_level_release_status.run(session)
+        session.commit()
+
+        plan = _plan_of(planned, observation)
+        assert (plan.source, plan.action, plan.history_missing) == (
+            "water_level_csv",
+            "change",
+            False,
+        )
+        assert _status_of(session, observation) == "public"
+        assert _observation_versions(session, observation)[-1] == "public"
+
+
+def test_water_level_release_status_leaves_released_and_legacy_readings(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        already_private = _make_imported_reading(
+            session, "WLRS Already Private", "public", observation_status="private"
+        )
+        already_public = _make_imported_reading(
+            session, "WLRS Already Public", "private", observation_status="public"
+        )
+        legacy = _make_imported_reading(
+            session,
+            "WLRS NM_Aquifer",
+            "public",
+            nma_pk_waterlevels=str(uuid.uuid4()),
+        )
+        readings = [already_private, already_public, legacy]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _reading_status(session, already_private) == "private"
+            assert _reading_status(session, already_public) == "public"
+            assert _reading_status(session, legacy) == "draft"
+            assert all(_planned_for(planned, r) is None for r in readings)
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_ignores_other_thing_and_activity_types(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        spring = _make_imported_reading(
+            session, "WLRS Spring", "public", thing_type="spring"
+        )
+        chemistry = _make_imported_reading(
+            session, "WLRS Chemistry", "public", activity_type="water chemistry"
+        )
+        readings = [spring, chemistry]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            for reading in readings:
+                assert _reading_status(session, reading) == "draft"
+                assert _planned_for(planned, reading) is None
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_reports_unrecognized_readings(
+    water_level_release_status, tmp_path
+):
+    with session_ctx() as session:
+        # Neither importer's footprint, as a hand-entered reading would look.
+        by_hand = _make_imported_reading(
+            session,
+            "WLRS By Hand",
+            "public",
+            sample_name=f"manual-{uuid.uuid4()}",
+            well_inventory=False,
+        )
+        # Prefix-only matches: the whole name must be in an importer's format.
+        loose_uuid = _make_imported_reading(
+            session,
+            "WLRS Loose UUID",
+            "public",
+            sample_name=f"wl-bottle-{uuid.uuid4().hex[:6]}",
+            well_inventory=False,
+        )
+        loose_stamp = _make_imported_reading(
+            session,
+            "WLRS Loose Stamp",
+            "public",
+            sample_name=f"WLRS Loose Stamp-WL-field-{uuid.uuid4().hex[:6]}",
+            well_inventory=False,
+        )
+        # Another well's name: the prefix must be this well's own name.
+        renamed = _make_imported_reading(
+            session,
+            "WLRS Renamed",
+            "public",
+            sample_name="WLRS Old Name-WL-202501011200",
+            well_inventory=False,
+        )
+        # A well inventory activity alone is not enough; the importer always
+        # wrote the timestamped name.
+        inventory_by_hand = _make_imported_reading(
+            session,
+            "WLRS Inventory By Hand",
+            "public",
+            sample_name=f"manual-{uuid.uuid4()}",
+        )
+        readings = [by_hand, loose_uuid, loose_stamp, renamed, inventory_by_hand]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            for reading in readings:
+                assert _reading_status(session, reading) == "draft"
+                plan = _planned_for(planned, reading)
+                assert (plan.source, plan.action) == (
+                    "unrecognized",
+                    "skip_unrecognized",
+                ), reading.thing.name
+
+            reports = sorted(tmp_path.glob("backfill_water_level_release_status_*.csv"))
+            with reports[-1].open() as handle:
+                rows = {
+                    int(row["observation_id"]): row for row in csv.DictReader(handle)
+                }
+            row = rows[by_hand.observation.id]
+            assert row["action"] == "skip_unrecognized"
+            assert row["well_name"] == "WLRS By Hand"
+            assert row["sample_name"].startswith("manual-")
+            assert row["mode"] == "run"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_skips_readings_set_back_to_draft(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        set_back = _make_imported_reading(session, "WLRS Set Back", "public")
+        readings = [set_back]
+        try:
+            # Two commits, so observation_version records both statuses.
+            set_back.observation.release_status = "public"
+            session.commit()
+            set_back.observation.release_status = "draft"
+            session.commit()
+
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _reading_status(session, set_back) == "draft"
+            plan = _planned_for(planned, set_back)
+            assert plan.action == "skip_history_non_draft"
+            assert plan.after == "draft"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_changes_and_flags_readings_without_history(
+    water_level_release_status,
+):
+    ObservationVersion = version_class(Observation)
+    with session_ctx() as session:
+        unversioned = _make_imported_reading(session, "WLRS No History", "public")
+        readings = [unversioned]
+        try:
+            session.execute(
+                delete(ObservationVersion).where(
+                    ObservationVersion.id == unversioned.observation.id
+                )
+            )
+            session.commit()
+
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            plan = _planned_for(planned, unversioned)
+            assert (plan.action, plan.history_missing) == ("change", True)
+            assert _reading_status(session, unversioned) == "public"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_aborts_on_well_inventory_location_mismatch(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        mismatched = _make_imported_reading(
+            session, "WLRS Mismatch", "public", location_status="private"
+        )
+        # A reading that would otherwise change, to prove the abort is total.
+        bystander = _make_imported_reading(session, "WLRS Bystander", "public")
+        readings = [mismatched, bystander]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            plan = _planned_for(planned, mismatched)
+            assert plan.action == "abort_status_mismatch"
+            assert (plan.before, plan.after) == ("draft", "draft")
+            assert plan.location_release_status == "private"
+
+            with pytest.raises(ValueError, match="WLRS Mismatch"):
+                water_level_release_status.run(session)
+            session.rollback()
+
+            assert _reading_status(session, mismatched) == "draft"
+            assert _reading_status(session, bystander) == "draft"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_aborts_on_inventoried_well_with_csv_readings(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        # Inventoried without a water level, then measured through the CSV
+        # importer: still a well inventory well, so still checked.
+        csv_after_inventory = _make_imported_reading(
+            session,
+            "WLRS Inventoried CSV",
+            "public",
+            location_status="private",
+            well_inventory=False,
+        )
+        _add_inventory_event(session, csv_after_inventory.thing)
+        readings = [csv_after_inventory]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            plan = _planned_for(planned, csv_after_inventory)
+            assert (plan.source, plan.action) == (
+                "water_level_csv",
+                "abort_status_mismatch",
+            )
+
+            with pytest.raises(ValueError, match="WLRS Inventoried CSV"):
+                water_level_release_status.run(session)
+            session.rollback()
+
+            assert _reading_status(session, csv_after_inventory) == "draft"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_aborts_on_well_without_current_location(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        homeless = _make_imported_reading(
+            session, "WLRS No Location", "public", with_location=False
+        )
+        readings = [homeless]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            plan = _planned_for(planned, homeless)
+            assert plan.action == "abort_status_mismatch"
+            assert plan.location_release_status is None
+
+            with pytest.raises(ValueError, match="WLRS No Location"):
+                water_level_release_status.run(session)
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_ignores_mismatch_on_csv_and_draft_wells(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        # A never-inventoried well has no inventory answer to compare, and a
+        # draft well inventory well has no reading to change.
+        csv_only = _make_imported_reading(
+            session,
+            "WLRS CSV Mismatch",
+            "public",
+            location_status="private",
+            well_inventory=False,
+        )
+        draft_inventory = _make_imported_reading(
+            session, "WLRS Draft Mismatch", "draft", location_status="public"
+        )
+        readings = [csv_only, draft_inventory]
+        try:
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _reading_status(session, csv_only) == "public"
+            assert _reading_status(session, draft_inventory) == "draft"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_classifies_both_sources_on_a_mixed_well(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        # A private well inventory well, later measured through the CSV
+        # importer: each reading keeps its own source, and both take the
+        # well's status.
+        mixed = _make_imported_reading(session, "WLRS Mixed", "private")
+        csv_reading = _add_reading(
+            session,
+            mixed.thing,
+            well_inventory=False,
+            measured_at=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        readings = [mixed]
+        try:
+            planned = water_level_release_status.dry_run(session)
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _planned_for(planned, mixed).source == "well_inventory"
+            assert _plan_of(planned, csv_reading).source == "water_level_csv"
+            assert _reading_status(session, mixed) == "private"
+            assert _status_of(session, csv_reading) == "private"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_batches_large_id_lists(
+    water_level_release_status, monkeypatch
+):
+    monkeypatch.setattr(water_level_release_status, "ID_BATCH_SIZE", 1)
+    with session_ctx() as session:
+        readings = [
+            _make_imported_reading(session, f"WLRS Batch {n}", "public")
+            for n in range(3)
+        ]
+        set_back = _make_imported_reading(session, "WLRS Batch Set Back", "public")
+        readings.append(set_back)
+        try:
+            set_back.observation.release_status = "public"
+            session.commit()
+            set_back.observation.release_status = "draft"
+            session.commit()
+
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert [_reading_status(session, r) for r in readings[:3]] == ["public"] * 3
+            assert _reading_status(session, set_back) == "draft"
+        finally:
+            _cleanup_imported_readings(session, readings)
+
+
+def test_water_level_release_status_writes_an_observation_version(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        reading = _make_imported_reading(session, "WLRS Versioned", "public")
+        try:
+            # Created without an explicit status, as the importers do, and
+            # Continuum still records the default.
+            assert _observation_versions(session, reading.observation) == ["draft"]
+
+            water_level_release_status.run(session)
+            session.commit()
+
+            assert _observation_versions(session, reading.observation) == [
+                "draft",
+                "public",
+            ]
+        finally:
+            _cleanup_imported_readings(session, [reading])
+
+
+def test_water_level_release_status_dry_run_writes_nothing(
+    water_level_release_status, tmp_path
+):
+    with session_ctx() as session:
+        reading = _make_imported_reading(session, "WLRS Dry Run", "public")
+        try:
+            planned = water_level_release_status.dry_run(session)
+            session.rollback()
+
+            assert _planned_for(planned, reading).action == "change"
+            assert _reading_status(session, reading) == "draft"
+            assert _observation_versions(session, reading.observation) == ["draft"]
+            reports = list(tmp_path.glob("backfill_water_level_release_status_*.csv"))
+            with reports[0].open() as handle:
+                assert {row["mode"] for row in csv.DictReader(handle)} == {"dry_run"}
+        finally:
+            _cleanup_imported_readings(session, [reading])
+
+
+def test_water_level_release_status_second_run_plans_no_changes(
+    water_level_release_status,
+):
+    with session_ctx() as session:
+        reading = _make_imported_reading(session, "WLRS Rerun", "public")
+        try:
+            water_level_release_status.run(session)
+            session.commit()
+
+            planned = water_level_release_status.dry_run(session)
+
+            assert _reading_status(session, reading) == "public"
+            assert [p for p in planned if p.action == "change"] == []
+        finally:
+            _cleanup_imported_readings(session, [reading])
 
 
 # ==============================================================================
