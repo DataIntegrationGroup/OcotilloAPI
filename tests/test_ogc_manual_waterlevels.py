@@ -86,41 +86,45 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
     """
     with session_ctx() as session:
         session.execute(
-            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
-            {"oid": groundwater_level_observation.id},
+            text(
+                f"UPDATE observation SET release_status = 'public' WHERE id = '{groundwater_level_observation.id}'"
+            ),
         )
         session.execute(
-            text("UPDATE thing SET release_status = 'draft' WHERE id = :tid"),
-            {"tid": water_well_thing.id},
+            text(
+                f"UPDATE thing SET release_status = 'draft' WHERE id = '{water_well_thing.id}'"
+            ),
         )
         session.commit()
 
-        reading_id = f"m-{groundwater_level_observation.id}"
-
         public_rows = session.execute(
-            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
+            text(
+                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+            ),
         ).all()
         assert not public_rows, "a non-public well leaked a reading to /ogcapi"
 
         # The internal mount is where staff see non-public records; it must
         # keep carrying them.
         internal_rows = session.execute(
-            text("SELECT id FROM ogc_internal_manual_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
+            text(
+                f"SELECT id FROM ogc_internal_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+            ),
         ).all()
         assert internal_rows, "the internal mirror stopped carrying the reading"
 
         # Public well, public reading: published again.
         session.execute(
-            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
-            {"tid": water_well_thing.id},
+            text(
+                f"UPDATE thing SET release_status = 'public' WHERE id = '{water_well_thing.id}'"
+            ),
         )
         session.commit()
 
         assert session.execute(
-            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
+            text(
+                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+            ),
         ).all()
 
 
@@ -134,6 +138,12 @@ def test_ogc_manual_waterlevel_feature_collection_shape(
             text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
             {"oid": groundwater_level_observation.id},
         )
+
+        session.execute(
+            text("UPDATE thing_id_link SET release_status = 'public' WHERE id = :tid"),
+            {"tid": thing_id_link.id},
+        )
+
         session.commit()
 
     response = ogc_client.get("/ogcapi/collections/manual_waterlevels/locations")
@@ -160,7 +170,7 @@ def test_ogc_manual_waterlevel_feature_collection_shape(
 
     properties = feature["properties"]
     assert properties["name"] == water_well_thing.name
-    assert properties["ground_surface_elevation"] == water_well_thing.elevation
+    assert properties["ground_surface_elevation"] == location.elevation
     assert properties["ground_surface_elevation_units"] == "m"
     assert properties["vertical_datum"] == "NAVD88"
     assert properties["well_depth"] == water_well_thing.well_depth
@@ -173,7 +183,7 @@ def test_ogc_manual_waterlevel_feature_collection_shape(
         {
             "id": thing_id_link.alternate_id,
             "relation": thing_id_link.relation,
-            "organization": thing_id_link.organization,
+            "organization": thing_id_link.alternate_organization,
         }
     ]
 
@@ -345,16 +355,15 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     ]
 
 
-# OGC VIEWS TO TEST
-# the columns are correct
-# add a record where the measuring point is null and verify that it gets coerced to 0
+# --------------------
+# TEST VIEWS OGC_MANUAL_WATERLEVELS DEPEND ON
+# --------------------
 
 
 def test_ogc_manual_waterlevels_view(
     location,
     water_well_thing,
     groundwater_level_observation,
-    thing_id_link,
 ):
     """
     Test that the ogc_manual_waterlevels view has the intended structure and content.
@@ -370,19 +379,29 @@ def test_ogc_manual_waterlevels_view(
         - observation_parameter_name <- "groundwater level below ground surface"
         - qualifier_value <- groundwater_level_observation.groundwater_level_reason
         - qualifier_parameter_name <- "groundwater level reason"
-    """
 
+    The alternate ids will be pulled separately from the thing_id_link table.
+    """
     with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
         result = session.execute(
-            f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{thing_id_link}'"
+            text(
+                f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+            )
         ).fetchall()
         assert len(result) == 1
         row = result[0]
 
         assert row["thing_id"] == water_well_thing.id
         assert row["station_name"] == water_well_thing.name
-        assert row["longitude"] == location.longitude
-        assert row["latitude"] == location.latitude
+        lat, lon = location.latlon
+        assert row["longitude"] == lon
+        assert row["latitude"] == lat
         assert row["datetime"] == groundwater_level_observation.observation_datetime
         assert (
             row["observation_value"]
@@ -404,20 +423,29 @@ def test_ogc_manual_waterlevels_view(
 def test_ogc_manual_waterlevels_view_with_null_measuring_point(
     water_well_thing,
     groundwater_level_observation,
-    thing_id_link,
 ):
     """
     Test that the ogc_manual_waterlevels view correctly handles a null measuring point height by subtracting 0
-    from the observation's value. This
+    from the observation's value. This comes from docs/measuring-point-height-null-handling.md
     """
     with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
         # update the observation in the database to reflect the null measuring point height
         session.execute(
-            f"UPDATE observation SET measuring_point_height = NULL WHERE id = '{groundwater_level_observation.id}'"
+            text(
+                f"UPDATE observation SET measuring_point_height = NULL WHERE id = '{groundwater_level_observation.id}'"
+            )
         )
         session.commit()
         result = session.execute(
-            f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+            text(
+                f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+            )
         ).fetchall()
         assert len(result) == 1
         row = result[0]
