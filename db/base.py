@@ -100,6 +100,10 @@ class ReleaseMixin:
     def release_status(self):
         return lexicon_term(default="draft")
 
+    @declared_attr
+    def release_level(self):
+        return lexicon_term(default="pending")
+
 
 class AuditMixin:
     """Mixin to add standard audit columns to a model."""
