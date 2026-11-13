@@ -1,6 +1,6 @@
 # Release Level and Review State Vocabulary
 
-**Status:** First draft
+**Status:** Updated
 
 **References:** ADR5, "One Enforcement Engine, Two Grant Tables" ("Two axes in
 one column" section). Blocks BDMS-1382.
@@ -120,15 +120,17 @@ rather than part of `ReleaseMixin`.
 becomes `pending` (open question 1) — same underlying behavior, renamed
 value, which is still a real data migration for every existing `draft` row,
 not just a documentation change. `provisional` maps cleanly to
-`review_state`, same word either side; `published` becomes `unknown`
+`review_state`, same word either side, on the three tables that get a
+`review_state` column — and per open question 2's audit, no other table has
+any rows using `provisional`/`published`/`final` at all, so there is nothing
+left to decide for "any other table." `published` becomes `unknown`
 (deliberately not the same word, since the legacy `published` and the old
 `review_state=published` proposal were two unrelated things that happened to
-share a name — `unknown` removes that collision). Both only apply on tables
-that actually have the `review_state` column; on any other table, what these
-legacy values even meant, and what `release_level` those rows should get
-either way, is all one open question (see open question 2). `final` is a
-reasonable guess on both axes, not a confirmed one; `archived` is genuinely
-unresolved.
+share a name — `unknown` removes that collision). `final` is a reasonable
+guess on both axes, not a confirmed one, but moot in practice since no rows
+use it; `archived` is genuinely unresolved; `TransducerObservation`/
+`TransducerObservationBlock` rows where `release_status` itself is literally
+`provisional` are their own separate case, see open question 5.
 
 ## Open questions
 
@@ -143,19 +145,11 @@ unresolved.
 
 **Future** — do not block this draft:
 
-2. **Row-level audit of `provisional`, `published`, and `final`, including
-   what they mean on tables with no `review_state` column** (e.g. `Contact`,
-   `Phone`). How many existing rows use each value, on which tables, and
-   what should each become? For tables with `review_state`
-   (`Observation`/`TransducerObservation`/`TransducerObservationBlock`, open
-   question 4), the value side is already settled
-   (`provisional`/`published`→`unknown`); what's left is each row's
-   `release_level`. For every other table, "provisional" likely never meant
-   a review state in the first place — there's no review process for a
-   phone number — so it's unclear whether it meant "not yet public"
-   (→ `pending`) or something else, and needs a real decision, not a guess
-   embedded in the mapping matrix. ADR5 itself notes this kind of data
-   migration has no CD path in this repo and is run by hand.
+2. **Resolved, via a row-level audit of live data:** `published`/`final`
+   have zero rows anywhere, and `provisional` as a `release_status` value
+   exists only on `TransducerObservation`/`TransducerObservationBlock` —
+   every other table has none. Nothing to decide except for those two
+   tables, promoted to their own question — see open question 5.
 3. **`archived` doesn't get a slot in either axis for now.** Nothing today
    depends on it behaving differently from `pending`/`private`. If a real need
    for a distinct archived/retired state emerges later, it gets its own
@@ -163,17 +157,19 @@ unresolved.
    record can plausibly still be public (e.g. a retired monitoring well's
    historical readings), and squeezing it into a single-valued
    `release_level` would make "public" and "archived" mutually exclusive.
-4. **Resolved: `review_state` gets its own mixin, not folded into
-   `ReleaseMixin`.** Visibility applies to every record; review state
-   doesn't — "approved" means nothing for a phone number or an aquifer
-   type. Starts on `Observation`, `TransducerObservation`, and
-   `TransducerObservationBlock`, where review already has a defined
-   meaning; other tables get it added only once their own meaning is
-   defined, not universally up front. Cheap to revisit: a mixin composes
-   onto more models later with no refactor needed, so starting narrow
-   forecloses nothing. See Section 3's "Existing precedent" for how
-   `TransducerObservation` sets its value today, and why `Observation` would
-   need a different mechanism.
+4. **Resolved:** `review_state` gets its own mixin, not folded into
+   `ReleaseMixin` — not every record has a review state. Starts on
+   `Observation`, `TransducerObservation`, and `TransducerObservationBlock`
+   only; see Section 3 for how each sets its value.
+5. **Assuming, not yet confirmed: the `TransducerObservation` (76,725
+   rows) and `TransducerObservationBlock` (108 rows) rows with
+   `release_status='provisional'` become `release_level='pending'`,**
+   migrated in the same pass as every other table rather than held back
+   separately. Based on the evidence so far (every one of these rows also
+   has `data_maturity='provisional'`, never `approved`; `docs/
+   hydrograph-correction-publish.md` describes "publishing as provisional"
+   as a deliberate operator choice distinct from `public`) — needs real
+   sign-off from the team.
 
 ## References
 
