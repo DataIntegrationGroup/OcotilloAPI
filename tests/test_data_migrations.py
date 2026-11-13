@@ -80,6 +80,7 @@ from db.thing import Thing
 from db.stratigraphic_interval import StratigraphicInterval
 from db.engine import session_ctx
 from db.transducer import TransducerObservation
+import services.water_level_csv as water_level_csv
 from services.water_level_csv import bulk_upload_water_levels
 from tests import get_parameter_id
 
@@ -1963,9 +1964,17 @@ def test_water_level_release_status_copies_csv_well_status(
 
 
 def test_water_level_release_status_publishes_a_real_csv_import(
-    water_level_release_status, water_well_thing
+    water_level_release_status, water_well_thing, monkeypatch
 ):
     """End to end through the importer, so the footprint is the real one."""
+    # The importer now copies the well's status itself (BDMS-1560). The
+    # backfill is for observations imported before that, which were left
+    # draft, so make the importer behave as it did then. Patching the status
+    # keeps the draft in observation_version too, which the backfill's history
+    # check reads.
+    monkeypatch.setattr(
+        water_level_csv, "observation_release_status", lambda _status: "draft"
+    )
     header = (
         "field_staff,well_name_point_id,field_event_date_time,"
         "measurement_date_time,sampler,sample_method,mp_height,level_status,"

@@ -42,6 +42,7 @@ from domain.water_levels import (
     SAMPLE_QC_TYPE,
     depth_to_water_error,
     measuring_point_height_conflict_message,
+    observation_release_status,
     reconcile_measuring_point_height,
 )
 from pydantic import ValidationError
@@ -385,7 +386,15 @@ def _create_records(
                     notes=None,
                 )
                 sample = Sample(field_activity=field_activity)
-                observation = Observation(sample=sample)
+                observation = Observation(
+                    sample=sample,
+                    # Copy the well's status, because the public water level
+                    # views check the observation's status too. It is set only
+                    # where the observation is new (here and in the branch
+                    # below), so a re-import never overwrites a status someone
+                    # set by hand.
+                    release_status=observation_release_status(row.well.release_status),
+                )
                 session.add(field_event)
                 session.add(field_activity)
                 session.add(sample)
@@ -395,7 +404,14 @@ def _create_records(
                 field_event = field_activity.field_event
                 observation = _find_existing_observation(sample, parameter_id)
                 if observation is None:
-                    observation = Observation(sample=sample)
+                    # A new observation on an existing sample: copy the well's
+                    # status for the same reason as above.
+                    observation = Observation(
+                        sample=sample,
+                        release_status=observation_release_status(
+                            row.well.release_status
+                        ),
+                    )
                     session.add(observation)
 
                 field_event.event_date = row.field_event_dt
