@@ -1,7 +1,7 @@
 """add release_level to ReleaseMixin tables
 
 Revision ID: 73d27e78571a
-Revises: c89d6680bff6
+Revises: 7480e4ee69dc
 Create Date: 2026-11-13
 
 Splits release_status's visibility half into release_level, per
@@ -25,7 +25,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "73d27e78571a"
-down_revision: Union[str, Sequence[str], None] = "c89d6680bff6"
+down_revision: Union[str, Sequence[str], None] = "7480e4ee69dc"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -68,9 +68,9 @@ TABLES = (
     "sample",
     "sensor",
     "status_history",
+    "stratigraphic_interval",
     "thing",
     "thing_aquifer_association",
-    "thing_geologic_formation_association",
     "thing_id_link",
     "transducer_observation",
     "transducer_observation_block",
