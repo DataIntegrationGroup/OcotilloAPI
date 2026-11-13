@@ -317,6 +317,49 @@ def test_edr_schema_documents_its_parameters(
         session.commit()
 
 
+def test_edr_independent_axis_documents_its_parameters():
+    """
+    Tests that the independent axis upon which the data is observed is correctly documented
+    in the EDR.
+    """
+    from datetime import datetime
+    from core.edr_provider import PointSeriesEDRProvider
+
+    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+
+    provider = object.__new__(PointSeriesEDRProvider)
+    provider.table = collection["table"]
+    provider.parameter_columns = collection["parameter_columns"]
+    provider.independent_axis = collection["independent_axis"]
+
+    coverage = provider._coverage_collection(
+        [
+            {
+                "thing_id": 1,
+                "station_name": "Test well",
+                "longitude": -106.0,
+                "latitude": 34.0,
+                "datetime": datetime(2024, 1, 1),
+                "observation_value": 42.0,
+                "observation_unit": "ft",
+                "observation_parameter_name": "groundwater level below ground surface",
+                "qualifier_value": "test qualifier",
+                "qualifier_parameter_name": "groundwater level reason",
+            }
+        ]
+    )
+
+    assert "t" in coverage["domain"]["axes"].keys()
+    assert {
+        "coordinates": ["t"],
+        "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+    } in coverage["domain"]["referencing"]
+    assert coverage["ranges"]["groundwater level below ground surface"][
+        "axisNames"
+    ] == ["t"]
+    assert coverage["ranges"]["groundwater level reason"]["axisNames"] == ["t"]
+
+
 def test_edr_coveragejson_carries_the_parameter_description():
     # Exercises the CoverageJSON parameters block without a database: the
     # provider's __init__ opens a connection, which this does not need.
@@ -329,6 +372,7 @@ def test_edr_coveragejson_carries_the_parameter_description():
     provider = object.__new__(PointSeriesEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
+    provider.independent_axis = collection["independent_axis"]
 
     coverage = provider._coverage_collection(
         [
