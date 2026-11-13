@@ -33,6 +33,7 @@ from db.engine import session_ctx
 from schemas.well_inventory import WellInventoryRow
 from services.util import transform_srid, convert_ft_to_m
 from shapely import Point
+from sqlalchemy import text
 
 
 def _minimal_valid_well_inventory_row():
@@ -754,6 +755,55 @@ def test_public_availability_sets_thing_and_location_release_status(
         assert len(locations) == 1
         assert things[0].release_status == expected
         assert locations[0].release_status == expected
+
+
+@pytest.mark.parametrize(
+    "acknowledgement, expected",
+    [("True", "public"), ("False", "private"), ("", "draft")],
+)
+def test_public_availability_sets_water_level_observation_release_status(
+    tmp_path, acknowledgement, expected
+):
+    """The public water level views need the observation public as well as the well."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "public_availability_acknowledgement": acknowledgement,
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-observation-release-status.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        thing = session.query(Thing).one()
+        observation = session.query(Observation).one()
+        sample = observation.sample
+
+        assert observation.release_status == expected
+        assert observation.release_status == thing.release_status
+        # Only the observation follows the well; the visit records stay draft.
+        assert sample.release_status == "draft"
+        assert sample.field_activity.release_status == "draft"
+        assert sample.field_activity.field_event.release_status == "draft"
+
+        # The purpose of the fix is that the public EDR collection includes
+        # the observation, so check the collection directly. It should
+        # include the observation only when the well is public.
+        published = session.execute(
+            text("SELECT count(*) FROM ogc_waterlevels WHERE thing_id = :id"),
+            {"id": thing.id},
+        ).scalar_one()
+        assert published == (1 if expected == "public" else 0)
 
 
 def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):

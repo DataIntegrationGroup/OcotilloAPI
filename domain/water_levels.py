@@ -22,10 +22,42 @@ without a row prefix; the caller adds ``Row N:`` so the same rule can be reporte
 from a per-row importer or from a single-record API call.
 """
 
+from domain.wells import (
+    RELEASE_STATUS_DRAFT,
+    RELEASE_STATUS_PRIVATE,
+    RELEASE_STATUS_PUBLIC,
+)
+
 MEASUREMENT_UNIT = "ft"
 SAMPLE_MATRIX = "groundwater"
 SAMPLE_QC_TYPE = "Normal"
 GROUNDWATER_LEVEL_ACTIVITY_TYPE = "groundwater level"
+
+_COPIED_RELEASE_STATUSES = frozenset({RELEASE_STATUS_PUBLIC, RELEASE_STATUS_PRIVATE})
+
+
+def observation_release_status(well_release_status: str | None) -> str:
+    """
+    Choose the release status for a water level observation an importer creates.
+
+    The public water level views filter on the observation's status as well as the
+    well's, so an observation left at the ``draft`` default stays hidden even when
+    the owner agreed to publish the well. Copying the well's status applies that
+    decision to the observation.
+
+    Only ``public`` and ``private`` are copied, because they are the only statuses
+    that indicate whether the well's data may be published. For any other status
+    the function returns ``draft``.
+
+    The BDMS-1561 backfill
+    (``20261110_0001_backfill_imported_water_level_release_status``) applies the
+    same rule to observations imported before this function existed, so old and
+    new imported observations follow it. It keeps its own copy of the rule, so a
+    change here must be made there too.
+    """
+    if well_release_status in _COPIED_RELEASE_STATUSES:
+        return well_release_status
+    return RELEASE_STATUS_DRAFT
 
 
 def reconcile_measuring_point_height(
