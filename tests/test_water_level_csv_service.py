@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
 from db import (
     Contact,
     FieldActivity,
@@ -13,6 +14,7 @@ from db import (
 )
 from db.measuring_point_history import MeasuringPointHistory
 from db.engine import session_ctx
+from domain.samples import water_level_sample_name
 from tests import get_parameter_id
 from services.water_level_csv import (
     _build_sample_name,
@@ -21,7 +23,7 @@ from services.water_level_csv import (
     _validate_depth_to_water_against_well,
     bulk_upload_water_levels,
 )
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 
 def _build_well(
@@ -853,3 +855,163 @@ def test_bulk_upload_water_levels_reports_duplicate_well_name_matches():
                 if well is not None:
                     session.delete(well)
             session.commit()
+
+
+def _single_row_csv(well_name: str) -> bytes:
+    """One valid groundwater level row, measured at 2025-02-15 17:30 UTC."""
+    header = [
+        "field_staff",
+        "well_name_point_id",
+        "field_event_date_time",
+        "measurement_date_time",
+        "sampler",
+        "sample_method",
+        "mp_height",
+        "level_status",
+        "depth_to_water_ft",
+        "data_quality",
+        "water_level_notes",
+    ]
+    values = [
+        "A Lopez",
+        well_name,
+        "2025-02-15T08:00:00-07:00",
+        "2025-02-15T10:30:00-07:00",
+        "A Lopez",
+        "electric tape",
+        "1.5",
+        "Water level not affected",
+        "7.0",
+        "Water level accurate to within two hundreths of a foot",
+        "Initial measurement",
+    ]
+    return "\n".join([",".join(header), ",".join(values)]).encode("utf-8")
+
+
+def _set_well_release_status(well_id: int, release_status: str) -> None:
+    with session_ctx() as session:
+        session.get(Thing, well_id).release_status = release_status
+        session.commit()
+
+
+def _count_in_ogc_waterlevels(session, observation_id: int) -> int:
+    # The view prefixes manual observation ids with "m-" to keep them apart
+    # from transducer observation ids.
+    return session.execute(
+        text("SELECT count(*) FROM ogc_waterlevels WHERE id = :id"),
+        {"id": f"m-{observation_id}"},
+    ).scalar_one()
+
+
+@pytest.mark.parametrize(
+    "well_status, expected",
+    [
+        ("public", "public"),
+        ("private", "private"),
+        ("draft", "draft"),
+        # Not a publication decision, so the observation stays draft.
+        ("provisional", "draft"),
+    ],
+)
+def test_bulk_upload_water_levels_sets_new_observation_release_status_from_well(
+    water_well_thing, well_status, expected
+):
+    """The public water level views need the observation public as well as the well."""
+    _set_well_release_status(water_well_thing.id, well_status)
+
+    result = bulk_upload_water_levels(_single_row_csv(water_well_thing.name))
+
+    assert result.exit_code == 0, result.payload
+    observation_id = result.payload["water_levels"][0]["observation_id"]
+    with session_ctx() as session:
+        observation = session.get(Observation, observation_id)
+        sample = observation.sample
+
+        assert observation.release_status == expected
+        # Only the observation follows the well; the visit records stay draft.
+        assert sample.release_status == "draft"
+        assert sample.field_activity.release_status == "draft"
+        assert sample.field_activity.field_event.release_status == "draft"
+
+        # The fix exists so the public EDR collection includes these
+        # observations, so check the collection itself.
+        published = _count_in_ogc_waterlevels(session, observation_id)
+        assert published == (1 if expected == "public" else 0)
+
+
+def test_bulk_upload_water_levels_reimport_keeps_existing_observation_release_status(
+    water_well_thing,
+):
+    """A re-import must not undo a status someone set on the observation by hand."""
+    csv_content = _single_row_csv(water_well_thing.name)
+    first = bulk_upload_water_levels(csv_content)
+    assert first.exit_code == 0, first.payload
+    observation_id = first.payload["water_levels"][0]["observation_id"]
+
+    # The well is public, so a re-import that copied the well's status again
+    # would turn this back to public.
+    with session_ctx() as session:
+        session.get(Observation, observation_id).release_status = "private"
+        session.commit()
+
+    second = bulk_upload_water_levels(csv_content)
+
+    assert second.exit_code == 0, second.payload
+    assert second.payload["water_levels"][0]["observation_id"] == observation_id
+    with session_ctx() as session:
+        assert session.get(Observation, observation_id).release_status == "private"
+
+
+@pytest.mark.parametrize("well_status", ["public", "private"])
+def test_bulk_upload_water_levels_sets_release_status_on_new_observation_for_existing_sample(
+    water_well_thing, well_status
+):
+    """An existing sample without a groundwater level observation gets a new one,
+    and that new observation copies the well's status too."""
+    _set_well_release_status(water_well_thing.id, well_status)
+    ph_parameter_id = get_parameter_id("pH", "Field Parameter")
+    measured_at = datetime(2025, 2, 15, 17, 30, tzinfo=timezone.utc)
+
+    with session_ctx() as session:
+        # Load the well rather than merging the fixture object, whose stale
+        # release_status would overwrite the one set above.
+        well = session.get(Thing, water_well_thing.id)
+        field_event = FieldEvent(
+            thing=well,
+            event_date=datetime(2025, 2, 15, 15, 0, tzinfo=timezone.utc),
+        )
+        field_activity = FieldActivity(
+            field_event=field_event, activity_type="groundwater level"
+        )
+        # Same name the importer builds for the CSV row, so it reuses this sample.
+        sample = Sample(
+            field_activity=field_activity,
+            sample_date=measured_at,
+            sample_name=water_level_sample_name(water_well_thing.name, measured_at),
+            sample_matrix="groundwater",
+            sample_method="Electric tape measurement (E-probe)",
+            qc_type="Normal",
+        )
+        ph_observation = Observation(
+            sample=sample,
+            observation_datetime=measured_at,
+            parameter_id=ph_parameter_id,
+            value=7.2,
+            unit="dimensionless",
+        )
+        session.add_all([field_event, field_activity, sample, ph_observation])
+        session.commit()
+        sample_id = sample.id
+        ph_observation_id = ph_observation.id
+
+    result = bulk_upload_water_levels(_single_row_csv(water_well_thing.name))
+
+    assert result.exit_code == 0, result.payload
+    imported = result.payload["water_levels"][0]
+    assert imported["sample_id"] == sample_id
+    with session_ctx() as session:
+        observation = session.get(Observation, imported["observation_id"])
+        assert observation.id != ph_observation_id
+        assert observation.release_status == well_status
+        # The observation that was already on the sample is not an import.
+        assert session.get(Observation, ph_observation_id).release_status == "draft"
