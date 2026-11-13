@@ -348,3 +348,78 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
 # OGC VIEWS TO TEST
 # the columns are correct
 # add a record where the measuring point is null and verify that it gets coerced to 0
+
+
+def test_ogc_manual_waterlevels_view(
+    location,
+    water_well_thing,
+    groundwater_level_observation,
+    thing_id_link,
+):
+    """
+    Test that the ogc_manual_waterlevels view has the intended structure and content.
+
+    columns:
+        - thing_id <- water_well_thing.id
+        - station_name <- water_well_thing.name
+        - longitude <- location.longitude
+        - latitude <- location.latitude
+        - datetime <- groundwater_level_observation.observation_datetime
+        - observation_value <- groundwater_level_observation.value - groundwater_level_observation.measuring_point_height
+        - observation_unit <- groundwater_level_observation.unit
+        - observation_parameter_name <- "groundwater level below ground surface"
+        - qualifier_value <- groundwater_level_observation.groundwater_level_reason
+        - qualifier_parameter_name <- "groundwater level reason"
+    """
+
+    with session_ctx() as session:
+        result = session.execute(
+            f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{thing_id_link}'"
+        ).fetchall()
+        assert len(result) == 1
+        row = result[0]
+
+        assert row["thing_id"] == water_well_thing.id
+        assert row["station_name"] == water_well_thing.name
+        assert row["longitude"] == location.longitude
+        assert row["latitude"] == location.latitude
+        assert row["datetime"] == groundwater_level_observation.observation_datetime
+        assert (
+            row["observation_value"]
+            == groundwater_level_observation.value
+            - groundwater_level_observation.measuring_point_height
+        )
+        assert row["observation_unit"] == groundwater_level_observation.unit
+        assert (
+            row["observation_parameter_name"]
+            == "groundwater level below ground surface"
+        )
+        assert (
+            row["qualifier_value"]
+            == groundwater_level_observation.groundwater_level_reason
+        )
+        assert row["qualifier_parameter_name"] == "groundwater level reason"
+
+
+def test_ogc_manual_waterlevels_view_with_null_measuring_point(
+    water_well_thing,
+    groundwater_level_observation,
+    thing_id_link,
+):
+    """
+    Test that the ogc_manual_waterlevels view correctly handles a null measuring point height by subtracting 0
+    from the observation's value. This
+    """
+    with session_ctx() as session:
+        # update the observation in the database to reflect the null measuring point height
+        session.execute(
+            f"UPDATE observation SET measuring_point_height = NULL WHERE id = '{groundwater_level_observation.id}'"
+        )
+        session.commit()
+        result = session.execute(
+            f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+        ).fetchall()
+        assert len(result) == 1
+        row = result[0]
+
+        assert row["observation_value"] == groundwater_level_observation.value - 0
