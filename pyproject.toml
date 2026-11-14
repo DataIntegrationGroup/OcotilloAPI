@@ -27,7 +27,7 @@ dependencies = [
   "click==8.5.0",
   "cloud-sql-python-connector==1.23.0",
   "cryptography==50.0.2",
-  "dnspython==2.9.1",
+  "dnspython==2.9.2",
   "dotenv==0.9.9",
   "email-validator==2.3.0",
   "fastapi==0.162.0",
