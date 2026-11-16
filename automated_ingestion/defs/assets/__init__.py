@@ -23,6 +23,9 @@ Per-source assets are declared in their own modules and gathered here so
 from dagster import AssetsDefinition
 
 from automated_ingestion.defs.assets.connectivity import database_connectivity
+from automated_ingestion.defs.assets.groundwater_level_export import (
+    GROUNDWATER_LEVEL_EXPORT_ASSETS,
+)
 from automated_ingestion.defs.assets.heartbeat import ingestion_heartbeat
 from automated_ingestion.sources.san_acacia.ingest import (
     raw_san_acacia_locations,
@@ -39,6 +42,7 @@ def all_assets() -> list[AssetsDefinition]:
         raw_san_acacia_locations,
         raw_san_acacia_readings,
         san_acacia_observations,
+        *GROUNDWATER_LEVEL_EXPORT_ASSETS,
     ]
 
 

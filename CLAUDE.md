@@ -184,6 +184,16 @@ labs. It never creates a sample, and never writes the sample's single
 `nma_WCLab_ID`, which the LIMS ingest relies on to adopt a sample. Read
 **`docs/chemistry-isotope-ingest.md`** before changing it.
 
+### Groundwater level bulk export
+
+`automated_ingestion/exports/groundwater_levels/` publishes one GeoParquet and
+one CSV per public well to GCS and registers STAC item `gwl-<well>` (OCO-79).
+Five Dagster assets (`gwl_snapshot` through `gwl_stac_items`) each launch one
+step as a Cloud Run job execution; the work never runs on the Dagster runner.
+`_state/published.json` is the commit point, written last, and wells that stop
+being public are withdrawn. Read **`docs/groundwater-level-export.md`** before
+changing it.
+
 ### Stratigraphic intervals
 
 `stratigraphic_interval` (formerly `thing_geologic_formation_association`) is a

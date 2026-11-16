@@ -21,21 +21,40 @@ what ``dagster dev`` and the Dagster+ agent import. Keep it thin: it collects
 definitions declared elsewhere in the package rather than declaring them here.
 """
 
-from dagster import Definitions
+from dagster import Definitions, EnvVar
 
 from automated_ingestion.defs.assets import all_assets
+from automated_ingestion.defs.jobs.groundwater_level_export import (
+    groundwater_level_export_job,
+    groundwater_level_export_nightly,
+)
 from automated_ingestion.defs.jobs.heartbeat import heartbeat_job
 from automated_ingestion.defs.jobs.san_acacia import (
     san_acacia_job,
     san_acacia_weekly_schedule,
 )
-from automated_ingestion.defs.resources import OcotilloDatabase
+from automated_ingestion.defs.resources import (
+    CloudRunJob,
+    ExportStorage,
+    OcotilloDatabase,
+)
 
 defs = Definitions(
     assets=all_assets(),
-    jobs=[heartbeat_job, san_acacia_job],
-    schedules=[san_acacia_weekly_schedule],
-    resources={"database": OcotilloDatabase()},
+    jobs=[heartbeat_job, san_acacia_job, groundwater_level_export_job],
+    schedules=[san_acacia_weekly_schedule, groundwater_level_export_nightly],
+    resources={
+        "database": OcotilloDatabase(),
+        # EnvVar resolves when a run starts, not when the location loads, so
+        # a deployment without the export configured still loads -- only the
+        # export's own runs fail, naming the missing variable.
+        "cloud_run": CloudRunJob(
+            project=EnvVar("GWL_EXPORT_CLOUD_RUN_PROJECT"),
+            region=EnvVar("GWL_EXPORT_CLOUD_RUN_REGION"),
+            job=EnvVar("GWL_EXPORT_CLOUD_RUN_JOB"),
+        ),
+        "export_storage": ExportStorage(root=EnvVar("GWL_EXPORT_ROOT")),
+    },
 )
 
 # ============= EOF =============================================

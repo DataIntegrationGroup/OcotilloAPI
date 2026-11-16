@@ -1,1 +1,10 @@
 project_id = "waterdatainitiative-271000"
+
+# Groundwater level export (OCO-79). Leave unset until it is being stood up.
+# gwl_export = {
+#   staging = {
+#     image                   = "us-west4-docker.pkg.dev/waterdatainitiative-271000/ocotillo/gwl-export:latest"
+#     replica_connection_name = "waterdatainitiative-271000:us-west4:<replica>"
+#     database                = "ocotillo-staging"
+#   }
+# }

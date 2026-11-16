@@ -112,6 +112,8 @@ packages = [
   "automated_ingestion.defs",
   "automated_ingestion.defs.assets",
   "automated_ingestion.defs.jobs",
+  "automated_ingestion.exports",
+  "automated_ingestion.exports.groundwater_levels",
   "automated_ingestion.ocotillo",
   "automated_ingestion.shared",
   "automated_ingestion.sources",

@@ -24,6 +24,7 @@ implementation would be a second thing to get wrong, and would drift.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 from dagster import ConfigurableResource
 
@@ -56,6 +57,61 @@ class OcotilloDatabase(ConfigurableResource):
 
         with session_ctx() as session:
             yield session
+
+
+class CloudRunJob(ConfigurableResource):
+    """One Cloud Run job, executed with per-step argument overrides.
+
+    ``project``/``region``/``job`` are set from the environment in
+    ``definitions.py`` (``GWL_EXPORT_CLOUD_RUN_*``), so the code location loads
+    without them and only a run that needs the job fails when they are missing.
+    """
+
+    project: str
+    region: str
+    job: str
+    poll_seconds: float = 15.0
+
+    @property
+    def job_name(self) -> str:
+        return f"projects/{self.project}/locations/{self.region}/jobs/{self.job}"
+
+    def run(
+        self,
+        context: Any,
+        args: list[str],
+        task_count: int = 1,
+        timeout_seconds: int = 3600,
+    ) -> Any:
+        """Execute the job and block until it finishes; raise unless it succeeded."""
+        from automated_ingestion.shared.cloud_run import authorized_session, run_job
+
+        return run_job(
+            authorized_session(),
+            self.job_name,
+            args,
+            task_count=task_count,
+            timeout_seconds=timeout_seconds,
+            poll_seconds=self.poll_seconds,
+            log=context.log.info,
+        )
+
+
+class ExportStorage(ConfigurableResource):
+    """The export root, read by the assets for the reports each step writes."""
+
+    root: str
+
+    def open(self) -> Any:
+        from automated_ingestion.exports.groundwater_levels.storage import (
+            open_storage,
+        )
+        from automated_ingestion.shared.credentials import (
+            ensure_application_default_credentials,
+        )
+
+        ensure_application_default_credentials()
+        return open_storage(self.root)
 
 
 # ============= EOF =============================================
