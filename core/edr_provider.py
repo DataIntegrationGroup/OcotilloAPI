@@ -73,7 +73,7 @@ def _expand_env(value):
     return _ENV_RE.sub(lambda m: os.environ.get(m.group(1), ""), value)
 
 
-class PointSeriesEDRProvider(BaseEDRProvider):
+class StationEDRProvider(BaseEDRProvider):
     """EDR provider serving CoverageJSON from a flat ogc_* readings view."""
 
     def __init__(self, provider_def):
@@ -456,4 +456,4 @@ class PointSeriesEDRProvider(BaseEDRProvider):
         return datetime_, datetime_
 
     def __repr__(self):
-        return f"<PointSeriesEDRProvider> {self.table}"
+        return f"<StationEDRProvider> {self.table}"

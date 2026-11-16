@@ -6,15 +6,22 @@ assuming it, so these cover both shapes without needing a database.
 """
 
 from datetime import datetime
+import textwrap
+import pytest
+import yaml
 
-from core.edr_provider import PointSeriesEDRProvider
-from core.pygeoapi import EDR_COLLECTIONS
+from core.edr_provider import StationEDRProvider
+from core.pygeoapi import (
+    EDR_COLLECTIONS,
+    EDR_PROVIDER_COLLECTION_KEYS,
+    _edr_collections_block,
+)
 
 
-def _provider(has_thing_type: bool) -> PointSeriesEDRProvider:
+def _provider(has_thing_type: bool) -> StationEDRProvider:
     # Bypass __init__: it connects to Postgres to read fields and detect
     # columns, and neither is what these tests are about.
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider._has_thing_type = has_thing_type
     return provider
 
@@ -51,20 +58,18 @@ def test_provider_implements_pygeoapis_instance_contract():
     from pygeoapi.provider.base_edr import BaseEDRProvider
 
     for name in ("instances", "instance"):
-        assert name in PointSeriesEDRProvider.__dict__, (
-            f"PointSeriesEDRProvider must override {name}() -- pygeoapi calls that "
+        assert name in StationEDRProvider.__dict__, (
+            f"StationEDRProvider must override {name}() -- pygeoapi calls that "
             "name, and the base implementation returns a NotImplementedError "
             "object instead of raising."
         )
-        assert getattr(PointSeriesEDRProvider, name) is not getattr(
-            BaseEDRProvider, name
-        )
+        assert getattr(StationEDRProvider, name) is not getattr(BaseEDRProvider, name)
 
 
 def test_instances_are_empty_without_an_instance_field():
     # ogc_water_chemistry has no deployments, so its provider declares no
     # instance_field and must report an empty list rather than querying.
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.instance_field = None
 
     assert provider.instances() == []
@@ -73,9 +78,9 @@ def test_instances_are_empty_without_an_instance_field():
 def test_instance_validation_compares_as_strings(monkeypatch):
     # instances() reports identifiers as strings; the id arrives from the URL
     # as a string too, but an int must not slip through as valid.
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.instance_field = "deployment_id"
-    monkeypatch.setattr(PointSeriesEDRProvider, "instances", lambda self: ["7", "9"])
+    monkeypatch.setattr(StationEDRProvider, "instances", lambda self: ["7", "9"])
 
     assert provider.instance("7") is True
     assert provider.instance(7) is True
@@ -88,7 +93,7 @@ def test_instance_validation_compares_as_strings(monkeypatch):
 def test_one_parameter_set_yields_a_range_per_distinct_name():
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]
@@ -138,7 +143,7 @@ def test_one_parameter_set_yields_a_range_per_distinct_name():
 def test_parameter_null_in_coverage_when_not_present():
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]
@@ -183,3 +188,48 @@ def test_parameter_null_in_coverage_when_not_present():
         "test qualifier",
         "test way way way qualifier",
     ]
+
+
+# Test that the keys in EDR_PROVIDER_COLLECTION_KEYS are correctly carried from the collection to the provider.
+def _generated_providers(table_prefix: str) -> dict[str, dict]:
+    """{collection id: provider entry} as pygeoapi will read them."""
+    block = _edr_collections_block(
+        host="db",
+        port="5432",
+        dbname="ocotillo",
+        user="reader",
+        password_placeholder="${PASSWORD}",
+        table_prefix=table_prefix,
+    )
+    resources = yaml.safe_load(textwrap.dedent(block))
+    return {cid: resource["providers"][0] for cid, resource in resources.items()}
+
+
+@pytest.mark.parametrize("table_prefix", ["ogc_", "ogc_internal_"])
+def test_generated_edr_providers_carry_the_collection_config(table_prefix):
+    """Config in EDR_COLLECTIONS reaches the provider pygeoapi builds.
+
+    pygeoapi constructs the provider from the generated YAML, not from
+    EDR_COLLECTIONS, so a key that _edr_collections_block forgets to copy
+    never reaches the provider -- and the unit tests, which set provider
+    attributes by hand, cannot see that.
+    """
+    providers = _generated_providers(table_prefix)
+    assert set(providers) == {c["id"] for c in EDR_COLLECTIONS}
+
+    for collection in EDR_COLLECTIONS:
+        provider = providers[collection["id"]]
+
+        assert provider["type"] == "edr"
+        assert provider["table"] == table_prefix + collection["table"].removeprefix(
+            "ogc_"
+        )
+        for key in EDR_PROVIDER_COLLECTION_KEYS:
+            assert (
+                provider[key] == collection[key]
+            ), f"{collection['id']}: {key} did not reach the provider"
+
+        if collection["instance_field"]:
+            assert provider["instance_field"] == collection["instance_field"]
+        else:
+            assert "instance_field" not in provider

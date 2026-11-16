@@ -2663,15 +2663,5 @@ water_well_field_operations:
       exist they are separated by vertical bars, most recently recorded
       first.
 
-# EDR collections. Keys here are parameter names read out of the data, not
-# column names -- ogc_waterlevels stamps a single literal, while
-# ogc_water_chemistry carries the analyte text exactly as the laboratory
-# recorded it, so most chemistry parameters take a generated title.
-waterlevels:
-  groundwater level:
-    title: Groundwater level
-    description: >-
-      Depth from the measuring point down to the water table, as measured by
-      hand during a site visit or logged automatically by a pressure
-      transducer left in the well. Larger values mean the water table is
-      further below the surface.
+# EDR collection parameters are discoverable from the data, so they are not hardcoded
+# here.

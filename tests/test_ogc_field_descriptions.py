@@ -323,11 +323,11 @@ def test_edr_independent_axis_documents_its_parameters():
     in the EDR.
     """
     from datetime import datetime
-    from core.edr_provider import PointSeriesEDRProvider
+    from core.edr_provider import StationEDRProvider
 
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]
@@ -365,11 +365,11 @@ def test_edr_coveragejson_carries_the_parameter_description():
     # provider's __init__ opens a connection, which this does not need.
     from datetime import datetime
 
-    from core.edr_provider import PointSeriesEDRProvider
+    from core.edr_provider import StationEDRProvider
 
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]
@@ -404,12 +404,12 @@ def test_edr_coveragejson_includes_datatype():
     """
     Test that the datatype is included for each range and is flexible per parameter_column
     """
-    from core.edr_provider import PointSeriesEDRProvider
+    from core.edr_provider import StationEDRProvider
     from datetime import datetime
 
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]
@@ -445,11 +445,11 @@ def test_edr_coveragejson_includes_datatype():
 def test_edr_falls_back_for_an_undocumented_analyte():
     from datetime import datetime
 
-    from core.edr_provider import PointSeriesEDRProvider
+    from core.edr_provider import StationEDRProvider
 
     collection = next(c for c in EDR_COLLECTIONS if c["id"] == "water_chemistry")
 
-    provider = object.__new__(PointSeriesEDRProvider)
+    provider = object.__new__(StationEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
     provider.independent_axis = collection["independent_axis"]

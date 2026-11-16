@@ -248,20 +248,25 @@ THING_COLLECTIONS = [
 
 # OGC API - EDR collections (see ADR3). Each is backed by a publication-
 # filtered ogc_* view and served by the custom PostgreSQL EDR provider.
+
+# Keys in EDR_COLLECTIONS that the EDR provider reads from its provider definition.
+# These keys are not optional; they must be present in the provider definition if they exist in the collection.
+# They are non-standard keys specific to this EDR provider.
+EDR_PROVIDER_COLLECTION_KEYS = (
+    "parameter_columns",
+    "independent_axis",
+    "instance_field",
+)
+
 EDR_COLLECTIONS = [
     {
-        "id": "waterlevels",
-        "title": "Water Levels",
+        "id": "manual_waterlevels",
+        "title": "Manual Water Levels",
         "description": (
-            "Depth-to-water through time at each well, served as time series "
-            "rather than as one point per well. Two kinds of record are combined: "
-            "manual measurements taken by field staff during a visit, and "
-            "continuous records from pressure transducers left down the well, "
-            "which log automatically at a fixed interval. Each transducer "
-            "deployment is exposed as its own EDR instance, so a well's record "
-            "can be read deployment by deployment or as a whole. Use it to plot "
-            "hydrographs and to see how water levels respond to pumping, "
-            "recharge, and drought."
+            "Manually-measured depth-to-water below ground surface through time at "
+            "each well, served as time series rather than as one point per well. "
+            "Associated qualifiers - groundwater level reason - are included for each measurement "
+            "to assist interpretation of the data."
         ),
         "keywords": [
             "groundwater",
@@ -269,11 +274,29 @@ EDR_COLLECTIONS = [
             "depth-to-water",
             "time-series",
             "hydrograph",
-            "transducer",
+            "manual",
             "edr",
         ],
-        "table": "ogc_waterlevels",
-        "instance_field": "deployment_id",
+        "table": "ogc_manual_waterlevels",
+        "parameter_columns": [
+            {
+                "name_column": "observation_parameter_name",
+                "unit_column": "observation_unit",
+                "value_column": "observation_value",
+                "data_type": "float",
+            },
+            {
+                "name_column": "qualifier_parameter_name",
+                "unit_column": None,
+                "value_column": "qualifier_value",
+                "data_type": "string",
+            },
+        ],
+        "independent_axis": {
+            "name": "t",
+            "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+        },
+        "instance_field": None,
     },
     {
         "id": "water_chemistry",
@@ -296,6 +319,18 @@ EDR_COLLECTIONS = [
             "edr",
         ],
         "table": "ogc_water_chemistry",
+        "parameter_columns": [
+            {
+                "name_column": "parameter_name",
+                "unit_column": "unit",
+                "value_column": "value",
+                "data_type": "float",
+            }
+        ],
+        "independent_axis": {
+            "name": "t",
+            "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+        },
         "instance_field": None,
     },
 ]
@@ -468,13 +503,13 @@ def _edr_collections_block(
     resources: dict[str, dict] = {}
     for collection in EDR_COLLECTIONS:
         # EDR_COLLECTIONS' table values are hardcoded to the public
-        # ogc_waterlevels/ogc_water_chemistry names -- strip that literal
+        # ogc_manual_waterlevels/ogc_water_chemistry names -- strip that literal
         # "ogc_" so table_prefix (here, "ogc_internal_" for the internal
         # mount) still applies, the same way _thing_collections_block does.
         table_name = table_prefix + collection["table"].removeprefix("ogc_")
         provider = {
             "type": "edr",
-            "name": "core.edr_provider.PointSeriesEDRProvider",
+            "name": "core.edr_provider.StationEDRProvider",
             "data": {
                 "host": host,
                 "port": port,
@@ -485,8 +520,15 @@ def _edr_collections_block(
             "id_field": "id",
             "table": table_name,
         }
-        if collection["instance_field"]:
-            provider["instance_field"] = collection["instance_field"]
+
+        # add the keys to the provider if they exist in the collection
+        provider.update(
+            {
+                k: collection[k]
+                for k in EDR_PROVIDER_COLLECTION_KEYS
+                if collection[k] is not None
+            }
+        )
 
         resources[collection["id"]] = {
             "type": "collection",
