@@ -198,6 +198,7 @@ def water_well_thing(location):
             hole_depth=10,
             well_casing_diameter=5.0,
             well_casing_depth=10.0,
+            formation_completion_code="100QBAS",
         )
         session.add(water_well)
         session.commit()
