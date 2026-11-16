@@ -94,10 +94,10 @@ def step_edr_configured(context):
             )
         except ValueError:
             configured = False
-    if not configured:
-        context.scenario.skip(
-            "EDR collections (manual_waterlevels, water_chemistry) not yet implemented "
-            "on the /ogcapi mount — ADR3 proposal, @wip."
+
+        assert configured, (
+            "EDR collections (manual_waterlevels, water_chemistry) are not configured "
+            "on the /ogcapi mount."
         )
 
 

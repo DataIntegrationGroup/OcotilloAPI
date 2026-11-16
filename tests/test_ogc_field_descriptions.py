@@ -400,6 +400,48 @@ def test_edr_coveragejson_carries_the_parameter_description():
             raise AssertionError(f"Parameter {p} failed validation")
 
 
+def test_edr_coveragejson_includes_datatype():
+    """
+    Test that the datatype is included for each range and is flexible per parameter_column
+    """
+    from core.edr_provider import PointSeriesEDRProvider
+    from datetime import datetime
+
+    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+
+    provider = object.__new__(PointSeriesEDRProvider)
+    provider.table = collection["table"]
+    provider.parameter_columns = collection["parameter_columns"]
+    provider.independent_axis = collection["independent_axis"]
+
+    coverage = provider._coverage_collection(
+        [
+            {
+                "thing_id": 1,
+                "station_name": "Test well",
+                "longitude": -106.0,
+                "latitude": 34.0,
+                "datetime": datetime(2024, 1, 1),
+                "observation_value": 42.0,
+                "observation_unit": "ft",
+                "observation_parameter_name": "groundwater level below ground surface",
+                "qualifier_value": "test qualifier",
+                "qualifier_parameter_name": "groundwater level reason",
+            }
+        ]
+    )
+
+    for index, p in enumerate(
+        ["groundwater level below ground surface", "groundwater level reason"]
+    ):
+        parameter = coverage["parameters"][p]
+        assert "datatype" in parameter["range"], f"Parameter {p} missing datatype"
+        if index == 0:
+            assert parameter["range"]["datatype"] == "float"
+        else:
+            assert parameter["range"]["datatype"] == "string"
+
+
 def test_edr_falls_back_for_an_undocumented_analyte():
     from datetime import datetime
 
@@ -410,6 +452,7 @@ def test_edr_falls_back_for_an_undocumented_analyte():
     provider = object.__new__(PointSeriesEDRProvider)
     provider.table = collection["table"]
     provider.parameter_columns = collection["parameter_columns"]
+    provider.independent_axis = collection["independent_axis"]
 
     coverage = provider._coverage_collection(
         [
@@ -419,11 +462,9 @@ def test_edr_falls_back_for_an_undocumented_analyte():
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
-                "observation_value": 1.0,
-                "observation_unit": "mg/L",
-                "observation_parameter_name": "Some Unmapped Analyte",
-                "qualifier_value": "test qualifier",
-                "qualifier_parameter_name": "Some Unmapped Analyte qualifier",
+                "value": 1.0,
+                "unit": "mg/L",
+                "parameter_name": "Some Unmapped Analyte",
             }
         ]
     )
