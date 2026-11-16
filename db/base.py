@@ -102,7 +102,7 @@ class ReleaseMixin:
 
     @declared_attr
     def release_level(self):
-        return lexicon_term(default="pending")
+        return lexicon_term(default="pending", nullable=False)
 
 
 class AuditMixin:

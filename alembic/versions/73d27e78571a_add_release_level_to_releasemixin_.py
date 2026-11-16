@@ -12,7 +12,10 @@ Maps public->public, private->private, draft/provisional->pending by name
 only (provisional only matters on the two transducer tables). We expect
 published/final/archived to be empty everywhere (open question 2), so
 rather than quietly defaulting them to pending too, the migration raises
-if it finds one -- better to find out now.
+if it finds one -- better to find out now. Added nullable, backfilled,
+then locked to NOT NULL -- there's no ReleaseMixin table left after this
+where it should ever be unset. The _version shadow tables (see below)
+stay nullable: they hold historical snapshots that predate this column.
 
 Seven tables are __versioned__ (sqlalchemy_continuum) and need the same
 column on their _version shadow table too, or writes to them fail -- same
@@ -160,6 +163,8 @@ def upgrade() -> None:
                 f"migration, refusing to guess a release_level for them: "
                 f"{dict(unaccounted)}"
             )
+
+        op.alter_column(table, "release_level", nullable=False)
 
     for table in VERSIONED_TABLES:
         op.add_column(
