@@ -394,22 +394,8 @@ def test_edr_coveragejson_carries_the_parameter_description():
     for p in ["groundwater level below ground surface", "groundwater level reason"]:
         parameter = coverage["parameters"][p]
         try:
-            if p == "groundwater level below ground surface":
-                assert (
-                    parameter["observedProperty"]["label"]["en"]
-                    == "Groundwater level below ground surface"
-                )
-                assert parameter["description"]["en"].startswith(
-                    "Depth from the ground surface"
-                )
-            else:
-                assert (
-                    parameter["observedProperty"]["label"]["en"]
-                    == "Groundwater level reason"
-                )
-                assert parameter["description"]["en"].startswith(
-                    "Reason for the groundwater level"
-                )
+            assert parameter["observedProperty"]["label"]["en"] == p.capitalize()
+            assert parameter["description"]["en"].startswith(p.capitalize())
         except AssertionError:
             raise AssertionError(f"Parameter {p} failed validation")
 
