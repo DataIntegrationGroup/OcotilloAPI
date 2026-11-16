@@ -474,7 +474,7 @@ def _edr_collections_block(
         table_name = table_prefix + collection["table"].removeprefix("ogc_")
         provider = {
             "type": "edr",
-            "name": "core.edr_provider.WaterEDRProvider",
+            "name": "core.edr_provider.PointSeriesEDRProvider",
             "data": {
                 "host": host,
                 "port": port,
