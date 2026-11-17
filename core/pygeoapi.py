@@ -252,8 +252,13 @@ THING_COLLECTIONS = [
 # Keys in EDR_COLLECTIONS that the EDR provider reads from its provider definition.
 # These keys are not optional; they must be present in the provider definition if they exist in the collection.
 # They are non-standard keys specific to this EDR provider.
+# parameter_columns: list of dictionaries defining the columns for each parameter in the collection. these correspond with column names in views
+# station_properties: list of columns to include as station properties. these come from views
+# independent_axis: dictionary defining the independent axis (e.g., time) and its column
+# instance_field: column name for the instance identifier, if applicable
 EDR_PROVIDER_COLLECTION_KEYS = (
     "parameter_columns",
+    "station_properties",
     "independent_axis",
     "instance_field",
 )
@@ -292,6 +297,17 @@ EDR_COLLECTIONS = [
                 "data_type": "string",
             },
         ],
+        "station_properties": [
+            "name",
+            "thing_type",
+            "ground_surface_elevation",
+            "ground_surface_elevation_units",
+            "vertical_datum",
+            "well_depth",
+            "well_depth_units",
+            "geologic_formation",
+            "alternate_ids",
+        ],
         "independent_axis": {"axis": "t", "column": "datetime"},
         "instance_field": None,
     },
@@ -324,6 +340,7 @@ EDR_COLLECTIONS = [
                 "data_type": "number",
             }
         ],
+        "station_properties": ["name", "thing_type"],
         "independent_axis": {"axis": "t", "column": "datetime"},
         "instance_field": None,
     },

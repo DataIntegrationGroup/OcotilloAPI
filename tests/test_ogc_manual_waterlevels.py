@@ -363,61 +363,113 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
 def test_ogc_manual_waterlevels_view(
     location,
     water_well_thing,
+    thing_id_link,
     groundwater_level_observation,
 ):
     """
-    Test that the ogc_manual_waterlevels view has the intended structure and content.
+    The ogc_manual_waterlevels view: one row per public manual reading, with
+    the reading's parameter columns and its well's site columns.
 
-    columns:
+    Station columns:
+        - id <- "m-" || observation.id
         - thing_id <- water_well_thing.id
-        - station_name <- water_well_thing.name
-        - longitude <- location.longitude
-        - latitude <- location.latitude
-        - datetime <- groundwater_level_observation.observation_datetime
-        - observation_value <- groundwater_level_observation.value - groundwater_level_observation.measuring_point_height
-        - observation_unit <- groundwater_level_observation.unit
-        - observation_parameter_name <- "groundwater level below ground surface"
-        - qualifier_value <- groundwater_level_observation.groundwater_level_reason
-        - qualifier_parameter_name <- "groundwater level reason"
+        - name <- water_well_thing.name
+        - thing_type <- water_well_thing.thing_type
+        - longitude, latitude <- location.point
+        - datetime <- observation.observation_datetime (the independent axis)
+        - release_status <- "public" (only public readings of public wells)
 
-    The alternate ids will be pulled separately from the thing_id_link table.
+    Parameter columns (core/pygeoapi.py, parameter_columns):
+        - observation_parameter_name <- "groundwater level below ground surface"
+        - observation_value <- observation.value - measuring_point_height
+        - observation_unit <- "ft"
+        - qualifier_parameter_name <- "groundwater level reason"
+        - qualifier_value <- observation.groundwater_level_reason
+
+    Site columns, repeated on every reading of the well and published on
+    /locations:
+        - ground_surface_elevation <- location.elevation
+        - ground_surface_elevation_units <- "m"
+        - vertical_datum <- "NAVD88"
+        - well_depth <- water_well_thing.well_depth
+        - well_depth_units <- "ft"
+        - geologic_formation <- jsonb {code, description}: the well's
+          formation_completion_code and its lexicon definition
+        - alternate_ids <- jsonb list of {id, relation, organization}, one per
+          public thing_id_link row of the well
     """
     with session_ctx() as session:
         session.execute(
             text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
             {"oid": groundwater_level_observation.id},
         )
+        # The fixture's link is private; only public links may be published.
+        session.execute(
+            text("UPDATE thing_id_link SET release_status = 'public' WHERE id = :lid"),
+            {"lid": thing_id_link.id},
+        )
         session.commit()
 
-        result = session.execute(
-            text(
-                f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
-            )
-        ).fetchall()
-        assert len(result) == 1
-        row = result[0]
+        formation_description = session.execute(
+            text("SELECT definition FROM lexicon_term WHERE term = :code"),
+            {"code": water_well_thing.formation_completion_code},
+        ).scalar_one()
 
-        assert row["thing_id"] == water_well_thing.id
-        assert row["station_name"] == water_well_thing.name
-        lat, lon = location.latlon
-        assert row["longitude"] == lon
-        assert row["latitude"] == lat
-        assert row["datetime"] == groundwater_level_observation.observation_datetime
-        assert (
-            row["observation_value"]
-            == groundwater_level_observation.value
-            - groundwater_level_observation.measuring_point_height
+        rows = (
+            session.execute(
+                text("SELECT * FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
+                {"tid": water_well_thing.id},
+            )
+            .mappings()
+            .all()
         )
-        assert row["observation_unit"] == groundwater_level_observation.unit
-        assert (
-            row["observation_parameter_name"]
-            == "groundwater level below ground surface"
-        )
-        assert (
-            row["qualifier_value"]
-            == groundwater_level_observation.groundwater_level_reason
-        )
-        assert row["qualifier_parameter_name"] == "groundwater level reason"
+
+    assert len(rows) == 1
+    row = rows[0]
+
+    # ------------------------------------------------------------ station
+    assert row["id"] == f"m-{groundwater_level_observation.id}"
+    assert row["thing_id"] == water_well_thing.id
+    assert row["name"] == water_well_thing.name
+    assert row["thing_type"] == water_well_thing.thing_type
+    latitude, longitude = location.latlon
+    assert row["longitude"] == pytest.approx(longitude)
+    assert row["latitude"] == pytest.approx(latitude)
+    assert row["datetime"] == datetime.fromisoformat(
+        groundwater_level_observation.observation_datetime
+    )
+    assert row["release_status"] == "public"
+
+    # ---------------------------------------------------------- parameters
+    assert row["observation_parameter_name"] == "groundwater level below ground surface"
+    assert row["observation_value"] == pytest.approx(
+        groundwater_level_observation.value
+        - groundwater_level_observation.measuring_point_height
+    )
+    assert row["observation_unit"] == "ft"
+    assert row["qualifier_parameter_name"] == "groundwater level reason"
+    assert (
+        row["qualifier_value"] == groundwater_level_observation.groundwater_level_reason
+    )
+
+    # --------------------------------------------------------------- site
+    assert row["ground_surface_elevation"] == pytest.approx(location.elevation)
+    assert row["ground_surface_elevation_units"] == "m"
+    assert row["vertical_datum"] == "NAVD88"
+    assert row["well_depth"] == pytest.approx(water_well_thing.well_depth)
+    assert row["well_depth_units"] == "ft"
+    # jsonb columns come back as Python dicts and lists
+    assert row["geologic_formation"] == {
+        "code": water_well_thing.formation_completion_code,
+        "description": formation_description,
+    }
+    assert row["alternate_ids"] == [
+        {
+            "id": thing_id_link.alternate_id,
+            "relation": thing_id_link.relation,
+            "organization": thing_id_link.alternate_organization,
+        }
+    ]
 
 
 def test_ogc_manual_waterlevels_view_with_null_measuring_point(

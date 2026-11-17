@@ -18,19 +18,49 @@ A PostgreSQL-backed OGC API - EDR provider for pygeoapi (see ADR3).
 
 pygeoapi's bundled EDR providers target gridded/xarray data. Ocotillo's
 observational data is relational point/time-series, so this provider serves
-CoverageJSON directly from the publication-filtered ``ogc_waterlevels`` and
+CoverageJSON directly from the publication-filtered ``ogc_manual_waterlevels`` and
 ``ogc_water_chemistry`` views.
 
-Each backing view is a flat table of readings with the columns::
+Each backing view is a flat table with one row per reading. Every view has the
+station columns::
 
-    id, thing_id, station_name, longitude, latitude, datetime,
-    value, unit, parameter_name, release_status
-    (+ deployment_id on ogc_waterlevels)
+    id, thing_id, station_name, longitude, latitude, release_status
 
-The provider groups readings by station (``thing_id``) into a CoverageJSON
-``PointSeries`` coverage, one parameter per ``parameter_name``. Transducer
-deployments (``deployment_id``) are exposed as EDR instances of the
-``waterlevels`` collection.
+plus the independent-axis column the collection names in ``independent_axis``
+(``{"axis": "t", "column": "datetime"}`` for a time series), and optionally:
+
+    thing_type        station kind, published on /locations when present
+    <instance_field>  e.g. a deployment id, exposed as EDR instances
+
+Parameters are not fixed columns. Each entry in the collection's
+``parameter_columns`` names a group of columns that carries one parameter value
+per row::
+
+    name_column   the parameter's name, read from the data (SELECT DISTINCT)
+    value_column  its value, of the entry's data_type (float/integer/string)
+    unit_column   its unit, or None for a parameter without one
+
+so a view can carry several parameters on one row (wide), many parameters down
+one name column (long), or both. ``ogc_manual_waterlevels``, for example::
+
+    observation_parameter_name  'groundwater level below ground surface'
+    observation_value           value - COALESCE(measuring_point_height, 0)
+    observation_unit            'ft'
+    qualifier_parameter_name    'groundwater level reason'
+    qualifier_value             groundwater_level_reason
+    (no unit column)
+
+Rules the views must follow:
+
+- emit the name on every row that carries the parameter, even when the value
+  is null, or discovery can miss the parameter entirely; a null name means
+  the row carries nothing for that entry;
+- a name appears in only one ``parameter_columns`` entry, with one unit.
+
+The provider groups rows by station (``thing_id``) into one CoverageJSON
+coverage each, with one range per parameter along the independent axis.
+Parameters on the same row share an axis index. Only a time axis
+(``PointSeries``) is supported today.
 """
 
 import logging
@@ -88,11 +118,23 @@ class StationEDRProvider(BaseEDRProvider):
             "password": _expand_env(data.get("password", "")),
         }
         # The backing view is a trusted, config-supplied identifier.
-        self.table = provider_def.get("table")
-        self.id_field = provider_def.get("id_field", "id")
-        self.time_field = "datetime"
-        # Only the waterlevels collection exposes transducer instances.
+        self.table = provider_def["table"]
+        self.id_field = provider_def["id"]
+        self.parameter_columns = provider_def["parameter_columns"]
+        self.station_properties = provider_def["station_properties"]
+        self.independent_axis = provider_def["independent_axis"]["axis"]
+        self.independent_axis_column_name = provider_def["independent_axis"]["column"]
+
+        # optional - .get defaults to None if not present
         self.instance_field = provider_def.get("instance_field")
+
+        if self.independent_axis == "t":
+            self.domain_type = "PointSeries"
+            self.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
+        else:
+            # Only "t" (time) is currently supported as the independent axis.
+            # Future support for other independent axes (e.g., vertical "z") may be added here.
+            raise ValueError(f"Unsupported independent axis: {self.independent_axis}")
 
         self._fields = {}
         self.get_fields()
@@ -156,24 +198,43 @@ class StationEDRProvider(BaseEDRProvider):
         """
         if self._fields:
             return {name: dict(field) for name, field in self._fields.items()}
-        try:
-            rows = self._fetch(
-                f"SELECT DISTINCT parameter_name, unit "  # noqa: S608 (trusted table)
-                f"FROM {self.table} ORDER BY parameter_name"
-            )
-        except ProviderConnectionError:
-            # View may not exist yet (e.g. OpenAPI generation before migrate).
-            return {}
-        for row in rows:
-            self._fields[row["parameter_name"]] = {
-                "type": "number",
-                "title": row["parameter_name"],
-                "x-ogc-unit": row["unit"],
-            }
+
+        fields = {}
+        for spec in self.parameter_columns:
+            name_column = spec["name_column"]
+            unit_column = spec["unit_column"] if spec["unit_column"] else "NULL"
+            data_type = spec["data_type"]
+
+            try:
+                rows = self._fetch(
+                    f"SELECT DISTINCT {name_column} AS parameter_name, {unit_column} AS unit "
+                    f"FROM {self.table} WHERE {name_column} IS NOT NULL ORDER BY {name_column}"
+                )
+            except ProviderConnectionError:
+                # View may not exist yet (e.g. OpenAPI generation before migrate).
+                return {}
+
+            for row in rows:
+                parameter_name = row["parameter_name"]
+                if (
+                    parameter_name in fields
+                    and fields[parameter_name].get("x-ogc-unit") != row["unit"]
+                ):
+                    raise ValueError(  # R13
+                        f"{self.table}: parameter {parameter_name!r} has more than one unit"
+                    )
+
+                fields[parameter_name] = {
+                    "type": data_type,
+                    "title": parameter_name,
+                }
+                if row["unit"] != "NULL":
+                    fields[parameter_name]["x-ogc-unit"] = row["unit"]
+
         # Same prose source as the feature collections, keyed by parameter
         # name rather than column name. Parameter names are read out of the
         # data, so an undocumented analyte keeps its generated title.
-        self._fields = describe_fields(self.table, self._fields)
+        self._fields = describe_fields(self.table, fields)
         return {name: dict(field) for name, field in self._fields.items()}
 
     @property
@@ -265,9 +326,7 @@ class StationEDRProvider(BaseEDRProvider):
         }
 
     def _station_properties(self, row):
-        properties = {"name": row["station_name"]}
-        if self._has_thing_type:
-            properties["thing_type"] = row["thing_type"]
+        properties = {p: row[p] for p in self.station_properties}
         return properties
 
     def area(
@@ -307,6 +366,20 @@ class StationEDRProvider(BaseEDRProvider):
         return self._coverage_collection(rows)
 
     # --------------------------------------------------------- read/filter
+    """
+    Developer's notes:
+    datetime_ filters the axis column, which for a time series (axis "t") is
+    the time column. pygeoapi also passes the EDR `z` parameter, which arrives
+    in the query methods' **kwargs and is ignored, as the water-level contract
+    says. When a vertical-profile collection (axis "z") is added:
+      - thread z through locations/area/position/cube -> _read -> _filters;
+      - z filters the axis column (depth/elevation);
+      - datetime_ must filter the profile's own time column instead, not the
+        axis -- add a separate time column to independent_axis config;
+      - coverages group by station + profile, not station alone.
+
+    """
+
     def _filters(
         self, datetime_=None, select_properties=None, instance=None, bbox=None, wkt=None
     ):
@@ -315,10 +388,10 @@ class StationEDRProvider(BaseEDRProvider):
         if datetime_:
             start, end = self._parse_interval(datetime_)
             if start is not None:
-                clauses.append("datetime >= %s")
+                clauses.append(f"{self.independent_axis_column_name} >= %s")
                 params.append(start)
             if end is not None:
-                clauses.append("datetime <= %s")
+                clauses.append(f"{self.independent_axis_column_name} <= %s")
                 params.append(end)
         if select_properties:
             clauses.append("parameter_name = ANY(%s)")
@@ -404,19 +477,33 @@ class StationEDRProvider(BaseEDRProvider):
             for r in srows:
                 by_param.setdefault(r["parameter_name"], []).append(r)
 
-            # union of timestamps across params for this station
-            times = sorted({r["datetime"] for r in srows})
-            t_index = {t: i for i, t in enumerate(times)}
+            # union of independent axis - e.g. timestamp or vertical depth - across params for this station
+            independent_axis_raw_values = sorted(
+                {r[self.independent_axis_column_name] for r in srows}
+            )
+            if self.independent_axis == "t":
+                independent_axis_values = [
+                    t.isoformat() for t in independent_axis_raw_values
+                ]
+            else:
+                # update here if conversions are needed for other types of independent axes (e.g., vertical depth)
+                independent_axis_values = independent_axis_raw_values
+
+            independent_axis_index = {
+                t: i for i, t in enumerate(independent_axis_values)
+            }
             ranges = {}
             for name, prows in by_param.items():
-                values = [None] * len(times)
+                values = [None] * len(independent_axis_values)
                 for r in prows:
-                    values[t_index[r["datetime"]]] = r["value"]
+                    values[
+                        independent_axis_index[r[self.independent_axis_column_name]]
+                    ] = r["value"]
                 ranges[name] = {
                     "type": "NdArray",
                     "dataType": "float",
-                    "axisNames": ["t"],
-                    "shape": [len(times)],
+                    "axisNames": [self.independent_axis],
+                    "shape": [len(independent_axis_values)],
                     "values": values,
                 }
             coverages.append(
@@ -425,13 +512,13 @@ class StationEDRProvider(BaseEDRProvider):
                     "id": str(thing_id),
                     "domain": {
                         "type": "Domain",
-                        "domainType": "PointSeries",
+                        "domainType": self.domain_type,
                         "axes": {
                             "x": {"values": [lon]},
                             "y": {"values": [lat]},
-                            "t": {"values": [t.isoformat() for t in times]},
+                            self.independent_axis: {"values": independent_axis_values},
                         },
-                        "referencing": [GEOGRAPHIC_CRS, TEMPORAL_RS],
+                        "referencing": self.referencing,
                     },
                     "ranges": ranges,
                 }
@@ -439,7 +526,7 @@ class StationEDRProvider(BaseEDRProvider):
 
         return {
             "type": "CoverageCollection",
-            "domainType": "PointSeries",
+            "domainType": self.domain_type,
             "parameters": parameters,
             "coverages": coverages,
         }
