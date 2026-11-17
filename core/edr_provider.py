@@ -139,12 +139,6 @@ class StationEDRProvider(BaseEDRProvider):
         self._fields = {}
         self.get_fields()
 
-        # Station metadata carried by some backing views but not others: the
-        # chemistry views (d9e0f1a2b3c4) span wells and springs and expose
-        # thing_type so a consumer can tell them apart. Detected rather than
-        # assumed, so a view without the column keeps working unchanged.
-        self._has_thing_type = self._has_column("thing_type")
-
     # ------------------------------------------------------------------ db
     def _connect(self):
         try:
@@ -301,9 +295,7 @@ class StationEDRProvider(BaseEDRProvider):
             bbox=bbox,
         )
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-        columns = "thing_id, station_name, longitude, latitude"
-        if self._has_thing_type:
-            columns += ", thing_type"
+        columns = "thing_id, thing_type, name, longitude, latitude"
         rows = self._fetch(
             f"SELECT DISTINCT {columns} "  # noqa: S608 (trusted table/columns)
             f"FROM {self.table}{where} ORDER BY thing_id",
