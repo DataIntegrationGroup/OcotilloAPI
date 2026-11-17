@@ -283,7 +283,7 @@ EDR_COLLECTIONS = [
                 "name_column": "observation_parameter_name",
                 "unit_column": "observation_unit",
                 "value_column": "observation_value",
-                "data_type": "float",
+                "data_type": "number",
             },
             {
                 "name_column": "qualifier_parameter_name",
@@ -292,10 +292,7 @@ EDR_COLLECTIONS = [
                 "data_type": "string",
             },
         ],
-        "independent_axis": {
-            "name": "t",
-            "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-        },
+        "independent_axis": {"axis": "t", "column": "datetime"},
         "instance_field": None,
     },
     {
@@ -324,13 +321,10 @@ EDR_COLLECTIONS = [
                 "name_column": "parameter_name",
                 "unit_column": "unit",
                 "value_column": "value",
-                "data_type": "float",
+                "data_type": "number",
             }
         ],
-        "independent_axis": {
-            "name": "t",
-            "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-        },
+        "independent_axis": {"axis": "t", "column": "datetime"},
         "instance_field": None,
     },
 ]
