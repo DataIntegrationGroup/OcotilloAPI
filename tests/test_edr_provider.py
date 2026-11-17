@@ -1,8 +1,8 @@
-"""Unit tests for the EDR provider's optional station metadata.
+"""Unit tests for the EDR provider, without a database.
 
-The chemistry views (d9e0f1a2b3c4) carry thing_type because they span wells and
-springs; ogc_manual_waterlevels does not. The provider detects the column rather than
-assuming it, so these cover both shapes without needing a database.
+Station metadata on /locations comes from each collection's station_properties
+config: the listed view columns are published as GeoJSON properties under
+their own names.
 """
 
 from datetime import datetime
@@ -18,26 +18,26 @@ from core.pygeoapi import (
 )
 
 
-def _provider(has_thing_type: bool) -> StationEDRProvider:
-    # Bypass __init__: it connects to Postgres to read fields and detect
-    # columns, and neither is what these tests are about.
+def _provider(station_properties=("name", "thing_type")) -> StationEDRProvider:
+    # Bypass __init__: it connects to Postgres to read fields, which is not
+    # what these tests are about.
     provider = object.__new__(StationEDRProvider)
-    provider._has_thing_type = has_thing_type
+    provider.station_properties = list(station_properties)
     return provider
 
 
-def test_station_properties_includes_thing_type_when_the_view_has_it():
-    properties = _provider(True)._station_properties(
-        {"station_name": "NM-28368", "thing_type": "spring"}
+def test_station_properties_publish_the_configured_columns_by_name():
+    properties = _provider()._station_properties(
+        {"name": "NM-28368", "thing_type": "spring"}
     )
 
     assert properties == {"name": "NM-28368", "thing_type": "spring"}
 
 
-def test_station_properties_omits_thing_type_when_the_view_lacks_it():
-    # ogc_manual_waterlevels has no thing_type column, so the row has no such key --
-    # reading it unconditionally would raise instead of degrading.
-    properties = _provider(False)._station_properties({"station_name": "NM-28368"})
+def test_station_properties_publish_only_the_configured_columns():
+    properties = _provider(["name"])._station_properties(
+        {"name": "NM-28368", "thing_type": "spring", "well_depth": 10.0}
+    )
 
     assert properties == {"name": "NM-28368"}
 
@@ -102,7 +102,7 @@ def test_one_parameter_set_yields_a_range_per_distinct_name():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
@@ -114,7 +114,7 @@ def test_one_parameter_set_yields_a_range_per_distinct_name():
             },
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 2),
@@ -152,7 +152,7 @@ def test_parameter_null_in_coverage_when_not_present():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
@@ -164,7 +164,7 @@ def test_parameter_null_in_coverage_when_not_present():
             },
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 2),

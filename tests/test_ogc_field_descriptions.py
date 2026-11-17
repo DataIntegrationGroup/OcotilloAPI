@@ -336,7 +336,7 @@ def test_edr_independent_axis_documents_its_parameters():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
@@ -378,7 +378,7 @@ def test_edr_coveragejson_carries_the_parameter_description():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
@@ -418,7 +418,7 @@ def test_edr_coveragejson_includes_datatype():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
@@ -458,7 +458,7 @@ def test_edr_falls_back_for_an_undocumented_analyte():
         [
             {
                 "thing_id": 1,
-                "station_name": "Test well",
+                "name": "Test well",
                 "longitude": -106.0,
                 "latitude": 34.0,
                 "datetime": datetime(2024, 1, 1),
