@@ -24,7 +24,7 @@ CoverageJSON directly from the publication-filtered ``ogc_manual_waterlevels`` a
 Each backing view is a flat table with one row per reading. Every view has the
 station columns::
 
-    id, thing_id, station_name, longitude, latitude, release_status
+    id, thing_id, thing_type, name, longitude, latitude, release_status
 
 plus the independent-axis column the collection names in ``independent_axis``
 (``{"axis": "t", "column": "datetime"}`` for a time series), and optionally:
@@ -66,6 +66,7 @@ Parameters on the same row share an axis index. Only a time axis
 import logging
 import os
 import re
+from datetime import datetime
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -119,7 +120,7 @@ class StationEDRProvider(BaseEDRProvider):
         }
         # The backing view is a trusted, config-supplied identifier.
         self.table = provider_def["table"]
-        self.id_field = provider_def["id"]
+        self.id_field = provider_def["id_field"]
         self.parameter_columns = provider_def["parameter_columns"]
         self.station_properties = provider_def["station_properties"]
         self.independent_axis = provider_def["independent_axis"]["axis"]
@@ -130,6 +131,7 @@ class StationEDRProvider(BaseEDRProvider):
 
         if self.independent_axis == "t":
             self.domain_type = "PointSeries"
+            self.independent_axis_transformer = datetime.isoformat
             self.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
         else:
             # Only "t" (time) is currently supported as the independent axis.
@@ -318,8 +320,12 @@ class StationEDRProvider(BaseEDRProvider):
         }
 
     def _station_properties(self, row):
-        properties = {p: row[p] for p in self.station_properties}
-        return properties
+        """GeoJSON properties for one station on /locations.
+
+        Each column in the collection's ``station_properties`` config is
+        published under its own name.
+        """
+        return {column: row[column] for column in self.station_properties}
 
     def area(
         self, wkt=None, select_properties=None, datetime_=None, instance=None, **kwargs
@@ -386,8 +392,15 @@ class StationEDRProvider(BaseEDRProvider):
                 clauses.append(f"{self.independent_axis_column_name} <= %s")
                 params.append(end)
         if select_properties:
-            clauses.append("parameter_name = ANY(%s)")
-            params.append(list(select_properties))
+            names = list(select_properties)
+            clauses.append(
+                "("
+                + " OR ".join(
+                    f"{s['name_column']} = ANY(%s)" for s in self.parameter_columns
+                )
+                + ")"
+            )
+            params.extend([names] * len(self.parameter_columns))
         if instance and self.instance_field:
             clauses.append(f"{self.instance_field} = %s")
             params.append(instance)
@@ -423,11 +436,23 @@ class StationEDRProvider(BaseEDRProvider):
             clauses.append("thing_id = %s")
             params.append(thing_id)
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+
+        columns = [
+            "thing_id",
+            "longitude",
+            "latitude",
+            self.independent_axis_column_name,
+        ]
+        for parameter_column_set in self.parameter_columns:
+            for key in ("name_column", "value_column", "unit_column"):
+                column = parameter_column_set[key]
+                if column is not None and column not in columns:
+                    columns.append(column)
+
         return self._fetch(
-            f"SELECT thing_id, station_name, longitude, latitude, "  # noqa: S608
-            f"datetime, value, unit, parameter_name "
+            f"SELECT {', '.join(columns)} "  # noqa: S608 (trusted, config-supplied columns)
             f"FROM {self.table}{where} "
-            f"ORDER BY thing_id, parameter_name, datetime",
+            f"ORDER BY thing_id, {self.independent_axis_column_name}",
             params,
         )
 
@@ -440,64 +465,79 @@ class StationEDRProvider(BaseEDRProvider):
         if not rows:
             raise ProviderNoDataError("No data found")
 
+        # collect unique parameter metadata, where a parameter is assumed to always have the same unit
+        # if a unit exists for that parameter
         parameters = {}
-        # group rows by (thing_id) -> per station coverage, and by parameter
         stations = {}
         for row in rows:
             stations.setdefault(row["thing_id"], []).append(row)
-            name = row["parameter_name"]
-            if name not in parameters:
-                # A CoverageJSON client reads observedProperty.label for the
-                # display name and description for the explanation; both were
-                # the raw parameter name before the field metadata existed.
-                entry = self._parameter_documentation(name)
-                parameters[name] = {
-                    "type": "Parameter",
-                    "description": {"en": entry.get("description", name)},
-                    "observedProperty": {
-                        "id": name,
-                        "label": {"en": entry.get("title", name)},
-                    },
-                    "unit": {"symbol": row["unit"], "label": {"en": row["unit"]}},
-                }
+            for parameter_column_set in self.parameter_columns:
+                name = row[parameter_column_set["name_column"]]
+                if name not in parameters and name is not None:
+                    # A CoverageJSON client reads observedProperty.label for the
+                    # display name and description for the explanation; both were
+                    # the raw parameter name before the field metadata existed.
+                    entry = self._parameter_documentation(name)
+                    parameters[name] = {
+                        "type": "Parameter",
+                        "description": {"en": entry.get("description", name)},
+                        "observedProperty": {
+                            "id": name,
+                            "label": {"en": entry.get("title", name)},
+                        },
+                    }
 
+                    # not every parameter has a unit, so leave it out if it is None
+                    if parameter_column_set["unit_column"] is not None:
+                        parameters[name]["unit"] = {
+                            "symbol": row[parameter_column_set["unit_column"]],
+                            "label": {"en": row[parameter_column_set["unit_column"]]},
+                        }
+
+        # build the coverage for each station, one at a time
         coverages = []
-        for thing_id, srows in stations.items():
-            lon = srows[0]["longitude"]
-            lat = srows[0]["latitude"]
-            by_param = {}
-            for r in srows:
-                by_param.setdefault(r["parameter_name"], []).append(r)
+        for thing_id, station_rows in stations.items():
+            lon = station_rows[0]["longitude"]
+            lat = station_rows[0]["latitude"]
 
             # union of independent axis - e.g. timestamp or vertical depth - across params for this station
             independent_axis_raw_values = sorted(
-                {r[self.independent_axis_column_name] for r in srows}
+                {r[self.independent_axis_column_name] for r in station_rows}
             )
-            if self.independent_axis == "t":
-                independent_axis_values = [
-                    t.isoformat() for t in independent_axis_raw_values
-                ]
-            else:
-                # update here if conversions are needed for other types of independent axes (e.g., vertical depth)
-                independent_axis_values = independent_axis_raw_values
 
+            # used to look up the data with the raw independent axis values since transformed
+            # values may not work (e.g. after converting timestamps to ISO format)
             independent_axis_index = {
-                t: i for i, t in enumerate(independent_axis_values)
+                raw_value: i for i, raw_value in enumerate(independent_axis_raw_values)
             }
+
+            # one range per parameter where each range's values are the same length
+            # (meaning None if a parameter was not reported for a particular independent axis value,
+            # such as when a parameter is not reported for a particular timestamp or depth)
             ranges = {}
-            for name, prows in by_param.items():
-                values = [None] * len(independent_axis_values)
-                for r in prows:
-                    values[
-                        independent_axis_index[r[self.independent_axis_column_name]]
-                    ] = r["value"]
-                ranges[name] = {
-                    "type": "NdArray",
-                    "dataType": "float",
-                    "axisNames": [self.independent_axis],
-                    "shape": [len(independent_axis_values)],
-                    "values": values,
-                }
+            for r in station_rows:
+                axis_value = r[self.independent_axis_column_name]
+                i = independent_axis_index[axis_value]
+                for parameter_column_set in self.parameter_columns:
+                    name = r[parameter_column_set["name_column"]]
+
+                    if name not in ranges and name is not None:
+                        ranges[name] = {
+                            "type": "NdArray",
+                            "dataType": parameter_column_set["data_type"],
+                            "axisNames": [self.independent_axis],
+                            "shape": [len(independent_axis_raw_values)],
+                            "values": [None] * len(independent_axis_raw_values),
+                        }
+
+                    # each list needs to be the same length for the ranges, so if a parameter is non-existent for this row, we still need to fill in None
+                    if name is None:
+                        parameter_value = None
+                    else:
+                        parameter_value = r[parameter_column_set["value_column"]]
+                    ranges[name]["values"][i] = parameter_value
+
+            # transform the raw independent axis values for the coverage output (e.g., ISO formatted timestamps)
             coverages.append(
                 {
                     "type": "Coverage",
@@ -508,7 +548,12 @@ class StationEDRProvider(BaseEDRProvider):
                         "axes": {
                             "x": {"values": [lon]},
                             "y": {"values": [lat]},
-                            self.independent_axis: {"values": independent_axis_values},
+                            self.independent_axis: {
+                                "values": [
+                                    self.independent_axis_transformer(raw_value)
+                                    for raw_value in independent_axis_raw_values
+                                ]
+                            },
                         },
                         "referencing": self.referencing,
                     },
