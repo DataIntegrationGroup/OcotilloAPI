@@ -269,8 +269,8 @@ def test_pygeoapi_still_passes_provider_fields_through_to_schema():
 
 """
 Developer's note:
-This test ensures that the EDR schema for manual water levels correctly documents its parameters.
-It relies on the presence of water well things and groundwater level observations in the test database
+This test ensures that the EDR schema correctly documents its parameters.
+It relies on the presence of data in the test database
 since parameters are ready from the data themselves.
 """
 
