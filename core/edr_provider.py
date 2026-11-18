@@ -287,7 +287,7 @@ class StationEDRProvider(BaseEDRProvider):
                 select_properties=select_properties,
                 instance=instance,
             )
-            return self._coverage_collection(rows)
+            return self._coverage_collection(rows, select_properties=select_properties)
 
         # location listing: one feature per station with data
         clauses, params = self._filters(
@@ -337,7 +337,7 @@ class StationEDRProvider(BaseEDRProvider):
             select_properties=select_properties,
             instance=instance,
         )
-        return self._coverage_collection(rows)
+        return self._coverage_collection(rows, select_properties=select_properties)
 
     def position(
         self, wkt=None, select_properties=None, datetime_=None, instance=None, **kwargs
@@ -349,7 +349,7 @@ class StationEDRProvider(BaseEDRProvider):
             select_properties=select_properties,
             instance=instance,
         )
-        return self._coverage_collection(rows)
+        return self._coverage_collection(rows, select_properties=select_properties)
 
     def cube(
         self, bbox=None, select_properties=None, datetime_=None, instance=None, **kwargs
@@ -361,7 +361,7 @@ class StationEDRProvider(BaseEDRProvider):
             select_properties=select_properties,
             instance=instance,
         )
-        return self._coverage_collection(rows)
+        return self._coverage_collection(rows, select_properties=select_properties)
 
     # --------------------------------------------------------- read/filter
     """
@@ -461,9 +461,14 @@ class StationEDRProvider(BaseEDRProvider):
         """Documented title/description for one EDR parameter, or ``{}``."""
         return table_entries(self.table).get(parameter_name, {})
 
-    def _coverage_collection(self, rows):
+    def _coverage_collection(self, rows, select_properties=None):
         if not rows:
             raise ProviderNoDataError("No data found")
+
+        # only keep the selected properties if specified
+        selected_properties = (
+            set(select_properties) if select_properties is not None else None
+        )
 
         # collect unique parameter metadata, where a parameter is assumed to always have the same unit
         # if a unit exists for that parameter
@@ -473,7 +478,13 @@ class StationEDRProvider(BaseEDRProvider):
             stations.setdefault(row["thing_id"], []).append(row)
             for parameter_column_set in self.parameter_columns:
                 name = row[parameter_column_set["name_column"]]
-                if name not in parameters and name is not None:
+
+                if name is None or (
+                    selected_properties is not None and name not in selected_properties
+                ):
+                    continue
+
+                if name not in parameters:
                     # A CoverageJSON client reads observedProperty.label for the
                     # display name and description for the explanation; both were
                     # the raw parameter name before the field metadata existed.
@@ -521,6 +532,15 @@ class StationEDRProvider(BaseEDRProvider):
                 for parameter_column_set in self.parameter_columns:
                     name = r[parameter_column_set["name_column"]]
 
+                    # each list needs to be the same length for the ranges, so
+                    # if a parameter name is None, we skip processing it for this row
+                    # and it will already be set to None in the ranges for this independent axis value
+                    if name is None or (
+                        selected_properties is not None
+                        and name not in selected_properties
+                    ):
+                        continue
+
                     if name not in ranges and name is not None:
                         ranges[name] = {
                             "type": "NdArray",
@@ -530,12 +550,7 @@ class StationEDRProvider(BaseEDRProvider):
                             "values": [None] * len(independent_axis_raw_values),
                         }
 
-                    # each list needs to be the same length for the ranges, so if a parameter is non-existent for this row, we still need to fill in None
-                    if name is None:
-                        parameter_value = None
-                    else:
-                        parameter_value = r[parameter_column_set["value_column"]]
-                    ranges[name]["values"][i] = parameter_value
+                    ranges[name]["values"][i] = r[parameter_column_set["value_column"]]
 
             # transform the raw independent axis values for the coverage output (e.g., ISO formatted timestamps)
             coverages.append(

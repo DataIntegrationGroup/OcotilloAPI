@@ -10,7 +10,7 @@ import textwrap
 import pytest
 import yaml
 
-from core.edr_provider import StationEDRProvider
+from core.edr_provider import GEOGRAPHIC_CRS, TEMPORAL_RS, StationEDRProvider
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
@@ -188,6 +188,87 @@ def test_parameter_null_in_coverage_when_not_present():
         "test qualifier",
         "test way way way qualifier",
     ]
+
+
+# ------------------------------------------------------- parameter-name (R9)
+
+LEVEL = "groundwater level below ground surface"
+REASON = "groundwater level reason"
+
+
+def _manual_waterlevels_coverage_provider() -> StationEDRProvider:
+    """A provider set up as __init__ would for manual_waterlevels, minus the DB."""
+    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+
+    provider = object.__new__(StationEDRProvider)
+    provider.table = collection["table"]
+    provider.parameter_columns = collection["parameter_columns"]
+    provider.independent_axis = collection["independent_axis"]["axis"]
+    provider.independent_axis_column_name = collection["independent_axis"]["column"]
+    provider.independent_axis_transformer = datetime.isoformat
+    provider.domain_type = "PointSeries"
+    provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
+    return provider
+
+
+def _reading(when: datetime, level: float, reason: str) -> dict:
+    """One manual_waterlevels row: a level and its reason on the same row."""
+    return {
+        "thing_id": 1,
+        "longitude": -106.0,
+        "latitude": 34.0,
+        "datetime": when,
+        "observation_parameter_name": LEVEL,
+        "observation_value": level,
+        "observation_unit": "ft",
+        "qualifier_parameter_name": REASON,
+        "qualifier_value": reason,
+    }
+
+
+def test_parameter_name_publishes_only_the_selected_parameters():
+    """A row matched by one parameter still carries the others; drop them.
+
+    The SQL filter keeps whole rows, so a request for the level alone returns
+    rows that also carry a reason. EDR never returns unselected parameters.
+    """
+    rows = [
+        _reading(datetime(2024, 1, 1), 42.0, "Site was pumped"),
+        _reading(datetime(2024, 1, 2), 43.0, "Site was pumped"),
+    ]
+
+    coverages = _manual_waterlevels_coverage_provider()._coverage_collection(
+        rows, select_properties=[LEVEL]
+    )
+
+    assert set(coverages["parameters"]) == {LEVEL}
+    coverage = coverages["coverages"][0]
+    assert set(coverage["ranges"]) == {LEVEL}
+    assert coverage["ranges"][LEVEL]["values"] == [42.0, 43.0]
+    assert coverage["domain"]["axes"]["t"]["values"] == [
+        "2024-01-01T00:00:00",
+        "2024-01-02T00:00:00",
+    ]
+
+
+@pytest.mark.parametrize(
+    "select_properties",
+    [
+        None,
+        # pygeoapi's EDR handler passes `request.params.get('parameter-name')
+        # or []`, so an unfiltered request arrives as an empty list, not None.
+        [],
+    ],
+)
+def test_no_parameter_name_publishes_every_parameter(select_properties):
+    rows = [_reading(datetime(2024, 1, 1), 42.0, "Site was pumped")]
+
+    coverages = _manual_waterlevels_coverage_provider()._coverage_collection(
+        rows, select_properties=select_properties
+    )
+
+    assert set(coverages["parameters"]) == {LEVEL, REASON}
+    assert set(coverages["coverages"][0]["ranges"]) == {LEVEL, REASON}
 
 
 # Test that the keys in EDR_PROVIDER_COLLECTION_KEYS are correctly carried from the collection to the provider.
