@@ -408,7 +408,7 @@ def test_edr_coveragejson_includes_datatype(edr_coverage_provider):
     )
 
     ranges = coverages["coverages"][0]["ranges"]
-    assert ranges["groundwater level below ground surface"]["dataType"] == "number"
+    assert ranges["groundwater level below ground surface"]["dataType"] == "float"
     assert ranges["groundwater level reason"]["dataType"] == "string"
 
 

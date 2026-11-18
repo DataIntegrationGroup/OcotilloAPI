@@ -288,7 +288,7 @@ EDR_COLLECTIONS = [
                 "name_column": "observation_parameter_name",
                 "unit_column": "observation_unit",
                 "value_column": "observation_value",
-                "data_type": "number",
+                "data_type": "float",
             },
             {
                 "name_column": "qualifier_parameter_name",
@@ -337,7 +337,7 @@ EDR_COLLECTIONS = [
                 "name_column": "parameter_name",
                 "unit_column": "unit",
                 "value_column": "value",
-                "data_type": "number",
+                "data_type": "float",
             }
         ],
         "station_properties": ["name", "thing_type"],
