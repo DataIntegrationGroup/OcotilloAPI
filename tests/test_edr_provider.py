@@ -10,7 +10,7 @@ import textwrap
 import pytest
 import yaml
 
-from core.edr_provider import GEOGRAPHIC_CRS, TEMPORAL_RS, StationEDRProvider
+from core.edr_provider import StationEDRProvider
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
@@ -90,13 +90,8 @@ def test_instance_validation_compares_as_strings(monkeypatch):
 # --------------------------------------------------------------- parameters
 
 
-def test_one_parameter_set_yields_a_range_per_distinct_name():
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
-
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
+def test_one_parameter_set_yields_a_range_per_distinct_name(edr_coverage_provider):
+    provider = edr_coverage_provider("manual_waterlevels")
 
     coverage = provider._coverage_collection(
         [
@@ -134,21 +129,16 @@ def test_one_parameter_set_yields_a_range_per_distinct_name():
     ]:
         parameter = coverage["parameters"][p]
         try:
-            assert parameter["observedProperty"]["label"]["en"] == p.capitalize()
-            assert parameter["description"]["en"].startswith(p.capitalize())
+            assert parameter["observedProperty"]["label"]["en"] == p
+            assert parameter["description"]["en"].startswith(p)
         except AssertionError:
             raise AssertionError(f"Parameter {p} failed validation")
 
 
-def test_parameter_null_in_coverage_when_not_present():
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+def test_parameter_null_in_coverage_when_not_present(edr_coverage_provider):
+    provider = edr_coverage_provider("manual_waterlevels")
 
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
-
-    coverage = provider._coverage_collection(
+    coverages = provider._coverage_collection(
         [
             {
                 "thing_id": 1,
@@ -177,6 +167,8 @@ def test_parameter_null_in_coverage_when_not_present():
         ]
     )
 
+    # ranges live on each station's coverage, not on the collection
+    coverage = coverages["coverages"][0]
     assert coverage["ranges"]["groundwater level below ground surface"]["values"] == [
         42.0,
         None,
@@ -196,21 +188,6 @@ LEVEL = "groundwater level below ground surface"
 REASON = "groundwater level reason"
 
 
-def _manual_waterlevels_coverage_provider() -> StationEDRProvider:
-    """A provider set up as __init__ would for manual_waterlevels, minus the DB."""
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
-
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]["axis"]
-    provider.independent_axis_column_name = collection["independent_axis"]["column"]
-    provider.independent_axis_transformer = datetime.isoformat
-    provider.domain_type = "PointSeries"
-    provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
-    return provider
-
-
 def _reading(when: datetime, level: float, reason: str) -> dict:
     """One manual_waterlevels row: a level and its reason on the same row."""
     return {
@@ -226,7 +203,9 @@ def _reading(when: datetime, level: float, reason: str) -> dict:
     }
 
 
-def test_parameter_name_publishes_only_the_selected_parameters():
+def test_parameter_name_publishes_only_the_selected_parameters(
+    edr_coverage_provider,
+):
     """A row matched by one parameter still carries the others; drop them.
 
     The SQL filter keeps whole rows, so a request for the level alone returns
@@ -237,7 +216,7 @@ def test_parameter_name_publishes_only_the_selected_parameters():
         _reading(datetime(2024, 1, 2), 43.0, "Site was pumped"),
     ]
 
-    coverages = _manual_waterlevels_coverage_provider()._coverage_collection(
+    coverages = edr_coverage_provider("manual_waterlevels")._coverage_collection(
         rows, select_properties=[LEVEL]
     )
 
@@ -260,10 +239,12 @@ def test_parameter_name_publishes_only_the_selected_parameters():
         [],
     ],
 )
-def test_no_parameter_name_publishes_every_parameter(select_properties):
+def test_no_parameter_name_publishes_every_parameter(
+    edr_coverage_provider, select_properties
+):
     rows = [_reading(datetime(2024, 1, 1), 42.0, "Site was pumped")]
 
-    coverages = _manual_waterlevels_coverage_provider()._coverage_collection(
+    coverages = edr_coverage_provider("manual_waterlevels")._coverage_collection(
         rows, select_properties=select_properties
     )
 
@@ -305,12 +286,9 @@ def test_generated_edr_providers_carry_the_collection_config(table_prefix):
         assert provider["table"] == table_prefix + collection["table"].removeprefix(
             "ogc_"
         )
+        # Every key is copied, None included (instance_field: null when a
+        # collection has no instances), so each provider has the same shape.
         for key in EDR_PROVIDER_COLLECTION_KEYS:
             assert (
                 provider[key] == collection[key]
             ), f"{collection['id']}: {key} did not reach the provider"
-
-        if collection["instance_field"]:
-            assert provider["instance_field"] == collection["instance_field"]
-        else:
-            assert "instance_field" not in provider

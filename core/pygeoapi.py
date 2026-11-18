@@ -532,14 +532,9 @@ def _edr_collections_block(
             "table": table_name,
         }
 
-        # add the keys to the provider if they exist in the collection
-        provider.update(
-            {
-                k: collection[k]
-                for k in EDR_PROVIDER_COLLECTION_KEYS
-                if collection[k] is not None
-            }
-        )
+        # Copy every provider key, None included, so each generated provider
+        # has the same shape (e.g. instance_field: null when there is none).
+        provider.update({k: collection[k] for k in EDR_PROVIDER_COLLECTION_KEYS})
 
         resources[collection["id"]] = {
             "type": "collection",

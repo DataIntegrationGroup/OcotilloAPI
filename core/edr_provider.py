@@ -466,9 +466,7 @@ class StationEDRProvider(BaseEDRProvider):
             raise ProviderNoDataError("No data found")
 
         # only keep the selected properties if specified
-        selected_properties = (
-            set(select_properties) if select_properties is not None else None
-        )
+        selected_properties = set(select_properties) if select_properties else None
 
         # collect unique parameter metadata, where a parameter is assumed to always have the same unit
         # if a unit exists for that parameter

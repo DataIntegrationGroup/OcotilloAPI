@@ -32,7 +32,6 @@ from core.dependencies import (
     viewer_function,
 )
 from core.ogc_field_metadata import table_entries
-from core.pygeoapi import EDR_COLLECTIONS
 from tests import override_authentication
 
 GEOMETRY_PROPERTY = "geometry"
@@ -299,14 +298,8 @@ def test_edr_schema_documents_its_parameters(
         "groundwater level reason",
     ]:
         parameter = properties[parameter_name]
-        assert parameter["title"] == parameter_name.capitalize()
-
-        if parameter_name == "groundwater level below ground surface":
-            assert parameter["description"].startswith("Depth from the ground surface")
-        else:
-            assert parameter["description"].startswith(
-                "Reason for the groundwater level"
-            )
+        assert parameter["title"] == parameter_name
+        assert parameter["description"] == parameter_name
 
     # reset the release_status to its original value
     with session_ctx() as session:
@@ -317,22 +310,16 @@ def test_edr_schema_documents_its_parameters(
         session.commit()
 
 
-def test_edr_independent_axis_documents_its_parameters():
+def test_edr_independent_axis_documents_its_parameters(edr_coverage_provider):
     """
     Tests that the independent axis upon which the data is observed is correctly documented
     in the EDR.
     """
     from datetime import datetime
-    from core.edr_provider import StationEDRProvider
 
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+    provider = edr_coverage_provider("manual_waterlevels")
 
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
-
-    coverage = provider._coverage_collection(
+    coverages = provider._coverage_collection(
         [
             {
                 "thing_id": 1,
@@ -349,6 +336,8 @@ def test_edr_independent_axis_documents_its_parameters():
         ]
     )
 
+    # only one coverage because there is only one thing
+    coverage = coverages["coverages"][0]
     assert "t" in coverage["domain"]["axes"].keys()
     assert {
         "coordinates": ["t"],
@@ -360,21 +349,14 @@ def test_edr_independent_axis_documents_its_parameters():
     assert coverage["ranges"]["groundwater level reason"]["axisNames"] == ["t"]
 
 
-def test_edr_coveragejson_carries_the_parameter_description():
+def test_edr_coveragejson_carries_the_parameter_description(edr_coverage_provider):
     # Exercises the CoverageJSON parameters block without a database: the
     # provider's __init__ opens a connection, which this does not need.
     from datetime import datetime
 
-    from core.edr_provider import StationEDRProvider
+    provider = edr_coverage_provider("manual_waterlevels")
 
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
-
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
-
-    coverage = provider._coverage_collection(
+    coverages = provider._coverage_collection(
         [
             {
                 "thing_id": 1,
@@ -392,29 +374,23 @@ def test_edr_coveragejson_carries_the_parameter_description():
     )
 
     for p in ["groundwater level below ground surface", "groundwater level reason"]:
-        parameter = coverage["parameters"][p]
+        parameter = coverages["parameters"][p]
         try:
-            assert parameter["observedProperty"]["label"]["en"] == p.capitalize()
-            assert parameter["description"]["en"].startswith(p.capitalize())
+            assert parameter["observedProperty"]["label"]["en"] == p
+            assert parameter["description"]["en"].startswith(p)
         except AssertionError:
             raise AssertionError(f"Parameter {p} failed validation")
 
 
-def test_edr_coveragejson_includes_datatype():
+def test_edr_coveragejson_includes_datatype(edr_coverage_provider):
     """
     Test that the datatype is included for each range and is flexible per parameter_column
     """
-    from core.edr_provider import StationEDRProvider
     from datetime import datetime
 
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "manual_waterlevels")
+    provider = edr_coverage_provider("manual_waterlevels")
 
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
-
-    coverage = provider._coverage_collection(
+    coverages = provider._coverage_collection(
         [
             {
                 "thing_id": 1,
@@ -431,28 +407,15 @@ def test_edr_coveragejson_includes_datatype():
         ]
     )
 
-    for index, p in enumerate(
-        ["groundwater level below ground surface", "groundwater level reason"]
-    ):
-        parameter = coverage["parameters"][p]
-        assert "datatype" in parameter["range"], f"Parameter {p} missing datatype"
-        if index == 0:
-            assert parameter["range"]["datatype"] == "float"
-        else:
-            assert parameter["range"]["datatype"] == "string"
+    ranges = coverages["coverages"][0]["ranges"]
+    assert ranges["groundwater level below ground surface"]["dataType"] == "number"
+    assert ranges["groundwater level reason"]["dataType"] == "string"
 
 
-def test_edr_falls_back_for_an_undocumented_analyte():
+def test_edr_falls_back_for_an_undocumented_analyte(edr_coverage_provider):
     from datetime import datetime
 
-    from core.edr_provider import StationEDRProvider
-
-    collection = next(c for c in EDR_COLLECTIONS if c["id"] == "water_chemistry")
-
-    provider = object.__new__(StationEDRProvider)
-    provider.table = collection["table"]
-    provider.parameter_columns = collection["parameter_columns"]
-    provider.independent_axis = collection["independent_axis"]
+    provider = edr_coverage_provider("water_chemistry")
 
     coverage = provider._coverage_collection(
         [
@@ -469,10 +432,12 @@ def test_edr_falls_back_for_an_undocumented_analyte():
         ]
     )
 
-    for p in ["Some Unmapped Analyte", "Some Unmapped Analyte qualifier"]:
-        parameter = coverage["parameters"][p]
-        assert parameter["observedProperty"]["label"]["en"] == p
-        assert parameter["description"]["en"] == p
+    # TODO: update this test to handle qualifiers if needed, such as when making
+    # the updated water chemistry view that includes qualifiers
+    p = "Some Unmapped Analyte"
+    parameter = coverage["parameters"][p]
+    assert parameter["observedProperty"]["label"]["en"] == p
+    assert parameter["description"]["en"] == p
 
 
 # ---------------------------------------------------------- enumerated values

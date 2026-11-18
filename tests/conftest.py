@@ -1262,3 +1262,40 @@ def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
         yield triple
         session.delete(triple)
         session.commit()
+
+
+# ============================================================ EDR providers
+
+
+@pytest.fixture()
+def edr_coverage_provider():
+    """Build a StationEDRProvider for one EDR collection, without a database.
+
+    StationEDRProvider.__init__ connects to Postgres to discover parameters,
+    which the CoverageJSON unit tests do not need, so this bypasses it and
+    sets the attributes __init__ would from the collection's EDR_COLLECTIONS
+    config. Keep in step with __init__: every attribute _coverage_collection
+    reads must be set here.
+
+    Usage: ``provider = edr_coverage_provider("manual_waterlevels")``
+    """
+    # Imported here so collecting tests does not require pygeoapi.
+    from datetime import datetime
+
+    from core.edr_provider import GEOGRAPHIC_CRS, TEMPORAL_RS, StationEDRProvider
+    from core.pygeoapi import EDR_COLLECTIONS
+
+    def build(collection_id: str) -> StationEDRProvider:
+        collection = next(c for c in EDR_COLLECTIONS if c["id"] == collection_id)
+
+        provider = object.__new__(StationEDRProvider)
+        provider.table = collection["table"]
+        provider.parameter_columns = collection["parameter_columns"]
+        provider.independent_axis = collection["independent_axis"]["axis"]
+        provider.independent_axis_column_name = collection["independent_axis"]["column"]
+        provider.independent_axis_transformer = datetime.isoformat
+        provider.domain_type = "PointSeries"
+        provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
+        return provider
+
+    return build
