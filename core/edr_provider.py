@@ -223,6 +223,7 @@ class StationEDRProvider(BaseEDRProvider):
                 fields[parameter_name] = {
                     "type": data_type,
                     "title": parameter_name,
+                    "description": parameter_name,
                 }
                 if row["unit"] != "NULL":
                     fields[parameter_name]["x-ogc-unit"] = row["unit"]
@@ -296,11 +297,24 @@ class StationEDRProvider(BaseEDRProvider):
             instance=instance,
             bbox=bbox,
         )
+
+        non_specific_station_columns = [
+            "thing_id",
+            "thing_type",
+            "name",
+            "longitude",
+            "latitude",
+        ]
+        specific_station_columns = [
+            c for c in self.station_properties if c not in non_specific_station_columns
+        ]
+        columns = ", ".join(non_specific_station_columns + specific_station_columns)
+
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-        columns = "thing_id, thing_type, name, longitude, latitude"
         rows = self._fetch(
-            f"SELECT DISTINCT {columns} "  # noqa: S608 (trusted table/columns)
-            f"FROM {self.table}{where} ORDER BY thing_id",
+            f"SELECT DISTINCT ON (thing_id) {columns} "  # noqa: S608 (trusted table/columns)
+            f"FROM {self.table}{where} "
+            "ORDER BY thing_id",
             params,
         )
         return {

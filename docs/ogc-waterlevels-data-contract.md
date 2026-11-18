@@ -355,6 +355,7 @@ Parameter behaviour:
 
 - `datetime`: an ISO 8601 instant or interval; `..` leaves an end open (e.g. `2020-01-01/..`). Applies to the reading timestamps.
 - `parameter-name`: comma-separated. `groundwater level below ground surface` and `groundwater level reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
+  - Every reading carries the `groundwater level reason` parameter, even when no reason was recorded. So `parameter-name=groundwater level reason` on its own matches every reading: `/locations` lists every well, not only wells with a recorded reason, and a well's reason range may be entirely `null`. The reason is meant to be read alongside the level.
 - `bbox` is a comma-separated list of the following values: `minx`, `miny`, `maxx`, `maxy`. They are defined via longitude and latitude in WGS84 (EPSG:4326).
 - `coords` is a WKT Polygon that uses longitude latitude pairs, defined using WGS84 (EPS:4326).
 - `f`: `json` (default for clients) or `html`.
