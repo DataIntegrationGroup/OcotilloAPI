@@ -99,7 +99,7 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
 
         public_rows = session.execute(
             text(
-                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{groundwater_level_observation.id}'"
             ),
         ).all()
         assert not public_rows, "a non-public well leaked a reading to /ogcapi"
@@ -108,7 +108,7 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         # keep carrying them.
         internal_rows = session.execute(
             text(
-                f"SELECT id FROM ogc_internal_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+                f"SELECT id FROM ogc_internal_manual_waterlevels WHERE id = '{groundwater_level_observation.id}'"
             ),
         ).all()
         assert internal_rows, "the internal mirror stopped carrying the reading"
@@ -502,11 +502,15 @@ def test_ogc_manual_waterlevels_view_with_null_measuring_point(
             )
         )
         session.commit()
-        result = session.execute(
-            text(
-                f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+        result = (
+            session.execute(
+                text(
+                    f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+                )
             )
-        ).fetchall()
+            .mappings()
+            .all()
+        )
         assert len(result) == 1
         row = result[0]
 
