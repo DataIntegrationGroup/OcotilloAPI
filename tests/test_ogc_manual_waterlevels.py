@@ -436,7 +436,7 @@ def test_ogc_manual_waterlevels_view(
     row = rows[0]
 
     # ------------------------------------------------------------ station
-    assert row["id"] == f"m-{groundwater_level_observation.id}"
+    assert row["id"] == groundwater_level_observation.id
     assert row["thing_id"] == water_well_thing.id
     assert row["name"] == water_well_thing.name
     assert row["thing_type"] == water_well_thing.thing_type
