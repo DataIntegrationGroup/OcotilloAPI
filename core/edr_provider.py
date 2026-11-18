@@ -186,6 +186,9 @@ class StationEDRProvider(BaseEDRProvider):
     def get_fields(self):
         """Return the parameter-name fields present in the backing view.
 
+        In an EDR provider ``fields`` are the parameters, not the supporting view's
+        columns in the database.
+
         Each call hands back fresh per-field dicts. pygeoapi's
         get_collection_schema mutates what a provider returns in place --
         popping ``format``, assigning ``x-ogc-role`` -- so returning the
