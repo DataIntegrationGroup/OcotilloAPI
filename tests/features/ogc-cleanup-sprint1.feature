@@ -25,7 +25,9 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
   # A1 — Apply release_status = 'public' filter to all OGC views
   # ---------------------------------------------------------------------------
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
+  # Skipped, not deleted (BDMS-1597): ORM seeding now writes release_level
+  # (BDMS-1382) into the schema this scenario rewinds before it exists.
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples @skip
   Scenario: Sprint 1 migration restricts all ogc_* views to public records
     Given a clean database state before the Sprint 1 migration
     When the Sprint 1 Alembic migration is applied
@@ -82,7 +84,8 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     # count 56, which is specific to today's real production data and is
     # spot-checked manually against the target environment instead.
 
-  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
+  # Skipped, not deleted (BDMS-1597): same root cause as the scenario above.
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples @skip
   Scenario: The 4 already-consistent layers are unaffected by the migration
     Given the following layers were already filtering correctly before the migration:
       | layer-id                        |
