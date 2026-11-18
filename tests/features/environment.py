@@ -604,7 +604,14 @@ def add_edr_water_data(context, session, well, deployment):
                 "release_status, release_level) "
                 "VALUES (:sid, :pid, :dt, :val, 'ft', :st, :lvl)"
             ),
-            {"sid": sid, "pid": pid, "dt": dt, "val": value, "st": status, "lvl": level},
+            {
+                "sid": sid,
+                "pid": pid,
+                "dt": dt,
+                "val": value,
+                "st": status,
+                "lvl": level,
+            },
         )
 
     # ogc_water_chemistry is built from the legacy NMA_* chemistry tables
