@@ -248,7 +248,7 @@ class StationEDRProvider(BaseEDRProvider):
                     "title": parameter_name,
                     "description": parameter_name,
                 }
-                if row["unit"] != None:
+                if row["unit"] is not None:
                     fields[parameter_name]["x-ogc-unit"] = row["unit"]
 
         # Same prose source as the feature collections, keyed by parameter
