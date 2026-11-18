@@ -248,7 +248,7 @@ class StationEDRProvider(BaseEDRProvider):
                     "title": parameter_name,
                     "description": parameter_name,
                 }
-                if row["unit"] != "NULL":
+                if row["unit"] != None:
                     fields[parameter_name]["x-ogc-unit"] = row["unit"]
 
         # Same prose source as the feature collections, keyed by parameter
@@ -260,6 +260,43 @@ class StationEDRProvider(BaseEDRProvider):
     @property
     def fields(self):
         return self.get_fields()
+
+    def get_parameters(self, parameters=None, as_list=False):
+        """EDR parameter metadata for the collection page (``parameter_names``).
+
+        Overrides BaseEDRProvider.get_parameters, which reads
+        ``field["x-ogc-unit"]`` unconditionally: a parameter without a unit,
+        like a categorical qualifier, would raise KeyError and 500 the
+        collection page. Here ``unit`` is published only when the field has
+        one, matching the CoverageJSON parameters block.
+        """
+        fields = self.fields  # one call: each access builds fresh copies
+        names = list(parameters) if parameters else list(fields)
+
+        out_params = {}
+        for name in names:
+            field = fields[name]
+            label = field.get("title", name)
+            parameter = {
+                "id": name,
+                "type": "Parameter",
+                "name": label,
+                "observedProperty": {"id": name, "label": {"en": label}},
+            }
+            if field.get("description") is not None:
+                parameter["observedProperty"]["description"] = {
+                    "en": field["description"]
+                }
+            if field.get("x-ogc-unit") is not None:
+                parameter["unit"] = {
+                    "symbol": {
+                        "value": field["x-ogc-unit"],
+                        "type": "http://www.opengis.net/def/uom/UCUM/",
+                    }
+                }
+            out_params[name] = parameter
+
+        return list(out_params.values()) if as_list else out_params
 
     # ----------------------------------------------------------- instances
     def instances(self):

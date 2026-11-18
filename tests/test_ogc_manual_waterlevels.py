@@ -348,6 +348,30 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     ]
 
 
+def test_ogc_manual_waterlevels_collection_lists_parameters(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    """The collection page lists both parameters; only the level has a unit."""
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels")
+
+    assert response.status_code == 200
+    parameter_names = response.json()["parameter_names"]
+    assert set(parameter_names) == {
+        "groundwater level below ground surface",
+        "groundwater level reason",
+    }
+    level = parameter_names["groundwater level below ground surface"]
+    assert level["unit"]["symbol"]["value"] == "ft"
+    assert "unit" not in parameter_names["groundwater level reason"]
+
+
 def test_ogc_manual_waterlevels_instances_is_empty_list(
     ogc_client, water_well_thing, groundwater_level_observation
 ):
