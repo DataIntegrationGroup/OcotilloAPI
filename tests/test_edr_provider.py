@@ -10,7 +10,7 @@ import textwrap
 import pytest
 import yaml
 
-from core.edr_provider import StationEDRProvider
+from core.edr_provider import StationEDRProvider, categories_from_lexicon
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
@@ -250,6 +250,51 @@ def test_no_parameter_name_publishes_every_parameter(
 
     assert set(coverages["parameters"]) == {LEVEL, REASON}
     assert set(coverages["coverages"][0]["ranges"]) == {LEVEL, REASON}
+
+
+# --------------------------------------------------------------- categories
+
+
+def test_categories_from_lexicon_describe_only_informative_definitions():
+    categories = categories_from_lexicon(
+        [
+            {"term": "Site was dry", "definition": "Site was dry"},
+            {"term": "Site was pumped", "definition": "Pumping in the last hour."},
+            {"term": "Obstructed", "definition": None},
+        ]
+    )
+
+    assert categories == [
+        {"id": "Site was dry", "label": {"en": "Site was dry"}},
+        {
+            "id": "Site was pumped",
+            "label": {"en": "Site was pumped"},
+            "description": {"en": "Pumping in the last hour."},
+        },
+        {"id": "Obstructed", "label": {"en": "Obstructed"}},
+    ]
+
+
+def test_only_categorical_parameters_carry_categories(edr_coverage_provider):
+    """The reason lists its lexicon category's terms; the level has none."""
+    provider = edr_coverage_provider("manual_waterlevels")
+    looked_up = []
+
+    def fake_lexicon_categories(lexicon_category):
+        looked_up.append(lexicon_category)
+        return [{"id": "Site was dry", "label": {"en": "Site was dry"}}]
+
+    provider._lexicon_categories = fake_lexicon_categories
+
+    parameters = provider._coverage_collection(
+        [_reading(datetime(2024, 1, 1), 42.0, "Site was dry")]
+    )["parameters"]
+
+    assert looked_up == ["groundwater_level_reason"]
+    assert parameters[REASON]["observedProperty"]["categories"] == [
+        {"id": "Site was dry", "label": {"en": "Site was dry"}}
+    ]
+    assert "categories" not in parameters[LEVEL]["observedProperty"]
 
 
 # Test that the keys in EDR_PROVIDER_COLLECTION_KEYS are correctly carried from the collection to the provider.

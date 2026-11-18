@@ -1296,6 +1296,9 @@ def edr_coverage_provider():
         provider.independent_axis_transformer = datetime.isoformat
         provider.domain_type = "PointSeries"
         provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
+        # No database: a categorical parameter's categories come back empty.
+        # Tests that care about categories replace this with their own stub.
+        provider._lexicon_categories = lambda lexicon_category: []
         return provider
 
     return build

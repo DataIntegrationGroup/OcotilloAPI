@@ -36,9 +36,12 @@ Parameters are not fixed columns. Each entry in the collection's
 ``parameter_columns`` names a group of columns that carries one parameter value
 per row::
 
-    name_column   the parameter's name, read from the data (SELECT DISTINCT)
-    value_column  its value, of the entry's data_type (float/integer/string)
-    unit_column   its unit, or None for a parameter without one
+    name_column       the parameter's name, read from the data (SELECT DISTINCT)
+    value_column      its value, of the entry's data_type (float/integer/string)
+    unit_column       its unit, or None for a parameter without one
+    lexicon_category  for a categorical parameter, the lexicon category whose
+                      terms are its allowed values (published as CoverageJSON
+                      categories); None otherwise
 
 so a view can carry several parameters on one row (wide), many parameters down
 one name column (long), or both. ``ogc_manual_waterlevels``, for example::
@@ -102,6 +105,23 @@ def _expand_env(value):
     if not isinstance(value, str):
         return value
     return _ENV_RE.sub(lambda m: os.environ.get(m.group(1), ""), value)
+
+
+def categories_from_lexicon(rows):
+    """CoverageJSON categories from lexicon ``term``/``definition`` rows.
+
+    Each category's id and label are the term. A description is added only
+    where the definition says more than the term itself; many lexicon terms
+    are their own definition, and repeating them adds nothing.
+    """
+    categories = []
+    for row in rows:
+        term, definition = row["term"], row["definition"]
+        category = {"id": term, "label": {"en": term}}
+        if definition and definition != term:
+            category["description"] = {"en": definition}
+        categories.append(category)
+    return categories
 
 
 class StationEDRProvider(BaseEDRProvider):
@@ -478,6 +498,24 @@ class StationEDRProvider(BaseEDRProvider):
         """Documented title/description for one EDR parameter, or ``{}``."""
         return table_entries(self.table).get(parameter_name, {})
 
+    def _lexicon_categories(self, lexicon_category):
+        """CoverageJSON categories for one lexicon category, read from the DB.
+
+        The lexicon is the source of truth for a categorical parameter's
+        allowed values, so the categories list every term in the category,
+        not only the ones that occur in the response.
+        """
+        rows = self._fetch(
+            "SELECT t.term, t.definition "
+            "FROM lexicon_term t "
+            "JOIN lexicon_term_category_association a ON a.term_id = t.id "
+            "JOIN lexicon_category c ON c.id = a.category_id "
+            "WHERE c.name = %s "
+            "ORDER BY t.term",
+            [lexicon_category],
+        )
+        return categories_from_lexicon(rows)
+
     def _coverage_collection(self, rows, select_properties=None):
         if not rows:
             raise ProviderNoDataError("No data found")
@@ -512,6 +550,13 @@ class StationEDRProvider(BaseEDRProvider):
                             "label": {"en": entry.get("title", name)},
                         },
                     }
+
+                    # a categorical parameter lists its allowed values
+                    lexicon_category = parameter_column_set["lexicon_category"]
+                    if lexicon_category:
+                        parameters[name]["observedProperty"]["categories"] = (
+                            self._lexicon_categories(lexicon_category)
+                        )
 
                     # not every parameter has a unit, so leave it out if it is None
                     if parameter_column_set["unit_column"] is not None:
