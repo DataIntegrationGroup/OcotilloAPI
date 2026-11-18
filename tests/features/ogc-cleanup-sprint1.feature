@@ -33,6 +33,13 @@ Feature: OGC Feature Layer Cleanup — Sprint 1
     When the Sprint 1 Alembic migration is applied
     Then each ogc_* view returns only records with release_status "public"
 
+  # Covers the same 8 views as the skipped scenario above, without rewinding
+  # the schema, so it isn't affected by the release_level problem (BDMS-1597).
+  @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @cleanup_samples
+  Scenario: Every ogc_* view at head returns only public records
+    Given the Sprint 1 migration has been applied
+    Then each ogc_* view returns only records with release_status "public"
+
   @backend @ogc-exposure @sprint-1 @high-priority @A1 @production @migration-mutates-schema @cleanup_samples
   Scenario: Sprint 1 migration can be reversed without error
     Given the Sprint 1 migration has been applied
