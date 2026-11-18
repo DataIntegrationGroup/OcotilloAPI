@@ -355,6 +355,14 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     ]
 
 
+def test_ogc_manual_waterlevels_instances_is_empty_list(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels/instances")
+    assert response.status_code == 200
+    assert response.json()["instances"] == []
+
+
 # --------------------
 # TEST VIEWS OGC_MANUAL_WATERLEVELS DEPEND ON
 # --------------------
