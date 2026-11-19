@@ -29,7 +29,6 @@ station columns::
 plus the independent-axis column the collection names in ``independent_axis``
 (``{"axis": "t", "column": "datetime"}`` for a time series), and optionally:
 
-    thing_type        station kind, published on /locations when present
     <instance_field>  e.g. a deployment id, exposed as EDR instances
 
 Parameters are not fixed columns. Each entry in the collection's
@@ -663,6 +662,11 @@ class StationEDRProvider(BaseEDRProvider):
                             "values": [None] * len(independent_axis_raw_values),
                         }
 
+                    if ranges[name]["values"][i] is not None:
+                        LOGGER.warning(
+                            f"Duplicate value for parameter '{name}' at independent axis index {i}. Keeping the existing value."
+                        )
+                        continue
                     ranges[name]["values"][i] = r[parameter_column_set["value_column"]]
 
             # transform the raw independent axis values for the coverage output (e.g., ISO formatted timestamps)
