@@ -86,6 +86,7 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
     """
     # The views' id is the observation's; a well's readings are found by thing_id.
     thing = {"tid": water_well_thing.id}
+    view = {"vid": groundwater_level_observation.id}
 
     with session_ctx() as session:
         session.execute(
@@ -99,19 +100,16 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         session.commit()
 
         public_rows = session.execute(
-            text(
-                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{groundwater_level_observation.id}'"
-            ),
+            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :vid"),
+            view,
         ).all()
         assert not public_rows, "a non-public well leaked a reading to /ogcapi"
 
         # The internal mount is where staff see non-public records; it must
         # keep carrying them.
         internal_rows = session.execute(
-            text(
-                f"SELECT id FROM ogc_internal_manual_waterlevels WHERE id = '{groundwater_level_observation.id}'"
-            ),
-            thing,
+            text("SELECT id FROM ogc_internal_manual_waterlevels WHERE id = :vid"),
+            view,
         ).all()
         assert internal_rows, "the internal mirror stopped carrying the reading"
 
@@ -123,9 +121,8 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         session.commit()
 
         assert session.execute(
-            text(
-                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{groundwater_level_observation.id}'"
-            ),
+            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :vid"),
+            view,
         ).all()
 
 
