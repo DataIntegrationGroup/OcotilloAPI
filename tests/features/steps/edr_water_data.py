@@ -123,9 +123,16 @@ def step_request_collection_metadata(context, cid):
 # data-setup givens (resolve the seeded well; EDR-not-built scenarios are
 # already skipped in Background, so these stay intentionally light)
 # ---------------------------------------------------------------------------
+"""
+Developer's note:
+The commented-out given is no longer relevant for manual water level and water chemistry EDR collections.
+We do, however, plan to maintain this given for when transducer-based EDR collections are introduced.
+At that point the given will no longer be commented-out and this developer's note can be removed.
+"""
+
+
 @given("a well with manual water-level observations")
-@given("a well with both manual and transducer water-level data")
-@given("a well with a transducer deployment")
+# @given("a well with a transducer deployment")
 @given("a well that has non-public water-level and chemistry records")
 def step_resolve_well(context):
     context.edr_well_id = _seeded_well_id(context)
@@ -272,6 +279,12 @@ def step_area_values_parameter(context, param):
 # ---------------------------------------------------------------------------
 # instance assertions
 # ---------------------------------------------------------------------------
+"""
+Developer's note:
+The commented-out step tests are no longer relevant for manual water level and water chemistry EDR collections.
+We do, however, plan to maintain these tests for when transducer-based EDR collections are introduced.
+At that point they'll no longer be commented-out and this developer's note can be removed.
+"""
 # @then("at least one EDR instance is listed")
 # def step_instances_listed(context):
 #     instances = context.response.json().get("instances", [])

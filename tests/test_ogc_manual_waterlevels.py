@@ -144,6 +144,11 @@ def test_ogc_manual_waterlevel_feature_collection_shape(
             {"tid": thing_id_link.id},
         )
 
+        formation_description = session.execute(
+            text("SELECT definition FROM lexicon_term WHERE term = :code"),
+            {"code": water_well_thing.formation_completion_code},
+        ).scalar_one()
+
         session.commit()
 
     response = ogc_client.get("/ogcapi/collections/manual_waterlevels/locations")
@@ -176,8 +181,8 @@ def test_ogc_manual_waterlevel_feature_collection_shape(
     assert properties["well_depth"] == water_well_thing.well_depth
     assert properties["well_depth_units"] == "ft"
     assert properties["geologic_formation"] == {
-        "code": "100QBAS",
-        "description": "Quaternary basalt",
+        "code": water_well_thing.formation_completion_code,
+        "description": formation_description,
     }
     assert properties["alternate_ids"] == [
         {
