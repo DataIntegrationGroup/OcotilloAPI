@@ -37,6 +37,7 @@ from db import (
     NMA_MinorTraceChemistry,
     StatusHistory,
 )
+from core.pygeoapi import EDR_COLLECTIONS, _is_parameter_name
 from db.engine import session_ctx
 from tests import override_authentication
 
@@ -93,6 +94,31 @@ def test_ogc_openapi_has_paths(ogc_client):
     assert payload["openapi"].startswith("3.")
     assert payload["paths"]
     assert "/collections" in payload["paths"]
+
+
+@pytest.mark.parametrize("collection_id", [c["id"] for c in EDR_COLLECTIONS])
+def test_ogc_openapi_documents_parameter_name_on_edr_locations(
+    ogc_client, collection_id
+):
+    """``/locations`` accepts ``parameter-name``; the OpenAPI document says so.
+
+    pygeoapi omits it, following OGC's locations.yaml; _generate_openapi adds
+    it (EDR 1.1 Table 13, Req. A.33). Exactly once, so a pygeoapi upgrade that
+    lists it natively shows up here as a failure only if it duplicates ours.
+    """
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    assert response.status_code == 200
+    operation = response.json()["paths"][f"/collections/{collection_id}/locations"]
+
+    parameters = operation["get"]["parameters"]
+    matches = [i for i, p in enumerate(parameters) if _is_parameter_name(p)]
+    assert len(matches) == 1
+
+    # After datetime, before f.
+    refs = [p.get("$ref", "") for p in parameters]
+    datetime_at = next(i for i, r in enumerate(refs) if r.endswith("/datetime"))
+    format_at = refs.index("#/components/parameters/f")
+    assert datetime_at < matches[0] < format_at
 
 
 # A2: every surface that echoes metadata from core/pygeoapi-config.yml.
