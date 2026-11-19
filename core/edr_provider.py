@@ -256,7 +256,7 @@ class StationEDRProvider(BaseEDRProvider):
                     )
 
                 fields[parameter_name] = {
-                    "type": data_type,
+                    "type": "number" if data_type == "float" else data_type,
                     "title": parameter_name,
                     "description": parameter_name,
                 }
