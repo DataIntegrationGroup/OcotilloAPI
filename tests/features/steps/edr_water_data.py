@@ -95,10 +95,10 @@ def step_edr_configured(context):
         except ValueError:
             configured = False
 
-        assert configured, (
-            "EDR collections (manual_waterlevels, water_chemistry) are not configured "
-            "on the /ogcapi mount."
-        )
+    assert configured, (
+        "EDR collections (manual_waterlevels, water_chemistry) are not configured "
+        "on the /ogcapi mount."
+    )
 
 
 # ---------------------------------------------------------------------------
