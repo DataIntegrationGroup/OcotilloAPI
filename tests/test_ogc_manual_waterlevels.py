@@ -84,23 +84,23 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
     the parent thing to be public; baba91fe5e83 brought water levels onto the
     same rule.
     """
+    # The views' id is the observation's; a well's readings are found by thing_id.
+    thing = {"tid": water_well_thing.id}
+
     with session_ctx() as session:
         session.execute(
-            text(
-                f"UPDATE observation SET release_status = 'public' WHERE id = '{groundwater_level_observation.id}'"
-            ),
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
         )
         session.execute(
-            text(
-                f"UPDATE thing SET release_status = 'draft' WHERE id = '{water_well_thing.id}'"
-            ),
+            text("UPDATE thing SET release_status = 'draft' WHERE id = :tid"),
+            thing,
         )
         session.commit()
 
         public_rows = session.execute(
-            text(
-                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{water_well_thing.id}'"
-            ),
+            text("SELECT id FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
+            thing,
         ).all()
         assert not public_rows, "a non-public well leaked a reading to /ogcapi"
 
@@ -108,24 +108,23 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         # keep carrying them.
         internal_rows = session.execute(
             text(
-                f"SELECT id FROM ogc_internal_manual_waterlevels WHERE id = '{water_well_thing.id}'"
+                "SELECT id FROM ogc_internal_manual_waterlevels WHERE thing_id = :tid"
             ),
+            thing,
         ).all()
         assert internal_rows, "the internal mirror stopped carrying the reading"
 
         # Public well, public reading: published again.
         session.execute(
-            text(
-                f"UPDATE thing SET release_status = 'public' WHERE id = '{water_well_thing.id}'"
-            ),
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            thing,
         )
         session.commit()
 
         assert session.execute(
-            text(
-                f"SELECT id FROM ogc_manual_waterlevels WHERE id = '{water_well_thing.id}'"
-            ),
-        ).all()
+            text("SELECT id FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
+            thing,
+        ).all(), "a public reading of a public well was not published"
 
 
 def test_ogc_manual_waterlevel_feature_collection_shape(
@@ -503,15 +502,19 @@ def test_ogc_manual_waterlevels_view_with_null_measuring_point(
         # update the observation in the database to reflect the null measuring point height
         session.execute(
             text(
-                f"UPDATE observation SET measuring_point_height = NULL WHERE id = '{groundwater_level_observation.id}'"
-            )
+                "UPDATE observation SET measuring_point_height = NULL WHERE id = :oid"
+            ),
+            {"oid": groundwater_level_observation.id},
         )
         session.commit()
-        result = session.execute(
-            text(
-                f"SELECT * FROM ogc_manual_waterlevels WHERE thing_id = '{water_well_thing.id}'"
+        result = (
+            session.execute(
+                text("SELECT * FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
+                {"tid": water_well_thing.id},
             )
-        ).fetchall()
+            .mappings()
+            .all()
+        )
         assert len(result) == 1
         row = result[0]
 
