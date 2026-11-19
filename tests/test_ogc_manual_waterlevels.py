@@ -351,7 +351,8 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
 def test_ogc_manual_waterlevels_collection_lists_parameters(
     ogc_client, water_well_thing, groundwater_level_observation
 ):
-    """The collection page lists both parameters; only the level has a unit."""
+    """The collection page lists both parameters; only the level has a unit,
+    and only the reason has categories (from the lexicon)."""
     with session_ctx() as session:
         session.execute(
             text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
@@ -369,7 +370,34 @@ def test_ogc_manual_waterlevels_collection_lists_parameters(
     }
     level = parameter_names["groundwater level below ground surface"]
     assert level["unit"]["symbol"]["value"] == "ft"
-    assert "unit" not in parameter_names["groundwater level reason"]
+    assert "categories" not in level["observedProperty"]
+
+    reason = parameter_names["groundwater level reason"]
+    assert "unit" not in reason
+    _assert_categories_match_lexicon(
+        reason["observedProperty"]["categories"], "groundwater_level_reason"
+    )
+
+
+def test_ogc_manual_waterlevels_schema_lists_reason_values(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    """/schema lists the reason's allowed values as a JSON Schema enum."""
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels/schema")
+
+    assert response.status_code == 200
+    properties = response.json()["properties"]
+    assert set(properties["groundwater level reason"]["enum"]) == set(
+        _lexicon_definitions("groundwater_level_reason")
+    )
+    assert "enum" not in properties["groundwater level below ground surface"]
 
 
 def test_ogc_manual_waterlevels_instances_is_empty_list(

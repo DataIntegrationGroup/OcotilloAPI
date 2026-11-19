@@ -159,6 +159,9 @@ class StationEDRProvider(BaseEDRProvider):
             raise ValueError(f"Unsupported independent axis: {self.independent_axis}")
 
         self._fields = {}
+        # parameter name -> CoverageJSON categories, for categorical parameters.
+        # Filled by get_fields during discovery, since names come from the data.
+        self._lexicon_categories = {}
         self.get_fields()
 
     # ------------------------------------------------------------------ db
@@ -219,16 +222,25 @@ class StationEDRProvider(BaseEDRProvider):
             return {name: dict(field) for name, field in self._fields.items()}
 
         fields = {}
+        lexicon_categories = {}  # parameter name -> CoverageJSON categories
+
+        # The fetched dict is the per-category cache, so chemistry qualifiers sharing a category cost one query.
+        fetched = {}  # lexicon category -> categories, so each is queried once
         for spec in self.parameter_columns:
             name_column = spec["name_column"]
             unit_column = spec["unit_column"] if spec["unit_column"] else "NULL"
             data_type = spec["data_type"]
+            lexicon_category = spec["lexicon_category"]
 
             try:
                 rows = self._fetch(
                     f"SELECT DISTINCT {name_column} AS parameter_name, {unit_column} AS unit "
                     f"FROM {self.table} WHERE {name_column} IS NOT NULL ORDER BY {name_column}"
                 )
+                if lexicon_category and rows and lexicon_category not in fetched:
+                    fetched[lexicon_category] = self._create_lexicon_categories(
+                        lexicon_category
+                    )
             except ProviderConnectionError:
                 # View may not exist yet (e.g. OpenAPI generation before migrate).
                 return {}
@@ -248,12 +260,22 @@ class StationEDRProvider(BaseEDRProvider):
                     "title": parameter_name,
                     "description": parameter_name,
                 }
+
                 if row["unit"] is not None:
                     fields[parameter_name]["x-ogc-unit"] = row["unit"]
+
+                # a categorical parameter's allowed values: categories for
+                # CoverageJSON and parameter_names, enum for /schema. Names
+                # sharing a lexicon category share one list.
+                if lexicon_category:
+                    categories = fetched[lexicon_category]
+                    lexicon_categories[parameter_name] = categories
+                    fields[parameter_name]["enum"] = [c["id"] for c in categories]
 
         # Same prose source as the feature collections, keyed by parameter
         # name rather than column name. Parameter names are read out of the
         # data, so an undocumented analyte keeps its generated title.
+        self._lexicon_categories = lexicon_categories
         self._fields = describe_fields(self.table, fields)
         return {name: dict(field) for name, field in self._fields.items()}
 
@@ -294,6 +316,10 @@ class StationEDRProvider(BaseEDRProvider):
                         "type": "http://www.opengis.net/def/uom/UCUM/",
                     }
                 }
+            if name in self._lexicon_categories:
+                parameter["observedProperty"]["categories"] = self._lexicon_categories[
+                    name
+                ]
             out_params[name] = parameter
 
         return list(out_params.values()) if as_list else out_params
@@ -535,24 +561,6 @@ class StationEDRProvider(BaseEDRProvider):
         """Documented title/description for one EDR parameter, or ``{}``."""
         return table_entries(self.table).get(parameter_name, {})
 
-    def _lexicon_categories(self, lexicon_category):
-        """CoverageJSON categories for one lexicon category, read from the DB.
-
-        The lexicon is the source of truth for a categorical parameter's
-        allowed values, so the categories list every term in the category,
-        not only the ones that occur in the response.
-        """
-        rows = self._fetch(
-            "SELECT t.term, t.definition "
-            "FROM lexicon_term t "
-            "JOIN lexicon_term_category_association a ON a.term_id = t.id "
-            "JOIN lexicon_category c ON c.id = a.category_id "
-            "WHERE c.name = %s "
-            "ORDER BY t.term",
-            [lexicon_category],
-        )
-        return categories_from_lexicon(rows)
-
     def _coverage_collection(self, rows, select_properties=None):
         if not rows:
             raise ProviderNoDataError("No data found")
@@ -588,12 +596,12 @@ class StationEDRProvider(BaseEDRProvider):
                         },
                     }
 
-                    # a categorical parameter lists its allowed values
-                    lexicon_category = parameter_column_set["lexicon_category"]
-                    if lexicon_category:
-                        parameters[name]["observedProperty"]["categories"] = (
-                            self._lexicon_categories(lexicon_category)
-                        )
+                    # a categorical parameter lists its allowed values. .get, not
+                    # [name]: a name added to the view after discovery ran has
+                    # no entry, and is published without categories.
+                    categories = self._lexicon_categories.get(name)
+                    if categories is not None:
+                        parameters[name]["observedProperty"]["categories"] = categories
 
                     # not every parameter has a unit, so leave it out if it is None
                     if parameter_column_set["unit_column"] is not None:
@@ -690,6 +698,24 @@ class StationEDRProvider(BaseEDRProvider):
             end = None if end in ("", "..") else end
             return start, end
         return datetime_, datetime_
+
+    def _create_lexicon_categories(self, lexicon_category):
+        """CoverageJSON categories for one lexicon category, read from the DB.
+
+        The lexicon is the source of truth for a categorical parameter's
+        allowed values, so the categories list every term in the category,
+        not only the ones that occur in the response.
+        """
+        rows = self._fetch(
+            "SELECT t.term, t.definition "
+            "FROM lexicon_term t "
+            "JOIN lexicon_term_category_association a ON a.term_id = t.id "
+            "JOIN lexicon_category c ON c.id = a.category_id "
+            "WHERE c.name = %s "
+            "ORDER BY t.term",
+            [lexicon_category],
+        )
+        return categories_from_lexicon(rows)
 
     def __repr__(self):
         return f"<StationEDRProvider> {self.table}"

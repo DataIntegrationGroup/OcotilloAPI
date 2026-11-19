@@ -276,24 +276,20 @@ def test_categories_from_lexicon_describe_only_informative_definitions():
 
 
 def test_only_categorical_parameters_carry_categories(edr_coverage_provider):
-    """The reason lists its lexicon category's terms; the level has none."""
+    """The reason lists its lexicon category's terms; the level has none.
+
+    get_fields discovers the categories, keyed by parameter name; here they
+    are set as discovery would leave them.
+    """
     provider = edr_coverage_provider("manual_waterlevels")
-    looked_up = []
-
-    def fake_lexicon_categories(lexicon_category):
-        looked_up.append(lexicon_category)
-        return [{"id": "Site was dry", "label": {"en": "Site was dry"}}]
-
-    provider._lexicon_categories = fake_lexicon_categories
+    categories = [{"id": "Site was dry", "label": {"en": "Site was dry"}}]
+    provider._lexicon_categories = {REASON: categories}
 
     parameters = provider._coverage_collection(
         [_reading(datetime(2024, 1, 1), 42.0, "Site was dry")]
     )["parameters"]
 
-    assert looked_up == ["groundwater_level_reason"]
-    assert parameters[REASON]["observedProperty"]["categories"] == [
-        {"id": "Site was dry", "label": {"en": "Site was dry"}}
-    ]
+    assert parameters[REASON]["observedProperty"]["categories"] == categories
     assert "categories" not in parameters[LEVEL]["observedProperty"]
 
 
