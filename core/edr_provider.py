@@ -162,6 +162,11 @@ class StationEDRProvider(BaseEDRProvider):
         # parameter name -> CoverageJSON categories, for categorical parameters.
         # Filled by get_fields during discovery, since names come from the data.
         self._lexicon_categories = {}
+
+        # each request loads its own provider, meaning the fields need to be discovered each time.
+        # there is currently no caching mechanism for discovered fields.
+        # if we run into latency issues we may need to implement caching for discovered fields, such
+        # as at the module level (keyed by table name, for example).
         self.get_fields()
 
     # ------------------------------------------------------------------ db
