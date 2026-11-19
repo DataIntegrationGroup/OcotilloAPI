@@ -14,12 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 import json
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
     Float,
     Integer,
     Select,
@@ -31,6 +34,7 @@ from sqlalchemy import (
     func,
     not_,
     nulls_last,
+    or_,
     select,
 )
 from sqlalchemy.orm import DeclarativeBase, Session
@@ -188,6 +192,102 @@ def _python_type(column: Any):
         return column.type.python_type
     except Exception:
         return None
+
+
+def _parse_json_filter_date(value: Any) -> date:
+    """Parse the date-only formats accepted by Refine JSON filters."""
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=422,
+            detail="Date filter values must use MM/DD/YYYY or YYYY-MM-DD",
+        )
+
+    normalized = value.strip()
+    for date_format in ("%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(normalized, date_format).date()
+        except ValueError:
+            continue
+
+    raise HTTPException(
+        status_code=422,
+        detail="Date filter values must use MM/DD/YYYY or YYYY-MM-DD",
+    )
+
+
+def _apply_date_filter_clause(
+    sql: Select[Any], column: Any, operator: str, value: Any
+) -> Select[Any]:
+    """Apply a date-only filter to a DATE or timestamp column.
+
+    DateTime columns use UTC calendar-day bounds. This makes ``eq`` match all
+    timestamps on the requested date instead of only timestamps at midnight.
+    """
+    if operator not in {"eq", "ne", "gt", "gte", "lt", "lte", "in"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported filter operator {operator!r}",
+        )
+
+    if operator == "in":
+        if not isinstance(value, (list, tuple)):
+            raise HTTPException(
+                status_code=400,
+                detail="Operator in requires an array value",
+            )
+        dates = [_parse_json_filter_date(item) for item in value]
+    else:
+        dates = [_parse_json_filter_date(value)]
+
+    if not dates:
+        return sql.where(column.in_([]))
+
+    if isinstance(column.type, DateTime):
+        ranges = []
+        for filter_date in dates:
+            start = datetime.combine(filter_date, time.min, timezone.utc)
+            end = start + timedelta(days=1)
+            ranges.append((start, end))
+
+        if operator == "eq":
+            start, end = ranges[0]
+            return sql.where(and_(column >= start, column < end))
+        if operator == "ne":
+            start, end = ranges[0]
+            return sql.where(or_(column < start, column >= end))
+        if operator == "gt":
+            return sql.where(column >= ranges[0][1])
+        if operator == "gte":
+            return sql.where(column >= ranges[0][0])
+        if operator == "lt":
+            return sql.where(column < ranges[0][0])
+        if operator == "lte":
+            return sql.where(column < ranges[0][1])
+        if operator == "in":
+            predicates = []
+            for start, end in ranges:
+                predicates.append(and_(column >= start, column < end))
+            return sql.where(or_(*predicates))
+
+    if operator == "eq":
+        return sql.where(column == dates[0])
+    if operator == "ne":
+        return sql.where(column != dates[0])
+    if operator == "gt":
+        return sql.where(column > dates[0])
+    if operator == "gte":
+        return sql.where(column >= dates[0])
+    if operator == "lt":
+        return sql.where(column < dates[0])
+    if operator == "lte":
+        return sql.where(column <= dates[0])
+    if operator == "in":
+        return sql.where(column.in_(dates))
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unsupported filter operator {operator!r}",
+    )
 
 
 def _apply_thing_derived_status_filter(
@@ -874,6 +974,7 @@ def _apply_json_filter_clause(
 
     py_t = _python_type(column)
     is_string = py_t is str or isinstance(column.type, (String, Text))
+    is_date = isinstance(column.type, (Date, DateTime))
 
     if operator == "contains":
         if not is_string:
@@ -906,6 +1007,9 @@ def _apply_json_filter_clause(
                 detail=f"Operator endswith is not supported for field {field!r}",
             )
         return sql.where(column.ilike(f"%{value}"))
+
+    if is_date and operator not in {"null", "nnull"}:
+        return _apply_date_filter_clause(sql, column, operator, value)
 
     if operator == "eq":
         if py_t is float:
