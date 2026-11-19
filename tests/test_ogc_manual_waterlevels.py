@@ -398,6 +398,7 @@ def test_ogc_manual_waterlevels_schema_lists_reason_values(
         _lexicon_definitions("groundwater_level_reason")
     )
     assert "enum" not in properties["groundwater level below ground surface"]
+    assert properties["groundwater level below ground surface"]["type"] == "number"
 
 
 def test_ogc_manual_waterlevels_instances_is_empty_list(
