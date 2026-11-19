@@ -208,7 +208,10 @@ class StationEDRProvider(BaseEDRProvider):
                 )
             except ProviderConnectionError:
                 # View may not exist yet (e.g. OpenAPI generation before migrate).
-                return {}
+                LOGGER.warning(
+                    "View may not exist yet (e.g. OpenAPI generation before migrate)."
+                )
+                continue
 
             for row in rows:
                 parameter_name = row["parameter_name"]
