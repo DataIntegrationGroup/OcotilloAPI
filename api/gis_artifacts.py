@@ -255,8 +255,8 @@ the <code>.lyrx</code> to a map in Pro.</p>
 </table>
 
 <h2>Time series</h2>
-<p>Water levels and water chemistry are also published as
-OGC API - EDR time series at <code>{base}/collections/waterlevels</code> and
+<p>Manual water levels and water chemistry are also published as
+OGC API - EDR time series at <code>{base}/collections/manual_waterlevels</code> and
 <code>{base}/collections/water_chemistry</code>. Neither QGIS nor ArcGIS Pro
 can read EDR, so the layers above carry the same measurements summarised per
 site instead.</p>
