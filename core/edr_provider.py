@@ -29,7 +29,6 @@ station columns::
 plus the independent-axis column the collection names in ``independent_axis``
 (``{"axis": "t", "column": "datetime"}`` for a time series), and optionally:
 
-    thing_type        station kind, published on /locations when present
     <instance_field>  e.g. a deployment id, exposed as EDR instances
 
 Parameters are not fixed columns. Each entry in the collection's
