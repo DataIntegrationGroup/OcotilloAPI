@@ -14,7 +14,9 @@ from core.edr_provider import StationEDRProvider
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
+    _document_locations_parameter_name,
     _edr_collections_block,
+    _is_parameter_name,
 )
 
 
@@ -292,3 +294,81 @@ def test_generated_edr_providers_carry_the_collection_config(table_prefix):
             assert (
                 provider[key] == collection[key]
             ), f"{collection['id']}: {key} did not reach the provider"
+
+
+# ---------------------------------------------- OpenAPI: /locations parameters
+
+_PARAMETER_NAME_REF = {
+    "$ref": "https://schemas.opengis.net/ogcapi/edr/1.0/openapi/parameters/"
+    "parameter-name.yaml"
+}
+
+
+def _locations_paths(parameters_by_collection: dict[str, list]) -> dict:
+    """A minimal OpenAPI document with one /locations path per collection."""
+    return {
+        "paths": {
+            f"/collections/{cid}/locations": {"get": {"parameters": parameters}}
+            for cid, parameters in parameters_by_collection.items()
+        }
+    }
+
+
+def test_parameter_name_is_added_to_each_edr_locations_path():
+    oas = _locations_paths({c["id"]: [] for c in EDR_COLLECTIONS})
+
+    _document_locations_parameter_name(oas)
+
+    for collection in EDR_COLLECTIONS:
+        parameters = oas["paths"][f"/collections/{collection['id']}/locations"]["get"][
+            "parameters"
+        ]
+        assert parameters == [_PARAMETER_NAME_REF]
+
+
+def test_parameter_name_is_listed_after_datetime_and_before_f():
+    # The order pygeoapi generates for /locations, and for /locations/{locId}
+    # (datetime, parameter-name, crs, f).
+    bbox = {"$ref": "edr/parameters/bbox.yaml"}
+    datetime_ = {"$ref": "features-1.yaml#/components/parameters/datetime"}
+    format_ = {"$ref": "#/components/parameters/f"}
+    collection_id = EDR_COLLECTIONS[0]["id"]
+    oas = _locations_paths({collection_id: [bbox, datetime_, format_]})
+
+    _document_locations_parameter_name(oas)
+
+    parameters = oas["paths"][f"/collections/{collection_id}/locations"]["get"][
+        "parameters"
+    ]
+    assert parameters == [bbox, datetime_, _PARAMETER_NAME_REF, format_]
+
+
+@pytest.mark.parametrize(
+    "native",
+    [
+        _PARAMETER_NAME_REF,
+        # A future pygeoapi could inline the parameter instead of a $ref.
+        {"name": "parameter-name", "in": "query", "schema": {"type": "string"}},
+    ],
+)
+def test_parameter_name_is_not_duplicated_when_already_listed(native):
+    """A pygeoapi upgrade that documents it natively keeps one entry."""
+    collection_id = EDR_COLLECTIONS[0]["id"]
+    oas = _locations_paths({collection_id: [native]})
+
+    _document_locations_parameter_name(oas)
+
+    parameters = oas["paths"][f"/collections/{collection_id}/locations"]["get"][
+        "parameters"
+    ]
+    assert [p for p in parameters if _is_parameter_name(p)] == [native]
+
+
+def test_skipped_edr_collections_are_left_out_of_the_document():
+    # pygeoapi omits a collection whose backing view is missing; the amendment
+    # must not invent a path for it.
+    oas = {"paths": {}}
+
+    _document_locations_parameter_name(oas)
+
+    assert oas == {"paths": {}}
