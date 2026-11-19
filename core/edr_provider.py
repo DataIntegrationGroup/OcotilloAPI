@@ -551,6 +551,11 @@ class StationEDRProvider(BaseEDRProvider):
                             "values": [None] * len(independent_axis_raw_values),
                         }
 
+                    if ranges[name]["values"][i] is not None:
+                        LOGGER.warning(
+                            f"Duplicate value for parameter '{name}' at independent axis index {i}. Keeping the existing value."
+                        )
+                        continue
                     ranges[name]["values"][i] = r[parameter_column_set["value_column"]]
 
             # transform the raw independent axis values for the coverage output (e.g., ISO formatted timestamps)
