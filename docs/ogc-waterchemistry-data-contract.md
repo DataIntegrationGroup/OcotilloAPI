@@ -100,6 +100,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "3H qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "3H qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "3H:3He Age": {
             "type": "Parameter",
             "description": {
@@ -117,6 +133,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "years"
                 }
             }
+        },
+        "3H:3He Age qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "3H:3He Age qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Ag": {
             "type": "Parameter",
@@ -136,6 +168,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Ag qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ag qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Ag(total)": {
             "type": "Parameter",
             "description": {
@@ -153,6 +201,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Ag(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ag(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Al": {
             "type": "Parameter",
@@ -172,6 +236,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Al qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Al qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Al(total)": {
             "type": "Parameter",
             "description": {
@@ -189,6 +269,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Al(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Al(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "ALK": {
             "type": "Parameter",
@@ -208,6 +304,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "ALK qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "ALK qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "As": {
             "type": "Parameter",
             "description": {
@@ -225,6 +337,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "As qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "As qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "As(total)": {
             "type": "Parameter",
@@ -244,6 +372,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "As(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "As(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "AsIII": {
             "type": "Parameter",
             "description": {
@@ -261,6 +405,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "AsIII qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "AsIII qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "AsV": {
             "type": "Parameter",
@@ -280,6 +440,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "AsV qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "AsV qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "B": {
             "type": "Parameter",
             "description": {
@@ -297,6 +473,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "B qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "B qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "B(total)": {
             "type": "Parameter",
@@ -316,6 +508,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "B(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "B(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Ba": {
             "type": "Parameter",
             "description": {
@@ -333,6 +541,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Ba qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ba qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Ba(total)": {
             "type": "Parameter",
@@ -352,6 +576,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Ba(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ba(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Be": {
             "type": "Parameter",
             "description": {
@@ -369,6 +609,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Be qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Be qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Be(total)": {
             "type": "Parameter",
@@ -388,6 +644,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Be(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Be(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Br": {
             "type": "Parameter",
             "description": {
@@ -405,6 +677,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Br qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Br qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "C13r": {
             "type": "Parameter",
@@ -424,6 +712,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "C13r qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "C13r qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "C14": {
             "type": "Parameter",
             "description": {
@@ -441,6 +745,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "C14 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "C14 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "C14_corrected": {
             "type": "Parameter",
@@ -460,6 +780,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "C14_corrected qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "C14_corrected qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "C14_years": {
             "type": "Parameter",
             "description": {
@@ -477,6 +813,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "C14_years qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "C14_years qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Ca": {
             "type": "Parameter",
@@ -496,6 +848,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Ca qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ca qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Ca(total)": {
             "type": "Parameter",
             "description": {
@@ -513,6 +881,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Ca(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ca(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Cd": {
             "type": "Parameter",
@@ -532,6 +916,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Cd qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cd qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Cd(total)": {
             "type": "Parameter",
             "description": {
@@ -549,6 +949,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Cd(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cd(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "CFC11": {
             "type": "Parameter",
@@ -568,6 +984,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "CFC11 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CFC11 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "CFC113": {
             "type": "Parameter",
             "description": {
@@ -585,6 +1017,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "CFC113 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CFC113 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "CFC113_12": {
             "type": "Parameter",
@@ -604,6 +1052,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "CFC113_12 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CFC113_12 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "CFC12": {
             "type": "Parameter",
             "description": {
@@ -621,6 +1085,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "CFC12 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CFC12 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Cl": {
             "type": "Parameter",
@@ -640,6 +1120,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Cl qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cl qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "CN6": {
             "type": "Parameter",
             "description": {
@@ -657,6 +1153,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "CN6 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CN6 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Co": {
             "type": "Parameter",
@@ -676,6 +1188,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Co qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Co qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Co(total)": {
             "type": "Parameter",
             "description": {
@@ -693,6 +1221,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Co(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Co(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "CO3": {
             "type": "Parameter",
@@ -712,6 +1256,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "CO3 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CO3 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "CONDLAB": {
             "type": "Parameter",
             "description": {
@@ -729,6 +1289,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "CONDLAB qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "CONDLAB qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Cr": {
             "type": "Parameter",
@@ -748,6 +1324,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Cr qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cr qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Cr(total)": {
             "type": "Parameter",
             "description": {
@@ -765,6 +1357,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Cr(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cr(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Cu": {
             "type": "Parameter",
@@ -784,6 +1392,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Cu qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cu qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Cu(total)": {
             "type": "Parameter",
             "description": {
@@ -801,6 +1425,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Cu(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Cu(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "d13C-DIC": {
             "type": "Parameter",
@@ -820,6 +1460,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "d13C-DIC qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "d13C-DIC qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "d18O-SO4": {
             "type": "Parameter",
             "description": {
@@ -837,6 +1493,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "d18O-SO4 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "d18O-SO4 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "d34S-SO4": {
             "type": "Parameter",
@@ -856,6 +1528,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "d34S-SO4 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "d34S-SO4 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "DOC": {
             "type": "Parameter",
             "description": {
@@ -873,6 +1561,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "DOC qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "DOC qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "ERT": {
             "type": "Parameter",
@@ -892,6 +1596,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "ERT qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "ERT qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "F": {
             "type": "Parameter",
             "description": {
@@ -909,6 +1629,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "F qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "F qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Fe": {
             "type": "Parameter",
@@ -928,6 +1664,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Fe qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Fe qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Fe(total)": {
             "type": "Parameter",
             "description": {
@@ -945,6 +1697,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Fe(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Fe(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "H2r": {
             "type": "Parameter",
@@ -964,6 +1732,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "H2r qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "H2r qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "H2S": {
             "type": "Parameter",
             "description": {
@@ -981,6 +1765,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "H2S qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "H2S qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "HCO3": {
             "type": "Parameter",
@@ -1000,6 +1800,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "HCO3 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "HCO3 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Hg": {
             "type": "Parameter",
             "description": {
@@ -1017,6 +1833,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Hg qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Hg qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Hg(total)": {
             "type": "Parameter",
@@ -1036,6 +1868,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Hg(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Hg(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "HRD": {
             "type": "Parameter",
             "description": {
@@ -1053,6 +1901,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "HRD qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "HRD qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "IONBAL": {
             "type": "Parameter",
@@ -1072,6 +1936,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "IONBAL qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "IONBAL qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "K": {
             "type": "Parameter",
             "description": {
@@ -1089,6 +1969,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "K qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "K qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "K(total)": {
             "type": "Parameter",
@@ -1108,6 +2004,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "K(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "K(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Li": {
             "type": "Parameter",
             "description": {
@@ -1125,6 +2037,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Li qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Li qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Li(total)": {
             "type": "Parameter",
@@ -1144,6 +2072,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Li(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Li(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Mg": {
             "type": "Parameter",
             "description": {
@@ -1161,6 +2105,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Mg qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mg qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Mg(total)": {
             "type": "Parameter",
@@ -1180,6 +2140,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Mg(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mg(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Mn": {
             "type": "Parameter",
             "description": {
@@ -1197,6 +2173,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Mn qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mn qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Mn(total)": {
             "type": "Parameter",
@@ -1216,6 +2208,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Mn(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mn(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Mo": {
             "type": "Parameter",
             "description": {
@@ -1233,6 +2241,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Mo qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mo qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Mo(total)": {
             "type": "Parameter",
@@ -1252,6 +2276,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Mo(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Mo(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Na": {
             "type": "Parameter",
             "description": {
@@ -1269,6 +2309,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Na qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Na qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Na(total)": {
             "type": "Parameter",
@@ -1288,6 +2344,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Na(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Na(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Na+K": {
             "type": "Parameter",
             "description": {
@@ -1305,6 +2377,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Na+K qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Na+K qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "NH3": {
             "type": "Parameter",
@@ -1324,6 +2412,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "NH3 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NH3 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "NH4": {
             "type": "Parameter",
             "description": {
@@ -1341,6 +2445,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "NH4 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NH4 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Ni": {
             "type": "Parameter",
@@ -1360,6 +2480,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Ni qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ni qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Ni(total)": {
             "type": "Parameter",
             "description": {
@@ -1377,6 +2513,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Ni(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ni(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "NO2": {
             "type": "Parameter",
@@ -1396,6 +2548,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "NO2 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NO2 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "NO2(N)": {
             "type": "Parameter",
             "description": {
@@ -1413,6 +2581,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "NO2(N) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NO2(N) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "NO3": {
             "type": "Parameter",
@@ -1432,6 +2616,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "NO3 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NO3 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "NO3(N)": {
             "type": "Parameter",
             "description": {
@@ -1449,6 +2649,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "NO3(N) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "NO3(N) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "O18r": {
             "type": "Parameter",
@@ -1468,6 +2684,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "O18r qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "O18r qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "OH": {
             "type": "Parameter",
             "description": {
@@ -1485,6 +2717,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "OH qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "OH qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Pb": {
             "type": "Parameter",
@@ -1504,6 +2752,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Pb qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Pb qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Pb(total)": {
             "type": "Parameter",
             "description": {
@@ -1521,6 +2785,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Pb(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Pb(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "pHL": {
             "type": "Parameter",
@@ -1540,6 +2820,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "pHL qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "pHL qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "PO4": {
             "type": "Parameter",
             "description": {
@@ -1557,6 +2853,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "PO4 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "PO4 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Sb": {
             "type": "Parameter",
@@ -1576,6 +2888,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Sb qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sb qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Sb(total)": {
             "type": "Parameter",
             "description": {
@@ -1593,6 +2921,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Sb(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sb(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Se": {
             "type": "Parameter",
@@ -1612,6 +2956,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Se qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Se qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Se(total)": {
             "type": "Parameter",
             "description": {
@@ -1629,6 +2989,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Se(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Se(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Sf6": {
             "type": "Parameter",
@@ -1648,6 +3024,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Sf6 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sf6 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Si": {
             "type": "Parameter",
             "description": {
@@ -1665,6 +3057,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Si qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Si qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Si(total)": {
             "type": "Parameter",
@@ -1684,6 +3092,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Si(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Si(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "SiO2": {
             "type": "Parameter",
             "description": {
@@ -1701,6 +3125,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "SiO2 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "SiO2 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Sn": {
             "type": "Parameter",
@@ -1720,6 +3160,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Sn qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sn qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Sn(total)": {
             "type": "Parameter",
             "description": {
@@ -1737,6 +3193,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Sn(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sn(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "SO4": {
             "type": "Parameter",
@@ -1756,6 +3228,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "SO4 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "SO4 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Sr": {
             "type": "Parameter",
             "description": {
@@ -1773,6 +3261,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Sr qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sr qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Sr(total)": {
             "type": "Parameter",
@@ -1792,6 +3296,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Sr(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sr(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Sr87:Sr86": {
             "type": "Parameter",
             "description": {
@@ -1809,6 +3329,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Sr87:Sr86 qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Sr87:Sr86 qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "TAn": {
             "type": "Parameter",
@@ -1828,6 +3364,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "TAn qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TAn qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "TCat": {
             "type": "Parameter",
             "description": {
@@ -1845,6 +3397,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "TCat qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TCat qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "TDS": {
             "type": "Parameter",
@@ -1864,6 +3432,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "TDS qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TDS qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Th": {
             "type": "Parameter",
             "description": {
@@ -1881,6 +3465,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Th qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Th qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Th(total)": {
             "type": "Parameter",
@@ -1900,6 +3500,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Th(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Th(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Ti": {
             "type": "Parameter",
             "description": {
@@ -1917,6 +3533,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Ti qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ti qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Ti(total)": {
             "type": "Parameter",
@@ -1936,6 +3568,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Ti(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Ti(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "TKN": {
             "type": "Parameter",
             "description": {
@@ -1953,6 +3601,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "TKN qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TKN qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Tl": {
             "type": "Parameter",
@@ -1972,6 +3636,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Tl qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Tl qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Tl(total)": {
             "type": "Parameter",
             "description": {
@@ -1989,6 +3669,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Tl(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Tl(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "TN": {
             "type": "Parameter",
@@ -2008,6 +3704,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "TN qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TN qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "TOC": {
             "type": "Parameter",
             "description": {
@@ -2025,6 +3737,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "TOC qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "TOC qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "U": {
             "type": "Parameter",
@@ -2044,6 +3772,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "U qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "U qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "U(total)": {
             "type": "Parameter",
             "description": {
@@ -2061,6 +3805,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "U(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "U(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "V": {
             "type": "Parameter",
@@ -2080,6 +3840,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "V qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "V qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "V(total)": {
             "type": "Parameter",
             "description": {
@@ -2097,6 +3873,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "V(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "V(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         },
         "Zn": {
             "type": "Parameter",
@@ -2116,6 +3908,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             }
         },
+        "Zn qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Zn qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
+        },
         "Zn(total)": {
             "type": "Parameter",
             "description": {
@@ -2133,6 +3941,22 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                     "en": "mg/L"
                 }
             }
+        },
+        "Zn(total) qualifier": {
+            "type": "Parameter",
+            "description": {
+                "en": "Qualifier for the observation"
+            },
+            "observedProperty": {
+                "id": "Zn(total) qualifier",
+                "label": {
+                    "en": "Qualifier for the observation"
+                }
+            },
+            "categories": [
+                "Non-detect",
+                "Greater than"
+            ]
         }
     },
     "coverages": [
