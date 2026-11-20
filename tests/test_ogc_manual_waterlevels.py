@@ -566,6 +566,63 @@ def test_ogc_manual_waterlevels_view_with_null_measuring_point(
         assert row["observation_value"] == groundwater_level_observation.value - 0
 
 
+@pytest.mark.parametrize(
+    "unit,expected_value,expected_reason",
+    [
+        # feet as stored: 10 ft reading - 5 ft measuring point
+        ("ft", 10.0 - 5.0, "Water level not affected"),
+        # meters converted to feet before the (feet) measuring point is taken off
+        ("m", 10.0 * 3.28084 - 5.0, "Water level not affected"),
+        # any other unit: no level, and the reason says why
+        ("dimensionless", None, "Reported unit is not a length unit"),
+    ],
+)
+def test_ogc_manual_waterlevels_view_publishes_levels_in_feet(
+    water_well_thing,
+    groundwater_level_observation,
+    unit,
+    expected_value,
+    expected_reason,
+):
+    """observation_value is always feet below ground surface.
+
+    A reading in meters is converted to feet; measuring_point_height is always
+    feet, so it is subtracted after the conversion. A reading in any other unit
+    cannot be converted: its level is NULL, and qualifier_value records why in
+    place of the recorded reason.
+    """
+    assert groundwater_level_observation.value == 10.0
+    assert groundwater_level_observation.measuring_point_height == 5.0
+
+    with session_ctx() as session:
+        session.execute(
+            text(
+                "UPDATE observation SET release_status = 'public', unit = :unit "
+                "WHERE id = :oid"
+            ),
+            {"unit": unit, "oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+        rows = (
+            session.execute(
+                text("SELECT * FROM ogc_manual_waterlevels WHERE id = :oid"),
+                {"oid": groundwater_level_observation.id},
+            )
+            .mappings()
+            .all()
+        )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["observation_unit"] == "ft"
+    if expected_value is None:
+        assert row["observation_value"] is None
+    else:
+        assert row["observation_value"] == pytest.approx(expected_value)
+    assert row["qualifier_value"] == expected_reason
+
+
 def test_ogc_manual_waterlevels_view_only_contains_water_wells(
     water_well_thing,
     spring_thing,

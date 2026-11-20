@@ -10,7 +10,8 @@ reading, with:
 * the independent axis: ``datetime``;
 * parameter columns, named by the collection's ``parameter_columns`` config:
   ``observation_parameter_name/value/unit`` (depth below ground surface, in
-  feet: the reading minus ``COALESCE(measuring_point_height, 0)``) and
+  feet: the reading, converted from meters when its unit is ``m``, minus
+  ``COALESCE(measuring_point_height, 0)``) and
   ``qualifier_parameter_name/value`` (the groundwater-level reason);
 * station properties, repeated on each of the well's readings so /locations
   needs one query: ``ground_surface_elevation`` (+ units, vertical datum),
@@ -45,6 +46,10 @@ depends_on: Union[str, Sequence[str], None] = None
 PUBLIC_VIEW = "ogc_manual_waterlevels"
 INTERNAL_VIEW = "ogc_internal_manual_waterlevels"
 
+# A frozen copy of domain.units.METERS_TO_FEET: a migration keeps the
+# arithmetic it was written with rather than tracking a moving import.
+METERS_TO_FEET = 3.28084
+
 
 def _create_view(view_name: str, public_only: bool) -> str:
     """CREATE VIEW for the public view, or for the unfiltered internal mirror."""
@@ -75,10 +80,21 @@ def _create_view(view_name: str, public_only: bool) -> str:
 
             -- parameter columns (parameter_columns in EDR_COLLECTIONS)
             'groundwater level below ground surface'         AS observation_parameter_name,
-            o.value - COALESCE(o.measuring_point_height, 0)  AS observation_value,
+            -- the reading in feet (measuring_point_height is always feet)
+            -- if the unit is meters, convert to feet; if feet, use as is; otherwise NULL
+            CASE o.unit
+                WHEN 'm' THEN o.value * {METERS_TO_FEET}
+                WHEN 'ft' THEN o.value
+                ELSE NULL
+            END - COALESCE(o.measuring_point_height, 0)      AS observation_value,
             'ft'                                             AS observation_unit,
+            
+            -- if unit != 'm' or 'ft', the observation_value will be NULL, record qualifier here
             'groundwater level reason'                       AS qualifier_parameter_name,
-            o.groundwater_level_reason                       AS qualifier_value,
+            CASE 
+                WHEN o.unit IN ('m', 'ft') THEN o.groundwater_level_reason
+                ELSE 'Reported unit is not a distance unit'
+            END                                             AS qualifier_value,
 
             -- station properties, repeated on each of the well's readings
             l.elevation                                      AS ground_surface_elevation,
@@ -101,9 +117,16 @@ def _create_view(view_name: str, public_only: bool) -> str:
         JOIN field_activity fa  ON fa.id = sm.field_activity_id
         JOIN field_event fe     ON fe.id = fa.field_event_id
         JOIN thing t            ON t.id = fe.thing_id AND t.thing_type = 'water well'
-        JOIN location_thing_association lta
-            ON lta.thing_id = t.id AND lta.effective_end IS NULL
-        JOIN location l         ON l.id = lta.location_id
+
+        -- select the most recent location for the well
+        JOIN LATERAL (
+             SELECT location_id
+             FROM location_thing_association
+             WHERE thing_id = t.id AND effective_end IS NULL
+             ORDER BY effective_start DESC, location_id DESC
+             LIMIT 1
+         ) lta ON TRUE
+        JOIN location l ON l.id = lta.location_id
         LEFT JOIN lexicon_term lt ON lt.term = t.formation_completion_code
         LEFT JOIN (
             -- aggregated once per well, not once per reading
