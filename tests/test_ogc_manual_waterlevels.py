@@ -43,8 +43,9 @@ from core.dependencies import (
     editor_function,
     viewer_function,
 )
+from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
-from tests import override_authentication
+from tests import get_parameter_id, override_authentication
 
 pytestmark = pytest.mark.skipif(
     find_spec("pygeoapi") is None,
@@ -637,13 +638,76 @@ def test_ogc_manual_waterlevels_view_handles_ftbgs_unit(
     )
 
 
+@pytest.fixture()
+def spring_groundwater_level_observation(spring_thing):
+    """A public groundwater-level reading on a public spring.
+
+    Everything the view's release and reading filters ask for is satisfied, so
+    only its thing_type = 'water well' join condition can keep this row out.
+    """
+    with session_ctx() as session:
+        # spring_thing is a draft; make it public so the release filter alone
+        # cannot exclude it. spring_thing's teardown deletes the row.
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": spring_thing.id},
+        )
+        field_event = FieldEvent(
+            thing_id=spring_thing.id,
+            event_date="2025-01-01T00:00:00Z",
+            release_status="public",
+        )
+        session.add(field_event)
+        session.flush()
+        field_activity = FieldActivity(
+            field_event_id=field_event.id,
+            activity_type="groundwater level",
+            release_status="public",
+        )
+        session.add(field_activity)
+        session.flush()
+        sample = Sample(
+            field_activity_id=field_activity.id,
+            sample_date="2025-01-01T12:00:00Z",
+            sample_name="spring groundwater level sample",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+            release_status="public",
+        )
+        session.add(sample)
+        session.flush()
+        observation = Observation(
+            observation_datetime="2025-01-01T00:04:00Z",
+            sample_id=sample.id,
+            parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+            release_status="public",
+            value=10.0,
+            unit="ft",
+            measuring_point_height=5.0,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(observation)
+        session.commit()
+
+        yield observation
+
+        for row in (observation, sample, field_activity, field_event):
+            session.delete(row)
+            session.commit()
+
+
 def test_ogc_manual_waterlevels_view_only_contains_water_wells(
     water_well_thing,
     spring_thing,
     groundwater_level_observation,
+    spring_groundwater_level_observation,
 ):
     """
-    Test that the ogc_manual_waterlevels view only contains rows for water wells.
+    The ogc_manual_waterlevels view only contains rows for water wells.
+
+    The spring carries a public reading that passes every other filter in the
+    view, so removing the thing_type = 'water well' condition fails this test.
     """
     with session_ctx() as session:
         session.execute(
@@ -652,13 +716,31 @@ def test_ogc_manual_waterlevels_view_only_contains_water_wells(
         )
         session.commit()
 
+        # Guard: the spring must be public, or the release filter alone would
+        # hide its reading and this test would not exercise the type filter.
+        assert (
+            session.execute(
+                text(
+                    "SELECT count(*) FROM thing WHERE id = :tid AND release_status = 'public'"
+                ),
+                {"tid": spring_thing.id},
+            ).scalar_one()
+            == 1
+        )
+
         result = (
-            session.execute(text("SELECT * FROM ogc_manual_waterlevels"))
+            session.execute(
+                text(
+                    "SELECT * FROM ogc_manual_waterlevels "
+                    "WHERE thing_id IN (:well_id, :spring_id)"
+                ),
+                {"well_id": water_well_thing.id, "spring_id": spring_thing.id},
+            )
             .mappings()
             .all()
         )
-        for row in result:
-            assert row["thing_id"] == water_well_thing.id
-            assert row["thing_type"] == water_well_thing.thing_type
-            assert row["thing_id"] != spring_thing.id
-        assert len(result) == 1
+
+    assert [row["id"] for row in result] == [groundwater_level_observation.id]
+    assert result[0]["thing_id"] == water_well_thing.id
+    assert result[0]["thing_type"] == "water well"
+    assert spring_groundwater_level_observation.id not in {row["id"] for row in result}
