@@ -564,3 +564,30 @@ def test_ogc_manual_waterlevels_view_with_null_measuring_point(
         row = result[0]
 
         assert row["observation_value"] == groundwater_level_observation.value - 0
+
+
+def test_ogc_manual_waterlevels_view_only_contains_water_wells(
+    water_well_thing,
+    spring_thing,
+    groundwater_level_observation,
+):
+    """
+    Test that the ogc_manual_waterlevels view only contains rows for water wells.
+    """
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+        result = (
+            session.execute(text("SELECT * FROM ogc_manual_waterlevels"))
+            .mappings()
+            .all()
+        )
+        for row in result:
+            assert row["thing_id"] == water_well_thing.id
+            assert row["thing_type"] == water_well_thing.thing_type
+            assert row["thing_id"] != spring_thing.id
+        assert len(result) == 1

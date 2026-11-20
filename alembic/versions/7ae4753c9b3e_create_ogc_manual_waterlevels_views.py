@@ -100,7 +100,7 @@ def _create_view(view_name: str, public_only: bool) -> str:
         JOIN sample sm          ON sm.id = o.sample_id
         JOIN field_activity fa  ON fa.id = sm.field_activity_id
         JOIN field_event fe     ON fe.id = fa.field_event_id
-        JOIN thing t            ON t.id = fe.thing_id
+        JOIN thing t            ON t.id = fe.thing_id AND t.thing_type = 'water well'
         JOIN location_thing_association lta
             ON lta.thing_id = t.id AND lta.effective_end IS NULL
         JOIN location l         ON l.id = lta.location_id
