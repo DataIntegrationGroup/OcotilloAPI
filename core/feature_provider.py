@@ -26,7 +26,14 @@ Read docs/ogc-field-descriptions.md before changing this.
 
 import logging
 
+from geoalchemy2.functions import (
+    ST_Intersects,
+    ST_MakeEnvelope,
+    ST_MakePoint,
+    ST_SetSRID,
+)
 from pygeoapi.provider.sql import PostgreSQLProvider
+from shapely.geometry import Point, mapping
 
 from core.ogc_field_metadata import describe_fields
 
@@ -35,6 +42,49 @@ LOGGER = logging.getLogger(__name__)
 
 class DescribedPostgreSQLProvider(PostgreSQLProvider):
     """PostgreSQLProvider that annotates reflected columns with prose."""
+
+    def __init__(self, provider_def):
+        self.x_field = provider_def.get("x_field")
+        self.y_field = provider_def.get("y_field")
+        super().__init__(provider_def)
+
+    def _select_properties_clause(self, select_properties, skip_geometry):
+        if self.geom is None:
+            # Include coordinates even when the caller selects other properties.
+            if select_properties and not skip_geometry:
+                select_properties = list(
+                    dict.fromkeys([*select_properties, self.x_field, self.y_field])
+                )
+            skip_geometry = True
+        return super()._select_properties_clause(select_properties, skip_geometry)
+
+    def _sqlalchemy_to_feature(
+        self, item, crs_transform_out=None, select_properties=None
+    ):
+        feature = super()._sqlalchemy_to_feature(
+            item, crs_transform_out, select_properties
+        )
+        if self.geom is None:
+            x = item.__dict__.get(self.x_field)
+            y = item.__dict__.get(self.y_field)
+            if x is not None and y is not None:
+                point = Point(x, y)
+                if crs_transform_out is not None:
+                    point = crs_transform_out(point)
+                feature["geometry"] = mapping(point)
+        return feature
+
+    def _get_bbox_filter(self, bbox):
+        if self.geom is not None or not bbox:
+            return super()._get_bbox_filter(bbox)
+        point = ST_SetSRID(
+            ST_MakePoint(
+                getattr(self.table_model, self.x_field),
+                getattr(self.table_model, self.y_field),
+            ),
+            4326,
+        )
+        return ST_Intersects(ST_MakeEnvelope(*bbox, 4326), point)
 
     def get_fields(self):
         """Reflect the table, then annotate the result.
