@@ -172,8 +172,8 @@ jobs:
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.13.30
         with:
-          dagster_cloud_file: "$GITHUB_WORKSPACE/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
-          build_output_dir: "$GITHUB_WORKSPACE/build"
+          dagster_cloud_file: "${{ github.workspace }}/project-repo/${{ env.DAGSTER_CLOUD_FILE }}"
+          build_output_dir: "${{ github.workspace }}/build"
           python_version: ${{ env.PYTHON_VERSION }}
           deployment: prod
         env:
