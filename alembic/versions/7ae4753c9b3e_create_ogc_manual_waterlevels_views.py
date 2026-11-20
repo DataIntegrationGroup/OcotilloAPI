@@ -93,7 +93,7 @@ def _create_view(view_name: str, public_only: bool) -> str:
             'groundwater level reason'                       AS qualifier_parameter_name,
             CASE 
                 WHEN o.unit IN ('m', 'ft') THEN o.groundwater_level_reason
-                ELSE 'Reported unit is not a distance unit'
+                ELSE 'Reported unit is not a length unit'
             END                                             AS qualifier_value,
 
             -- station properties, repeated on each of the well's readings
