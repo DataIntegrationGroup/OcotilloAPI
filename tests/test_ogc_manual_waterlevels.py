@@ -43,8 +43,9 @@ from core.dependencies import (
     editor_function,
     viewer_function,
 )
+from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
-from tests import override_authentication
+from tests import get_parameter_id, override_authentication
 
 pytestmark = pytest.mark.skipif(
     find_spec("pygeoapi") is None,
@@ -86,6 +87,7 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
     """
     # The views' id is the observation's; a well's readings are found by thing_id.
     thing = {"tid": water_well_thing.id}
+    view = {"vid": groundwater_level_observation.id}
 
     with session_ctx() as session:
         session.execute(
@@ -99,18 +101,16 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         session.commit()
 
         public_rows = session.execute(
-            text("SELECT id FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
-            thing,
+            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :vid"),
+            view,
         ).all()
         assert not public_rows, "a non-public well leaked a reading to /ogcapi"
 
         # The internal mount is where staff see non-public records; it must
         # keep carrying them.
         internal_rows = session.execute(
-            text(
-                "SELECT id FROM ogc_internal_manual_waterlevels WHERE thing_id = :tid"
-            ),
-            thing,
+            text("SELECT id FROM ogc_internal_manual_waterlevels WHERE id = :vid"),
+            view,
         ).all()
         assert internal_rows, "the internal mirror stopped carrying the reading"
 
@@ -122,9 +122,9 @@ def test_ogc_manual_waterlevels_excludes_readings_from_a_non_public_well(
         session.commit()
 
         assert session.execute(
-            text("SELECT id FROM ogc_manual_waterlevels WHERE thing_id = :tid"),
-            thing,
-        ).all(), "a public reading of a public well was not published"
+            text("SELECT id FROM ogc_manual_waterlevels WHERE id = :vid"),
+            view,
+        ).all()
 
 
 def test_ogc_manual_waterlevel_feature_collection_shape(
@@ -269,27 +269,20 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
 
     level = parameters["groundwater level below ground surface"]
     assert level["type"] == "Parameter"
-    assert level["description"]["en"] == (
-        "Depth from the ground surface down to the water table, measured by hand "
-        "during a site visit. Larger values mean the water table is further below "
-        "the surface."
-    )
+    assert level["description"]["en"] == "groundwater level below ground surface"
     assert level["observedProperty"]["id"] == "groundwater level below ground surface"
     assert (
         level["observedProperty"]["label"]["en"]
-        == "Groundwater level below ground surface"
+        == "groundwater level below ground surface"
     )
     assert level["unit"]["symbol"] == "ft"
     assert level["unit"]["label"]["en"] == "ft"
 
     reason = parameters["groundwater level reason"]
     assert reason["type"] == "Parameter"
-    assert reason["description"]["en"] == (
-        "USGS-style condition codes explaining why a water level reads as it does "
-        "or could not be measured."
-    )
+    assert reason["description"]["en"] == "groundwater level reason"
     assert reason["observedProperty"]["id"] == "groundwater level reason"
-    assert reason["observedProperty"]["label"]["en"] == "Groundwater level reason"
+    assert reason["observedProperty"]["label"]["en"] == "groundwater level reason"
     # A categorical parameter carries no unit in the contract.
     assert "unit" not in reason
 
@@ -357,6 +350,59 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     assert reason_range["values"] == [
         groundwater_level_observation.groundwater_level_reason
     ]
+
+
+def test_ogc_manual_waterlevels_collection_lists_parameters(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    """The collection page lists both parameters; only the level has a unit,
+    and only the reason has categories (from the lexicon)."""
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels")
+
+    assert response.status_code == 200
+    parameter_names = response.json()["parameter_names"]
+    assert set(parameter_names) == {
+        "groundwater level below ground surface",
+        "groundwater level reason",
+    }
+    level = parameter_names["groundwater level below ground surface"]
+    assert level["unit"]["symbol"]["value"] == "ft"
+    assert "categories" not in level["observedProperty"]
+
+    reason = parameter_names["groundwater level reason"]
+    assert "unit" not in reason
+    _assert_categories_match_lexicon(
+        reason["observedProperty"]["categories"], "groundwater_level_reason"
+    )
+
+
+def test_ogc_manual_waterlevels_schema_lists_reason_values(
+    ogc_client, water_well_thing, groundwater_level_observation
+):
+    """/schema lists the reason's allowed values as a JSON Schema enum."""
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+    response = ogc_client.get("/ogcapi/collections/manual_waterlevels/schema")
+
+    assert response.status_code == 200
+    properties = response.json()["properties"]
+    assert set(properties["groundwater level reason"]["enum"]) == set(
+        _lexicon_definitions("groundwater_level_reason")
+    )
+    assert "enum" not in properties["groundwater level below ground surface"]
+    assert properties["groundwater level below ground surface"]["type"] == "number"
 
 
 def test_ogc_manual_waterlevels_instances_is_empty_list(
@@ -440,7 +486,7 @@ def test_ogc_manual_waterlevels_view(
     row = rows[0]
 
     # ------------------------------------------------------------ station
-    assert row["id"] == f"m-{groundwater_level_observation.id}"
+    assert row["id"] == groundwater_level_observation.id
     assert row["thing_id"] == water_well_thing.id
     assert row["name"] == water_well_thing.name
     assert row["thing_type"] == water_well_thing.thing_type
@@ -519,3 +565,182 @@ def test_ogc_manual_waterlevels_view_with_null_measuring_point(
         row = result[0]
 
         assert row["observation_value"] == groundwater_level_observation.value - 0
+
+
+@pytest.mark.parametrize(
+    "unit,expected_value,expected_reason",
+    [
+        # feet as stored: 10 ft reading - 5 ft measuring point
+        ("ft", 10.0 - 5.0, "Water level not affected"),
+        # meters converted to feet before the (feet) measuring point is taken off
+        ("m", 10.0 * 3.28084 - 5.0, "Water level not affected"),
+        # any other unit: no level, and the reason says why
+        ("dimensionless", None, "Reported unit is not a length unit"),
+    ],
+)
+def test_ogc_manual_waterlevels_view_publishes_levels_in_feet(
+    water_well_thing,
+    groundwater_level_observation,
+    unit,
+    expected_value,
+    expected_reason,
+):
+    """observation_value is always feet below ground surface.
+
+    A reading in meters is converted to feet; measuring_point_height is always
+    feet, so it is subtracted after the conversion. A reading in any other unit
+    cannot be converted: its level is NULL, and qualifier_value records why in
+    place of the recorded reason.
+    """
+    assert groundwater_level_observation.value == 10.0
+    assert groundwater_level_observation.measuring_point_height == 5.0
+
+    with session_ctx() as session:
+        session.execute(
+            text(
+                "UPDATE observation SET release_status = 'public', unit = :unit "
+                "WHERE id = :oid"
+            ),
+            {"unit": unit, "oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+        rows = (
+            session.execute(
+                text("SELECT * FROM ogc_manual_waterlevels WHERE id = :oid"),
+                {"oid": groundwater_level_observation.id},
+            )
+            .mappings()
+            .all()
+        )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["observation_unit"] == "ft"
+    if expected_value is None:
+        assert row["observation_value"] is None
+    else:
+        assert row["observation_value"] == pytest.approx(expected_value)
+    assert row["qualifier_value"] == expected_reason
+
+
+def test_ogc_manual_waterlevels_view_handles_ftbgs_unit(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    """Test that the view correctly handles the 'ftbgs' unit and does not subtract the measuring_point_height."""
+    test_ogc_manual_waterlevels_view_publishes_levels_in_feet(
+        water_well_thing,
+        groundwater_level_observation,
+        "ftbgs",
+        10.0,
+        "Water level not affected",
+    )
+
+
+@pytest.fixture()
+def spring_groundwater_level_observation(spring_thing):
+    """A public groundwater-level reading on a public spring.
+
+    Everything the view's release and reading filters ask for is satisfied, so
+    only its thing_type = 'water well' join condition can keep this row out.
+    """
+    with session_ctx() as session:
+        # spring_thing is a draft; make it public so the release filter alone
+        # cannot exclude it. spring_thing's teardown deletes the row.
+        session.execute(
+            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
+            {"tid": spring_thing.id},
+        )
+        field_event = FieldEvent(
+            thing_id=spring_thing.id,
+            event_date="2025-01-01T00:00:00Z",
+            release_status="public",
+        )
+        session.add(field_event)
+        session.flush()
+        field_activity = FieldActivity(
+            field_event_id=field_event.id,
+            activity_type="groundwater level",
+            release_status="public",
+        )
+        session.add(field_activity)
+        session.flush()
+        sample = Sample(
+            field_activity_id=field_activity.id,
+            sample_date="2025-01-01T12:00:00Z",
+            sample_name="spring groundwater level sample",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+            release_status="public",
+        )
+        session.add(sample)
+        session.flush()
+        observation = Observation(
+            observation_datetime="2025-01-01T00:04:00Z",
+            sample_id=sample.id,
+            parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
+            release_status="public",
+            value=10.0,
+            unit="ft",
+            measuring_point_height=5.0,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(observation)
+        session.commit()
+
+        yield observation
+
+        for row in (observation, sample, field_activity, field_event):
+            session.delete(row)
+            session.commit()
+
+
+def test_ogc_manual_waterlevels_view_only_contains_water_wells(
+    water_well_thing,
+    spring_thing,
+    groundwater_level_observation,
+    spring_groundwater_level_observation,
+):
+    """
+    The ogc_manual_waterlevels view only contains rows for water wells.
+
+    The spring carries a public reading that passes every other filter in the
+    view, so removing the thing_type = 'water well' condition fails this test.
+    """
+    with session_ctx() as session:
+        session.execute(
+            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
+            {"oid": groundwater_level_observation.id},
+        )
+        session.commit()
+
+        # Guard: the spring must be public, or the release filter alone would
+        # hide its reading and this test would not exercise the type filter.
+        assert (
+            session.execute(
+                text(
+                    "SELECT count(*) FROM thing WHERE id = :tid AND release_status = 'public'"
+                ),
+                {"tid": spring_thing.id},
+            ).scalar_one()
+            == 1
+        )
+
+        result = (
+            session.execute(
+                text(
+                    "SELECT * FROM ogc_manual_waterlevels "
+                    "WHERE thing_id IN (:well_id, :spring_id)"
+                ),
+                {"well_id": water_well_thing.id, "spring_id": spring_thing.id},
+            )
+            .mappings()
+            .all()
+        )
+
+    assert [row["id"] for row in result] == [groundwater_level_observation.id]
+    assert result[0]["thing_id"] == water_well_thing.id
+    assert result[0]["thing_type"] == "water well"
+    assert spring_groundwater_level_observation.id not in {row["id"] for row in result}

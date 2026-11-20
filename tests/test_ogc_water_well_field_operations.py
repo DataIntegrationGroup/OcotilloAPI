@@ -232,6 +232,9 @@ def test_formation_completion_description_reads_the_lexicon_definition(
 
 def test_formation_completion_description_is_null_without_a_code(water_well_thing):
     with session_ctx() as session:
+        thing = session.get(Thing, water_well_thing.id)
+        thing.formation_completion_code = None
+        session.commit()
         row = _row(session, water_well_thing.id, "formation_completion_description")
 
     assert row.formation_completion_description is None

@@ -10,7 +10,7 @@ import textwrap
 import pytest
 import yaml
 
-from core.edr_provider import StationEDRProvider
+from core.edr_provider import StationEDRProvider, categories_from_lexicon
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
@@ -252,6 +252,47 @@ def test_no_parameter_name_publishes_every_parameter(
 
     assert set(coverages["parameters"]) == {LEVEL, REASON}
     assert set(coverages["coverages"][0]["ranges"]) == {LEVEL, REASON}
+
+
+# --------------------------------------------------------------- categories
+
+
+def test_categories_from_lexicon_describe_only_informative_definitions():
+    categories = categories_from_lexicon(
+        [
+            {"term": "Site was dry", "definition": "Site was dry"},
+            {"term": "Site was pumped", "definition": "Pumping in the last hour."},
+            {"term": "Obstructed", "definition": None},
+        ]
+    )
+
+    assert categories == [
+        {"id": "Site was dry", "label": {"en": "Site was dry"}},
+        {
+            "id": "Site was pumped",
+            "label": {"en": "Site was pumped"},
+            "description": {"en": "Pumping in the last hour."},
+        },
+        {"id": "Obstructed", "label": {"en": "Obstructed"}},
+    ]
+
+
+def test_only_categorical_parameters_carry_categories(edr_coverage_provider):
+    """The reason lists its lexicon category's terms; the level has none.
+
+    get_fields discovers the categories, keyed by parameter name; here they
+    are set as discovery would leave them.
+    """
+    provider = edr_coverage_provider("manual_waterlevels")
+    categories = [{"id": "Site was dry", "label": {"en": "Site was dry"}}]
+    provider._lexicon_categories = {REASON: categories}
+
+    parameters = provider._coverage_collection(
+        [_reading(datetime(2024, 1, 1), 42.0, "Site was dry")]
+    )["parameters"]
+
+    assert parameters[REASON]["observedProperty"]["categories"] == categories
+    assert "categories" not in parameters[LEVEL]["observedProperty"]
 
 
 # Test that the keys in EDR_PROVIDER_COLLECTION_KEYS are correctly carried from the collection to the provider.

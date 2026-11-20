@@ -2257,6 +2257,13 @@
     },
     {
       "categories": [
+        "groundwater_level_reason"
+      ],
+      "term": "Reported unit is not a length unit",
+      "definition": "The observation value is NULL because the unit is not a length unit."
+    },
+    {
+      "categories": [
         "status_type"
       ],
       "term": "Well Status",

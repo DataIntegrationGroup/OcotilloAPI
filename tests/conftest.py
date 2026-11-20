@@ -1296,6 +1296,11 @@ def edr_coverage_provider():
         provider.independent_axis_transformer = datetime.isoformat
         provider.domain_type = "PointSeries"
         provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
+        # get_fields fills this from the lexicon during discovery, keyed by
+        # parameter name. Without a database nothing is discovered, so no
+        # parameter has categories; tests that need them set it by name, e.g.
+        # provider._lexicon_categories = {"groundwater level reason": [...]}.
+        provider._lexicon_categories = {}
         return provider
 
     return build

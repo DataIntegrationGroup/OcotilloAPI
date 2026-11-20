@@ -252,7 +252,8 @@ THING_COLLECTIONS = [
 # Keys in EDR_COLLECTIONS that the EDR provider reads from its provider definition.
 # These keys are not optional; they must be present in the provider definition if they exist in the collection.
 # They are non-standard keys specific to this EDR provider.
-# parameter_columns: list of dictionaries defining the columns for each parameter in the collection. these correspond with column names in views
+# parameter_columns: list of dictionaries defining the columns for each parameter in the collection. these correspond with column names in views.
+#   lexicon_category names the lexicon category whose terms are a categorical parameter's allowed values (None otherwise)
 # station_properties: list of columns to include as station properties. these come from views
 # independent_axis: dictionary defining the independent axis (e.g., time) and its column
 # instance_field: column name for the instance identifier, if applicable
@@ -289,12 +290,14 @@ EDR_COLLECTIONS = [
                 "unit_column": "observation_unit",
                 "value_column": "observation_value",
                 "data_type": "float",
+                "lexicon_category": None,
             },
             {
                 "name_column": "qualifier_parameter_name",
                 "unit_column": None,
                 "value_column": "qualifier_value",
                 "data_type": "string",
+                "lexicon_category": "groundwater_level_reason",
             },
         ],
         "station_properties": [
@@ -338,6 +341,7 @@ EDR_COLLECTIONS = [
                 "unit_column": "unit",
                 "value_column": "value",
                 "data_type": "float",
+                "lexicon_category": None,
             }
         ],
         "station_properties": ["name", "thing_type"],
