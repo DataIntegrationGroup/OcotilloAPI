@@ -559,18 +559,22 @@ def add_edr_water_data(context, session, well, deployment):
         {"did": deployment.id},
     )
 
+    # release_level has no server-side default (73d27e78571a, BDMS-1382), so
+    # every raw INSERT here must set it explicitly -- same public/draft ->
+    # public/pending mapping the migration's own backfill used.
     event_id = session.execute(
         text(
-            "INSERT INTO field_event (thing_id, event_date, release_status) "
-            "VALUES (:tid, '2022-06-01T00:00:00Z', 'public') RETURNING id"
+            "INSERT INTO field_event (thing_id, event_date, release_status, "
+            "release_level) "
+            "VALUES (:tid, '2022-06-01T00:00:00Z', 'public', 'public') RETURNING id"
         ),
         {"tid": well.id},
     ).scalar()
     activity_id = session.execute(
         text(
             f"INSERT INTO field_activity "
-            f"(field_event_id, activity_type, release_status) "
-            f"VALUES (:eid, {lex_term}, 'public') RETURNING id"
+            f"(field_event_id, activity_type, release_status, release_level) "
+            f"VALUES (:eid, {lex_term}, 'public', 'public') RETURNING id"
         ),
         {"eid": event_id},
     ).scalar()
@@ -578,28 +582,36 @@ def add_edr_water_data(context, session, well, deployment):
         text(
             f"INSERT INTO sample "
             f"(field_activity_id, sample_date, sample_name, sample_matrix, "
-            f"sample_method, qc_type, release_status) "
+            f"sample_method, qc_type, release_status, release_level) "
             f"VALUES (:aid, '2022-06-01T00:00:00Z', 'EDR-TEST-SAMPLE', "
-            f"{lex_term}, {lex_term}, 'Normal', 'public') RETURNING id"
+            f"{lex_term}, {lex_term}, 'Normal', 'public', 'public') RETURNING id"
         ),
         {"aid": activity_id},
     ).scalar()
 
     # parameter 1 = 'groundwater level', parameter 2 = 'pH' (init_parameter).
     observations = [
-        (sample_id, 1, "2022-06-01T12:00:00Z", 42.5, "public"),
-        (sample_id, 2, "2022-06-01T12:00:00Z", 7.1, "public"),
-        (sample_id, 1, "2022-07-01T12:00:00Z", 999.0, "draft"),
-        (sample_id, 2, "2022-07-01T12:00:00Z", 99.0, "draft"),
+        (sample_id, 1, "2022-06-01T12:00:00Z", 42.5, "public", "public"),
+        (sample_id, 2, "2022-06-01T12:00:00Z", 7.1, "public", "public"),
+        (sample_id, 1, "2022-07-01T12:00:00Z", 999.0, "draft", "pending"),
+        (sample_id, 2, "2022-07-01T12:00:00Z", 99.0, "draft", "pending"),
     ]
-    for sid, pid, dt, value, status in observations:
+    for sid, pid, dt, value, status, level in observations:
         session.execute(
             text(
                 "INSERT INTO observation "
                 "(sample_id, parameter_id, observation_datetime, value, unit, "
-                "release_status) VALUES (:sid, :pid, :dt, :val, 'ft', :st)"
+                "release_status, release_level) "
+                "VALUES (:sid, :pid, :dt, :val, 'ft', :st, :lvl)"
             ),
-            {"sid": sid, "pid": pid, "dt": dt, "val": value, "st": status},
+            {
+                "sid": sid,
+                "pid": pid,
+                "dt": dt,
+                "val": value,
+                "st": status,
+                "lvl": level,
+            },
         )
 
     # ogc_water_chemistry is built from the legacy NMA_* chemistry tables
