@@ -248,20 +248,30 @@ THING_COLLECTIONS = [
 
 # OGC API - EDR collections (see ADR3). Each is backed by a publication-
 # filtered ogc_* view and served by the custom PostgreSQL EDR provider.
+
+# Keys in EDR_COLLECTIONS that the EDR provider reads from its provider definition.
+# These keys are not optional; they must be present in the provider definition if they exist in the collection.
+# They are non-standard keys specific to this EDR provider.
+# parameter_columns: list of dictionaries defining the columns for each parameter in the collection. these correspond with column names in views
+# station_properties: list of columns to include as station properties. these come from views
+# independent_axis: dictionary defining the independent axis (e.g., time) and its column
+# instance_field: column name for the instance identifier, if applicable
+EDR_PROVIDER_COLLECTION_KEYS = (
+    "parameter_columns",
+    "station_properties",
+    "independent_axis",
+    "instance_field",
+)
+
 EDR_COLLECTIONS = [
     {
-        "id": "waterlevels",
-        "title": "Water Levels",
+        "id": "manual_waterlevels",
+        "title": "Manual Water Levels",
         "description": (
-            "Depth-to-water through time at each well, served as time series "
-            "rather than as one point per well. Two kinds of record are combined: "
-            "manual measurements taken by field staff during a visit, and "
-            "continuous records from pressure transducers left down the well, "
-            "which log automatically at a fixed interval. Each transducer "
-            "deployment is exposed as its own EDR instance, so a well's record "
-            "can be read deployment by deployment or as a whole. Use it to plot "
-            "hydrographs and to see how water levels respond to pumping, "
-            "recharge, and drought."
+            "Manually-measured depth-to-water below ground surface through time at "
+            "each well, served as time series rather than as one point per well. "
+            "Associated qualifiers - groundwater level reason - are included for each measurement "
+            "to assist interpretation of the data."
         ),
         "keywords": [
             "groundwater",
@@ -269,11 +279,37 @@ EDR_COLLECTIONS = [
             "depth-to-water",
             "time-series",
             "hydrograph",
-            "transducer",
+            "manual",
             "edr",
         ],
-        "table": "ogc_waterlevels",
-        "instance_field": "deployment_id",
+        "table": "ogc_manual_waterlevels",
+        "parameter_columns": [
+            {
+                "name_column": "observation_parameter_name",
+                "unit_column": "observation_unit",
+                "value_column": "observation_value",
+                "data_type": "float",
+            },
+            {
+                "name_column": "qualifier_parameter_name",
+                "unit_column": None,
+                "value_column": "qualifier_value",
+                "data_type": "string",
+            },
+        ],
+        "station_properties": [
+            "name",
+            "thing_type",
+            "ground_surface_elevation",
+            "ground_surface_elevation_units",
+            "vertical_datum",
+            "well_depth",
+            "well_depth_units",
+            "geologic_formation",
+            "alternate_ids",
+        ],
+        "independent_axis": {"axis": "t", "column": "datetime"},
+        "instance_field": None,
     },
     {
         "id": "water_chemistry",
@@ -296,6 +332,16 @@ EDR_COLLECTIONS = [
             "edr",
         ],
         "table": "ogc_water_chemistry",
+        "parameter_columns": [
+            {
+                "name_column": "parameter_name",
+                "unit_column": "unit",
+                "value_column": "value",
+                "data_type": "float",
+            }
+        ],
+        "station_properties": ["name", "thing_type"],
+        "independent_axis": {"axis": "t", "column": "datetime"},
         "instance_field": None,
     },
 ]
@@ -468,13 +514,13 @@ def _edr_collections_block(
     resources: dict[str, dict] = {}
     for collection in EDR_COLLECTIONS:
         # EDR_COLLECTIONS' table values are hardcoded to the public
-        # ogc_waterlevels/ogc_water_chemistry names -- strip that literal
+        # ogc_manual_waterlevels/ogc_water_chemistry names -- strip that literal
         # "ogc_" so table_prefix (here, "ogc_internal_" for the internal
         # mount) still applies, the same way _thing_collections_block does.
         table_name = table_prefix + collection["table"].removeprefix("ogc_")
         provider = {
             "type": "edr",
-            "name": "core.edr_provider.WaterEDRProvider",
+            "name": "core.edr_provider.StationEDRProvider",
             "data": {
                 "host": host,
                 "port": port,
@@ -485,8 +531,10 @@ def _edr_collections_block(
             "id_field": "id",
             "table": table_name,
         }
-        if collection["instance_field"]:
-            provider["instance_field"] = collection["instance_field"]
+
+        # Copy every provider key, None included, so each generated provider
+        # has the same shape (e.g. instance_field: null when there is none).
+        provider.update({k: collection[k] for k in EDR_PROVIDER_COLLECTION_KEYS})
 
         resources[collection["id"]] = {
             "type": "collection",
@@ -634,15 +682,79 @@ def _assert_server_settings_match(
             )
 
 
+def _is_parameter_name(parameter: dict) -> bool:
+    """Whether an OpenAPI parameter entry is EDR's ``parameter-name``.
+
+    Matches either form pygeoapi could use: a ``$ref`` to the OGC
+    ``parameter-name.yaml`` definition, or an inline parameter whose ``name``
+    is ``parameter-name``. Used to detect the parameter before adding it, so
+    it is never listed twice.
+    """
+    return parameter.get("name") == "parameter-name" or str(
+        parameter.get("$ref", "")
+    ).endswith("/parameter-name.yaml")
+
+
+def _is_format(parameter: dict) -> bool:
+    """Whether an OpenAPI parameter entry is the ``f`` (output format) one.
+
+    pygeoapi lists it as a ``$ref`` to ``#/components/parameters/f``; an inline
+    entry named ``f`` is matched too.
+    """
+    return (
+        parameter.get("name") == "f"
+        or parameter.get("$ref") == "#/components/parameters/f"
+    )
+
+
+def _document_locations_parameter_name(oas: dict) -> None:
+    """List ``parameter-name`` on each EDR collection's ``/locations``.
+
+    EDR 1.1 Table 13 (Req. A.33) lists ``parameter-name`` for ``/locations``,
+    and pygeoapi passes it to the provider, which filters the listing on it.
+    The official OGC OpenAPI ``locations.yaml`` omits it, and pygeoapi follows
+    that file, so the parameter works but is undocumented. Add it unless it is
+    already there, so a pygeoapi release that lists it natively does not end
+    up with a duplicate entry.
+    """
+    from pygeoapi.openapi import OPENAPI_YAML
+
+    reference = {"$ref": f"{OPENAPI_YAML['oaedr']}/parameters/parameter-name.yaml"}
+    paths = oas.get("paths", {})
+    for collection in EDR_COLLECTIONS:
+        # Absent when pygeoapi skipped the collection (e.g. no backing view).
+        operation = paths.get(f"/collections/{collection['id']}/locations", {}).get(
+            "get"
+        )
+        if operation is None:
+            continue
+        parameters = operation.setdefault("parameters", [])
+        if any(_is_parameter_name(p) for p in parameters):
+            continue
+        # Just before `f`, as pygeoapi orders /locations/{locId}; the end of
+        # the list if there is no `f`.
+        position = next(
+            (i for i, p in enumerate(parameters) if _is_format(p)), len(parameters)
+        )
+        parameters.insert(position, reference)
+
+
 def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
-    from pygeoapi.openapi import generate_openapi_document
+    # Same steps as pygeoapi.openapi.generate_openapi_document(..., "yaml"),
+    # with an amendment between building the document and dumping it.
+    from pygeoapi.openapi import get_oas
+    from pygeoapi.util import yaml_load
+
+    with config_path.open(encoding="utf-8") as config:
+        settings = yaml_load(config)
 
     # Avoid startup failures when backing tables are not yet present; pygeoapi
     # will skip invalid collections and still emit a standards-compliant spec.
-    openapi = generate_openapi_document(
-        config_path, "yaml", fail_on_invalid_collection=False
+    oas = get_oas(settings, fail_on_invalid_collection=False)
+    _document_locations_parameter_name(oas)
+    openapi_path.write_text(
+        yaml.safe_dump(oas, default_flow_style=False), encoding="utf-8"
     )
-    openapi_path.write_text(openapi, encoding="utf-8")
 
 
 def _load_pygeoapi_app(instance: str, config_path: Path, openapi_path: Path):

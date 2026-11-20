@@ -2,7 +2,7 @@
 
 | **Item** | **Value** |
 | --- | --- |
-| Contract Version | 1.0.0 |
+| Contract Version | 1.1.0 |
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
@@ -389,6 +389,8 @@ Responses:
 ## EDR Formations/Construction
 
 The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`).
+
+**Note:** `WaterEDRProvider` will change to `StationEDRProvider` to indicate that it can be used for non-water data, such as temperature time series at a meteorological station.
 
 **IMPORTANT**
 
