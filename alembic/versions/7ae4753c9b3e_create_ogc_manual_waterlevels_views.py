@@ -83,16 +83,17 @@ def _create_view(view_name: str, public_only: bool) -> str:
             -- the reading in feet (measuring_point_height is always feet)
             -- if the unit is meters, convert to feet; if feet, use as is; otherwise NULL
             CASE o.unit
-                WHEN 'm' THEN o.value * {METERS_TO_FEET}
-                WHEN 'ft' THEN o.value
+                WHEN 'm' THEN o.value * {METERS_TO_FEET} - COALESCE(o.measuring_point_height, 0)
+                WHEN 'ft' THEN o.value - COALESCE(o.measuring_point_height, 0)
+                WHEN 'ftbgs' THEN o.value
                 ELSE NULL
-            END - COALESCE(o.measuring_point_height, 0)      AS observation_value,
+            END                                              AS observation_value,
             'ft'                                             AS observation_unit,
             
             -- if unit != 'm' or 'ft', the observation_value will be NULL, record qualifier here
             'groundwater level reason'                       AS qualifier_parameter_name,
             CASE 
-                WHEN o.unit IN ('m', 'ft') THEN o.groundwater_level_reason
+                WHEN o.unit IN ('m', 'ft', 'ftbgs') THEN o.groundwater_level_reason
                 ELSE 'Reported unit is not a length unit'
             END                                             AS qualifier_value,
 

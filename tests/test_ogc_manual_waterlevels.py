@@ -623,6 +623,20 @@ def test_ogc_manual_waterlevels_view_publishes_levels_in_feet(
     assert row["qualifier_value"] == expected_reason
 
 
+def test_ogc_manual_waterlevels_view_handles_ftbgs_unit(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    """Test that the view correctly handles the 'ftbgs' unit and does not subtract the measuring_point_height."""
+    test_ogc_manual_waterlevels_view_publishes_levels_in_feet(
+        water_well_thing,
+        groundwater_level_observation,
+        "ftbgs",
+        10.0,
+        "Water level not affected",
+    )
+
+
 def test_ogc_manual_waterlevels_view_only_contains_water_wells(
     water_well_thing,
     spring_thing,
