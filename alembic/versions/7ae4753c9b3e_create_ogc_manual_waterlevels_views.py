@@ -89,12 +89,13 @@ def _create_view(view_name: str, public_only: bool) -> str:
                 ELSE NULL
             END                                              AS observation_value,
             'ft'                                             AS observation_unit,
-            
-            -- if unit != 'm' or 'ft', the observation_value will be NULL, record qualifier here
+
+            -- set qualifier if the unit is not a recognized length unit and the observation has a value
             'groundwater level reason'                       AS qualifier_parameter_name,
-            CASE 
-                WHEN o.unit IN ('m', 'ft', 'ftbgs') THEN o.groundwater_level_reason
-                ELSE 'Reported unit is not a length unit'
+            CASE
+                WHEN o.value IS NOT NULL AND o.unit NOT IN ('m', 'ft', 'ftbgs')
+                    THEN 'Reported unit is not a length unit'
+                ELSE o.groundwater_level_reason
             END                                             AS qualifier_value,
 
             -- station properties, repeated on each of the well's readings
