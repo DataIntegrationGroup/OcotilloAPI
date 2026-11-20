@@ -8,19 +8,19 @@ Feature: OGC API - EDR delivery of water-level and water-chemistry data
 
   # Executable spec for ADR3 (see ADR3.md). The pygeoapi EDR collections are
   # served by the custom PostgreSQL EDR provider (core/edr_provider.py) over the
-  # ogc_waterlevels / ogc_water_chemistry views; data is seeded in
+  # ogc_manual_waterlevels / ogc_water_chemistry views; data is seeded in
   # environment.add_edr_water_data.
   #
   # Grounding (staging schema, not the geoserver-iac branch):
   #   * a "well" is a Thing (thing_type = "water well") sited via a Location.point
   #   * manual water levels        -> Observation (parameter "groundwater level")
-  #   * transducer water levels    -> TransducerObservation, grouped by
-  #                                   TransducerObservationBlock, per Deployment
   #   * water chemistry            -> Observation tied to a Sample + Parameter
-  #   * a transducer "instance"    -> a Deployment (install/removal, interval) + Sensor
   #   * publication gate           -> release_status = 'public' (ogc_* views)
-  # Two EDR collections are added to the existing pygeoapi mount: "waterlevels"
-  # and "water_chemistry", backed by ogc_waterlevels / ogc_water_chemistry views.
+  # Two EDR collections are added to the existing pygeoapi mount:
+  # "manual_waterlevels" and "water_chemistry", backed by ogc_manual_waterlevels /
+  # ogc_water_chemistry views. Transducer water levels (TransducerObservation,
+  # one EDR instance per Deployment) will be a separate "continuous_waterlevels"
+  # collection, not yet built (ADR3, Update 2026-11-20).
 
   Background:
     Given a functioning api
