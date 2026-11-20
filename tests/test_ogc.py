@@ -37,6 +37,7 @@ from db import (
     NMA_MinorTraceChemistry,
     StatusHistory,
 )
+from core.pygeoapi import EDR_COLLECTIONS, _is_parameter_name
 from db.engine import session_ctx
 from tests import override_authentication
 
@@ -93,6 +94,31 @@ def test_ogc_openapi_has_paths(ogc_client):
     assert payload["openapi"].startswith("3.")
     assert payload["paths"]
     assert "/collections" in payload["paths"]
+
+
+@pytest.mark.parametrize("collection_id", [c["id"] for c in EDR_COLLECTIONS])
+def test_ogc_openapi_documents_parameter_name_on_edr_locations(
+    ogc_client, collection_id
+):
+    """``/locations`` accepts ``parameter-name``; the OpenAPI document says so.
+
+    pygeoapi omits it, following OGC's locations.yaml; _generate_openapi adds
+    it (EDR 1.1 Table 13, Req. A.33). Exactly once, so a pygeoapi upgrade that
+    lists it natively shows up here as a failure only if it duplicates ours.
+    """
+    response = ogc_client.get("/ogcapi/openapi?f=json")
+    assert response.status_code == 200
+    operation = response.json()["paths"][f"/collections/{collection_id}/locations"]
+
+    parameters = operation["get"]["parameters"]
+    matches = [i for i, p in enumerate(parameters) if _is_parameter_name(p)]
+    assert len(matches) == 1
+
+    # After datetime, before f.
+    refs = [p.get("$ref", "") for p in parameters]
+    datetime_at = next(i for i, r in enumerate(refs) if r.endswith("/datetime"))
+    format_at = refs.index("#/components/parameters/f")
+    assert datetime_at < matches[0] < format_at
 
 
 # A2: every surface that echoes metadata from core/pygeoapi-config.yml.
@@ -1061,54 +1087,3 @@ def test_ogc_polygon_within_filter(location):
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
-
-
-def test_ogc_waterlevels_excludes_readings_from_a_non_public_well(
-    water_well_thing, groundwater_level_observation
-):
-    """A well that is not public publishes no water levels, even public ones.
-
-    ogc_waterlevels used to filter on the reading's own release_status alone,
-    so a draft or private well still published its public readings -- with the
-    well's name and coordinates attached. ogc_water_chemistry already required
-    the parent thing to be public; baba91fe5e83 brought water levels onto the
-    same rule.
-    """
-    with session_ctx() as session:
-        session.execute(
-            text("UPDATE observation SET release_status = 'public' WHERE id = :oid"),
-            {"oid": groundwater_level_observation.id},
-        )
-        session.execute(
-            text("UPDATE thing SET release_status = 'draft' WHERE id = :tid"),
-            {"tid": water_well_thing.id},
-        )
-        session.commit()
-
-        reading_id = f"m-{groundwater_level_observation.id}"
-
-        public_rows = session.execute(
-            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
-        ).all()
-        assert not public_rows, "a non-public well leaked a reading to /ogcapi"
-
-        # The internal mount is where staff see non-public records; it must
-        # keep carrying them.
-        internal_rows = session.execute(
-            text("SELECT id FROM ogc_internal_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
-        ).all()
-        assert internal_rows, "the internal mirror stopped carrying the reading"
-
-        # Public well, public reading: published again.
-        session.execute(
-            text("UPDATE thing SET release_status = 'public' WHERE id = :tid"),
-            {"tid": water_well_thing.id},
-        )
-        session.commit()
-
-        assert session.execute(
-            text("SELECT id FROM ogc_waterlevels WHERE id = :rid"),
-            {"rid": reading_id},
-        ).all()

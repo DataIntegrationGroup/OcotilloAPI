@@ -7,7 +7,7 @@
 # need an entry here.
 #
 # `collection` must name a collection served by the OGC API - Features mount.
-# The two EDR collections (waterlevels, water_chemistry) cannot appear here:
+# The two EDR collections (manual_waterlevels, water_chemistry) cannot appear here:
 # neither QGIS nor ArcGIS Pro has an OGC API - EDR client, so a layer file
 # pointing at one would not open. The feature collections below carry the same
 # measurements summarised per site, which is what a GIS user wants on a map.

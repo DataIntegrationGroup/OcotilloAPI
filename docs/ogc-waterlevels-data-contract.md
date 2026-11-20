@@ -2,7 +2,7 @@
 
 | **Item** | **Value** |
 | --- | --- |
-| Contract Version | 1.0.0 |
+| Contract Version | 1.1.0 |
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
@@ -46,6 +46,10 @@ The sites will be returned as a FeatureCollection of [GeoJSONs](https://geojson.
                 "vertical_datum": "NAVD88",
                 "well_depth": well_depth,
                 "well_depth_units": "ft",
+                "geologic_formation": {
+                    "code": code,
+                    "description": description
+                }
                 "alternate_ids": [
                     {
                         "id": id,
@@ -71,6 +75,7 @@ where, for the following, `id` is at `features[].id` and all other fields are un
 | `vertical_datum` | `str` | Always `"NAVD88"` |
 | `well_depth` | `float` or `null` | Depth of the well, in feet |
 | `well_depth_units` | `str` | Always `"ft"` |
+| `geologic_formation` | `dict` | The geologic formation completion code and description |
 | `alternate_ids` | `list` | Alternate ids for the well. Each element is an object with `id`, `relation`, and `organization` |
 
 According to the standard [RFC 7946](https://www.rfc-editor.org/info/rfc7946/#section-4) the CRS must be "a geographic coordinate reference system, using the World Geodetic System 1984 (WGS 84) datum, with longitude and latitude units of decimal degrees."
@@ -350,6 +355,7 @@ Parameter behaviour:
 
 - `datetime`: an ISO 8601 instant or interval; `..` leaves an end open (e.g. `2020-01-01/..`). Applies to the reading timestamps.
 - `parameter-name`: comma-separated. `groundwater level below ground surface` and `groundwater level reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
+  - Every reading carries the `groundwater level reason` parameter, even when no reason was recorded. So `parameter-name=groundwater level reason` on its own matches every reading: `/locations` lists every well, not only wells with a recorded reason, and a well's reason range may be entirely `null`. The reason is meant to be read alongside the level.
 - `bbox` is a comma-separated list of the following values: `minx`, `miny`, `maxx`, `maxy`. They are defined via longitude and latitude in WGS84 (EPSG:4326).
 - `coords` is a WKT Polygon that uses longitude latitude pairs, defined using WGS84 (EPS:4326).
 - `f`: `json` (default for clients) or `html`.
@@ -384,6 +390,8 @@ Responses:
 ## EDR Formations/Construction
 
 The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`).
+
+**Note:** `WaterEDRProvider` will change to `StationEDRProvider` to indicate that it can be used for non-water data, such as temperature time series at a meteorological station.
 
 **IMPORTANT**
 
