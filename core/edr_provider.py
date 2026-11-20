@@ -719,7 +719,7 @@ class StationEDRProvider(BaseEDRProvider):
         not only the ones that occur in the response.
         """
         rows = self._fetch(
-            "SELECT t.term, t.definition "
+            "SELECT DISTINCT t.term, t.definition "
             "FROM lexicon_term t "
             "JOIN lexicon_term_category_association a ON a.term_id = t.id "
             "JOIN lexicon_category c ON c.id = a.category_id "
