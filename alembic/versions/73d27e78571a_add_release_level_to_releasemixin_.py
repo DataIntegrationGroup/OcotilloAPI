@@ -164,7 +164,9 @@ def upgrade() -> None:
                 f"{dict(unaccounted)}"
             )
 
-        op.alter_column(table, "release_level", nullable=False)
+        op.alter_column(
+            table, "release_level", nullable=False, server_default="pending"
+        )
 
     for table in VERSIONED_TABLES:
         op.add_column(
