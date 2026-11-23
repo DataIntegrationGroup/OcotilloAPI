@@ -263,6 +263,10 @@
     {
       "name": "data_type",
       "description": "Which kind of data a permission_grant applies to. Reuses the activity_type terms (well inventory, groundwater level, water chemistry) rather than inventing a parallel list."
+    },
+    {
+      "name": "release_level",
+      "description": "Who may see a record: pending (no release decision made), private (explicitly withheld), or public (released)."
     }
   ],
   "terms": [
@@ -1813,14 +1817,16 @@
     },
     {
       "categories": [
-        "release_status"
+        "release_status",
+        "release_level"
       ],
       "term": "public",
       "definition": "public version"
     },
     {
       "categories": [
-        "release_status"
+        "release_status",
+        "release_level"
       ],
       "term": "private",
       "definition": "private version"
@@ -2693,6 +2699,13 @@
       "categories": [
         "organization"
       ],
+      "term": "Anthony Water & Sanitation District",
+      "definition": "Anthony Water & Sanitation District"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
       "term": "Apache Gap Ranch",
       "definition": "Apache Gap Ranch"
     },
@@ -2821,6 +2834,13 @@
       ],
       "term": "Bourbon Grill at El Gancho",
       "definition": "Bourbon Grill at El Gancho"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Bramasole Farm",
+      "definition": "Bramasole Farm"
     },
     {
       "categories": [
@@ -8668,6 +8688,13 @@
       ],
       "term": "program",
       "definition": "Scoped to one program, e.g. AMMP or Geothermal."
+    },
+    {
+      "categories": [
+        "release_level"
+      ],
+      "term": "pending",
+      "definition": "Not yet released to any audience, because no release decision has been made yet."
     }
   ]
 }
