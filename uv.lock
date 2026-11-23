@@ -1165,14 +1165,14 @@ wheels = [
 
 [[package]]
 name = "faker"
-version = "37.12.0"
+version = "40.55.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tzdata" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/84/e95acaa848b855e15c83331d0401ee5f84b2f60889255c2e055cb4fb6bdf/faker-37.12.0.tar.gz", hash = "sha256:7505e59a7e02fa9010f06c3e1e92f8250d4cfbb30632296140c2d6dbef09b0fa", size = 1935741, upload-time = "2025-10-24T15:19:58.764Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/6e/ced38a7b8fe566b34b0d265d4d67917af28b9e3c2507736b9e8903fdbef1/faker-40.55.0.tar.gz", hash = "sha256:5f8262694ca6ae1fbdc45c152ae78edb5fe15bde4fa5e4818d70cdb12217ab58", size = 2038676, upload-time = "2026-11-20T16:25:26.956Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/98/2c050dec90e295a524c9b65c4cb9e7c302386a296b2938710448cbd267d5/faker-37.12.0-py3-none-any.whl", hash = "sha256:afe7ccc038da92f2fbae30d8e16d19d91e92e242f8401ce9caf44de892bab4c4", size = 1975461, upload-time = "2025-10-24T15:19:55.739Z" },
+    { url = "https://files.pythonhosted.org/packages/25/6e/ae6ab2b07672b6c3330d9c69341f2d744b908e852e86e7c16e5803b491fd/faker-40.55.0-py3-none-any.whl", hash = "sha256:fa1a07c59f2e1c206fc692eac841aff9d220210e847ec15470615821488d6e11", size = 2072466, upload-time = "2026-11-20T16:25:25.288Z" },
 ]
 
 [[package]]
