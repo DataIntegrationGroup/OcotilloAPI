@@ -6,6 +6,7 @@ their own names.
 """
 
 from datetime import datetime
+import logging
 import textwrap
 import pytest
 import yaml
@@ -292,6 +293,97 @@ def test_only_categorical_parameters_carry_categories(edr_coverage_provider):
 
     assert parameters[REASON]["observedProperty"]["categories"] == categories
     assert "categories" not in parameters[LEVEL]["observedProperty"]
+
+
+# ----------------------------------------------- duplicate axis values (rows)
+
+
+def test_read_breaks_axis_ties_by_id(edr_coverage_provider, monkeypatch):
+    """Rows at the same axis value come back in id order, every time.
+
+    Without the tiebreaker Postgres may return tied rows in any order, so
+    which duplicate _coverage_collection keeps would vary between requests.
+    """
+    provider = edr_coverage_provider("manual_waterlevels")
+    provider.id_field = "id"
+    captured = {}
+    monkeypatch.setattr(
+        provider, "_fetch", lambda sql, params=None: captured.setdefault("sql", sql)
+    )
+
+    provider._read(thing_id=1)
+
+    assert captured["sql"].endswith("ORDER BY thing_id, datetime, id")
+
+
+def test_duplicate_row_is_skipped_whole(edr_coverage_provider, caplog):
+    """The first row at an axis value wins, value and qualifier together.
+
+    A per-parameter check would keep the first row's level but could take the
+    reason from a later row, pairing a level with another reading's reason.
+    """
+    when = datetime(2024, 1, 1)
+    rows = [
+        _reading(when, 42.0, "Site was pumped"),
+        _reading(when, 99.0, "Site was dry"),
+    ]
+
+    with caplog.at_level(logging.WARNING, logger="core.edr_provider"):
+        coverages = edr_coverage_provider("manual_waterlevels")._coverage_collection(
+            rows
+        )
+
+    ranges = coverages["coverages"][0]["ranges"]
+    assert ranges[LEVEL]["values"] == [42.0]
+    assert ranges[REASON]["values"] == ["Site was pumped"]
+    assert any("Duplicate row" in r.getMessage() for r in caplog.records)
+
+
+def test_a_null_level_still_claims_its_axis_value(edr_coverage_provider):
+    """A reason-only first row is not overwritten by a later duplicate.
+
+    The old check (`values[i] is not None`) treated a null level as an empty
+    slot and let the duplicate's level in beside the first row's reason.
+    """
+    when = datetime(2024, 1, 1)
+    rows = [
+        _reading(when, None, "Site was dry"),
+        _reading(when, 99.0, "Site was pumped"),
+    ]
+
+    coverages = edr_coverage_provider("manual_waterlevels")._coverage_collection(rows)
+
+    ranges = coverages["coverages"][0]["ranges"]
+    assert ranges[LEVEL]["values"] == [None]
+    assert ranges[REASON]["values"] == ["Site was dry"]
+
+
+def test_long_rows_sharing_an_axis_value_are_not_duplicates(edr_coverage_provider):
+    """In a long view, different parameters at one datetime are all kept.
+
+    water_chemistry carries one analyte per row, so a sample's analytes share
+    its datetime; only a repeat of the same parameter is a duplicate.
+    """
+    when = datetime(2024, 1, 1)
+
+    def analyte(name, value):
+        return {
+            "thing_id": 1,
+            "longitude": -106.0,
+            "latitude": 34.0,
+            "datetime": when,
+            "parameter_name": name,
+            "value": value,
+            "unit": "mg/L",
+        }
+
+    rows = [analyte("Calcium", 12.0), analyte("Sodium", 30.0), analyte("Calcium", 99.0)]
+
+    coverages = edr_coverage_provider("water_chemistry")._coverage_collection(rows)
+
+    ranges = coverages["coverages"][0]["ranges"]
+    assert ranges["Calcium"]["values"] == [12.0]
+    assert ranges["Sodium"]["values"] == [30.0]
 
 
 # Test that the keys in EDR_PROVIDER_COLLECTION_KEYS are correctly carried from the collection to the provider.
