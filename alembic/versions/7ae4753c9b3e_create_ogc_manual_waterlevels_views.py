@@ -28,7 +28,7 @@ The older ``ogc_waterlevels`` / ``ogc_internal_waterlevels`` views (manual and
 transducer readings combined) are left in place.
 
 Revision ID: 7ae4753c9b3e
-Revises: 7480e4ee69dc
+Revises: 73d27e78571a
 Create Date: 2026-11-18 00:00:00.000000
 """
 
@@ -39,7 +39,7 @@ from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision: str = "7ae4753c9b3e"
-down_revision: Union[str, Sequence[str], None] = "7480e4ee69dc"
+down_revision: Union[str, Sequence[str], None] = "73d27e78571a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
