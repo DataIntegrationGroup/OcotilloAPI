@@ -2,7 +2,7 @@
 
 | **Item** | **Value** |
 | --- | --- |
-| Contract Version | 1.1.0 |
+| Contract Version | 1.2.0 |
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
@@ -89,13 +89,13 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
     "type": "CoverageCollection",
     "domainType": "PointSeries",
     "parameters": {
-        "groundwater level below ground surface": {
+        "groundwater_level_below_ground_surface": {
             "type": "Parameter",
             "description": {
                 "en": "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
             },
             "observedProperty": {
-                "id": "groundwater level below ground surface",
+                "id": "groundwater_level_below_ground_surface",
                 "label": {
                     "en": "Groundwater level below ground surface"
                 }
@@ -107,13 +107,13 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             } 
         },
-        "groundwater level reason": {
+        "groundwater_level_reason": {
             "type": "Parameter",
             "description": {
-                "en": "USGS-style condition codes explaining why a water level reads as it does or could not be measured."
+                "en": "The reason/qualifier for the recorded groundwater level."
             },
             "observedProperty": {
-                "id": "groundwater level reason",
+                "id": "groundwater_level_reason",
                 "label": {
                     "en": "Groundwater level reason"
                 },
@@ -305,14 +305,14 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 ]
             },
             "ranges": {
-                "groundwater level below ground surface": {
+                "groundwater_level_below_ground_surface": {
                     "type": "NdArray",
                     "dataType": "float",
                     "axisNames": ["t"],
                     "shape": [n],
                     "values": [value 1, value 2, ..., value n]
                 },
-                "groundwater level reason": {
+                "groundwater_level_reason": {
                     "type": "NdArray",
                     "dataType": "string",
                     "axisNames": ["t"],
@@ -333,10 +333,10 @@ where
 | `coverages[].domain.axes.x.values` | `list[float]` | Longitude of the well. There is only one item in the list. |
 | `coverages[].domain.axes.y.values` | `list[float]` | Latitude of the well. There is only one item in the list. |
 | `coverages[].domain.axes.t.values` | `list[str]` | ISO 8601 datetime strings for each element in each range |
-| `coverages[].ranges["groundwater level below ground surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | Groundwater level below ground surface observations |
-| `coverages[].ranges["groundwater level reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | Groundwater level reason for each observation |
+| `coverages[].ranges["groundwater_level_below_ground_surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater_level_below_ground_surface"].values` | `list[float \| null]` | groundwater_level_below_ground_surface observations |
+| `coverages[].ranges["groundwater_level_reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
+| `coverages[].ranges["groundwater_level_reason"].values` | `list[str \| null]` | groundwater_level_reason for each observation |
 
 ## Endpoints
 
@@ -354,8 +354,8 @@ Paths are relative to the base path, `/ogcapi/collections/manual_waterlevels`. R
 Parameter behaviour:
 
 - `datetime`: an ISO 8601 instant or interval; `..` leaves an end open (e.g. `2020-01-01/..`). Applies to the reading timestamps.
-- `parameter-name`: comma-separated. `groundwater level below ground surface` and `groundwater level reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
-  - Every reading carries the `groundwater level reason` parameter, even when no reason was recorded. So `parameter-name=groundwater level reason` on its own matches every reading: `/locations` lists every well, not only wells with a recorded reason, and a well's reason range may be entirely `null`. The reason is meant to be read alongside the level.
+- `parameter-name`: comma-separated. `groundwater_level_below_ground_surface` and `groundwater_level_reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
+  - Every reading carries the `groundwater_level_reason` parameter, even when no reason was recorded. So `parameter-name=groundwater_level_reason` on its own matches every reading: `/locations` lists every well, not only wells with a recorded reason, and a well's reason range may be entirely `null`. The reason is meant to be read alongside the level.
 - `bbox` is a comma-separated list of the following values: `minx`, `miny`, `maxx`, `maxy`. They are defined via longitude and latitude in WGS84 (EPSG:4326).
 - `coords` is a WKT Polygon that uses longitude latitude pairs, defined using WGS84 (EPS:4326).
 - `f`: `json` (default for clients) or `html`.
@@ -378,10 +378,10 @@ Responses:
 ## ogc_waterlevels as of 11/4/2026
 
 - The current `ogc_waterlevels` view, which as of 11/4/2026 is a union of manual and transducer waterlevels. The view is initially constructed in `alembic/versions/z9a0b1c2d3e4_add_edr_water_views.py`. The views are then reconstructed in `alembic/versions/baba91fe5e83_gate_ogc_waterlevels_on_thing_release.py` to gate on `public_release`. The internal views are constructed in `alembic/versions/2d3c3a268652_create_internal_ogc_views.py`. The views are repaired in `alembic/versions/b7c8d9e0f1a2_repair_missing_edr_water_views.py`.
-- The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
+- The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater_level_below_ground_surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
-- Ensure that each `null` observation has a corresponding `groundwater level reason`, otherwise omit it from the view.
+- Ensure that each `null` observation has a corresponding `groundwater_level_reason`, otherwise omit it from the view.
 
 **IMPORTANT**
 
@@ -415,8 +415,8 @@ If a `413` error is encountered then WeaverAPI will need to add query parameters
 
 # Outstanding Questions
 
-- **DECIDED**: this collection will report `groundwater level below ground surface`, *not* `groundwater level` with an asssociated `measuring point height` parameter and range.
-  - **Original question**: We could maintain this as `groundwater level` rather than `groundwater level below ground surface`. What WeaverAPI needs, though, is the depth below ground surface. If, therefore, we want `groundwater level` to be maintained then measuring point heights *must* be provided for every observation. This would require adding a second `Parameter` to the `CoverageCollection` for `measuring point height` and adding a second `coverage` with `n` measuring point heights (one for every `groundwater level`). Thoughts on how to best proceed?
+- **DECIDED**: this collection will report `groundwater_level_below_ground_surface`, *not* `groundwater level` with an asssociated `measuring point height` parameter and range.
+  - **Original question**: We could maintain this as `groundwater level` rather than `groundwater_level_below_ground_surface`. What WeaverAPI needs, though, is the depth below ground surface. If, therefore, we want `groundwater level` to be maintained then measuring point heights *must* be provided for every observation. This would require adding a second `Parameter` to the `CoverageCollection` for `measuring point height` and adding a second `coverage` with `n` measuring point heights (one for every `groundwater level`). Thoughts on how to best proceed?
 - **DECIDED**: this will be an OGC EDR collection and not OGC Features.
   - **Original question**: Should we pivot from EDR to Features? If we do this it'd be more difficult to bundle/relate the sites and observations if they live in different collections (one for observations with `null` geometry and one for wells). We'd need to document this somewhere, and where that documentation would go isn't too obvious. We could, conversely, serve the data with `geometry` for every observation where the `geometry` corresponds with the well, but then we'd miss metadata needed from wells such as `well_depth`.
   - We could also put well metadata with the observation data, but then we'd be mixing data in the response which is not a good idea.
