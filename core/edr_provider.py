@@ -460,8 +460,18 @@ class StationEDRProvider(BaseEDRProvider):
 
     # ------------------------------------------------------- coveragejson
     def _parameter_documentation(self, parameter_name):
-        """Documented title/description for one EDR parameter, or ``{}``."""
-        return table_entries(self.table).get(parameter_name, {})
+        """Documented title/description for one EDR parameter, or ``{}`` if
+        undocumented in ogc-field-descriptions.yml and log with a warning."""
+        entry = table_entries(self.table).get(parameter_name)
+        if entry is None:
+            LOGGER.warning(
+                "No field description for EDR parameter %r in %s; "
+                "falling back to its name.",
+                parameter_name,
+                self.table,
+            )
+            return {}
+        return entry
 
     def _coverage_collection(self, rows, select_properties=None):
         if not rows:
