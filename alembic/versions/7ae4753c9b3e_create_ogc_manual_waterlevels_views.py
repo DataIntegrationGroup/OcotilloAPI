@@ -79,7 +79,7 @@ def _create_view(view_name: str, public_only: bool) -> str:
             o.observation_datetime                           AS datetime,
 
             -- parameter columns (parameter_columns in EDR_COLLECTIONS)
-            'groundwater_level_below_ground_surface'         AS observation_parameter_name,
+            'groundwater level below ground surface'         AS observation_parameter_name,
             -- the reading in feet (measuring_point_height is always feet)
             -- if the unit is meters, convert to feet; if feet, use as is; otherwise NULL
             CASE o.unit
@@ -91,7 +91,7 @@ def _create_view(view_name: str, public_only: bool) -> str:
             'ft'                                             AS observation_unit,
 
             -- set qualifier if the unit is not a recognized length unit and the observation has a value
-            'groundwater_level_reason'                       AS qualifier_parameter_name,
+            'groundwater level reason'                       AS qualifier_parameter_name,
             CASE
                 WHEN o.value IS NOT NULL AND o.unit NOT IN ('m', 'ft', 'ftbgs')
                     THEN 'Reported unit is not a length unit'
