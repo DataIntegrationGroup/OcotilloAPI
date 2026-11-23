@@ -2170,9 +2170,9 @@ pyproj==3.8.0 \
     # via
     #   ocotilloapi
     #   pygeoapi
-pyshp==2.3.1 \
-    --hash=sha256:4caec82fd8dd096feba8217858068bacb2a3b5950f43c048c6dc32a3489d5af1 \
-    --hash=sha256:67024c0ccdc352ba5db777c4e968483782dfa78f8e200672a90d2d30fd8b7b49
+pyshp==3.1.9 \
+    --hash=sha256:7a4ac6c0898f54d09a7f75c8494c05a2ed86964010f27a8a7df9c7ecb6738569 \
+    --hash=sha256:e20febdaaef14d153f7eabfb8143edfcf61ca6d454f20ba214076dc994901db1
     # via ocotilloapi
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
