@@ -110,7 +110,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
         "groundwater level reason": {
             "type": "Parameter",
             "description": {
-                "en": "USGS-style condition codes explaining why a water level reads as it does or could not be measured."
+                "en": "The reason/qualifier for the recorded groundwater level."
             },
             "observedProperty": {
                 "id": "groundwater level reason",
@@ -334,9 +334,9 @@ where
 | `coverages[].domain.axes.y.values` | `list[float]` | Latitude of the well. There is only one item in the list. |
 | `coverages[].domain.axes.t.values` | `list[str]` | ISO 8601 datetime strings for each element in each range |
 | `coverages[].ranges["groundwater level below ground surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | Groundwater level below ground surface observations |
+| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | groundwater level below ground surface observations |
 | `coverages[].ranges["groundwater level reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | Groundwater level reason for each observation |
+| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | groundwater level reason for each observation |
 
 ## Endpoints
 
@@ -381,7 +381,7 @@ Responses:
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
-- Ensure that each `null` observation has a corresponding `groundwater level reason`, otherwise omit it from the view.
+- Ensure that each `null` observation has a corresponding `groundwater_level_reason`, otherwise omit it from the view.
 
 **IMPORTANT**
 

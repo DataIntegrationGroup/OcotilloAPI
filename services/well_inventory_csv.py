@@ -54,6 +54,7 @@ from domain.water_levels import (
     GROUNDWATER_LEVEL_ACTIVITY_TYPE,
     MEASUREMENT_UNIT,
     SAMPLE_MATRIX,
+    observation_release_status,
 )
 from domain.wells import (
     alternate_ids,
@@ -866,6 +867,10 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
                 else model.data_quality or None
             ),
             notes=model.water_level_notes,
+            # The public water level views check the observation's status as
+            # well as the well's, so without this the views exclude the
+            # observation even after the owner agreed to public availability.
+            release_status=observation_release_status(well.release_status),
         )
         session.add(observation)
 

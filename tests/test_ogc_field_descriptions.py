@@ -267,13 +267,6 @@ def test_pygeoapi_still_passes_provider_fields_through_to_schema():
 
 # ----------------------------------------------------------------------- EDR
 
-"""
-Developer's note:
-This test ensures that the EDR schema correctly documents its parameters.
-It relies on the presence of data in the test database
-since parameters are ready from the data themselves.
-"""
-
 
 def test_edr_schema_documents_its_parameters(
     ogc_client, water_well_thing, groundwater_level_observation
@@ -298,8 +291,15 @@ def test_edr_schema_documents_its_parameters(
         "groundwater level reason",
     ]:
         parameter = properties[parameter_name]
-        assert parameter["title"] == parameter_name
-        assert parameter["description"] == parameter_name
+        assert parameter["title"] == parameter_name.replace("_", " ").capitalize()
+        if parameter_name == "groundwater level below ground surface":
+            assert parameter["description"] == (
+                "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
+            )
+        elif parameter_name == "groundwater level reason":
+            assert parameter["description"] == (
+                "The reason/qualifier for the recorded groundwater level."
+            )
 
     # reset the release_status to its original value
     with session_ctx() as session:
@@ -376,10 +376,101 @@ def test_edr_coveragejson_carries_the_parameter_description(edr_coverage_provide
     for p in ["groundwater level below ground surface", "groundwater level reason"]:
         parameter = coverages["parameters"][p]
         try:
-            assert parameter["observedProperty"]["label"]["en"] == p
-            assert parameter["description"]["en"].startswith(p)
+            assert parameter["observedProperty"]["id"] == p
+            assert (
+                parameter["observedProperty"]["label"]["en"]
+                == p.replace("_", " ").capitalize()
+            )
+
+            if p == "groundwater level below ground surface":
+                assert (
+                    parameter["description"]["en"]
+                    == "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
+                )
+            else:
+                assert (
+                    parameter["description"]["en"]
+                    == "The reason/qualifier for the recorded groundwater level."
+                )
+
         except AssertionError:
             raise AssertionError(f"Parameter {p} failed validation")
+
+
+def test_edr_coveragejson_parameter_description_fallback(edr_coverage_provider):
+    """
+    Test that the parameter description falls back to the parameter's name if
+    no explicit description is provided in `ogc-field-descriptions.yml`.
+    """
+    from datetime import datetime
+
+    undocumented_parameter = "groundwater level below ground surface_not_in_yaml_file"
+    provider = edr_coverage_provider("manual_waterlevels")
+
+    coverages = provider._coverage_collection(
+        [
+            {
+                "thing_id": 1,
+                "name": "Test well",
+                "longitude": -106.0,
+                "latitude": 34.0,
+                "datetime": datetime(2024, 1, 1),
+                "observation_value": 42.0,
+                "observation_unit": "ft",
+                "observation_parameter_name": undocumented_parameter,
+                "qualifier_value": "test qualifier",
+                "qualifier_parameter_name": "groundwater level reason",
+            }
+        ]
+    )
+
+    # Ensure that the parameter not in the YAML file falls back to its name for the description.
+    assert undocumented_parameter in coverages["parameters"]
+    parameter = coverages["parameters"][undocumented_parameter]
+    assert parameter["observedProperty"]["label"]["en"] == undocumented_parameter
+    assert parameter["observedProperty"]["id"] == undocumented_parameter
+    assert parameter["description"]["en"] == undocumented_parameter
+
+
+def test_warning_log_if_parameter_not_in_yaml(edr_coverage_provider, caplog):
+    """
+    Test that a warning is logged if a parameter is not documented in the YAML file.
+    """
+    from datetime import datetime
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="core.edr_provider"):
+        undocumented_parameter = (
+            "groundwater level below ground surface_not_in_yaml_file"
+        )
+        provider = edr_coverage_provider("manual_waterlevels")
+        provider._coverage_collection(
+            [
+                {
+                    "thing_id": 1,
+                    "name": "Test well",
+                    "longitude": -106.0,
+                    "latitude": 34.0,
+                    "datetime": datetime(2024, 1, 1),
+                    "observation_value": 42.0,
+                    "observation_unit": "ft",
+                    "observation_parameter_name": undocumented_parameter,
+                    "qualifier_value": "test qualifier",
+                    "qualifier_parameter_name": "groundwater level reason",
+                }
+            ]
+        )
+
+        warnings = [
+            r
+            for r in caplog.records
+            if r.name == "core.edr_provider" and r.levelno == logging.WARNING
+        ]
+
+        assert any(undocumented_parameter in r.getMessage() for r in warnings)
+
+        # documented parameters don't warn
+        assert not any("groundwater level reason" in r.getMessage() for r in warnings)
 
 
 def test_edr_coveragejson_includes_datatype(edr_coverage_provider):
