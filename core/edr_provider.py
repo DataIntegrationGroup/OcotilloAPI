@@ -451,10 +451,13 @@ class StationEDRProvider(BaseEDRProvider):
                 if column is not None and column not in columns:
                     columns.append(column)
 
+        # only one row per independent axis is kept
+        # id breaks ties between rows at the same axis value, so the row kept
+        # by _coverage_collection's duplicate check is the same on every request.
         return self._fetch(
             f"SELECT {', '.join(columns)} "  # noqa: S608 (trusted, config-supplied columns)
             f"FROM {self.table}{where} "
-            f"ORDER BY thing_id, {self.independent_axis_column_name}",
+            f"ORDER BY thing_id, {self.independent_axis_column_name}, {self.id_field}",
             params,
         )
 
@@ -536,22 +539,50 @@ class StationEDRProvider(BaseEDRProvider):
             # (meaning None if a parameter was not reported for a particular independent axis value,
             # such as when a parameter is not reported for a particular timestamp or depth)
             ranges = {}
+
+            # (parameter name, axis index value) slots already filled. Tracked
+            # separately from the values: a filled slot may hold None (a
+            # reason-only reading), so `values[i] is not None` cannot tell
+            # and could pair values and their qualifiers incorrectly
+
+            # filled is a set of (name, axis index value) tuples indicating which slots have been filled
+            filled = set()
             for r in station_rows:
                 axis_value = r[self.independent_axis_column_name]
                 i = independent_axis_index[axis_value]
-                for parameter_column_set in self.parameter_columns:
-                    name = r[parameter_column_set["name_column"]]
 
-                    # each list needs to be the same length for the ranges, so
-                    # if a parameter name is None, we skip processing it for this row
-                    # and it will already be set to None in the ranges for this independent axis value
-                    if name is None or (
-                        selected_properties is not None
-                        and name not in selected_properties
-                    ):
-                        continue
+                # this row's (parameter_column_set, name) pairs to publish. A
+                # None name leaves the slot None, keeping every range the same
+                # length; an unselected name is not published.
+                row_parameters = [
+                    (parameter_column_set, r[parameter_column_set["name_column"]])
+                    for parameter_column_set in self.parameter_columns
+                    if r[parameter_column_set["name_column"]] is not None
+                    and (
+                        selected_properties is None
+                        or r[parameter_column_set["name_column"]] in selected_properties
+                    )
+                ]
 
-                    if name not in ranges and name is not None:
+                # Keep or skip the whole row, so a value and its qualifier
+                # always come from the same row. Rows arrive ordered by id
+                # within an axis value (_read), so the lowest id wins. Keyed by
+                # name as well as index: in a long view (water_chemistry)
+                # several parameters legitimately share an axis value.
+                duplicates = [name for _, name in row_parameters if (name, i) in filled]
+                if duplicates:
+                    LOGGER.warning(
+                        "Duplicate row for %s at %s=%s in station %s; keeping "
+                        "the first row as ordered by id and skipping this one.",
+                        ", ".join(repr(name) for name in duplicates),
+                        self.independent_axis_column_name,
+                        axis_value,
+                        thing_id,
+                    )
+                    continue
+
+                for parameter_column_set, name in row_parameters:
+                    if name not in ranges:
                         ranges[name] = {
                             "type": "NdArray",
                             "dataType": parameter_column_set["data_type"],
@@ -559,13 +590,8 @@ class StationEDRProvider(BaseEDRProvider):
                             "shape": [len(independent_axis_raw_values)],
                             "values": [None] * len(independent_axis_raw_values),
                         }
-
-                    if ranges[name]["values"][i] is not None:
-                        LOGGER.warning(
-                            f"Duplicate value for parameter '{name}' at independent axis index {i}. Keeping the existing value."
-                        )
-                        continue
                     ranges[name]["values"][i] = r[parameter_column_set["value_column"]]
+                    filled.add((name, i))
 
             # transform the raw independent axis values for the coverage output (e.g., ISO formatted timestamps)
             coverages.append(
