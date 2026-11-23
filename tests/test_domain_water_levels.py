@@ -18,10 +18,13 @@
 from datetime import datetime
 from decimal import Decimal
 
+import pytest
+
 from domain.samples import water_level_sample_name
 from domain.water_levels import (
     depth_to_water_error,
     measuring_point_height_conflict_message,
+    observation_release_status,
     reconcile_measuring_point_height,
 )
 
@@ -133,6 +136,24 @@ def test_water_level_sample_name_ignores_sub_minute_precision():
     assert water_level_sample_name("AR0001", with_seconds) == water_level_sample_name(
         "AR0001", without_seconds
     )
+
+
+# --------------------------------------------------------------------------
+# observation_release_status
+# --------------------------------------------------------------------------
+@pytest.mark.parametrize("well_status", ["public", "private", "draft"])
+def test_observation_release_status_copies_the_well_status(well_status):
+    assert observation_release_status(well_status) == well_status
+
+
+@pytest.mark.parametrize(
+    "well_status",
+    # A well with no status, values no view treats as a release decision (the
+    # legacy review terms, and archived), and casing the views would not match.
+    [None, "", "provisional", "final", "published", "archived", "Public"],
+)
+def test_observation_release_status_holds_anything_else_in_draft(well_status):
+    assert observation_release_status(well_status) == "draft"
 
 
 # ============= EOF =============================================
