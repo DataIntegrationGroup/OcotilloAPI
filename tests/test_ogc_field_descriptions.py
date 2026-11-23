@@ -287,16 +287,16 @@ def test_edr_schema_documents_its_parameters(
     assert response.status_code == 200
     properties = response.json()["properties"]
     for parameter_name in [
-        "groundwater_level_below_ground_surface",
-        "groundwater_level_reason",
+        "groundwater level below ground surface",
+        "groundwater level reason",
     ]:
         parameter = properties[parameter_name]
         assert parameter["title"] == parameter_name.replace("_", " ").capitalize()
-        if parameter_name == "groundwater_level_below_ground_surface":
+        if parameter_name == "groundwater level below ground surface":
             assert parameter["description"] == (
                 "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
             )
-        elif parameter_name == "groundwater_level_reason":
+        elif parameter_name == "groundwater level reason":
             assert parameter["description"] == (
                 "The reason/qualifier for the recorded groundwater level."
             )
@@ -329,9 +329,9 @@ def test_edr_independent_axis_documents_its_parameters(edr_coverage_provider):
                 "datetime": datetime(2024, 1, 1),
                 "observation_value": 42.0,
                 "observation_unit": "ft",
-                "observation_parameter_name": "groundwater_level_below_ground_surface",
+                "observation_parameter_name": "groundwater level below ground surface",
                 "qualifier_value": "test qualifier",
-                "qualifier_parameter_name": "groundwater_level_reason",
+                "qualifier_parameter_name": "groundwater level reason",
             }
         ]
     )
@@ -343,10 +343,10 @@ def test_edr_independent_axis_documents_its_parameters(edr_coverage_provider):
         "coordinates": ["t"],
         "system": {"type": "TemporalRS", "calendar": "Gregorian"},
     } in coverage["domain"]["referencing"]
-    assert coverage["ranges"]["groundwater_level_below_ground_surface"][
+    assert coverage["ranges"]["groundwater level below ground surface"][
         "axisNames"
     ] == ["t"]
-    assert coverage["ranges"]["groundwater_level_reason"]["axisNames"] == ["t"]
+    assert coverage["ranges"]["groundwater level reason"]["axisNames"] == ["t"]
 
 
 def test_edr_coveragejson_carries_the_parameter_description(edr_coverage_provider):
@@ -366,14 +366,14 @@ def test_edr_coveragejson_carries_the_parameter_description(edr_coverage_provide
                 "datetime": datetime(2024, 1, 1),
                 "observation_value": 42.0,
                 "observation_unit": "ft",
-                "observation_parameter_name": "groundwater_level_below_ground_surface",
+                "observation_parameter_name": "groundwater level below ground surface",
                 "qualifier_value": "test qualifier",
-                "qualifier_parameter_name": "groundwater_level_reason",
+                "qualifier_parameter_name": "groundwater level reason",
             }
         ]
     )
 
-    for p in ["groundwater_level_below_ground_surface", "groundwater_level_reason"]:
+    for p in ["groundwater level below ground surface", "groundwater level reason"]:
         parameter = coverages["parameters"][p]
         try:
             assert parameter["observedProperty"]["id"] == p
@@ -382,7 +382,7 @@ def test_edr_coveragejson_carries_the_parameter_description(edr_coverage_provide
                 == p.replace("_", " ").capitalize()
             )
 
-            if p == "groundwater_level_below_ground_surface":
+            if p == "groundwater level below ground surface":
                 assert (
                     parameter["description"]["en"]
                     == "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
@@ -404,7 +404,7 @@ def test_edr_coveragejson_parameter_description_fallback(edr_coverage_provider):
     """
     from datetime import datetime
 
-    undocumented_parameter = "groundwater_level_below_ground_surface_not_in_yaml_file"
+    undocumented_parameter = "groundwater level below ground surface_not_in_yaml_file"
     provider = edr_coverage_provider("manual_waterlevels")
 
     coverages = provider._coverage_collection(
@@ -419,7 +419,7 @@ def test_edr_coveragejson_parameter_description_fallback(edr_coverage_provider):
                 "observation_unit": "ft",
                 "observation_parameter_name": undocumented_parameter,
                 "qualifier_value": "test qualifier",
-                "qualifier_parameter_name": "groundwater_level_reason",
+                "qualifier_parameter_name": "groundwater level reason",
             }
         ]
     )
@@ -441,7 +441,7 @@ def test_warning_log_if_parameter_not_in_yaml(edr_coverage_provider, caplog):
 
     with caplog.at_level(logging.WARNING, logger="core.edr_provider"):
         undocumented_parameter = (
-            "groundwater_level_below_ground_surface_not_in_yaml_file"
+            "groundwater level below ground surface_not_in_yaml_file"
         )
         provider = edr_coverage_provider("manual_waterlevels")
         provider._coverage_collection(
@@ -456,7 +456,7 @@ def test_warning_log_if_parameter_not_in_yaml(edr_coverage_provider, caplog):
                     "observation_unit": "ft",
                     "observation_parameter_name": undocumented_parameter,
                     "qualifier_value": "test qualifier",
-                    "qualifier_parameter_name": "groundwater_level_reason",
+                    "qualifier_parameter_name": "groundwater level reason",
                 }
             ]
         )
@@ -470,7 +470,7 @@ def test_warning_log_if_parameter_not_in_yaml(edr_coverage_provider, caplog):
         assert any(undocumented_parameter in r.getMessage() for r in warnings)
 
         # documented parameters don't warn
-        assert not any("groundwater_level_reason" in r.getMessage() for r in warnings)
+        assert not any("groundwater level reason" in r.getMessage() for r in warnings)
 
 
 def test_edr_coveragejson_includes_datatype(edr_coverage_provider):
@@ -491,16 +491,16 @@ def test_edr_coveragejson_includes_datatype(edr_coverage_provider):
                 "datetime": datetime(2024, 1, 1),
                 "observation_value": 42.0,
                 "observation_unit": "ft",
-                "observation_parameter_name": "groundwater_level_below_ground_surface",
+                "observation_parameter_name": "groundwater level below ground surface",
                 "qualifier_value": "test qualifier",
-                "qualifier_parameter_name": "groundwater_level_reason",
+                "qualifier_parameter_name": "groundwater level reason",
             }
         ]
     )
 
     ranges = coverages["coverages"][0]["ranges"]
-    assert ranges["groundwater_level_below_ground_surface"]["dataType"] == "float"
-    assert ranges["groundwater_level_reason"]["dataType"] == "string"
+    assert ranges["groundwater level below ground surface"]["dataType"] == "float"
+    assert ranges["groundwater level reason"]["dataType"] == "string"
 
 
 def test_edr_falls_back_for_an_undocumented_analyte(edr_coverage_provider):
