@@ -2667,13 +2667,13 @@ water_well_field_operations:
 # not documented in the YAML file, the description should fall back to the parameter's name.
 
 manual_waterlevels:
-  groundwater_level_below_ground_surface:
+  groundwater level below ground surface:
     title: Groundwater level below ground surface
     description: >-
       Depth from the ground surface down to the water table, measured by hand
       during a site visit. Larger values mean the water table is further below
       the surface.
-  groundwater_level_reason:
+  groundwater level reason:
     title: Groundwater level reason
     description: >-
       The reason/qualifier for the recorded groundwater level.

@@ -25,7 +25,7 @@ docs/ogc-waterlevels-data-contract.md. The rules worth protecting are:
 - depth below ground surface follows the measuring-point convention
   (value minus measuring point height, a null height counting as 0);
 - the reason parameter's categories come from the lexicon's
-  groundwater_level_reason terms, which the contract defers to.
+  groundwater level reason terms, which the contract defers to.
 """
 
 from datetime import datetime
@@ -264,15 +264,15 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     # ----------------------------------------------------------- parameters
     parameters = data["parameters"]
     assert sorted(parameters.keys()) == sorted(
-        ["groundwater_level_below_ground_surface", "groundwater_level_reason"]
+        ["groundwater level below ground surface", "groundwater level reason"]
     )
 
-    level = parameters["groundwater_level_below_ground_surface"]
+    level = parameters["groundwater level below ground surface"]
     assert level["type"] == "Parameter"
     assert level["description"]["en"] == (
         "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
     )
-    assert level["observedProperty"]["id"] == "groundwater_level_below_ground_surface"
+    assert level["observedProperty"]["id"] == "groundwater level below ground surface"
     assert (
         level["observedProperty"]["label"]["en"]
         == "Groundwater level below ground surface"
@@ -280,18 +280,18 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     assert level["unit"]["symbol"] == "ft"
     assert level["unit"]["label"]["en"] == "ft"
 
-    reason = parameters["groundwater_level_reason"]
+    reason = parameters["groundwater level reason"]
     assert reason["type"] == "Parameter"
     assert reason["description"]["en"] == (
         "The reason/qualifier for the recorded groundwater level."
     )
-    assert reason["observedProperty"]["id"] == "groundwater_level_reason"
+    assert reason["observedProperty"]["id"] == "groundwater level reason"
     assert reason["observedProperty"]["label"]["en"] == "Groundwater level reason"
     # A categorical parameter carries no unit in the contract.
     assert "unit" not in reason
 
     categories = reason["observedProperty"]["categories"]
-    _assert_categories_match_lexicon(categories, "groundwater_level_reason")
+    _assert_categories_match_lexicon(categories, "groundwater level reason")
 
     # ------------------------------------------------------------ coverages
     coverages = data["coverages"]
@@ -336,7 +336,7 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     assert sorted(ranges.keys()) == sorted(parameters.keys())
 
     # value (10.0 ft) minus the reading's measuring point height (5.0 ft)
-    level_range = ranges["groundwater_level_below_ground_surface"]
+    level_range = ranges["groundwater level below ground surface"]
     assert level_range["type"] == "NdArray"
     assert level_range["dataType"] == "float"
     assert level_range["axisNames"] == ["t"]
@@ -346,7 +346,7 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
         - groundwater_level_observation.measuring_point_height
     ]
 
-    reason_range = ranges["groundwater_level_reason"]
+    reason_range = ranges["groundwater level reason"]
     assert reason_range["type"] == "NdArray"
     assert reason_range["dataType"] == "string"
     assert reason_range["axisNames"] == ["t"]
@@ -389,11 +389,11 @@ def test_ogc_manual_waterlevels_view(
         - release_status <- "public" (only public readings of public wells)
 
     Parameter columns (core/pygeoapi.py, parameter_columns):
-        - observation_parameter_name <- "groundwater_level_below_ground_surface"
+        - observation_parameter_name <- "groundwater level below ground surface"
         - observation_value <- observation.value - measuring_point_height
         - observation_unit <- "ft"
-        - qualifier_parameter_name <- "groundwater_level_reason"
-        - qualifier_value <- observation.groundwater_level_reason
+        - qualifier_parameter_name <- "groundwater level reason"
+        - qualifier_value <- observation.groundwater level reason
 
     Site columns, repeated on every reading of the well and published on
     /locations:
@@ -450,13 +450,13 @@ def test_ogc_manual_waterlevels_view(
     assert row["release_status"] == "public"
 
     # ---------------------------------------------------------- parameters
-    assert row["observation_parameter_name"] == "groundwater_level_below_ground_surface"
+    assert row["observation_parameter_name"] == "groundwater level below ground surface"
     assert row["observation_value"] == pytest.approx(
         groundwater_level_observation.value
         - groundwater_level_observation.measuring_point_height
     )
     assert row["observation_unit"] == "ft"
-    assert row["qualifier_parameter_name"] == "groundwater_level_reason"
+    assert row["qualifier_parameter_name"] == "groundwater level reason"
     assert (
         row["qualifier_value"] == groundwater_level_observation.groundwater_level_reason
     )
