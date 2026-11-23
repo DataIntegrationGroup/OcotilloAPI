@@ -275,7 +275,7 @@ def test_ogc_manual_waterlevel_coverage_collection_shape(
     assert level["observedProperty"]["id"] == "groundwater_level_below_ground_surface"
     assert (
         level["observedProperty"]["label"]["en"]
-        == "groundwater level below ground surface"
+        == "Groundwater level below ground surface"
     )
     assert level["unit"]["symbol"] == "ft"
     assert level["unit"]["label"]["en"] == "ft"
@@ -373,14 +373,14 @@ def test_ogc_manual_waterlevels_collection_lists_parameters(
     assert response.status_code == 200
     parameter_names = response.json()["parameter_names"]
     assert set(parameter_names) == {
-        "groundwater level below ground surface",
-        "groundwater level reason",
+        "groundwater_level_below_ground_surface",
+        "groundwater_level_reason",
     }
-    level = parameter_names["groundwater level below ground surface"]
+    level = parameter_names["groundwater_level_below_ground_surface"]
     assert level["unit"]["symbol"]["value"] == "ft"
     assert "categories" not in level["observedProperty"]
 
-    reason = parameter_names["groundwater level reason"]
+    reason = parameter_names["groundwater_level_reason"]
     assert "unit" not in reason
     _assert_categories_match_lexicon(
         reason["observedProperty"]["categories"], "groundwater_level_reason"
@@ -402,11 +402,11 @@ def test_ogc_manual_waterlevels_schema_lists_reason_values(
 
     assert response.status_code == 200
     properties = response.json()["properties"]
-    assert set(properties["groundwater level reason"]["enum"]) == set(
+    assert set(properties["groundwater_level_reason"]["enum"]) == set(
         _lexicon_definitions("groundwater_level_reason")
     )
-    assert "enum" not in properties["groundwater level below ground surface"]
-    assert properties["groundwater level below ground surface"]["type"] == "number"
+    assert "enum" not in properties["groundwater_level_below_ground_surface"]
+    assert properties["groundwater_level_below_ground_surface"]["type"] == "number"
 
 
 def test_ogc_manual_waterlevels_instances_is_empty_list(
