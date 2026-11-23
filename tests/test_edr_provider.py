@@ -132,7 +132,7 @@ def test_one_parameter_set_yields_a_range_per_distinct_name(edr_coverage_provide
         parameter = coverage["parameters"][p]
         try:
             assert parameter["observedProperty"]["label"]["en"] == p
-            assert parameter["description"]["en"].startswith(p)
+            assert parameter["description"]["en"] == p.capitalize()
         except AssertionError:
             raise AssertionError(f"Parameter {p} failed validation")
 
