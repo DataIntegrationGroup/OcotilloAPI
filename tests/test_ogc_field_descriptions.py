@@ -291,8 +291,15 @@ def test_edr_schema_documents_its_parameters(
         "groundwater_level_reason",
     ]:
         parameter = properties[parameter_name]
-        assert parameter["title"] == parameter_name
-        assert parameter["description"] == parameter_name
+        assert parameter["title"] == parameter_name.replace("_", " ").capitalize()
+        if parameter_name == "groundwater_level_below_ground_surface":
+            assert parameter["description"] == (
+                "Depth from the ground surface down to the water table, measured by hand during a site visit. Larger values mean the water table is further below the surface."
+            )
+        elif parameter_name == "groundwater_level_reason":
+            assert parameter["description"] == (
+                "The reason/qualifier for the recorded groundwater level."
+            )
 
     # reset the release_status to its original value
     with session_ctx() as session:
