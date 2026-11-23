@@ -2663,5 +2663,17 @@ water_well_field_operations:
       exist they are separated by vertical bars, most recently recorded
       first.
 
-# EDR collection parameters are discoverable from the data, so they are not hardcoded
-# here.
+# EDR collections have their parameters discoverable from the data. If they are 
+# not documented in the YAML file, the description should fall back to the parameter's name.
+
+manual_waterlevels:
+  groundwater_level_below_ground_surface:
+    title: Groundwater level below ground surface
+    description: >-
+      Depth from the ground surface down to the water table, measured by hand
+      during a site visit. Larger values mean the water table is further below
+      the surface.
+  groundwater_level_reason:
+    title: Groundwater level reason
+    description: >-
+      The reason/qualifier for the recorded groundwater level.
