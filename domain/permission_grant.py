@@ -1,31 +1,43 @@
 """Pure validation rules for permission_grant.
 
-Checks a value against core/enums.py (built from core/lexicon.json) and
-raises ValueError early, before the database's own FK constraint would.
+Reads core/lexicon.json directly -- domain/ must stay database-free (ADR4).
 """
 
-from enum import Enum
+import json
+from pathlib import Path
 
-from core.enums import Capability, PrincipalType, ScopeType
+_LEXICON_PATH = Path(__file__).parent.parent / "core" / "lexicon.json"
+
+_CACHE: dict[str, set[str]] | None = None
 
 
-def _validate_against_enum(value: str, enum_cls: type[Enum], field_name: str) -> None:
-    try:
-        enum_cls(value)
-    except ValueError:
+def _allowed_terms(category: str) -> set[str]:
+    global _CACHE
+    if _CACHE is None:
+        raw = json.loads(_LEXICON_PATH.read_text(encoding="utf-8"))
+        by_category: dict[str, set[str]] = {}
+        for term in raw["terms"]:
+            for name in term["categories"]:
+                by_category.setdefault(name, set()).add(term["term"])
+        _CACHE = by_category
+    return _CACHE.get(category, set())
+
+
+def _validate_against_lexicon(value: str, category: str, field_name: str) -> None:
+    if value not in _allowed_terms(category):
         raise ValueError(f"Invalid {field_name}: {value!r}")
 
 
 def validate_principal_type(principal_type: str) -> None:
-    _validate_against_enum(principal_type, PrincipalType, "principal_type")
+    _validate_against_lexicon(principal_type, "principal_type", "principal_type")
 
 
 def validate_capability(capability: str) -> None:
-    _validate_against_enum(capability, Capability, "capability")
+    _validate_against_lexicon(capability, "capability", "capability")
 
 
 def validate_scope_type(scope_type: str) -> None:
-    _validate_against_enum(scope_type, ScopeType, "scope_type")
+    _validate_against_lexicon(scope_type, "scope_type", "scope_type")
 
 
 # ============= EOF =============================================

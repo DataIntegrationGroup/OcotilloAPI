@@ -7,7 +7,7 @@ Two layers:
   since api_key is the one principal_type with a real table to check.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select
@@ -106,11 +106,47 @@ def test_a_non_numeric_api_key_id_does_not_exist():
         assert principal_exists(session, "api_key", "not-a-number") is False
 
 
+def test_an_oversized_api_key_id_does_not_exist():
+    # Parses fine as a Python int but overflows the Postgres `integer` column.
+    with session_ctx() as session:
+        assert principal_exists(session, "api_key", "99999999999999999999") is False
+
+
+def test_an_underscored_api_key_id_does_not_exist():
+    # int("0_5") == 5 in Python; principal_id must look like the stored id,
+    # not merely parse to the same integer.
+    with session_ctx() as session:
+        key = _insert_key(session)
+        underscored = "0_" + str(key.id)
+        assert principal_exists(session, "api_key", underscored) is False
+
+
 def test_user_and_principal_group_pass_through_unchecked():
     # No local registry for either yet -- see services/permission_grant_helper.py.
     with session_ctx() as session:
         assert principal_exists(session, "user", "any-jwt-sub") is True
         assert principal_exists(session, "principal_group", "AMP.Viewer") is True
+
+
+def test_an_unrecognized_principal_type_does_not_exist():
+    with session_ctx() as session:
+        assert principal_exists(session, "bogus", "x") is False
+
+
+def test_a_revoked_api_key_does_not_exist():
+    with session_ctx() as session:
+        key = _insert_key(session)
+        key.revoked_at = datetime.now(timezone.utc)
+        session.commit()
+        assert principal_exists(session, "api_key", str(key.id)) is False
+
+
+def test_an_expired_api_key_does_not_exist():
+    with session_ctx() as session:
+        key = _insert_key(session)
+        key.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+        session.commit()
+        assert principal_exists(session, "api_key", str(key.id)) is False
 
 
 # ============= EOF =============================================
