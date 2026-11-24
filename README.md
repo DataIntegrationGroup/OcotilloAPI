@@ -322,6 +322,20 @@ Notes:
 - All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
 - Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file
 
+## OGC
+
+### EDR
+
+#### Field Descriptions
+Parameter names in EDR collections are discovered from the data. They are also described in `core/ogc-field-descriptions.yml`.
+If a parameter name from a collection exists in the database, but is not described in `core/ogc-field-descriptions.yml`, then
+the description and label in the CoverageCollection and the title and description in `/scham` default to the parameter name as it exists in the database. In this situation a `warning` level message will be logged describing what occurred and why. To have a different description and label than just the parameter name `core/ogc-field-descriptions.yml` will need to be updated for that collection and the API will need to be relaunched. The parameter name in `core/ogc-field-descriptions.yml` must match the parameter name that the backing view or table emits.
+
+#### Categories
+Parameters that have restricted values - categories in a CoverageCollection - are determined from the lexicon tables. They are populated by the terms associated with a category. They are greedy, so *every* term associated with a category is used. If only a subset of terms are desired add a new category to the `lexicon_category` table and then associate the desired terms with that category. For this to be live the lexicon term and category tables will need to be updated in `core/lexicon.json` and then in the database with `oco initialize-lexicon`; the API does not need to be relaunched for the categories to be updated because a new provider is built on every request (that being said, it may need to be relaunched if `core/lexicon.json` is updated).
+
+
+
 ## 📦 Ocotillo CLI
 
 The `oco` command exposes project automation, database utilities, and data ingestion utilities.
