@@ -463,3 +463,39 @@ def test_skipped_edr_collections_are_left_out_of_the_document():
     _document_locations_parameter_name(oas)
 
     assert oas == {"paths": {}}
+
+
+def test_one_unloadable_edr_collection_does_not_hide_the_others(monkeypatch):
+    """Only the EDR collection whose provider raises is left out.
+
+    pygeoapi's get_oas drops the whole EDR section when any one provider
+    raises, so water_chemistry failing R13 used to strip manual_waterlevels'
+    query paths too.
+    """
+    import pygeoapi.plugin
+
+    from core.pygeoapi import _drop_unloadable_edr_collections
+
+    def load_plugin(kind, provider_def):
+        if provider_def["table"] == "ogc_water_chemistry":
+            raise ValueError("parameter 'CF' has more than one unit")
+        return object()
+
+    monkeypatch.setattr(pygeoapi.plugin, "load_plugin", load_plugin)
+    settings = {
+        "resources": {
+            "manual_waterlevels": {
+                "providers": [{"type": "edr", "table": "ogc_manual_waterlevels"}]
+            },
+            "water_chemistry": {
+                "providers": [{"type": "edr", "table": "ogc_water_chemistry"}]
+            },
+            "water_wells": {
+                "providers": [{"type": "feature", "table": "ogc_water_wells"}]
+            },
+        }
+    }
+
+    _drop_unloadable_edr_collections(settings)
+
+    assert set(settings["resources"]) == {"manual_waterlevels", "water_wells"}

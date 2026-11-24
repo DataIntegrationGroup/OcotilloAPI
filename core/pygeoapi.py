@@ -1,4 +1,5 @@
 import importlib.util
+import logging
 import os
 import re
 import sys
@@ -11,6 +12,8 @@ import yaml
 from fastapi import FastAPI
 
 from core.pygeoapi_patches import apply_queryables_patch
+
+LOGGER = logging.getLogger(__name__)
 
 # Consumed by pygeoapi at import time only; see _load_pygeoapi_app.
 _PYGEOAPI_ENV_KEYS = ("PYGEOAPI_CONFIG", "PYGEOAPI_OPENAPI")
@@ -739,6 +742,40 @@ def _document_locations_parameter_name(oas: dict) -> None:
         parameters.insert(position, reference)
 
 
+def _drop_unloadable_edr_collections(settings: dict) -> None:
+    """Remove EDR collections whose provider fails to load, one at a time.
+
+    pygeoapi's get_oas wraps the whole EDR section in one try, so a single
+    provider that raises (e.g. water_chemistry failing R13, one unit per
+    parameter) drops the query paths of *every* EDR collection from the
+    document -- manual_waterlevels included. Loading each provider here first
+    confines the failure to its own collection. The dropped collection is
+    broken at request time anyway, since pygeoapi builds the same provider
+    for every request.
+
+    Only the settings used to build the OpenAPI document are changed; the
+    config file pygeoapi serves from is untouched.
+    """
+    from pygeoapi.plugin import load_plugin
+    from pygeoapi.provider import get_provider_by_type
+
+    resources = settings.get("resources", {})
+    for collection_id, resource in list(resources.items()):
+        try:
+            provider_def = get_provider_by_type(resource.get("providers", []), "edr")
+        except Exception:
+            continue  # not an EDR collection
+        try:
+            load_plugin("provider", provider_def)
+        except Exception as err:
+            LOGGER.warning(
+                "EDR collection %r left out of the OpenAPI document: %s",
+                collection_id,
+                err,
+            )
+            del resources[collection_id]
+
+
 def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
     # Same steps as pygeoapi.openapi.generate_openapi_document(..., "yaml"),
     # with an amendment between building the document and dumping it.
@@ -747,6 +784,8 @@ def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
 
     with config_path.open(encoding="utf-8") as config:
         settings = yaml_load(config)
+
+    _drop_unloadable_edr_collections(settings)
 
     # Avoid startup failures when backing tables are not yet present; pygeoapi
     # will skip invalid collections and still emit a standards-compliant spec.
