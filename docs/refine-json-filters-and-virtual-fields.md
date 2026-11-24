@@ -62,6 +62,34 @@ Operators come from Refine/MUI conventions:
 - **contains**, **startswith**, **endswith**, **eq**, **ne**, **ncontains**: text predicates on **`name`** inside the **`EXISTS`** branch.
 - **null** / **nnull**: empty vs non-empty association (no **`ILIKE`** value semantics). **`value`** may still appear in JSON (for example **`true`**); handler logic follows **operator**.
 
+### 7. Date and timestamp filters
+
+Date filters accept `MM/DD/YYYY` (`11/19/2026`) and `YYYY-MM-DD`
+(`2026-11-19`). SQL `DATE` columns compare calendar dates directly.
+Timestamp columns also accept ISO 8601 timestamps with `Z` or an explicit
+UTC offset, such as `2026-08-10T06:00:00.000Z`. Comparisons against a full
+timestamp use the exact instant. For `in`, pass an array of values. On
+timestamp columns the array can mix calendar dates and full timestamps.
+
+For timestamp columns, a date-only value covers the `America/Denver`
+calendar day, from local midnight inclusive to the next local midnight
+exclusive, accounting for daylight saving time. Timestamp columns stored
+without a timezone are treated as UTC.
+
+| Operator | Timestamp match |
+|----------|-----------------|
+| `eq` | During the selected day |
+| `ne` | Before or after the selected day |
+| `in` | During any day in the array |
+| `gt` | At or after the next day's midnight |
+| `gte` | At or after the selected day's midnight |
+| `lt` | Before the selected day's midnight |
+| `lte` | Before the next day's midnight |
+
+For empty checks, use `null` or `nnull`. On date and timestamp columns,
+`eq` and `ne` with JSON `null` also check for null and non-null values,
+respectively. Invalid values return HTTP `422` with the field and received value.
+
 ## Sorting non-column list fields (virtual `sort` parameters)
 
 The DataGrid passes **`sort`** and **`order`** the same way as filters. **`order_sort_filter`** must never call **`getattr(Thing, sort).asc()`** for:
