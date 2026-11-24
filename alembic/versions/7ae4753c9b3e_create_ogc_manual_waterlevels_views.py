@@ -121,13 +121,12 @@ def _create_view(view_name: str, public_only: bool) -> str:
         JOIN thing t            ON t.id = fe.thing_id AND t.thing_type = 'water well'
 
         -- select the most recent location for the well
-        JOIN LATERAL (
-             SELECT location_id
-             FROM location_thing_association
-             WHERE thing_id = t.id AND effective_end IS NULL
-             ORDER BY effective_start DESC, location_id DESC
-             LIMIT 1
-         ) lta ON TRUE
+        JOIN (
+            SELECT DISTINCT ON (thing_id) thing_id, location_id
+            FROM location_thing_association
+            WHERE effective_end IS NULL
+            ORDER BY thing_id, effective_start DESC, location_id DESC
+        ) lta ON lta.thing_id = t.id
         JOIN location l ON l.id = lta.location_id
         LEFT JOIN lexicon_term lt ON lt.term = t.formation_completion_code
         LEFT JOIN (
