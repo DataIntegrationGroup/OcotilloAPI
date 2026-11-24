@@ -24,7 +24,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from datetime import date, timezone
+from datetime import date, datetime, timezone
 from db import MeasuringPointHistory, StatusHistory, Thing, ThingIdLink, WellScreen
 from db.engine import session_ctx
 from main import app
@@ -32,7 +32,7 @@ from schemas import DT_FMT
 from schemas.location import LocationResponse
 from schemas.thing import UpdateWell, ValidateWell
 from services.water_level_csv import bulk_upload_water_levels
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from tests import (
     client,
     override_authentication,
@@ -983,6 +983,208 @@ def test_get_water_wells_filter_contacts_nnull(water_well_thing, contact):
     data = response.json()
     ids = [item["id"] for item in data["items"]]
     assert water_well_thing.id in ids
+
+
+@pytest.fixture()
+def dated_water_well(water_well_thing):
+    """Give the shared well deterministic date and non-midnight timestamps."""
+    with session_ctx() as session:
+        session.execute(
+            update(Thing)
+            .where(Thing.id == water_well_thing.id)
+            .values(
+                first_visit_date=date(2026, 8, 10),
+                well_completion_date=date(2023, 6, 6),
+                created_at=datetime(2026, 10, 5, 14, 30, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+    return water_well_thing
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("first_visit_date", "08/10/2026"),
+        ("well_completion_date", "06/06/2023"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("operator", "expected"),
+    [
+        ("eq", True),
+        ("ne", False),
+        ("gt", False),
+        ("gte", True),
+        ("lt", False),
+        ("lte", True),
+    ],
+)
+def test_get_water_wells_filter_date_columns_all_comparisons(
+    dated_water_well, field, value, operator, expected
+):
+    fl = json.dumps({"field": field, "operator": operator, "value": value})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+@pytest.mark.parametrize(
+    ("operator", "expected"),
+    [
+        ("eq", True),
+        ("ne", False),
+        ("gt", False),
+        ("gte", True),
+        ("lt", False),
+        ("lte", True),
+    ],
+)
+def test_get_water_wells_filter_created_at_by_calendar_day(
+    dated_water_well, operator, expected
+):
+    fl = json.dumps(
+        {"field": "created_at", "operator": operator, "value": "10/05/2026"}
+    )
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("first_visit_date", ["2026-08-10"]),
+        ("well_completion_date", ["06/06/2023"]),
+        ("created_at", ["2026-10-05"]),
+    ],
+)
+def test_get_water_wells_filter_date_columns_in(
+    dated_water_well,
+    field,
+    value,
+):
+    fl = json.dumps({"field": field, "operator": "in", "value": value})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert dated_water_well.id in ids
+
+
+@pytest.mark.parametrize(
+    ("operator", "expected"),
+    [("null", False), ("nnull", True)],
+)
+def test_get_water_wells_filter_date_columns_keep_null_operators(
+    dated_water_well, operator, expected
+):
+    filter_spec = {
+        "field": "first_visit_date",
+        "operator": operator,
+        "value": True,
+    }
+    fl = json.dumps(filter_spec)
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+@pytest.mark.parametrize(
+    "created_at, day, expected",
+    [
+        ("2026-10-06T01:00:00Z", "10/05/2026", True),
+        ("2026-10-06T01:00:00Z", "10/06/2026", False),
+        ("2026-03-08T06:59:00Z", "03/08/2026", False),
+        ("2026-03-08T07:00:00Z", "03/08/2026", True),
+        ("2026-03-09T05:59:00Z", "03/08/2026", True),
+        ("2026-03-09T06:00:00Z", "03/08/2026", False),
+    ],
+)
+def test_get_water_wells_filter_created_at_day_boundaries(
+    dated_water_well, created_at, day, expected
+):
+    with session_ctx() as session:
+        session.execute(
+            update(Thing)
+            .where(Thing.id == dated_water_well.id)
+            .values(created_at=datetime.fromisoformat(created_at))
+        )
+        session.commit()
+
+    fl = json.dumps({"field": "created_at", "operator": "eq", "value": day})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+@pytest.mark.parametrize(
+    "values, expected",
+    [
+        (["10/01/2026", "2026-10-05T14:30:00Z"], True),
+        (["10/05/2026", "2026-10-05T14:30:01Z"], True),
+        (["10/01/2026", "2026-10-05T14:30:01Z"], False),
+        ([], False),
+    ],
+)
+def test_get_water_wells_filter_created_at_mixed_in(dated_water_well, values, expected):
+    fl = json.dumps({"field": "created_at", "operator": "in", "value": values})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+@pytest.mark.parametrize("operator, expected", [("eq", True), ("ne", False)])
+def test_get_water_wells_filter_date_columns_compare_null(
+    dated_water_well, operator, expected
+):
+    with session_ctx() as session:
+        session.execute(
+            update(Thing)
+            .where(Thing.id == dated_water_well.id)
+            .values(first_visit_date=None)
+        )
+        session.commit()
+
+    fl = json.dumps({"field": "first_visit_date", "operator": operator, "value": None})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (dated_water_well.id in ids) is expected
+
+
+def test_get_water_wells_filter_date_columns_reject_invalid_date(dated_water_well):
+    valid = json.dumps({"field": "created_at", "operator": "eq", "value": "10/05/2026"})
+    invalid = json.dumps(
+        {"field": "first_visit_date", "operator": "eq", "value": " 2026/08/10 "}
+    )
+    response = client.get(
+        "/thing/water-well", params=[("filter", valid), ("filter", invalid)]
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "'first_visit_date'" in detail
+    assert "'2026/08/10'" in detail
+
+
+def test_get_water_wells_filter_date_in_requires_array(dated_water_well):
+    fl = json.dumps({"field": "created_at", "operator": "in", "value": "2026-10-05"})
+    response = client.get("/thing/water-well", params=[("filter", fl)])
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == 'Operator "in" requires an array value'
 
 
 def test_get_water_wells_filter_groups_eq_by_id(group, water_well_thing):
