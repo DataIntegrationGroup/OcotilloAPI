@@ -15,7 +15,9 @@
 # ===============================================================================
 
 from datetime import datetime, timedelta, timezone
+import json
 import uuid
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -720,6 +722,31 @@ def test_get_groundwater_level_observation_by_id_404_wrong_activity_type(
         "observation_id": water_chemistry_observation.id
     }
     assert data["detail"][0]["loc"] == ["path", "observation_id"]
+
+
+@pytest.mark.parametrize(
+    "zone, delta, expected",
+    [
+        (timezone.utc, timedelta(0), True),
+        (ZoneInfo("America/Denver"), timedelta(0), True),
+        (timezone.utc, timedelta(microseconds=1), False),
+    ],
+)
+def test_get_groundwater_observation_by_iso_timestamp(
+    groundwater_level_observation, zone, delta, expected
+):
+    observation = groundwater_level_observation
+    cutoff = observation.observation_datetime.astimezone(zone) + delta
+    value = cutoff.isoformat().replace("+00:00", "Z")
+    fl = json.dumps({"field": "observation_datetime", "operator": "gte", "value": value})
+    response = client.get(
+        "/observation/groundwater-level",
+        params={"sample_id": observation.sample_id, "filter": fl},
+    )
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["items"]]
+    assert (observation.id in ids) is expected
 
 
 def test_get_groundwater_observation_by_sample(
