@@ -20,6 +20,17 @@ reading, with:
 
 A reading with a null level is still published when it has a reason (R5).
 
+Each well's current location comes from a ``DISTINCT ON (thing_id)``
+subquery over ``location_thing_association``, not a ``JOIN LATERAL``. The
+subquery never refers to the outer query, so each time the view is queried
+Postgres evaluates it once, keeps the one-row-per-well result in memory
+(typically as a hash table), and joins every reading against it. The result
+acts like a temporary table that lasts until the query finishes; nothing is
+stored between queries. A ``LATERAL`` subquery depends on ``t.id``, so it
+reruns for every reading unless Memoize caches it. Do not add ``LIMIT 1`` to
+the subquery: the limit applies to the whole result, not to each well, so
+only one well would survive the inner join.
+
 ``ogc_manual_waterlevels`` publishes only public readings of public wells,
 and only public alternate ids. ``ogc_internal_manual_waterlevels`` is the
 same query without those release filters, for the internal pygeoapi mount.
