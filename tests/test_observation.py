@@ -738,7 +738,9 @@ def test_get_groundwater_observation_by_iso_timestamp(
     observation = groundwater_level_observation
     cutoff = observation.observation_datetime.astimezone(zone) + delta
     value = cutoff.isoformat().replace("+00:00", "Z")
-    fl = json.dumps({"field": "observation_datetime", "operator": "gte", "value": value})
+    fl = json.dumps(
+        {"field": "observation_datetime", "operator": "gte", "value": value}
+    )
     response = client.get(
         "/observation/groundwater-level",
         params={"sample_id": observation.sample_id, "filter": fl},
