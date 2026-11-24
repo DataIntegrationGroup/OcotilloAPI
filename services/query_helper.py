@@ -14,12 +14,16 @@
 # limitations under the License.
 # ===============================================================================
 import json
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
     Float,
     Integer,
     Select,
@@ -31,6 +35,7 @@ from sqlalchemy import (
     func,
     not_,
     nulls_last,
+    or_,
     select,
 )
 from sqlalchemy.orm import DeclarativeBase, Session
@@ -188,6 +193,109 @@ def _python_type(column: Any):
         return column.type.python_type
     except Exception:
         return None
+
+
+_DATE_FILTER_TIMEZONE = ZoneInfo("America/Denver")
+
+
+def _parse_json_filter_date(
+    value: Any, field: str, *, timestamp: bool
+) -> date | datetime:
+    """Parse a calendar date or, for timestamp columns, an exact instant."""
+    formats = "MM/DD/YYYY or YYYY-MM-DD"
+    if timestamp:
+        formats += " or an ISO 8601 timestamp with a UTC offset"
+
+    normalized = value.strip() if isinstance(value, str) else value
+    detail = f"Filter field {field!r} requires {formats}. Received {normalized!r}."
+    if not isinstance(normalized, str):
+        raise HTTPException(status_code=422, detail=detail)
+
+    try:
+        if "/" in normalized:
+            return datetime.strptime(normalized, "%m/%d/%Y").date()
+        if timestamp and "T" in normalized:
+            instant = datetime.fromisoformat(normalized)
+            if instant.utcoffset() is None:
+                raise ValueError("Timestamp requires an offset")
+            return instant.astimezone(timezone.utc)
+        return datetime.strptime(normalized, "%Y-%m-%d").date()
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=detail) from exc
+
+
+def _apply_date_filter_clause(
+    sql: Select[Any], column: Any, field: str, operator: str, value: Any
+) -> Select[Any]:
+    """Apply a date or timestamp predicate for one Refine filter."""
+    timestamp = isinstance(column.type, DateTime)
+
+    def bounds(item):
+        parsed = _parse_json_filter_date(item, field, timestamp=timestamp)
+        if not timestamp:
+            return parsed, None
+        if isinstance(parsed, datetime):
+            return (
+                parsed if column.type.timezone else parsed.replace(tzinfo=None)
+            ), None
+        start = datetime.combine(parsed, time.min, _DATE_FILTER_TIMEZONE)
+        try:
+            end = datetime.combine(
+                parsed + timedelta(days=1), time.min, _DATE_FILTER_TIMEZONE
+            )
+        except OverflowError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Filter field {field!r} is outside the timestamp range. Received {item.strip()!r}.",
+            ) from exc
+        start, end = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
+        if not column.type.timezone:
+            start, end = start.replace(tzinfo=None), end.replace(tzinfo=None)
+        return start, end
+
+    if operator == "in":
+        if not isinstance(value, (list, tuple)):
+            raise HTTPException(
+                status_code=400, detail='Operator "in" requires an array value'
+            )
+        if not value:
+            return sql.where(column.in_([]))
+        predicates = []
+        for item in value:
+            start, end = bounds(item)
+            predicates.append(
+                column == start if end is None else and_(column >= start, column < end)
+            )
+        return sql.where(or_(*predicates))
+
+    if operator not in {"eq", "ne", "gt", "gte", "lt", "lte"}:
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported filter operator {operator!r}"
+        )
+
+    if value is None:
+        if operator == "eq":
+            return sql.where(column.is_(None))
+        elif operator == "ne":
+            return sql.where(column.is_not(None))
+
+    start, end = bounds(value)
+    if operator == "eq":
+        return sql.where(
+            column == start if end is None else and_(column >= start, column < end)
+        )
+    elif operator == "ne":
+        return sql.where(
+            column != start if end is None else or_(column < start, column >= end)
+        )
+    elif operator == "gt":
+        return sql.where(column > start if end is None else column >= end)
+    elif operator == "gte":
+        return sql.where(column >= start)
+    elif operator == "lt":
+        return sql.where(column < start)
+    else:
+        return sql.where(column <= start if end is None else column < end)
 
 
 def _apply_thing_derived_status_filter(
@@ -874,6 +982,7 @@ def _apply_json_filter_clause(
 
     py_t = _python_type(column)
     is_string = py_t is str or isinstance(column.type, (String, Text))
+    is_date = isinstance(column.type, (Date, DateTime))
 
     if operator == "contains":
         if not is_string:
@@ -906,6 +1015,9 @@ def _apply_json_filter_clause(
                 detail=f"Operator endswith is not supported for field {field!r}",
             )
         return sql.where(column.ilike(f"%{value}"))
+
+    if is_date and operator not in {"null", "nnull"}:
+        return _apply_date_filter_clause(sql, column, field, operator, value)
 
     if operator == "eq":
         if py_t is float:
@@ -947,7 +1059,7 @@ def _apply_json_filter_clause(
         if not isinstance(value, (list, tuple)):
             raise HTTPException(
                 status_code=400,
-                detail="Operator in requires an array value",
+                detail='Operator "in" requires an array value',
             )
         return sql.where(column.in_(list(value)))
 
