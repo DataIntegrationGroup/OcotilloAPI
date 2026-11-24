@@ -746,9 +746,10 @@ def _drop_unloadable_edr_collections(settings: dict) -> None:
     """Remove EDR collections whose provider fails to load, one at a time.
 
     pygeoapi's get_oas wraps the whole EDR section in one try, so a single
-    provider that raises (e.g. water_chemistry failing R13, one unit per
-    parameter) drops the query paths of *every* EDR collection from the
-    document -- manual_waterlevels included. Loading each provider here first
+    provider that raises (water_chemistry did, before a parameter with more
+    than one unit was dropped instead of failing the provider) drops the query
+    paths of *every* EDR collection from the document -- manual_waterlevels
+    included. Loading each provider here first
     confines the failure to its own collection. The dropped collection is
     broken at request time anyway, since pygeoapi builds the same provider
     for every request.

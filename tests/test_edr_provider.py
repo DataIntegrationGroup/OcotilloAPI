@@ -499,3 +499,121 @@ def test_one_unloadable_edr_collection_does_not_hide_the_others(monkeypatch):
     _drop_unloadable_edr_collections(settings)
 
     assert set(settings["resources"]) == {"manual_waterlevels", "water_wells"}
+
+
+# ------------------------------------------------------ one unit per parameter
+
+
+def _discovering_provider(edr_coverage_provider, monkeypatch, collection_id, rows):
+    """A provider whose discovery query (get_fields) returns ``rows``."""
+    provider = edr_coverage_provider(collection_id)
+    provider._fields = {}
+    monkeypatch.setattr(provider, "_fetch", lambda sql, params=None: rows)
+    return provider
+
+
+def test_a_parameter_with_more_than_one_unit_is_not_published(
+    edr_coverage_provider, monkeypatch, caplog
+):
+    """R13: every row of a parameter must share the unit, or it is dropped.
+
+    Only that parameter goes; the rest of the collection is still published.
+    """
+    provider = _discovering_provider(
+        edr_coverage_provider,
+        monkeypatch,
+        "water_chemistry",
+        [
+            {"parameter_name": "CF", "unit": "µS/cm"},
+            {"parameter_name": "CF", "unit": "mS/cm"},
+            {"parameter_name": "Calcium", "unit": "mg/L"},
+        ],
+    )
+
+    with caplog.at_level(logging.WARNING, logger="core.edr_provider"):
+        fields = provider.get_fields()
+
+    assert set(fields) == {"Calcium"}
+    assert fields["Calcium"]["x-ogc-unit"] == "mg/L"
+    assert provider._dropped_parameters == {"CF"}
+    assert any(
+        "'CF'" in r.getMessage() and "more than one unit" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_a_null_unit_beside_a_unit_is_a_second_unit(edr_coverage_provider, monkeypatch):
+    """No exceptions: a row with no unit does not match a row with one."""
+    provider = _discovering_provider(
+        edr_coverage_provider,
+        monkeypatch,
+        "water_chemistry",
+        [
+            {"parameter_name": "NO3", "unit": "mg/L"},
+            {"parameter_name": "NO3", "unit": None},
+        ],
+    )
+
+    assert provider.get_fields() == {}
+    assert provider._dropped_parameters == {"NO3"}
+
+
+def test_a_parameter_without_a_unit_column_is_published_without_a_unit(
+    edr_coverage_provider, monkeypatch
+):
+    """The reason has no unit column: one unit (none), so it is kept.
+
+    The SQL selects NULL for it, which arrives as None -- it must not be
+    published as an `x-ogc-unit` of None.
+    """
+    rows = {
+        "observation_parameter_name": [
+            {"parameter_name": LEVEL, "unit": "ft"},
+        ],
+        "qualifier_parameter_name": [
+            {"parameter_name": REASON, "unit": None},
+        ],
+    }
+    provider = edr_coverage_provider("manual_waterlevels")
+    provider._fields = {}
+    monkeypatch.setattr(
+        provider,
+        "_fetch",
+        lambda sql, params=None: next(v for k, v in rows.items() if k in sql),
+    )
+
+    fields = provider.get_fields()
+
+    assert set(fields) == {LEVEL, REASON}
+    assert fields[LEVEL]["x-ogc-unit"] == "ft"
+    assert "x-ogc-unit" not in fields[REASON]
+    assert provider._dropped_parameters == set()
+
+
+def test_an_unpublished_parameter_is_left_out_of_coverages(edr_coverage_provider):
+    """A dropped parameter on a row beside a published one is skipped alone."""
+    provider = edr_coverage_provider("manual_waterlevels")
+    provider._dropped_parameters = {LEVEL}
+
+    coverages = provider._coverage_collection(
+        [_reading(datetime(2024, 1, 1), 42.0, "Site was pumped")]
+    )
+
+    assert set(coverages["parameters"]) == {REASON}
+    assert set(coverages["coverages"][0]["ranges"]) == {REASON}
+
+
+def test_queries_skip_rows_carrying_only_unpublished_parameters(
+    edr_coverage_provider,
+):
+    """/locations and the coverage queries never see an unpublished-only row,
+    so a station whose only data is a dropped parameter is not listed."""
+    provider = edr_coverage_provider("water_chemistry")
+    provider._dropped_parameters = {"CF", "NO3"}
+
+    clauses, params = provider._filters()
+
+    assert clauses == [
+        "((parameter_name IS NOT NULL AND NOT parameter_name = ANY(%s)))"
+    ]
+    assert params == [["CF", "NO3"]]
