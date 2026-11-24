@@ -166,6 +166,9 @@ class StationEDRProvider(BaseEDRProvider):
         # there is currently no caching mechanism for discovered fields.
         # if we run into latency issues we may need to implement caching for discovered fields, such
         # as at the module level (keyed by table name, for example).
+        # parameters left unpublished because their rows disagree on the unit
+        # (R13); filled by get_fields
+        self._dropped_parameters = set()
         self.get_fields()
 
     # ------------------------------------------------------------------ db
@@ -226,7 +229,13 @@ class StationEDRProvider(BaseEDRProvider):
             return {name: dict(field) for name, field in self._fields.items()}
 
         fields = {}
-        lexicon_categories = {}  # parameter name -> CoverageJSON categories
+
+        # parameter name -> every unit the table reports for it (None for a
+        # parameter without a unit column, or a row with a null unit)
+        units = {}
+
+        # parameter name -> CoverageJSON categories
+        lexicon_categories = {}
 
         # The fetched dict is the per-category cache, so chemistry qualifiers sharing a category cost one query.
         fetched = {}  # lexicon category -> categories, so each is queried once
@@ -254,14 +263,7 @@ class StationEDRProvider(BaseEDRProvider):
 
             for row in rows:
                 parameter_name = row["parameter_name"]
-                if (
-                    parameter_name in fields
-                    and fields[parameter_name].get("x-ogc-unit") != row["unit"]
-                ):
-                    raise ValueError(  # R13
-                        f"{self.table}: parameter {parameter_name!r} has more than one unit"
-                    )
-
+                units.setdefault(parameter_name, set()).add(row["unit"])
                 fields[parameter_name] = {
                     "type": "number" if data_type == "float" else data_type,
                     "title": parameter_name,
@@ -278,6 +280,25 @@ class StationEDRProvider(BaseEDRProvider):
                     categories = fetched[lexicon_category]
                     lexicon_categories[parameter_name] = categories
                     fields[parameter_name]["enum"] = [c["id"] for c in categories]
+
+        # R13: a parameter's unit is defined by the table, so every one of its
+        # rows must report the same unit. A parameter that does not is not
+        # published at all -- no field, no range, no row -- rather than
+        # publishing values under a unit some of them are not in. The rest of
+        # the collection is unaffected.
+        dropped = set()
+        for parameter_name, parameter_units in units.items():
+            if len(parameter_units) > 1:
+                LOGGER.warning(
+                    "%s: parameter %r is not published because its rows report "
+                    "more than one unit: %s.",
+                    self.table,
+                    parameter_name,
+                    ", ".join(sorted(repr(u) for u in parameter_units)),
+                )
+                del fields[parameter_name]
+                dropped.add(parameter_name)
+        self._dropped_parameters = dropped
 
         # Same prose source as the feature collections, keyed by parameter
         # name rather than column name. Parameter names are read out of the
@@ -498,6 +519,22 @@ class StationEDRProvider(BaseEDRProvider):
             if end is not None:
                 clauses.append(f"{self.independent_axis_column_name} <= %s")
                 params.append(end)
+        if self._dropped_parameters:
+            # Keep only rows carrying at least one published parameter, so a
+            # station whose only data is an unpublished (R13) parameter is not
+            # listed on /locations and contributes no empty coverage.
+            clauses.append(
+                "("
+                + " OR ".join(
+                    f"({s['name_column']} IS NOT NULL "
+                    f"AND NOT {s['name_column']} = ANY(%s))"
+                    for s in self.parameter_columns
+                )
+                + ")"
+            )
+            params.extend(
+                [sorted(self._dropped_parameters)] * len(self.parameter_columns)
+            )
         if select_properties:
             names = list(select_properties)
             clauses.append(
@@ -581,6 +618,19 @@ class StationEDRProvider(BaseEDRProvider):
             return {}
         return entry
 
+    def _publishes(self, name, selected_properties):
+        """Whether a row's parameter ``name`` goes into the coverage.
+
+        Not when the row has no parameter in that column, when the request
+        named other parameters, or when the parameter is unpublished because
+        its rows report more than one unit (R13).
+        """
+        return (
+            name is not None
+            and name not in self._dropped_parameters
+            and (selected_properties is None or name in selected_properties)
+        )
+
     def _coverage_collection(self, rows, select_properties=None):
         if not rows:
             raise ProviderNoDataError("No data found")
@@ -597,9 +647,7 @@ class StationEDRProvider(BaseEDRProvider):
             for parameter_column_set in self.parameter_columns:
                 name = row[parameter_column_set["name_column"]]
 
-                if name is None or (
-                    selected_properties is not None and name not in selected_properties
-                ):
+                if not self._publishes(name, selected_properties):
                     continue
 
                 if name not in parameters:
@@ -665,14 +713,12 @@ class StationEDRProvider(BaseEDRProvider):
 
                 # this row's (parameter_column_set, name) pairs to publish. A
                 # None name leaves the slot None, keeping every range the same
-                # length; an unselected name is not published.
+                # length; an unselected or unpublished name is left out.
                 row_parameters = [
                     (parameter_column_set, r[parameter_column_set["name_column"]])
                     for parameter_column_set in self.parameter_columns
-                    if r[parameter_column_set["name_column"]] is not None
-                    and (
-                        selected_properties is None
-                        or r[parameter_column_set["name_column"]] in selected_properties
+                    if self._publishes(
+                        r[parameter_column_set["name_column"]], selected_properties
                     )
                 ]
 
