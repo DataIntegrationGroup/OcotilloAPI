@@ -20,6 +20,17 @@ reading, with:
 
 A reading with a null level is still published when it has a reason (R5).
 
+Each well's current location comes from a ``DISTINCT ON (thing_id)``
+subquery over ``location_thing_association``, not a ``JOIN LATERAL``. The
+subquery never refers to the outer query, so each time the view is queried
+Postgres evaluates it once, keeps the one-row-per-well result in memory
+(typically as a hash table), and joins every reading against it. The result
+acts like a temporary table that lasts until the query finishes; nothing is
+stored between queries. A ``LATERAL`` subquery depends on ``t.id``, so it
+reruns for every reading unless Memoize caches it. Do not add ``LIMIT 1`` to
+the subquery: the limit applies to the whole result, not to each well, so
+only one well would survive the inner join.
+
 ``ogc_manual_waterlevels`` publishes only public readings of public wells,
 and only public alternate ids. ``ogc_internal_manual_waterlevels`` is the
 same query without those release filters, for the internal pygeoapi mount.
@@ -121,13 +132,12 @@ def _create_view(view_name: str, public_only: bool) -> str:
         JOIN thing t            ON t.id = fe.thing_id AND t.thing_type = 'water well'
 
         -- select the most recent location for the well
-        JOIN LATERAL (
-             SELECT location_id
-             FROM location_thing_association
-             WHERE thing_id = t.id AND effective_end IS NULL
-             ORDER BY effective_start DESC, location_id DESC
-             LIMIT 1
-         ) lta ON TRUE
+        JOIN (
+            SELECT DISTINCT ON (thing_id) thing_id, location_id
+            FROM location_thing_association
+            WHERE effective_end IS NULL
+            ORDER BY thing_id, effective_start DESC, location_id DESC
+        ) lta ON lta.thing_id = t.id
         JOIN location l ON l.id = lta.location_id
         LEFT JOIN lexicon_term lt ON lt.term = t.formation_completion_code
         LEFT JOIN (
