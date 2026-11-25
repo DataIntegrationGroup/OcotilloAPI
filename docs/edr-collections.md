@@ -45,7 +45,10 @@ the description and label in the CoverageCollection and the title and descriptio
 Parameters that have restricted values - categories in a CoverageCollection - are determined from the lexicon tables. They are populated by the terms associated with a category. They are greedy, so *every* term associated with a category is used. If only a subset of terms are desired add a new category to the `lexicon_category` table and then associate the desired terms with that category. The lexicon term and category tables will need to be updated in `core/lexicon.json` and then in the database with `oco initialize-lexicon`. Afterward the `lexicon_category` in the `EDR_COLLECTIONS` dictionary needs to be updated to the new category, requiring the API to be relaunched.
 
 # Parameters & Units
-Each parameter can have one, and only one, unit. The units are defined in the database tables or backing views, nowhere else. If there are multiple units reported for a parameter then that parameter is dropped from the collection and a `warning` level message is logged. The data must be fixed; the API should not account for these edge cases.
+Each parameter can have one, and only one, unit. The units are defined in the database tables or backing views, nowhere else. If there are multiple units reported for a parameter then the provider determines the most common unit and defaults to that. When the provider comes across a record whose units are not the most common that row is dropped from the collection.
+
+# Qualifier
+If qualifiers are to be queried along with observations they *must* be in the same row of the backing view/table. This enables the qualifiers to be associated with the correct observation. It also enables the correct qualifiers to be dropped if something is wrong with that row, such as an off-unit.
 
 # Duplicate Independent Axis Values
 If two records share an independent axis value - e.g. the same timestamp - the record with the lowest `id` is kept whole and the other is skipped with a `warning` level message logged.
