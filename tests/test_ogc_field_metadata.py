@@ -78,11 +78,11 @@ def test_table_entries_prefer_the_table_block_over_defaults():
 def test_describe_fields_annotates_documented_columns():
     described = describe_fields(
         "ogc_internal_water_wells",
-        {"well_depth": {"type": "number", "format": None}},
+        {"well_depth": {"type": "float", "format": None}},
     )
 
     field = described["well_depth"]
-    assert field["type"] == "number"
+    assert field["type"] == "float"
     assert field["format"] is None
     assert field["title"] == "Well depth"
     assert field["description"].startswith("Total depth of the finished well")
@@ -106,7 +106,7 @@ def test_describe_fields_returns_fresh_dicts():
     # pygeoapi's get_collection_schema assigns the provider's field dict into
     # its response and then mutates it in place. Handing out references into
     # the cached YAML would let one request's mutations leak into the next.
-    fields = {"well_depth": {"type": "number"}}
+    fields = {"well_depth": {"type": "float"}}
 
     first = describe_fields("ogc_water_wells", fields)
     first["well_depth"]["x-ogc-role"] = "id"
@@ -115,7 +115,7 @@ def test_describe_fields_returns_fresh_dicts():
     second = describe_fields("ogc_water_wells", fields)
     assert "x-ogc-role" not in second["well_depth"]
     assert second["well_depth"]["description"]
-    assert fields["well_depth"] == {"type": "number"}
+    assert fields["well_depth"] == {"type": "float"}
 
 
 def test_describe_fields_tolerates_empty_input():

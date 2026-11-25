@@ -2,7 +2,7 @@
 
 | **Item** | **Value** |
 | --- | --- |
-| Contract Version | 1.0.0 |
+| Contract Version | 1.1.0 |
 | Status | Accepted |
 | Provider | OcotilloAPI |
 | Consumers | WeaverAPI, public users |
@@ -110,7 +110,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
         "groundwater level reason": {
             "type": "Parameter",
             "description": {
-                "en": "USGS-style condition codes explaining why a water level reads as it does or could not be measured."
+                "en": "The reason/qualifier for the recorded groundwater level."
             },
             "observedProperty": {
                 "id": "groundwater level reason",
@@ -334,9 +334,9 @@ where
 | `coverages[].domain.axes.y.values` | `list[float]` | Latitude of the well. There is only one item in the list. |
 | `coverages[].domain.axes.t.values` | `list[str]` | ISO 8601 datetime strings for each element in each range |
 | `coverages[].ranges["groundwater level below ground surface"].shape` | `list[int]` | `[n]`, where n is the number of observations in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | Groundwater level below ground surface observations |
+| `coverages[].ranges["groundwater level below ground surface"].values` | `list[float \| null]` | groundwater level below ground surface observations |
 | `coverages[].ranges["groundwater level reason"].shape` | `list[int]` | `[n]`, where n is the number of reasons in the coverage. Null values are counted. |
-| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | Groundwater level reason for each observation |
+| `coverages[].ranges["groundwater level reason"].values` | `list[str \| null]` | groundwater level reason for each observation |
 
 ## Endpoints
 
@@ -355,6 +355,7 @@ Parameter behaviour:
 
 - `datetime`: an ISO 8601 instant or interval; `..` leaves an end open (e.g. `2020-01-01/..`). Applies to the reading timestamps.
 - `parameter-name`: comma-separated. `groundwater level below ground surface` and `groundwater level reason` are separate parameters, so naming only one omits the other's range. Leave it out to get both.
+  - Every reading carries the `groundwater level reason` parameter, even when no reason was recorded. So `parameter-name=groundwater level reason` on its own matches every reading: `/locations` lists every well, not only wells with a recorded reason, and a well's reason range may be entirely `null`. The reason is meant to be read alongside the level.
 - `bbox` is a comma-separated list of the following values: `minx`, `miny`, `maxx`, `maxy`. They are defined via longitude and latitude in WGS84 (EPSG:4326).
 - `coords` is a WKT Polygon that uses longitude latitude pairs, defined using WGS84 (EPS:4326).
 - `f`: `json` (default for clients) or `html`.
@@ -380,7 +381,7 @@ Responses:
 - The current view only reports `groundwater level` observations but does not account for measuring point heights. It either needs to report `groundwater level below ground surface` and subtract the measuring point height, or report the measuring point height for each observation.
 - Transducer and manual water level measurements should be split up into different views.
 - Separate public and internal views should be created to support `/ogcapi` and `/ogcapi-internal` collections.
-- Ensure that each `null` observation has a corresponding `groundwater level reason`, otherwise omit it from the view.
+- Ensure that each `null` observation has a corresponding `groundwater_level_reason`, otherwise omit it from the view.
 
 **IMPORTANT**
 
@@ -389,6 +390,8 @@ Responses:
 ## EDR Formations/Construction
 
 The EDR endpoints that we make are bespoke, after a fashion. Updates to create the responses will not only need to be made in the views but in how the EDR endpoints are made, too. These will need to be done in `core/edr_provider.py`. `WaterEDRProvider::_station_properties` will, for example, need to be updated to include the new properties that are needed for this contract but don't already exist (e.g. `well_depth`).
+
+**Note:** `WaterEDRProvider` will change to `StationEDRProvider` to indicate that it can be used for non-water data, such as temperature time series at a meteorological station.
 
 **IMPORTANT**
 
