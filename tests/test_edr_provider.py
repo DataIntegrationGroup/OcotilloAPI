@@ -12,7 +12,7 @@ import pytest
 import yaml
 from pygeoapi.provider.base import ProviderNoDataError
 
-from core.edr_provider import StationEDRProvider
+from core.edr_provider import StationEDRProvider, categories_from_lexicon
 from core.pygeoapi import (
     EDR_COLLECTIONS,
     EDR_PROVIDER_COLLECTION_KEYS,
@@ -134,8 +134,8 @@ def test_one_parameter_set_yields_a_range_per_distinct_name(edr_coverage_provide
         parameter = coverage["parameters"][p]
         try:
             assert parameter["observedProperty"]["id"] == p
-        except AssertionError:
-            raise AssertionError(f"Parameter {p} failed validation")
+        except AssertionError as e:
+            raise AssertionError(f"Parameter {p} failed validation: {e}")
 
 
 def test_parameter_null_in_coverage_when_not_present(edr_coverage_provider):
@@ -253,6 +253,47 @@ def test_no_parameter_name_publishes_every_parameter(
 
     assert set(coverages["parameters"]) == {LEVEL, REASON}
     assert set(coverages["coverages"][0]["ranges"]) == {LEVEL, REASON}
+
+
+# --------------------------------------------------------------- categories
+
+
+def test_categories_from_lexicon_describe_only_informative_definitions():
+    categories = categories_from_lexicon(
+        [
+            {"term": "Site was dry", "definition": "Site was dry"},
+            {"term": "Site was pumped", "definition": "Pumping in the last hour."},
+            {"term": "Obstructed", "definition": None},
+        ]
+    )
+
+    assert categories == [
+        {"id": "Site was dry", "label": {"en": "Site was dry"}},
+        {
+            "id": "Site was pumped",
+            "label": {"en": "Site was pumped"},
+            "description": {"en": "Pumping in the last hour."},
+        },
+        {"id": "Obstructed", "label": {"en": "Obstructed"}},
+    ]
+
+
+def test_only_categorical_parameters_carry_categories(edr_coverage_provider):
+    """The reason lists its lexicon category's terms; the level has none.
+
+    get_fields discovers the categories, keyed by parameter name; here they
+    are set as discovery would leave them.
+    """
+    provider = edr_coverage_provider("manual_waterlevels")
+    categories = [{"id": "Site was dry", "label": {"en": "Site was dry"}}]
+    provider._lexicon_categories = {REASON: categories}
+
+    parameters = provider._coverage_collection(
+        [_reading(datetime(2024, 1, 1), 42.0, "Site was dry")]
+    )["parameters"]
+
+    assert parameters[REASON]["observedProperty"]["categories"] == categories
+    assert "categories" not in parameters[LEVEL]["observedProperty"]
 
 
 # ----------------------------------------------- duplicate axis values (rows)
@@ -593,10 +634,18 @@ def test_a_parameter_without_a_unit_column_is_published_without_a_unit(
     }
     provider = edr_coverage_provider("manual_waterlevels")
     provider._fields = {}
+    # the discovery query for each parameter column, matched on its name column
     monkeypatch.setattr(
         provider,
         "_fetch",
         lambda sql, params=None: next(v for k, v in rows.items() if k in sql),
+    )
+    # the reason is categorical, so discovery also reads its lexicon category;
+    # that lookup is not what this test is about
+    monkeypatch.setattr(
+        provider,
+        "_create_lexicon_categories",
+        lambda category: [{"id": "Site was dry", "label": {"en": "Site was dry"}}],
     )
 
     fields = provider.get_fields()
