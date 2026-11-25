@@ -674,7 +674,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
             "unit": {
                 "symbol": "mg/L",
                 "label": {
-                    "en": "mg/L"
+                    "en": "milligrams per liter"
                 }
             }
         },
@@ -708,7 +708,7 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
             "unit": {
                 "symbol": "pm",
                 "label": {
-                    "en": "Per mil (o/oo) or parts per thousand"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -740,9 +740,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pmc",
                 "label": {
-                    "en": "mg/L"
+                    "en": "percent modern carbon"
                 }
             }
         },
@@ -774,9 +774,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -808,9 +808,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -978,9 +978,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -1012,9 +1012,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -1046,9 +1046,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -1080,9 +1080,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -1284,9 +1284,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "uS/cm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "microsiemens per centimeter"
                 }
             }
         },
@@ -1454,9 +1454,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -1488,9 +1488,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -1522,9 +1522,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -1590,9 +1590,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "deg C",
                 "label": {
-                    "en": "mg/L"
+                    "en": "degrees Celsius"
                 }
             }
         },
@@ -1726,9 +1726,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -1930,9 +1930,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "% diff",
                 "label": {
-                    "en": "mg/L"
+                    "en": "percent difference"
                 }
             }
         },
@@ -2678,9 +2678,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "pm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "per mil (o/oo) or parts per thousand"
                 }
             }
         },
@@ -3018,9 +3018,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "yrs",
                 "label": {
-                    "en": "mg/L"
+                    "en": "years"
                 }
             }
         },
@@ -3358,9 +3358,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "epm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "equivalents per milliliter"
                 }
             }
         },
@@ -3392,9 +3392,9 @@ The time series data will be returned as CoverageCollection of [CoverageJSONs](h
                 }
             },
             "unit": {
-                "symbol": "mg/L",
+                "symbol": "epm",
                 "label": {
-                    "en": "mg/L"
+                    "en": "equivalents per milliliter"
                 }
             }
         },
