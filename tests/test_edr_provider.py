@@ -10,6 +10,7 @@ import logging
 import textwrap
 import pytest
 import yaml
+from pygeoapi.provider.base import ProviderNoDataError
 
 from core.edr_provider import StationEDRProvider, categories_from_lexicon
 from core.pygeoapi import (
@@ -553,66 +554,82 @@ def _discovering_provider(edr_coverage_provider, monkeypatch, collection_id, row
     return provider
 
 
-def test_a_parameter_with_more_than_one_unit_is_not_published(
+def test_a_parameter_with_more_than_one_unit_keeps_its_most_common_unit(
     edr_coverage_provider, monkeypatch, caplog
 ):
-    """R13: every row of a parameter must share the unit, or it is dropped.
+    """R13: the most common unit is published; other units' rows are skipped.
 
-    Only that parameter goes; the rest of the collection is still published.
+    A parameter with a single unit is untouched.
     """
     provider = _discovering_provider(
         edr_coverage_provider,
         monkeypatch,
         "water_chemistry",
         [
-            {"parameter_name": "CF", "unit": "µS/cm"},
-            {"parameter_name": "CF", "unit": "mS/cm"},
-            {"parameter_name": "Calcium", "unit": "mg/L"},
+            {"parameter_name": "CF", "unit": "mS/cm", "row_count": 3},
+            {"parameter_name": "CF", "unit": "µS/cm", "row_count": 721},
+            {"parameter_name": "Calcium", "unit": "mg/L", "row_count": 50},
         ],
     )
 
     with caplog.at_level(logging.WARNING, logger="core.edr_provider"):
         fields = provider.get_fields()
 
-    assert set(fields) == {"Calcium"}
+    assert set(fields) == {"CF", "Calcium"}
+    assert fields["CF"]["x-ogc-unit"] == "µS/cm"
     assert fields["Calcium"]["x-ogc-unit"] == "mg/L"
-    assert provider._dropped_parameters == {"CF"}
+    assert provider._kept_units == {"CF": "µS/cm"}
     assert any(
-        "'CF'" in r.getMessage() and "more than one unit" in r.getMessage()
+        "'CF'" in r.getMessage() and "3 rows in 'mS/cm'" in r.getMessage()
         for r in caplog.records
     )
 
 
-def test_a_null_unit_beside_a_unit_is_a_second_unit(edr_coverage_provider, monkeypatch):
-    """No exceptions: a row with no unit does not match a row with one."""
+@pytest.mark.parametrize(
+    "rows,kept",
+    [
+        # a tie goes to the first unit by name, the same on every request
+        (
+            [
+                {"parameter_name": "NO2", "unit": "mg/L", "row_count": 5},
+                {"parameter_name": "NO2", "unit": "mg NO2/L", "row_count": 5},
+            ],
+            "mg NO2/L",
+        ),
+        # a null unit is a unit like any other, and loses a tie
+        (
+            [
+                {"parameter_name": "NO3", "unit": None, "row_count": 5},
+                {"parameter_name": "NO3", "unit": "mg/L", "row_count": 5},
+            ],
+            "mg/L",
+        ),
+    ],
+)
+def test_the_kept_unit_is_deterministic(edr_coverage_provider, monkeypatch, rows, kept):
     provider = _discovering_provider(
-        edr_coverage_provider,
-        monkeypatch,
-        "water_chemistry",
-        [
-            {"parameter_name": "NO3", "unit": "mg/L"},
-            {"parameter_name": "NO3", "unit": None},
-        ],
+        edr_coverage_provider, monkeypatch, "water_chemistry", rows
     )
 
-    assert provider.get_fields() == {}
-    assert provider._dropped_parameters == {"NO3"}
+    provider.get_fields()
+
+    assert provider._kept_units == {rows[0]["parameter_name"]: kept}
 
 
 def test_a_parameter_without_a_unit_column_is_published_without_a_unit(
     edr_coverage_provider, monkeypatch
 ):
-    """The reason has no unit column: one unit (none), so it is kept.
+    """The reason has no unit column: one unit (none), so nothing is skipped.
 
     The SQL selects NULL for it, which arrives as None -- it must not be
     published as an `x-ogc-unit` of None.
     """
     rows = {
         "observation_parameter_name": [
-            {"parameter_name": LEVEL, "unit": "ft"},
+            {"parameter_name": LEVEL, "unit": "ft", "row_count": 2},
         ],
         "qualifier_parameter_name": [
-            {"parameter_name": REASON, "unit": None},
+            {"parameter_name": REASON, "unit": None, "row_count": 2},
         ],
     }
     provider = edr_coverage_provider("manual_waterlevels")
@@ -636,33 +653,112 @@ def test_a_parameter_without_a_unit_column_is_published_without_a_unit(
     assert set(fields) == {LEVEL, REASON}
     assert fields[LEVEL]["x-ogc-unit"] == "ft"
     assert "x-ogc-unit" not in fields[REASON]
-    assert provider._dropped_parameters == set()
+    assert provider._kept_units == {}
 
 
-def test_an_unpublished_parameter_is_left_out_of_coverages(edr_coverage_provider):
-    """A dropped parameter on a row beside a published one is skipped alone."""
-    provider = edr_coverage_provider("manual_waterlevels")
-    provider._dropped_parameters = {LEVEL}
+def _analyte(when, name, value, unit):
+    return {
+        "thing_id": 1,
+        "longitude": -106.0,
+        "latitude": 34.0,
+        "datetime": when,
+        "parameter_name": name,
+        "value": value,
+        "unit": unit,
+    }
+
+
+def test_off_unit_rows_are_left_out_of_coverages(edr_coverage_provider):
+    """Only kept-unit rows are published, labelled with the kept unit -- even
+    when an off-unit row comes first. The off-unit row's time step is not on
+    the axis at all, as when _filters keeps it out of the query."""
+    provider = edr_coverage_provider("water_chemistry")
+    provider._kept_units = {"CF": "µS/cm"}
 
     coverages = provider._coverage_collection(
-        [_reading(datetime(2024, 1, 1), 42.0, "Site was pumped")]
+        [
+            _analyte(datetime(2024, 1, 1), "CF", 3.0, "mS/cm"),
+            _analyte(datetime(2024, 1, 2), "CF", 700.0, "µS/cm"),
+            _analyte(datetime(2024, 1, 2), "Calcium", 12.0, "mg/L"),
+        ]
     )
 
-    assert set(coverages["parameters"]) == {REASON}
-    assert set(coverages["coverages"][0]["ranges"]) == {REASON}
+    assert coverages["parameters"]["CF"]["unit"]["symbol"] == "µS/cm"
+    coverage = coverages["coverages"][0]
+    assert coverage["domain"]["axes"]["t"]["values"] == ["2024-01-02T00:00:00"]
+    assert coverage["ranges"]["CF"]["values"] == [700.0]
+    assert coverage["ranges"]["Calcium"]["values"] == [12.0]
 
 
-def test_queries_skip_rows_carrying_only_unpublished_parameters(
+def test_an_off_unit_observation_takes_its_qualifier_with_it(
     edr_coverage_provider,
 ):
-    """/locations and the coverage queries never see an unpublished-only row,
-    so a station whose only data is a dropped parameter is not listed."""
+    """In a wide view the reason qualifies the level on its row: when the
+    level is skipped for its unit, the reason is not published without it."""
+    provider = edr_coverage_provider("manual_waterlevels")
+    provider._kept_units = {LEVEL: "ft"}
+    in_meters = _reading(datetime(2024, 1, 1), 1.5, "Site was pumped")
+    in_meters["observation_unit"] = "m"
+
+    coverages = provider._coverage_collection(
+        [in_meters, _reading(datetime(2024, 1, 2), 5.0, "Site was dry")]
+    )
+
+    coverage = coverages["coverages"][0]
+    assert coverage["domain"]["axes"]["t"]["values"] == ["2024-01-02T00:00:00"]
+    assert coverage["ranges"][LEVEL]["values"] == [5.0]
+    assert coverage["ranges"][REASON]["values"] == ["Site was dry"]
+
+
+def test_only_off_unit_rows_means_no_data(edr_coverage_provider):
     provider = edr_coverage_provider("water_chemistry")
-    provider._dropped_parameters = {"CF", "NO3"}
+    provider._kept_units = {"CF": "µS/cm"}
+
+    with pytest.raises(ProviderNoDataError):
+        provider._coverage_collection(
+            [_analyte(datetime(2024, 1, 1), "CF", 3.0, "mS/cm")]
+        )
+
+
+_KEPT_UNIT_CLAUSE = (
+    "NOT EXISTS (SELECT 1 FROM unnest(%s::text[], %s::text[]) "
+    "AS kept_units(kept_parameter_name, kept_unit) "
+    "WHERE kept_parameter_name = {name} "
+    "AND kept_unit IS DISTINCT FROM {unit})"
+)
+
+
+def test_the_row_filter_skips_off_unit_rows(edr_coverage_provider):
+    """/locations and the coverage queries drop a row when its parameter is
+    off-unit, so a station with only off-unit rows is not listed."""
+    provider = edr_coverage_provider("water_chemistry")
+    provider._kept_units = {"NO3": "mg/L", "CF": "µS/cm"}
 
     clauses, params = provider._filters()
 
+    assert clauses == [_KEPT_UNIT_CLAUSE.format(name="parameter_name", unit="unit")]
+    assert params == [["CF", "NO3"], ["µS/cm", "mg/L"]]
+
+
+def test_the_row_filter_drops_the_whole_row_in_a_wide_view(edr_coverage_provider):
+    """An off-unit level drops its row -- reason included -- whatever
+    parameter-name asks for. The reason column has no unit to check."""
+    provider = edr_coverage_provider("manual_waterlevels")
+    provider._kept_units = {LEVEL: "ft"}
+
+    clauses, params = provider._filters(select_properties=[REASON])
+
     assert clauses == [
-        "((parameter_name IS NOT NULL AND NOT parameter_name = ANY(%s)))"
+        _KEPT_UNIT_CLAUSE.format(
+            name="observation_parameter_name", unit="observation_unit"
+        ),
+        "(observation_parameter_name = ANY(%s) "
+        "OR qualifier_parameter_name = ANY(%s))",
     ]
-    assert params == [["CF", "NO3"]]
+    assert params == [[LEVEL], ["ft"], [REASON], [REASON]]
+
+
+def test_without_parameter_name_or_kept_units_rows_are_not_filtered(
+    edr_coverage_provider,
+):
+    assert edr_coverage_provider("water_chemistry")._filters() == ([], [])

@@ -751,7 +751,7 @@ def _drop_unloadable_edr_collections(settings: dict) -> None:
 
     pygeoapi's get_oas wraps the whole EDR section in one try, so a single
     provider that raises (water_chemistry did, before a parameter with more
-    than one unit was dropped instead of failing the provider) drops the query
+    than one unit stopped failing the provider) drops the query
     paths of *every* EDR collection from the document -- manual_waterlevels
     included. Loading each provider here first
     confines the failure to its own collection. The dropped collection is
