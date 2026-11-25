@@ -138,9 +138,10 @@ class StationEDRProvider(BaseEDRProvider):
             raise ValueError(f"Unsupported independent axis: {self.independent_axis}")
 
         self._fields = {}
-        # parameters left unpublished because their rows disagree on the unit
-        # (R13); filled by get_fields
-        self._dropped_parameters = set()
+        # parameter name -> the one unit published for it, for parameters whose
+        # rows report more than one (R13); rows in other units are skipped.
+        # Filled by get_fields.
+        self._kept_units = {}
         self.get_fields()
 
     # ------------------------------------------------------------------ db
@@ -198,18 +199,24 @@ class StationEDRProvider(BaseEDRProvider):
             return {name: dict(field) for name, field in self._fields.items()}
 
         fields = {}
-        # parameter name -> every unit the table reports for it (None for a
-        # parameter without a unit column, or a row with a null unit)
-        units = {}
+        # parameter name -> {unit: row count} (unit None for a parameter
+        # without a unit column, or a row with a null unit)
+        unit_counts = {}
         for spec in self.parameter_columns:
             name_column = spec["name_column"]
             unit_column = spec["unit_column"] if spec["unit_column"] else "NULL"
             data_type = spec["data_type"]
 
             try:
+                # One row per (parameter, unit) pair with its row count.
+                # GROUP BY/ORDER BY use SELECT-list positions (1 = name,
+                # 2 = unit) so the query also works when the unit is the
+                # literal NULL; keep them in step if the SELECT list changes.
                 rows = self._fetch(
-                    f"SELECT DISTINCT {name_column} AS parameter_name, {unit_column} AS unit "
-                    f"FROM {self.table} WHERE {name_column} IS NOT NULL ORDER BY {name_column}"
+                    f"SELECT {name_column} AS parameter_name, {unit_column} AS unit, "
+                    f"COUNT(*) AS row_count "
+                    f"FROM {self.table} WHERE {name_column} IS NOT NULL "
+                    f"GROUP BY 1, 2 ORDER BY 1"
                 )
             except ProviderConnectionError:
                 # View may not exist yet (e.g. OpenAPI generation before migrate).
@@ -220,33 +227,41 @@ class StationEDRProvider(BaseEDRProvider):
 
             for row in rows:
                 parameter_name = row["parameter_name"]
-                units.setdefault(parameter_name, set()).add(row["unit"])
+                counts = unit_counts.setdefault(parameter_name, {})
+                counts[row["unit"]] = counts.get(row["unit"], 0) + row["row_count"]
                 fields[parameter_name] = {
                     "type": "number" if data_type == "float" else data_type,
                     "title": parameter_name,
                 }
-                # NULL in the SQL arrives as None, not the string "NULL"
-                if row["unit"] is not None:
-                    fields[parameter_name]["x-ogc-unit"] = row["unit"]
 
-        # R13: a parameter's unit is defined by the table, so every one of its
-        # rows must report the same unit. A parameter that does not is not
-        # published at all -- no field, no range, no row -- rather than
-        # publishing values under a unit some of them are not in. The rest of
-        # the collection is unaffected.
-        dropped = set()
-        for parameter_name, parameter_units in units.items():
-            if len(parameter_units) > 1:
+        # R13: a parameter is published in one unit. When its rows report more
+        # than one, the most common unit is kept and rows in any other unit are
+        # skipped -- in coverages and in the row filter (_filters) -- rather
+        # than publishing values under a unit they are not in.
+        kept_units = {}
+        for parameter_name, counts in unit_counts.items():
+            # most rows first; ties broken by unit (None last) so the choice
+            # is the same on every request
+            ranked = sorted(
+                counts.items(),
+                key=lambda item: (-item[1], item[0] is None, str(item[0])),
+            )
+            unit = ranked[0][0]
+            # NULL in the SQL arrives as None, not the string "NULL"
+            if unit is not None:
+                fields[parameter_name]["x-ogc-unit"] = unit
+            if len(ranked) > 1:
+                kept_units[parameter_name] = unit
                 LOGGER.warning(
-                    "%s: parameter %r is not published because its rows report "
-                    "more than one unit: %s.",
+                    "%s: parameter %r reports more than one unit; publishing its "
+                    "%d rows in %r and skipping %s.",
                     self.table,
                     parameter_name,
-                    ", ".join(sorted(repr(u) for u in parameter_units)),
+                    ranked[0][1],
+                    unit,
+                    ", ".join(f"{n} rows in {u!r}" for u, n in ranked[1:]),
                 )
-                del fields[parameter_name]
-                dropped.add(parameter_name)
-        self._dropped_parameters = dropped
+        self._kept_units = kept_units
 
         # Same prose source as the feature collections, keyed by parameter
         # name rather than column name. Parameter names are read out of the
@@ -412,22 +427,27 @@ class StationEDRProvider(BaseEDRProvider):
             if end is not None:
                 clauses.append(f"{self.independent_axis_column_name} <= %s")
                 params.append(end)
-        if self._dropped_parameters:
-            # Keep only rows carrying at least one published parameter, so a
-            # station whose only data is an unpublished (R13) parameter is not
-            # listed on /locations and contributes no empty coverage.
-            clauses.append(
-                "("
-                + " OR ".join(
-                    f"({s['name_column']} IS NOT NULL "
-                    f"AND NOT {s['name_column']} = ANY(%s))"
-                    for s in self.parameter_columns
+        if self._kept_units:
+            # Skip the whole row when any parameter on it is in a unit other
+            # than its kept one (R13) -- the observation is unpublishable, and
+            # so is its qualifier on the same row. Mirrors _is_off_unit, so
+            # /locations lists no station whose only rows are off-unit.
+            kept_names = sorted(self._kept_units)
+            kept_units = [self._kept_units[name] for name in kept_names]
+            for s in self.parameter_columns:
+                if s["unit_column"] is None:
+                    continue
+                # The alias's columns are named so they cannot shadow the
+                # view's: water_chemistry's unit column is called `unit`, and
+                # an alias column `unit` would capture the bare reference,
+                # comparing the kept unit with itself.
+                clauses.append(
+                    "NOT EXISTS (SELECT 1 FROM unnest(%s::text[], %s::text[]) "
+                    "AS kept_units(kept_parameter_name, kept_unit) "
+                    f"WHERE kept_parameter_name = {s['name_column']} "
+                    f"AND kept_unit IS DISTINCT FROM {s['unit_column']})"
                 )
-                + ")"
-            )
-            params.extend(
-                [sorted(self._dropped_parameters)] * len(self.parameter_columns)
-            )
+                params.extend([kept_names, kept_units])
         if select_properties:
             names = list(select_properties)
             clauses.append(
@@ -511,20 +531,39 @@ class StationEDRProvider(BaseEDRProvider):
             return {}
         return entry
 
-    def _publishes(self, name, selected_properties):
-        """Whether a row's parameter ``name`` goes into the coverage.
+    def _is_off_unit(self, row):
+        """Whether any parameter on ``row`` is in a unit other than its kept
+        one (R13), which makes the whole row unpublishable.
 
-        Not when the row has no parameter in that column, when the request
-        named other parameters, or when the parameter is unpublished because
-        its rows report more than one unit (R13).
+        Whole row, not just that value: in a wide view the row's other
+        parameters (e.g. the groundwater level reason) qualify that very
+        observation, and must not be published without it.
         """
-        return (
-            name is not None
-            and name not in self._dropped_parameters
-            and (selected_properties is None or name in selected_properties)
+        for parameter_column_set in self.parameter_columns:
+            unit_column = parameter_column_set["unit_column"]
+            name = row[parameter_column_set["name_column"]]
+            if (
+                unit_column is not None
+                and name in self._kept_units
+                and row[unit_column] != self._kept_units[name]
+            ):
+                return True
+        return False
+
+    def _publishes(self, row, parameter_column_set, selected_properties):
+        """Whether ``row``'s parameter in ``parameter_column_set`` goes into
+        the coverage: the row has one in that column, and the request did not
+        name only other parameters. Off-unit rows are skipped before this.
+        """
+        name = row[parameter_column_set["name_column"]]
+        return name is not None and (
+            selected_properties is None or name in selected_properties
         )
 
     def _coverage_collection(self, rows, select_properties=None):
+        # _filters already keeps off-unit rows out of the query; this keeps
+        # the coverage right for rows from anywhere else
+        rows = [row for row in rows if not self._is_off_unit(row)]
         if not rows:
             raise ProviderNoDataError("No data found")
 
@@ -540,7 +579,9 @@ class StationEDRProvider(BaseEDRProvider):
             for parameter_column_set in self.parameter_columns:
                 name = row[parameter_column_set["name_column"]]
 
-                if not self._publishes(name, selected_properties):
+                # Off-unit rows were dropped above, so the unit taken from the
+                # row below is the parameter's published unit (x-ogc-unit).
+                if not self._publishes(row, parameter_column_set, selected_properties):
                     continue
 
                 if name not in parameters:
@@ -599,13 +640,11 @@ class StationEDRProvider(BaseEDRProvider):
 
                 # this row's (parameter_column_set, name) pairs to publish. A
                 # None name leaves the slot None, keeping every range the same
-                # length; an unselected or unpublished name is left out.
+                # length; an unselected name is left out.
                 row_parameters = [
                     (parameter_column_set, r[parameter_column_set["name_column"]])
                     for parameter_column_set in self.parameter_columns
-                    if self._publishes(
-                        r[parameter_column_set["name_column"]], selected_properties
-                    )
+                    if self._publishes(r, parameter_column_set, selected_properties)
                 ]
 
                 # Keep or skip the whole row, so a value and its qualifier

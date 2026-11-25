@@ -1297,7 +1297,7 @@ def edr_coverage_provider():
         provider.domain_type = "PointSeries"
         provider.referencing = [GEOGRAPHIC_CRS, TEMPORAL_RS]
         # as get_fields leaves it when every parameter has a single unit
-        provider._dropped_parameters = set()
+        provider._kept_units = {}
         return provider
 
     return build
